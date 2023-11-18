@@ -475,11 +475,14 @@ func init() {
 
 	// -----------------------------  main parameters   -----------------------------
 
-	indexCmd.Flags().IntP("kmer", "k", 31, formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
+	indexCmd.Flags().IntP("kmer", "k", 31,
+		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "n", 1000, formatFlagUsage(`Number of masks.`))
+	indexCmd.Flags().IntP("masks", "n", 1000,
+		formatFlagUsage(`Number of masks.`))
 
-	indexCmd.Flags().IntP("seed", "s", 1, formatFlagUsage(`The seed for generating random masks.`))
+	indexCmd.Flags().IntP("seed", "s", 1,
+		formatFlagUsage(`The seed for generating random masks.`))
 
 	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] {[-I <seqs dir>] | <seq files>} -O <out dir>"))
 }
