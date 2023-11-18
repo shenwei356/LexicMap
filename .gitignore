@@ -24,6 +24,7 @@ site
 
 lexicmap/binaries/*
 lexicmap/lexicmap
+lexicmap/*.fasta
 
 # data
 t_*
