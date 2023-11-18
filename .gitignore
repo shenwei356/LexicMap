@@ -1,0 +1,38 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+
+*.directory
+*ssshtest
+*.nextflow.log*
+*.brename_detail.txt
+*/Rplots.pdf
+*.pprof
+
+site
+
+
+lexicmap/binaries/*
+lexicmap/lexicmap
+
+# data
+t_*
+t.gz
+t.*
+*.fna.gz
+*.xz
+*.zst
+*.bz2
+*.bin
+IDs.txt
+*.gz
