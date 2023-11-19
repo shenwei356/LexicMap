@@ -25,6 +25,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -107,6 +108,11 @@ Attentions:
 			log.Errorf("the index has only %s masks, but %d is given", len(lh.Masks), mask)
 		}
 
+		if outputLog {
+			log.Info()
+			log.Infof("checking passed")
+		}
+
 		// Trees
 		dirTrees := filepath.Join(dbDir, index.TreeDir)
 		ok, err = pathutil.DirExists(dirTrees)
@@ -148,30 +154,43 @@ Attentions:
 				checkError(index.ErrTreeFileMissing)
 			}
 
-			k := uint8(lh.K)
-
-			var t *tree.Tree
+			// sort the paths
+			type idx2path struct {
+				idx  int
+				path string
+			}
+			idx2paths := make([]idx2path, len(treePaths))
 			var base string
-			var i int
-
-			for _, file := range treePaths {
-				// read tree from the file
-				t, err = tree.NewFromFile(file)
-				checkError(err)
-
+			var idx int
+			for i, file := range treePaths {
 				base = filepath.Base(file)
-				i, err = strconv.Atoi(base[0 : len(base)-len(index.TreeFileExt)])
+				idx, err = strconv.Atoi(base[0 : len(base)-len(index.TreeFileExt)])
 				if err != nil {
 					checkError(index.ErrInvalidIndexDir)
 				}
 
+				idx2paths[i] = idx2path{idx: idx, path: file}
+			}
+			sort.Slice(idx2paths, func(i, j int) bool {
+				return idx2paths[i].idx < idx2paths[j].idx
+			})
+
+			k := uint8(lh.K)
+
+			var t *tree.Tree
+			for _, i2p := range idx2paths {
+				// read tree from the file
+				t, err = tree.NewFromFile(i2p.path)
+				checkError(err)
+
+				idx = i2p.idx + 1
 				t.Walk(func(key uint64, v []uint64) bool {
 					for _, refpos = range v {
 						idIdx = refpos >> 38
 						pos = refpos << 26 >> 28
 						rc = uint8(refpos & 1)
 						fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
-							i+1, decoder(key, k), len(v), idIdx+1, pos+1, lexichash.Strands[rc])
+							idx, decoder(key, k), len(v), idIdx+1, pos+1, lexichash.Strands[rc])
 					}
 					return false
 				})
