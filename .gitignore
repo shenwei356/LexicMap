@@ -36,4 +36,5 @@ t.*
 *.bz2
 *.bin
 IDs.txt
+info.txt
 *.gz

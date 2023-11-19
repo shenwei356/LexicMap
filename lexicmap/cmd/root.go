@@ -30,7 +30,7 @@ import (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "LexicMap",
+	Use:   "lexicmap",
 	Short: "LexicHash-based long-read mapping and metagenomic profiling",
 	Long: fmt.Sprintf(`
     Program: LexicMap: LexicHash-based long-read mapping and metagenomic profiling

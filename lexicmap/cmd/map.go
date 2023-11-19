@@ -45,6 +45,7 @@ var mapCmd = &cobra.Command{
 
 Attentions:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
+  2. The positions are 1-based.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

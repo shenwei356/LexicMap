@@ -484,7 +484,7 @@ func init() {
 	indexCmd.Flags().IntP("seed", "s", 1,
 		formatFlagUsage(`The seed for generating random masks.`))
 
-	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] {[-I <seqs dir>] | <seq files>} -O <out dir>"))
+	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] {[-I <seqs dir>] | <seq files> | -X <file list>} -O <out dir>"))
 }
 
 var reIgnoreCaseStr = "(?i)"
