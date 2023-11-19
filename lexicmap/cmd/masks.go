@@ -113,8 +113,7 @@ var masksCmd = &cobra.Command{
 			}
 
 			if outputLog {
-				log.Info()
-				log.Infof("checking passed")
+				log.Infof("  checking passed")
 			}
 		} else { // re generate
 			lh, err = lexichash.NewWithSeed(k, nMasks, int64(seed))

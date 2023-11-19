@@ -109,8 +109,7 @@ Attentions:
 		}
 
 		if outputLog {
-			log.Info()
-			log.Infof("checking passed")
+			log.Infof("  checking passed")
 		}
 
 		// Trees
