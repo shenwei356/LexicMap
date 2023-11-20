@@ -40,8 +40,8 @@ import (
 
 var mapCmd = &cobra.Command{
 	Use:   "map",
-	Short: "map sequences against a index",
-	Long: `map sequences against a index
+	Short: "map sequences against an index",
+	Long: `map sequences against an index
 
 Attentions:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.

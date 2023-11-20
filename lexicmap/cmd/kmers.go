@@ -83,6 +83,12 @@ Attentions:
 		outFile := getFlagString(cmd, "out-file")
 
 		mask := getFlagNonNegativeInt(cmd, "mask")
+		showPath := getFlagBool(cmd, "show-path")
+		separator := getFlagString(cmd, "separator")
+
+		if showPath && separator == "" {
+			log.Warningf(`the value of flag -s/--separator might not be empty ("")`)
+		}
 
 		// ---------------------------------------------------------------
 		// checking index
@@ -105,7 +111,7 @@ Attentions:
 		}
 
 		if mask > len(lh.Masks) {
-			log.Errorf("the index has only %s masks, but %d is given", len(lh.Masks), mask)
+			log.Errorf("the index has only %d masks, but %d is given", len(lh.Masks), mask)
 		}
 
 		if outputLog {
@@ -135,7 +141,11 @@ Attentions:
 
 		decoder := lexichash.MustDecoder()
 
-		fmt.Fprintf(outfh, "mask\tkmer\tlen_v\tref_idx\tpos\tstrand\n")
+		if showPath {
+			fmt.Fprintf(outfh, "mask\tkmer\tlen_v\tref_idx\tpos\tstrand\tdepth\tpath\n")
+		} else {
+			fmt.Fprintf(outfh, "mask\tkmer\tlen_v\tref_idx\tpos\tstrand\n")
+		}
 
 		var refpos uint64
 		var idIdx uint64
@@ -177,6 +187,7 @@ Attentions:
 			k := uint8(lh.K)
 
 			var t *tree.Tree
+			var nodes *[]string
 			for _, i2p := range idx2paths {
 				// read tree from the file
 				t, err = tree.NewFromFile(i2p.path)
@@ -188,8 +199,16 @@ Attentions:
 						idIdx = refpos >> 38
 						pos = refpos << 26 >> 28
 						rc = uint8(refpos & 1)
-						fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
-							idx, decoder(key, k), len(v), idIdx+1, pos+1, lexichash.Strands[rc])
+						if showPath {
+							nodes, _ = t.Path(key, k)
+							fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\t%d\t%s\n",
+								mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc],
+								len(*nodes), strings.Join(*nodes, separator))
+							t.RecyclePathResult(nodes)
+						} else {
+							fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
+								mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
+						}
 					}
 					return false
 				})
@@ -208,13 +227,22 @@ Attentions:
 		checkError(err)
 
 		k := uint8(t.K())
+		var nodes *[]string
 		t.Walk(func(key uint64, v []uint64) bool {
 			for _, refpos = range v {
 				idIdx = refpos >> 38
 				pos = refpos << 26 >> 28
 				rc = uint8(refpos & 1)
-				fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
-					mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
+				if showPath {
+					nodes, _ = t.Path(key, k)
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\t%d\t%s\n",
+						mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc],
+						len(*nodes), strings.Join(*nodes, separator))
+					t.RecyclePathResult(nodes)
+				} else {
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
+						mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
+				}
 			}
 			return false
 		})
@@ -233,6 +261,12 @@ func init() {
 
 	kmersCmd.Flags().IntP("mask", "m", 1,
 		formatFlagUsage(`View k-mers captured by Xth mask. (0 for all)`))
+
+	kmersCmd.Flags().BoolP("show-path", "p", false,
+		formatFlagUsage(`Append paths of the k-mers`))
+
+	kmersCmd.Flags().StringP("separator", "s", "-",
+		formatFlagUsage(`Separator of nodes in the path".`))
 
 	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> -m <mask index> [-o out.tsv.gz]"))
 }
