@@ -57,6 +57,7 @@ Attentions:
 			fhLog = addLog(opt.LogFile, opt.Verbose)
 		}
 
+		verbose := opt.Verbose
 		outputLog := opt.Verbose || opt.Log2File
 
 		timeStart := time.Now()
@@ -170,6 +171,14 @@ Attentions:
 		decoder := lexichash.MustDecoder()
 
 		printResult := func(queryID []byte, sr *[]*index.SearchResult) {
+			total++
+			if verbose {
+				if (total < 4096 && total&63 == 0) || total&4095 == 0 {
+					speed = float64(total) / 1000000 / time.Since(timeStart1).Minutes()
+					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f million queries per minute\r", total, speed)
+				}
+			}
+
 			if sr == nil {
 				return
 			}
@@ -248,8 +257,6 @@ Attentions:
 					checkError(err)
 					break
 				}
-
-				total++
 
 				token <- 1
 				wg.Add(1)
