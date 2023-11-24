@@ -162,15 +162,9 @@ Attentions:
 
 		fmt.Fprintf(outfh, "query\ttarget\tqstart\tqend\tqstrand\ttstart\ttend\ttstrand\tlen\tmatch\n")
 
-		type Result struct {
-			id      uint64
-			queryID []byte
-			result  *[]*index.SearchResult
-		}
-
 		decoder := lexichash.MustDecoder()
 
-		printResult := func(queryID []byte, sr *[]*index.SearchResult) {
+		printResult := func(r *Result) {
 			total++
 			if verbose {
 				if (total < 4096 && total&63 == 0) || total&4095 == 0 {
@@ -179,12 +173,14 @@ Attentions:
 				}
 			}
 
-			if sr == nil {
+			if r.result == nil {
+				poolResult.Put(r)
 				return
 			}
 			matched++
 
-			for _, r := range *sr {
+			queryID := r.queryID
+			for _, r := range *r.result {
 				for _, v := range *r.Subs {
 					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
 						queryID, idx.IDs[r.IdIdx],
@@ -193,29 +189,30 @@ Attentions:
 						v.QK, decoder(v.QCode, v.QK))
 				}
 			}
-			idx.RecycleSearchResult(sr)
+			idx.RecycleSearchResult(r.result)
+			poolResult.Put(r)
 		}
 
 		// outputter
-		ch := make(chan Result, opt.NumCPUs)
+		ch := make(chan *Result, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
 			var id uint64 = 1 // for keepping order
-			buf := make(map[uint64]Result, 128)
+			buf := make(map[uint64]*Result, 128)
 
-			var r, r2 Result
+			var r, r2 *Result
 			var ok bool
 
 			for r := range ch {
 				if id == r.id {
-					printResult(r.queryID, r.result)
+					printResult(r)
 					id++
 					continue
 				}
 				buf[r.id] = r
 
 				if r2, ok = buf[id]; ok {
-					printResult(r2.queryID, r2.result)
+					printResult(r2)
 					delete(buf, r2.id)
 					id++
 				}
@@ -231,7 +228,7 @@ Attentions:
 
 				for _, id := range ids {
 					r = buf[id]
-					printResult(r.queryID, r.result)
+					printResult(r)
 				}
 
 			}
@@ -244,6 +241,7 @@ Attentions:
 
 		var record *fastx.Record
 		var fastxReader *fastx.Reader
+		K := idx.K()
 
 		for _, file := range files {
 			fastxReader, err = fastx.NewReader(nil, file, "")
@@ -267,12 +265,24 @@ Attentions:
 						wg.Done()
 					}()
 
+					if len(record.Seq.Seq) < K {
+						r := poolResult.Get().(*Result)
+						r.id = id
+						r.queryID = record.ID
+						r.result = nil
+						ch <- r
+					}
+
 					sr, err := idx.Search(record.Seq.Seq, uint8(minSubLen))
 					if err != nil {
 						checkError(err)
 					}
 
-					ch <- Result{id: id, queryID: record.ID, result: sr}
+					r := poolResult.Get().(*Result)
+					r.id = id
+					r.queryID = record.ID
+					r.result = sr
+					ch <- r
 				}(id, record.Clone())
 			}
 		}
@@ -314,3 +324,13 @@ func init() {
 
 // Strands could be used to output strand for a reverse complement flag
 var Strands = [2]byte{'+', '-'}
+
+type Result struct {
+	id      uint64
+	queryID []byte
+	result  *[]*index.SearchResult
+}
+
+var poolResult = &sync.Pool{New: func() interface{} {
+	return &Result{}
+}}
