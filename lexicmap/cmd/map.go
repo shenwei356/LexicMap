@@ -271,6 +271,7 @@ Attentions:
 						r.queryID = record.ID
 						r.result = nil
 						ch <- r
+						return
 					}
 
 					sr, err := idx.Search(record.Seq.Seq, uint8(minSubLen))
