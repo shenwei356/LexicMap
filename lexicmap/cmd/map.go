@@ -160,7 +160,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\ttarget\tqstart\tqend\tqstrand\ttstart\ttend\ttstrand\tlen\tmatch\n")
+		fmt.Fprintf(outfh, "query\ttarget\ttlen\tqstart\tqend\tqstrand\ttstart\ttend\ttstrand\tlen\tmatch\n")
 
 		decoder := lexichash.MustDecoder()
 
@@ -182,8 +182,8 @@ Attentions:
 			queryID := r.queryID
 			for _, r := range *r.result {
 				for _, v := range *r.Subs {
-					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
-						queryID, idx.IDs[r.IdIdx],
+					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
+						queryID, idx.IDs[r.IdIdx], idx.RefSeqInfos[r.IdIdx].Len,
 						v.QBegin+1, v.QEnd, Strands[v.QRC],
 						v.TBegin+1, v.TEnd, Strands[v.TRC],
 						v.QK, decoder(v.QCode, v.QK))

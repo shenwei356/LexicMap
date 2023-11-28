@@ -313,8 +313,10 @@ Attentions:
 					var ignoreSeq bool
 					var re *regexp.Regexp
 					var baseFile = filepath.Base(file)
+					var seqSizes []int
 
 					allSeqs = make([][]byte, 0, 8)
+					seqSizes = make([]int, 0, 8)
 					lenSum := 0
 					for {
 						record, err = fastxReader.Read()
@@ -324,6 +326,11 @@ Attentions:
 							}
 							checkError(err)
 							break
+						}
+
+						// filter out sequences shorter than k
+						if len(record.Seq.Seq) < k {
+							continue
 						}
 
 						// filter out sequences with names in the blast list
@@ -343,6 +350,7 @@ Attentions:
 						aseq := make([]byte, len(record.Seq.Seq))
 						copy(aseq, record.Seq.Seq)
 						allSeqs = append(allSeqs, aseq)
+						seqSizes = append(seqSizes, len(aseq))
 						lenSum += len(aseq)
 					}
 
@@ -380,6 +388,9 @@ Attentions:
 					input <- index.RefSeq{
 						ID:  []byte(seqID),
 						Seq: bigSeq,
+
+						RefSeqSize: lenSum,
+						SeqSizes:   seqSizes,
 					}
 
 					if opt.Verbose || opt.Log2File {
@@ -408,6 +419,9 @@ Attentions:
 					input <- index.RefSeq{
 						ID:  []byte(string(record.ID)),
 						Seq: _seq,
+
+						RefSeqSize: len(_seq),
+						SeqSizes:   []int{len(_seq)},
 					}
 				}
 
