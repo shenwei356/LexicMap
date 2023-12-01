@@ -268,5 +268,5 @@ func init() {
 	kmersCmd.Flags().StringP("separator", "s", "-",
 		formatFlagUsage(`Separator of nodes in the path".`))
 
-	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> -m <mask index> [-o out.tsv.gz]"))
+	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> [-m <mask index>] [-o out.tsv.gz]"))
 }
