@@ -102,7 +102,6 @@ Attentions:
 
 		if !ok {
 			if outputLog {
-				log.Info()
 				log.Infof("loading index: %s", dbDir)
 			}
 
@@ -121,6 +120,7 @@ Attentions:
 			idx.ExtractKmerLocations()
 			if outputLog {
 				log.Infof("finished extracting k-mer locations in %s", time.Since(timeStart1))
+				log.Info()
 			}
 
 			timeStart1 = time.Now()
@@ -130,6 +130,7 @@ Attentions:
 			checkError(idx.WriteKmerLocations())
 			if outputLog {
 				log.Infof("finished saving k-mer locations binary file in %s", time.Since(timeStart1))
+				log.Info()
 			}
 
 			kmerLocations = idx.KmerLocations
@@ -149,29 +150,38 @@ Attentions:
 			}
 		}
 
-		if refIdx >= len(kmerLocations) {
-			log.Warningf("the value of -i/--ref-idx %d is larger than the number of reference sequences (%d)", refIdx, len(kmerLocations))
+		if refIdx > len(kmerLocations) {
+			log.Errorf("the value of -i/--ref-idx %d is larger than the number of reference sequences (%d)", refIdx, len(kmerLocations))
+			return
 		}
 
-		fmt.Fprintf(outfh, "ref\tpos\tstrand\n")
+		fmt.Fprintf(outfh, "ref\tpos\tstrand\tdelta\n")
 		var refpos uint64
 		var pos uint64
 		var rc uint8
 
+		var pre uint64 // previous location
 		if refIdx == 0 {
 			for i, locs := range kmerLocations {
+				pre = 0
 				for _, refpos = range locs {
 					pos = refpos >> 2
 					rc = uint8(refpos & 1)
-					fmt.Fprintf(outfh, "%s\t%d\t%c\n", ids[i], pos, Strands[rc])
+					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d\n", ids[i], pos+1, Strands[rc], pos-pre)
+
+					pre = pos
 				}
 			}
 		} else {
 			i := refIdx - 1
+
+			pre = 0
 			for _, refpos = range kmerLocations[i] {
 				pos = refpos >> 2
 				rc = uint8(refpos & 1)
-				fmt.Fprintf(outfh, "%s\t%d\t%c\n", ids[i], pos, Strands[rc])
+				fmt.Fprintf(outfh, "%s\t%d\t%c\t%d\n", ids[i], pos+1, Strands[rc], pos-pre)
+
+				pre = pos
 			}
 		}
 
