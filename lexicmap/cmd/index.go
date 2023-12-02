@@ -105,6 +105,7 @@ Attentions:
 		outDir := getFlagString(cmd, "out-dir")
 		force := getFlagBool(cmd, "force")
 		bySeq := getFlagBool(cmd, "by-seq")
+		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		if outDir == "" {
 			checkError(fmt.Errorf("flag -O/--out-dir is needed"))
@@ -201,7 +202,7 @@ Attentions:
 				log.Warningf("  no files matching regular expression: %s", reFileStr)
 			}
 		} else {
-			files = getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+			files = getFileListFromArgsAndFile(cmd, args, !skipFileCheck, "infile-list", !skipFileCheck)
 			if opt.Verbose || opt.Log2File {
 				if len(files) == 1 && isStdin(files[0]) {
 					log.Info("  no files given, reading from stdin")
@@ -479,6 +480,9 @@ func init() {
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
 
+	indexCmd.Flags().BoolP("skip-file-check", "S", false,
+		formatFlagUsage(`skip input file checking when given files or a file list`))
+
 	// -----------------------------  output  -----------------------------
 
 	indexCmd.Flags().StringP("out-dir", "O", "",
@@ -492,7 +496,7 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "n", 1000,
+	indexCmd.Flags().IntP("masks", "n", 1024,
 		formatFlagUsage(`Number of masks.`))
 
 	indexCmd.Flags().IntP("seed", "s", 1,
