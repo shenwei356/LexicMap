@@ -202,12 +202,12 @@ Attentions:
 						if showPath {
 							nodes, _ = t.Path(key, k)
 							fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\t%d\t%s\n",
-								mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc],
+								idx, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc],
 								len(*nodes), strings.Join(*nodes, separator))
 							t.RecyclePathResult(nodes)
 						} else {
 							fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
-								mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
+								idx, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
 						}
 					}
 					return false
