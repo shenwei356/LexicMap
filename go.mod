@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/shenwei356/bio v0.10.0
+	github.com/shenwei356/bio v0.11.0
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
 	github.com/shenwei356/lexichash v0.0.0-00010101000000-000000000000
 	github.com/shenwei356/util v0.5.2
