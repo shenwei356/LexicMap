@@ -256,7 +256,7 @@ Attentions:
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
 			bar = pbs.AddBar(int64(len(files)),
 				mpb.PrependDecorators(
-					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DidentRight}),
+					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
 					decor.Name("", decor.WCSyncSpaceR),
 					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
 				),
@@ -307,18 +307,17 @@ Attentions:
 
 				fastxReader, err = fastx.NewReader(nil, file, "")
 				checkError(err)
+				defer fastxReader.Recycle()
 
 				if !bySeq {
-					var allSeqs [][]byte
-					var bigSeq []byte
 					var ignoreSeq bool
 					var re *regexp.Regexp
 					var baseFile = filepath.Base(file)
-					var seqSizes []int
 
-					allSeqs = make([][]byte, 0, 8)
-					seqSizes = make([]int, 0, 8)
-					lenSum := 0
+					refseq := index.PoolRefSeq.Get().(*index.RefSeq)
+					refseq.Reset()
+
+					var i int = 0
 					for {
 						record, err = fastxReader.Read()
 						if err != nil {
@@ -347,32 +346,21 @@ Attentions:
 								continue
 							}
 						}
+						if i > 0 {
+							refseq.Seq = append(refseq.Seq, nnn...)
+						}
+						refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
+						refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
+						refseq.RefSeqSize += len(record.Seq.Seq)
 
-						aseq := make([]byte, len(record.Seq.Seq))
-						copy(aseq, record.Seq.Seq)
-						allSeqs = append(allSeqs, aseq)
-						seqSizes = append(seqSizes, len(aseq))
-						lenSum += len(aseq)
+						i++
 					}
 
-					if lenSum == 0 {
+					if len(refseq.Seq) == 0 {
+						index.PoolRefSeq.Put(refseq)
 						log.Warningf("skipping %s: no valid sequences", file)
 						log.Info()
 						return
-					}
-
-					if len(allSeqs) == 1 {
-						bigSeq = allSeqs[0]
-					} else {
-						bigSeq = make([]byte, lenSum+(len(allSeqs)-1)*(k-1))
-						i := 0
-						for j, aseq := range allSeqs {
-							copy(bigSeq[i:i+len(aseq)], aseq)
-							if j < len(allSeqs)-1 {
-								copy(bigSeq[i+len(aseq):i+len(aseq)+k-1], nnn)
-							}
-							i += len(aseq) + k - 1
-						}
 					}
 
 					var seqID string
@@ -386,13 +374,9 @@ Attentions:
 						seqID, _ = filepathTrimExtension(baseFile)
 					}
 
-					input <- index.RefSeq{
-						ID:  []byte(seqID),
-						Seq: bigSeq,
+					refseq.ID = []byte(seqID)
 
-						RefSeqSize: lenSum,
-						SeqSizes:   seqSizes,
-					}
+					input <- refseq
 
 					if opt.Verbose || opt.Log2File {
 						chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
@@ -415,15 +399,15 @@ Attentions:
 						continue
 					}
 
-					_seq := make([]byte, len(record.Seq.Seq))
-					copy(_seq, record.Seq.Seq)
-					input <- index.RefSeq{
-						ID:  []byte(string(record.ID)),
-						Seq: _seq,
+					refseq := index.PoolRefSeq.Get().(*index.RefSeq)
+					refseq.Reset()
 
-						RefSeqSize: len(_seq),
-						SeqSizes:   []int{len(_seq)},
-					}
+					refseq.ID = append(refseq.ID, record.ID...)
+					refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
+					refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
+					refseq.RefSeqSize = len(record.Seq.Seq)
+
+					input <- refseq
 				}
 
 				if opt.Verbose || opt.Log2File {
