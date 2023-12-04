@@ -204,5 +204,7 @@ func init() {
 	kmerLocations.Flags().IntP("ref-idx", "i", 1,
 		formatFlagUsage(`View locations of k-mers for Xth reference sequence. (0 for all)`))
 
+	// TODO: -n/--ref-seq
+
 	kmerLocations.SetUsageTemplate(usageTemplate("-d <index path> [-i <refseq index>] [-o out.tsv.gz]"))
 }

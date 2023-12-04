@@ -280,7 +280,9 @@ Attentions:
 
 		// index
 		idx, err := index.NewIndexWithSeed(k, nMasks, int64(seed))
-		checkError(err)
+		if err != nil {
+			checkError(fmt.Errorf("failed to create a new index: %s", err))
+		}
 		// BatchInsert is faster than Insert()
 		input, done := idx.BatchInsert()
 
@@ -302,11 +304,13 @@ Attentions:
 				}()
 				startTime := time.Now()
 
-				var record *fastx.Record
-				var fastxReader *fastx.Reader
+				fastxReader, err := fastx.NewReader(nil, file, "")
+				if err != nil {
+					checkError(fmt.Errorf("failed to read seq file: %s", err))
+				}
+				defer fastxReader.Close()
 
-				fastxReader, err = fastx.NewReader(nil, file, "")
-				checkError(err)
+				var record *fastx.Record
 
 				if !bySeq {
 					var ignoreSeq bool
@@ -323,7 +327,7 @@ Attentions:
 							if err == io.EOF {
 								break
 							}
-							checkError(err)
+							checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
 							break
 						}
 
@@ -390,7 +394,7 @@ Attentions:
 						if err == io.EOF {
 							break
 						}
-						checkError(err)
+						checkError(fmt.Errorf("read seq in %s: %s", file, err))
 						break
 					}
 
@@ -435,7 +439,9 @@ Attentions:
 
 		timeStart2 := time.Now()
 		err = idx.WriteToPath(outDir, force, opt.NumCPUs)
-		checkError(err)
+		if err != nil {
+			checkError(fmt.Errorf("save index %s: %s", outDir, err))
+		}
 
 		if opt.Verbose || opt.Log2File {
 			log.Infof("finished writing to disk in %s", time.Since(timeStart2))
