@@ -86,6 +86,8 @@ Attentions:
 			checkError(fmt.Errorf("the value of flag -m/--min-subs should be <= 32"))
 		}
 
+		index.Threads = opt.NumCPUs
+
 		// ---------------------------------------------------------------
 
 		if outputLog {

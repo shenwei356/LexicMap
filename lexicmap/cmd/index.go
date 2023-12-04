@@ -287,7 +287,7 @@ Attentions:
 		// wait group
 		var wg sync.WaitGroup                 // ensure all jobs done
 		tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
-		// threadsFloat := float64(opt.NumCPUs)  // just avoid repeated type conversion
+		threadsFloat := float64(opt.NumCPUs)  // just avoid repeated type conversion
 
 		nnn := bytes.Repeat([]byte{'N'}, k-1)
 
@@ -300,7 +300,7 @@ Attentions:
 					wg.Done()
 					<-tokens
 				}()
-				// startTime := time.Now()
+				startTime := time.Now()
 
 				var record *fastx.Record
 				var fastxReader *fastx.Reader
@@ -377,9 +377,9 @@ Attentions:
 
 					input <- refseq
 
-					// if opt.Verbose || opt.Log2File {
-					// 	chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
-					// }
+					if opt.Verbose || opt.Log2File {
+						chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
+					}
 
 					return
 				}
@@ -409,9 +409,9 @@ Attentions:
 					input <- refseq
 				}
 
-				// if opt.Verbose || opt.Log2File {
-				// 	chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
-				// }
+				if opt.Verbose || opt.Log2File {
+					chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
+				}
 
 			}(file)
 		}
@@ -420,11 +420,11 @@ Attentions:
 		close(input) // wait BatchInsert
 		<-done       // wait BatchInsert
 
-		// if opt.Verbose {
-		// 	close(chDuration)
-		// 	<-doneDuration
-		// 	pbs.Wait()
-		// }
+		if opt.Verbose {
+			close(chDuration)
+			<-doneDuration
+			pbs.Wait()
+		}
 
 		if opt.Verbose || opt.Log2File {
 			log.Infof("finished building LexicMap index in %s from %d files with %d masks",

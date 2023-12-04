@@ -41,7 +41,11 @@ var kmerLocations = &cobra.Command{
 Attentions:
   1. To get the index of reference sequence, please check the file IDs.txt.
      The index of one sequence is simply the line number.
+        cat -n gtdb.lmi/IDs.txt | grep -w GCA_013694795.1
   2. K-mer positions (column pos) are 1-based.
+     For reference genomes with multiple sequences, the sequences were
+     concatenated to a single sequence with intervals of (k-1) N's.
+     So the positions might not be straightforward for extracting subsequences.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

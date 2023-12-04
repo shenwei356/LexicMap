@@ -46,7 +46,13 @@ var kmersCmd = &cobra.Command{
 Attentions:
   1. Mask index (column mask) is 1-based.
   2. Reference indexes (column ref_idx) are 1-based.
+     which are the line numbers of reference IDs in file index/IDs.txt.
+     You can query the ref ID via:
+        cat -n gtdb.lmi/IDs.txt | grep -w 15933 
   3. K-mer positions (column pos) are 1-based.
+     For reference genomes with multiple sequences, the sequences were
+     concatenated to a single sequence with intervals of (k-1) N's.
+     So the positions might not be straightforward for extracting subsequences.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -236,12 +242,12 @@ Attentions:
 				if showPath {
 					nodes, _ = t.Path(key, k)
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\t%d\t%s\n",
-						mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc],
+						mask, decoder(key, k), len(v), idIdx+1, pos+1, lexichash.Strands[rc],
 						len(*nodes), strings.Join(*nodes, separator))
 					t.RecyclePathResult(nodes)
 				} else {
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%d\t%c\n",
-						mask, decoder(key, k), len(v), idIdx, pos+1, lexichash.Strands[rc])
+						mask, decoder(key, k), len(v), idIdx+1, pos+1, lexichash.Strands[rc])
 				}
 			}
 			return false
