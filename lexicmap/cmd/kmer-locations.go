@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,10 +40,7 @@ var kmerLocations = &cobra.Command{
 	Long: `view locations of k-mers captured by the masks for each reference sequence
 
 Attentions:
-  1. To get the index of reference sequence, please check the file IDs.txt.
-     The index of one sequence is simply the line number.
-        cat -n gtdb.lmi/IDs.txt | grep -w GCA_013694795.1
-  2. K-mer positions (column pos) are 1-based.
+  1. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of (k-1) N's.
      So the positions might not be straightforward for extracting subsequences.
@@ -80,19 +78,8 @@ Attentions:
 		}
 
 		refIdx := getFlagNonNegativeInt(cmd, "ref-idx")
+		refName := getFlagString(cmd, "ref-name")
 		outFile := getFlagString(cmd, "out-file")
-
-		// ---------------------------------------------------------------
-		// output file handler
-		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
-		checkError(err)
-		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
-		}()
 
 		// ---------------------------------------------------------------
 
@@ -154,10 +141,36 @@ Attentions:
 			}
 		}
 
-		if refIdx > len(kmerLocations) {
+		if refName != "" {
+			refNameBytes := []byte(refName)
+			r := -1
+			for i, id := range ids {
+				if bytes.Equal(id, refNameBytes) {
+					r = i
+					break
+				}
+			}
+			if r < 0 {
+				checkError(fmt.Errorf("ref name not found: %s", refName))
+			}
+			refIdx = r + 1
+
+		} else if refIdx > len(kmerLocations) {
 			log.Errorf("the value of -i/--ref-idx %d is larger than the number of reference sequences (%d)", refIdx, len(kmerLocations))
 			return
 		}
+
+		// ---------------------------------------------------------------
+		// output file handler
+		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
+		checkError(err)
+		defer func() {
+			outfh.Flush()
+			if gw != nil {
+				gw.Close()
+			}
+			w.Close()
+		}()
 
 		fmt.Fprintf(outfh, "ref\tpos\tstrand\tdelta\n")
 		var refpos uint64
@@ -204,7 +217,8 @@ func init() {
 	kmerLocations.Flags().IntP("ref-idx", "i", 1,
 		formatFlagUsage(`View locations of k-mers for Xth reference sequence. (0 for all)`))
 
-	// TODO: -n/--ref-seq
+	kmerLocations.Flags().StringP("ref-name", "n", "",
+		formatFlagUsage(`View locations of k-mers for a reference sequence`))
 
 	kmerLocations.SetUsageTemplate(usageTemplate("-d <index path> [-i <refseq index>] [-o out.tsv.gz]"))
 }
