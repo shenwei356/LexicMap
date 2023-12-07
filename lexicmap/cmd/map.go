@@ -162,7 +162,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\ttarget\ttlen\tqstart\tqend\tqstrand\ttstart\ttend\ttstrand\tlen\tmatch\n")
+		fmt.Fprintf(outfh, "query\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\tqstr\ttstart\ttend\ttstr\tlen\tmatch\n")
 
 		decoder := lexichash.MustDecoder()
 
@@ -182,13 +182,14 @@ Attentions:
 			matched++
 
 			queryID := r.queryID
+			targets := len(*r.result)
 			for _, r := range *r.result {
 				for _, v := range *r.Subs {
-					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
-						queryID, idx.IDs[r.IdIdx], idx.RefSeqInfos[r.IdIdx].Len,
+					fmt.Fprintf(outfh, "%s\t%d\t%s\t%d\t%d\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
+						queryID, targets, idx.IDs[r.IdIdx], r.UniqMatches, idx.RefSeqInfos[r.IdIdx].Len,
 						v.QBegin+1, v.QEnd, Strands[v.QRC],
 						v.TBegin+1, v.TEnd, Strands[v.TRC],
-						v.QK, decoder(v.QCode, v.QK))
+						v.TK, decoder(v.TCode, v.TK))
 				}
 			}
 			idx.RecycleSearchResult(r.result)
@@ -242,12 +243,12 @@ Attentions:
 		var id uint64
 
 		var record *fastx.Record
-		var fastxReader *fastx.Reader
 		K := idx.K()
 
 		for _, file := range files {
-			fastxReader, err = fastx.NewReader(nil, file, "")
+			fastxReader, err := fastx.NewReader(nil, file, "")
 			checkError(err)
+
 			for {
 				record, err = fastxReader.Read()
 				if err != nil {
@@ -288,6 +289,7 @@ Attentions:
 					ch <- r
 				}(id, record.Clone())
 			}
+			fastxReader.Close()
 		}
 		wg.Wait()
 		close(ch)
