@@ -100,6 +100,7 @@ Attentions:
 		}
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
+		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "seed")
 
 		outDir := getFlagString(cmd, "out-dir")
@@ -279,7 +280,7 @@ Attentions:
 		}
 
 		// index
-		idx, err := index.NewIndexWithSeed(k, nMasks, int64(seed))
+		idx, err := index.NewIndexWithSeed(k, nMasks, int64(seed), lcPrefix)
 		if err != nil {
 			checkError(fmt.Errorf("failed to create a new index: %s", err))
 		}
@@ -487,6 +488,9 @@ func init() {
 
 	indexCmd.Flags().IntP("masks", "n", 1024,
 		formatFlagUsage(`Number of masks.`))
+
+	indexCmd.Flags().IntP("prefix", "p", 15,
+		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	indexCmd.Flags().IntP("seed", "s", 1,
 		formatFlagUsage(`The seed for generating random masks.`))
