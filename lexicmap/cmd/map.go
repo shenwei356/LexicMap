@@ -33,7 +33,6 @@ import (
 	"github.com/cznic/sortutil"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
-	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/lexichash/index"
 	"github.com/spf13/cobra"
 )
@@ -162,9 +161,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\tqstr\ttstart\ttend\ttstr\tlen\tmatch\n")
-
-		decoder := lexichash.MustDecoder()
+		fmt.Fprintf(outfh, "query\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
 		printResult := func(r *Result) {
 			total++
@@ -185,11 +182,11 @@ Attentions:
 			targets := len(*r.result)
 			for _, r := range *r.result {
 				for _, v := range *r.Subs {
-					fmt.Fprintf(outfh, "%s\t%d\t%s\t%d\t%d\t%d\t%d\t%c\t%d\t%d\t%c\t%d\t%s\n",
+					fmt.Fprintf(outfh, "%s\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 						queryID, targets, idx.IDs[r.IdIdx], r.UniqMatches, idx.RefSeqInfos[r.IdIdx].Len,
-						v.QBegin+1, v.QEnd, Strands[v.QRC],
-						v.TBegin+1, v.TEnd, Strands[v.TRC],
-						v.TK, decoder(v.TCode, v.TK))
+						v.QBegin+1, v.QBegin+v.Len,
+						v.TBegin+1, v.TBegin+v.Len,
+						v.Len)
 				}
 			}
 			idx.RecycleSearchResult(r.result)
