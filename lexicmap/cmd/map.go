@@ -163,8 +163,13 @@ Attentions:
 
 		fmt.Fprintf(outfh, "query\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
-		printResult := func(r *Result) {
+		printResult := func(r *Query) {
 			total++
+			if r.result == nil { // seqs shorter than K or queries without matches.
+				poolQuery.Put(r)
+				return
+			}
+
 			if verbose {
 				if (total < 4096 && total&63 == 0) || total&4095 == 0 {
 					speed = float64(total) / 1000000 / time.Since(timeStart1).Minutes()
@@ -172,13 +177,9 @@ Attentions:
 				}
 			}
 
-			if r.result == nil {
-				poolResult.Put(r)
-				return
-			}
 			matched++
 
-			queryID := r.queryID
+			queryID := r.seqID
 			targets := len(*r.result)
 			for _, r := range *r.result {
 				for _, v := range *r.Subs {
@@ -190,17 +191,18 @@ Attentions:
 				}
 			}
 			idx.RecycleSearchResult(r.result)
-			poolResult.Put(r)
+
+			poolQuery.Put(r)
 		}
 
 		// outputter
-		ch := make(chan *Result, opt.NumCPUs)
+		ch := make(chan *Query, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
 			var id uint64 = 1 // for keepping order
-			buf := make(map[uint64]*Result, 128)
+			buf := make(map[uint64]*Query, 128)
 
-			var r, r2 *Result
+			var r, r2 *Query
 			var ok bool
 
 			for r := range ch {
@@ -241,6 +243,7 @@ Attentions:
 
 		var record *fastx.Record
 		K := idx.K()
+		minSubLen8 := uint8(minSubLen)
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
@@ -256,35 +259,38 @@ Attentions:
 					break
 				}
 
+				id++
+
+				query := poolQuery.Get().(*Query)
+				query.Reset()
+				query.id = id
+
+				if len(record.Seq.Seq) < K {
+					query.result = nil
+					ch <- query
+					return
+				}
+
 				token <- 1
 				wg.Add(1)
-				id++
-				go func(id uint64, record *fastx.Record) {
+
+				query.seqID = append(query.seqID, record.ID...)
+				query.seq = append(query.seq, record.Seq.Seq...)
+
+				go func(query *Query) {
 					defer func() {
 						<-token
 						wg.Done()
 					}()
 
-					if len(record.Seq.Seq) < K {
-						r := poolResult.Get().(*Result)
-						r.id = id
-						r.queryID = record.ID
-						r.result = nil
-						ch <- r
-						return
-					}
-
-					sr, err := idx.Search(record.Seq.Seq, uint8(minSubLen))
+					var err error
+					query.result, err = idx.Search(query.seq, minSubLen8)
 					if err != nil {
 						checkError(err)
 					}
 
-					r := poolResult.Get().(*Result)
-					r.id = id
-					r.queryID = record.ID
-					r.result = sr
-					ch <- r
-				}(id, record.Clone())
+					ch <- query
+				}(query)
 			}
 			fastxReader.Close()
 		}
@@ -327,12 +333,22 @@ func init() {
 // Strands could be used to output strand for a reverse complement flag
 var Strands = [2]byte{'+', '-'}
 
-type Result struct {
-	id      uint64
-	queryID []byte
-	result  *[]*index.SearchResult
+type Query struct {
+	id     uint64
+	seqID  []byte
+	seq    []byte
+	result *[]*index.SearchResult
 }
 
-var poolResult = &sync.Pool{New: func() interface{} {
-	return &Result{}
+func (q *Query) Reset() {
+	q.seqID = q.seqID[:0]
+	q.seq = q.seq[:0]
+	q.result = nil
+}
+
+var poolQuery = &sync.Pool{New: func() interface{} {
+	return &Query{
+		seqID: make([]byte, 0, 128),
+		seq:   make([]byte, 0, 1<<20),
+	}
 }}
