@@ -25,12 +25,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/cznic/sortutil"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/index"
@@ -199,47 +197,16 @@ Attentions:
 		ch := make(chan *Query, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
-			var id uint64 = 1 // for keepping order
-			buf := make(map[uint64]*Query, 128)
-
-			var r, r2 *Query
-			var ok bool
 
 			for r := range ch {
-				if id == r.id {
-					printResult(r)
-					id++
-					continue
-				}
-				buf[r.id] = r
-
-				if r2, ok = buf[id]; ok {
-					printResult(r2)
-					delete(buf, r2.id)
-					id++
-				}
+				printResult(r)
 			}
-			if len(buf) > 0 {
-				ids := make(sortutil.Uint64Slice, len(buf))
-				i := 0
-				for id := range buf {
-					ids[i] = id
-					i++
-				}
-				sort.Sort(ids)
 
-				for _, id := range ids {
-					r = buf[id]
-					printResult(r)
-				}
-
-			}
 			done <- 1
 		}()
 
 		var wg sync.WaitGroup
-		token := make(chan int, opt.NumCPUs)
-		var id uint64
+		tokens := make(chan int, opt.NumCPUs)
 
 		var record *fastx.Record
 		K := idx.K()
@@ -259,11 +226,8 @@ Attentions:
 					break
 				}
 
-				id++
-
 				query := poolQuery.Get().(*Query)
 				query.Reset()
-				query.id = id
 
 				if len(record.Seq.Seq) < K {
 					query.result = nil
@@ -271,7 +235,7 @@ Attentions:
 					return
 				}
 
-				token <- 1
+				tokens <- 1
 				wg.Add(1)
 
 				query.seqID = append(query.seqID, record.ID...)
@@ -279,7 +243,7 @@ Attentions:
 
 				go func(query *Query) {
 					defer func() {
-						<-token
+						<-tokens
 						wg.Done()
 					}()
 
@@ -334,7 +298,6 @@ func init() {
 var Strands = [2]byte{'+', '-'}
 
 type Query struct {
-	id     uint64
 	seqID  []byte
 	seq    []byte
 	result *[]*index.SearchResult
@@ -349,6 +312,6 @@ func (q *Query) Reset() {
 var poolQuery = &sync.Pool{New: func() interface{} {
 	return &Query{
 		seqID: make([]byte, 0, 128),
-		seq:   make([]byte, 0, 1<<20),
+		seq:   make([]byte, 0, 10<<10),
 	}
 }}
