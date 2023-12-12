@@ -82,6 +82,7 @@ Attentions:
 		if minSubLen > 32 {
 			checkError(fmt.Errorf("the value of flag -m/--min-subs should be <= 32"))
 		}
+		topn := getFlagNonNegativeInt(cmd, "top-n")
 
 		index.Threads = opt.NumCPUs
 
@@ -248,7 +249,7 @@ Attentions:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query.seq, minSubLen8)
+					query.result, err = idx.Search(query.seq, minSubLen8, topn)
 					if err != nil {
 						checkError(err)
 					}
@@ -290,6 +291,9 @@ func init() {
 
 	mapCmd.Flags().IntP("min-subs", "m", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
+
+	mapCmd.Flags().IntP("top-n", "n", 0,
+		formatFlagUsage(`Keep top n matches for a query`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
 }
