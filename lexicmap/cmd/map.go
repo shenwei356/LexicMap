@@ -160,12 +160,12 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
-		printResult := func(r *Query) {
+		printResult := func(q *Query) {
 			total++
-			if r.result == nil { // seqs shorter than K or queries without matches.
-				poolQuery.Put(r)
+			if q.result == nil { // seqs shorter than K or queries without matches.
+				poolQuery.Put(q)
 				return
 			}
 
@@ -178,20 +178,20 @@ Attentions:
 
 			matched++
 
-			queryID := r.seqID
-			targets := len(*r.result)
-			for _, r := range *r.result {
+			queryID := q.seqID
+			targets := len(*q.result)
+			for _, r := range *q.result {
 				for _, v := range *r.Subs {
-					fmt.Fprintf(outfh, "%s\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-						queryID, targets, idx.IDs[r.IdIdx], r.UniqMatches, idx.RefSeqInfos[r.IdIdx].Len,
+					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+						queryID, len(q.seq), targets, idx.IDs[r.IdIdx], r.UniqMatches, idx.RefSeqInfos[r.IdIdx].Len,
 						v.QBegin+1, v.QBegin+v.Len,
 						v.TBegin+1, v.TBegin+v.Len,
 						v.Len)
 				}
 			}
-			idx.RecycleSearchResult(r.result)
+			idx.RecycleSearchResult(q.result)
 
-			poolQuery.Put(r)
+			poolQuery.Put(q)
 		}
 
 		// outputter
@@ -292,7 +292,7 @@ func init() {
 	mapCmd.Flags().IntP("min-subs", "m", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
 
-	mapCmd.Flags().IntP("top-n", "n", 0,
+	mapCmd.Flags().IntP("top-n", "n", 10,
 		formatFlagUsage(`Keep top n matches for a query`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
