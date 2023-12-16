@@ -40,6 +40,7 @@ t.*
 *.bin
 IDs.txt
 info.txt
+*.2bit*
 *.gz
 *.png
 

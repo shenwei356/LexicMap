@@ -284,6 +284,10 @@ Attentions:
 		if err != nil {
 			checkError(fmt.Errorf("failed to create a new index: %s", err))
 		}
+		// save 2bit-packed sequences
+		err = idx.SetOutputPath(outDir, force)
+		checkError(err)
+
 		// BatchInsert is faster than Insert()
 		input, done := idx.BatchInsert()
 
@@ -439,7 +443,7 @@ Attentions:
 		}
 
 		timeStart2 := time.Now()
-		err = idx.WriteToPath(outDir, force, opt.NumCPUs)
+		err = idx.WriteToPath(outDir, false, opt.NumCPUs)
 		if err != nil {
 			checkError(fmt.Errorf("save index %s: %s", outDir, err))
 		}
