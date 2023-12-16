@@ -128,6 +128,9 @@ Attentions:
 
 		idx, err := index.NewFromPath(dbDir, opt.NumCPUs)
 		checkError(err)
+		defer func() {
+			checkError(idx.Close())
+		}()
 
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))

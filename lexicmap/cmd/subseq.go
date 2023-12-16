@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,6 +32,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
+	"github.com/shenwei356/lexichash/index"
+	"github.com/shenwei356/lexichash/index/twobit"
 	"github.com/spf13/cobra"
 )
 
@@ -83,6 +86,11 @@ Attention:
 			checkError(fmt.Errorf("when start < 0, end should not > 0"))
 		}
 
+		dbDir := getFlagString(cmd, "index")
+
+		refIdx := getFlagNonNegativeInt(cmd, "ref-idx")
+		refName := getFlagString(cmd, "ref-name")
+
 		// ----------
 
 		k := getFlagPositiveInt(cmd, "kmer")
@@ -123,6 +131,49 @@ Attention:
 			}
 			w.Close()
 		}()
+
+		// --------------------------
+
+		if dbDir != "" {
+			ids, err := index.ReadIDlistFromFile(filepath.Join(dbDir, index.IDListFile))
+			checkError(err)
+
+			if refName != "" {
+				refNameBytes := []byte(refName)
+				r := -1
+				for i, id := range ids {
+					if bytes.Equal(id, refNameBytes) {
+						r = i
+						break
+					}
+				}
+				if r < 0 {
+					checkError(fmt.Errorf("ref name not found: %s", refName))
+				}
+				refIdx = r + 1
+
+			} else if refIdx > len(ids) {
+				log.Errorf("the value of -i/--ref-idx %d is larger than the number of reference sequences (%d)", refIdx, len(ids))
+				return
+			}
+
+			rdr, err := twobit.NewReader(filepath.Join(dbDir, index.TwoBitFile))
+			checkError(err)
+
+			_s, err := rdr.SubSeq(refIdx-1, start-1, end-1)
+			checkError(err)
+
+			s, err := seq.NewSeq(seq.DNAredundant, *_s)
+			checkError(err)
+			if revcom {
+				s.RevComInplace()
+			}
+			fmt.Fprintf(outfh, ">%s:%d-%d\n%s\n", ids[refIdx-1], start, end, s.Seq)
+
+			checkError(rdr.Close())
+
+			return
+		}
 
 		// --------------------------------
 
@@ -206,6 +257,17 @@ func init() {
 
 	subseqCmd.Flags().BoolP("revcom", "R", false,
 		formatFlagUsage("extract subsequence on the negative strand"))
+
+	// ------------------- extract from 2bit-packed sequence file
+
+	subseqCmd.Flags().StringP("index", "d", "",
+		formatFlagUsage(`Index directory created by "lexicmap index".`))
+
+	subseqCmd.Flags().IntP("ref-idx", "i", 1,
+		formatFlagUsage(`View locations of k-mers for Xth reference sequence. (0 for all)`))
+
+	subseqCmd.Flags().StringP("ref-name", "n", "",
+		formatFlagUsage(`View locations of k-mers for a reference sequence`))
 
 	subseqCmd.SetUsageTemplate(usageTemplate(""))
 }
