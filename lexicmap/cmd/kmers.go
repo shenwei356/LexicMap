@@ -194,7 +194,11 @@ Attentions:
 
 			var t *tree.Tree
 			var nodes *[]string
-			for _, i2p := range idx2paths {
+			nMasks := len(lh.Masks)
+			for i, i2p := range idx2paths {
+				if outputLog {
+					fmt.Fprintf(os.Stderr, "\rprocessing mask file: %d/%d", i+1, nMasks)
+				}
 				// read tree from the file
 				t, err = tree.NewFromFile(i2p.path)
 				checkError(err)
@@ -219,6 +223,9 @@ Attentions:
 					return false
 				})
 			}
+			if outputLog {
+				fmt.Fprintln(os.Stderr)
+			}
 
 			return
 		}
@@ -227,7 +234,9 @@ Attentions:
 		idStr := fmt.Sprintf("%04d", mask-1) // convert to 0-based
 		subDir := idStr[len(idStr)-2:]
 		file := filepath.Join(dbDir, index.TreeDir, subDir, idStr+index.TreeFileExt)
-
+		if outputLog {
+			log.Infof("processing mask file: %s", file)
+		}
 		// read tree from the file
 		t, err := tree.NewFromFile(file)
 		checkError(err)

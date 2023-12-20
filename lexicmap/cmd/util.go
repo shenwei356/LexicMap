@@ -41,6 +41,9 @@ import (
 
 var mapInitSize = 1 << 20 // 1M
 
+// the minimum k value
+var minK = 3
+
 // Options contains the global flags
 type Options struct {
 	NumCPUs int

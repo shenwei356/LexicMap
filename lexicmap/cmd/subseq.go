@@ -94,8 +94,8 @@ Attention:
 		// ----------
 
 		k := getFlagPositiveInt(cmd, "kmer")
-		if k < 4 || k > 32 {
-			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [4, 32]"))
+		if k < minK || k > 32 {
+			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [%d, 32]", minK))
 		}
 		nnn := bytes.Repeat([]byte{'N'}, k-1)
 
