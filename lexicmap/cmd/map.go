@@ -78,10 +78,18 @@ Attentions:
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
 		outFile := getFlagString(cmd, "out-file")
-		minSubLen := getFlagPositiveInt(cmd, "min-subs")
-		if minSubLen > 32 {
-			checkError(fmt.Errorf("the value of flag -m/--min-subs should be <= 32"))
+		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
+		if minPrefix > 32 {
+			checkError(fmt.Errorf("the value of flag -m/--min-prefix should be <= 32"))
 		}
+		minSinglePrefix := getFlagPositiveInt(cmd, "min-single-prefix")
+		if minSinglePrefix > 32 {
+			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be <= 32"))
+		}
+		if minSinglePrefix < minPrefix {
+			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be >= that of -m/--min-prefix "))
+		}
+		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 
 		index.Threads = opt.NumCPUs
@@ -137,8 +145,8 @@ Attentions:
 			log.Info()
 		}
 
-		if minSubLen > idx.K() {
-			checkError(fmt.Errorf("the value of flag -m/--min-subs (%d) should be <= K (%d)", minSubLen, idx.K()))
+		if minPrefix > idx.K() {
+			checkError(fmt.Errorf("the value of flag -m/--min-prefix (%d) should be <= K (%d)", minPrefix, idx.K()))
 		}
 
 		if outputLog {
@@ -214,7 +222,14 @@ Attentions:
 
 		var record *fastx.Record
 		K := idx.K()
-		minSubLen8 := uint8(minSubLen)
+
+		idx.SetSearchingOptions(&index.SearchOptions{
+			MinPrefix:       uint8(minPrefix),
+			MinSinglePrefix: uint8(minSinglePrefix),
+			TopN:            topn,
+
+			MaxGap: float64(maxGap),
+		})
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
@@ -252,7 +267,7 @@ Attentions:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query.seq, minSubLen8, topn)
+					query.result, err = idx.Search(query.seq)
 					if err != nil {
 						checkError(err)
 					}
@@ -292,11 +307,19 @@ func init() {
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
-	mapCmd.Flags().IntP("min-subs", "m", 15,
+	// searching
+
+	mapCmd.Flags().IntP("min-prefix", "m", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
+
+	mapCmd.Flags().IntP("min-single-prefix", "M", 20,
+		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
 
 	mapCmd.Flags().IntP("top-n", "n", 10,
 		formatFlagUsage(`Keep top n matches for a query`))
+
+	mapCmd.Flags().IntP("max-gap", "g", 5000,
+		formatFlagUsage(`max gap`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
 }
