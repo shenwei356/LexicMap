@@ -171,7 +171,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tsubs\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
 		printResult := func(q *Query) {
 			total++
@@ -191,16 +191,25 @@ Attentions:
 
 			queryID := q.seqID
 			targets := len(*q.result)
+			var chain *[]int
+			var v *index.SubstrPair
+			var c, i int
+			var subs *[]*index.SubstrPair
 			for _, r := range *q.result {
-				for _, v := range *r.Subs {
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-						queryID, len(q.seq), targets, idx.IDs[r.IdIdx], r.UniqMatches, idx.RefSeqInfos[r.IdIdx].Len,
-						v.QBegin+1, v.QBegin+v.Len,
-						v.TBegin+1, v.TBegin+v.Len,
-						v.Len)
+				subs = r.Subs
+				for c, chain = range *r.Chains {
+					c++
+					for _, i = range *chain {
+						v = (*subs)[i]
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+							queryID, len(q.seq), targets, idx.IDs[r.IdIdx], c, idx.RefSeqInfos[r.IdIdx].Len,
+							v.QBegin+1, v.QBegin+v.Len,
+							v.TBegin+1, v.TBegin+v.Len,
+							v.Len)
+					}
 				}
 			}
-			idx.RecycleSearchResult(q.result)
+			idx.RecycleSearchResults(q.result)
 
 			poolQuery.Put(q)
 		}
