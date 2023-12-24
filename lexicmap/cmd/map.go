@@ -32,6 +32,7 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/index"
+	"github.com/shenwei356/lexichash/index/align"
 	"github.com/spf13/cobra"
 )
 
@@ -171,7 +172,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
 		printResult := func(q *Query) {
 			total++
@@ -195,19 +196,28 @@ Attentions:
 			var v *index.SubstrPair
 			var c, i int
 			var subs *[]*index.SubstrPair
+			var aligns *[]*align.AlignResult
+			var ar *align.AlignResult
+			var ident float64
 			for _, r := range *q.result {
 				subs = r.Subs
+				aligns = r.AlignResults
+				// fmt.Printf("%p: %d, %p: %d\n", r.Chains, len(*r.Chains), r.AlignResults, len(*r.AlignResults))
 				for c, chain = range *r.Chains {
-					c++
+					ar = (*aligns)[c]
+					ident = float64(ar.Matches) / float64(ar.Len) * 100
 					for _, i = range *chain {
 						v = (*subs)[i]
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-							queryID, len(q.seq), targets, idx.IDs[r.IdIdx], c, idx.RefSeqInfos[r.IdIdx].Len,
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
+							queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
+							c+1, ident, idx.RefSeqInfos[r.IdIdx].Len,
 							v.QBegin+1, v.QBegin+v.Len,
 							v.TBegin+1, v.TBegin+v.Len,
 							v.Len)
 					}
 				}
+				outfh.Flush()
+
 			}
 			idx.RecycleSearchResults(q.result)
 
@@ -238,6 +248,11 @@ Attentions:
 			TopN:            topn,
 
 			MaxGap: float64(maxGap),
+		})
+		idx.SetAlignOptions(&align.AlignOptions{
+			MatchScore:    1,
+			MisMatchScore: -1,
+			GapScore:      -1,
 		})
 
 		for _, file := range files {
