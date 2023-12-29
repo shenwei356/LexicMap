@@ -90,6 +90,7 @@ Attentions:
 		if minSinglePrefix < minPrefix {
 			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be >= that of -m/--min-prefix "))
 		}
+		minDistance := minPrefix / 3
 		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 
@@ -206,6 +207,7 @@ Attentions:
 				for c, chain = range *r.Chains {
 					ar = (*aligns)[c]
 					ident = float64(ar.Matches) / float64(ar.Len) * 100
+					// ident = 0
 					for _, i = range *chain {
 						v = (*subs)[i]
 						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
@@ -222,6 +224,7 @@ Attentions:
 			idx.RecycleSearchResults(q.result)
 
 			poolQuery.Put(q)
+			outfh.Flush()
 		}
 
 		// outputter
@@ -245,6 +248,7 @@ Attentions:
 		idx.SetSearchingOptions(&index.SearchOptions{
 			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),
+			MinDistance:     minDistance,
 			TopN:            topn,
 
 			MaxGap: float64(maxGap),
@@ -335,6 +339,9 @@ func init() {
 
 	mapCmd.Flags().IntP("min-prefix", "m", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
+
+	// mapCmd.Flags().IntP("min-dist", "", 5,
+	// 	formatFlagUsage(`Minimum distance between shared substrings`))
 
 	mapCmd.Flags().IntP("min-single-prefix", "M", 20,
 		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
