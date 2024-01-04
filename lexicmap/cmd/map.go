@@ -32,7 +32,6 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/index"
-	"github.com/shenwei356/lexichash/index/align"
 	"github.com/spf13/cobra"
 )
 
@@ -90,9 +89,17 @@ Attentions:
 		if minSinglePrefix < minPrefix {
 			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be >= that of -m/--min-prefix "))
 		}
-		minDistance := minPrefix / 3
 		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
+
+		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
+		if minAF > 100 {
+			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction should be in range of [0, 100]"))
+		}
+		minIdent := getFlagNonNegativeFloat64(cmd, "min-identity")
+		if minIdent > 100 {
+			checkError(fmt.Errorf("the value of flag -i/min-identity should be in range of [0, 100]"))
+		}
 
 		index.Threads = opt.NumCPUs
 
@@ -173,7 +180,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\tafrac\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
 		printResult := func(q *Query) {
 			total++
@@ -197,22 +204,32 @@ Attentions:
 			var v *index.SubstrPair
 			var c, i int
 			var subs *[]*index.SubstrPair
-			var aligns *[]*align.AlignResult
-			var ar *align.AlignResult
-			var ident float64
+			// var aligns *[]*align.AlignResult
+			// var ar *align.AlignResult
+			var crs *[]*index.SeqComparatorResult
+			var cr *index.SeqComparatorResult
 			for _, r := range *q.result {
 				subs = r.Subs
-				aligns = r.AlignResults
+				// aligns = r.AlignResults
 				// fmt.Printf("%p: %d, %p: %d\n", r.Chains, len(*r.Chains), r.AlignResults, len(*r.AlignResults))
+				crs = r.SeqComparatorResults
+				if len(*crs) == 0 {
+					continue
+				}
+
 				for c, chain = range *r.Chains {
-					ar = (*aligns)[c]
-					ident = float64(ar.Matches) / float64(ar.Len) * 100
-					// ident = 0
+					// ar = (*aligns)[c]
+					// ident = float64(ar.Matches) / float64(ar.Len) * 100
+					cr = (*crs)[c]
+					if cr == nil { // low similartiy seq
+						continue
+					}
+
 					for _, i = range *chain {
 						v = (*subs)[i]
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
 							queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
-							c+1, ident, idx.RefSeqInfos[r.IdIdx].Len,
+							c+1, cr.AlignedFraction, cr.Identity, idx.RefSeqInfos[r.IdIdx].Len,
 							v.QBegin+1, v.QBegin+v.Len,
 							v.TBegin+1, v.TBegin+v.Len,
 							v.Len)
@@ -248,16 +265,18 @@ Attentions:
 		idx.SetSearchingOptions(&index.SearchOptions{
 			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),
-			MinDistance:     minDistance,
 			TopN:            topn,
 
 			MaxGap: float64(maxGap),
+
+			MinAlignedFraction: minAF,
+			MinIdentity:        minIdent,
 		})
-		idx.SetAlignOptions(&align.AlignOptions{
-			MatchScore:    1,
-			MisMatchScore: -1,
-			GapScore:      -1,
-		})
+		// idx.SetAlignOptions(&align.AlignOptions{
+		// 	MatchScore:    1,
+		// 	MisMatchScore: -1,
+		// 	GapScore:      -1,
+		// })
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
@@ -335,22 +354,27 @@ func init() {
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
-	// searching
+	// seed searching
 
 	mapCmd.Flags().IntP("min-prefix", "m", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
 
-	// mapCmd.Flags().IntP("min-dist", "", 5,
-	// 	formatFlagUsage(`Minimum distance between shared substrings`))
-
 	mapCmd.Flags().IntP("min-single-prefix", "M", 20,
 		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
+
+	mapCmd.Flags().IntP("max-gap", "g", 5000,
+		formatFlagUsage(`max gap`))
 
 	mapCmd.Flags().IntP("top-n", "n", 10,
 		formatFlagUsage(`Keep top n matches for a query`))
 
-	mapCmd.Flags().IntP("max-gap", "g", 5000,
-		formatFlagUsage(`max gap`))
+	// sequence similarity
+
+	mapCmd.Flags().Float64P("min-aligned-fraction", "f", 70,
+		formatFlagUsage(`Minimum aligned fraction (percentage) of the query sequence`))
+
+	mapCmd.Flags().Float64P("min-identity", "i", 70,
+		formatFlagUsage(`Minimum identity (percentage) between query and target sequence`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
 }
