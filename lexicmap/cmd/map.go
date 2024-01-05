@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +183,7 @@ Attentions:
 
 		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\tafrac\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
+		results := make([]*index.SearchResult, 0, topn)
 		printResult := func(q *Query) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
@@ -199,34 +201,37 @@ Attentions:
 			matched++
 
 			queryID := q.seqID
-			targets := len(*q.result)
-			var chain *[]int
 			var v *index.SubstrPair
 			var c, i int
 			var subs *[]*index.SubstrPair
 			// var aligns *[]*align.AlignResult
 			// var ar *align.AlignResult
-			var crs *[]*index.SeqComparatorResult
+			var sd *index.SimilarityDetail
 			var cr *index.SeqComparatorResult
+			var targets int
+
+			results = results[:0]
 			for _, r := range *q.result {
-				subs = r.Subs
-				// aligns = r.AlignResults
-				// fmt.Printf("%p: %d, %p: %d\n", r.Chains, len(*r.Chains), r.AlignResults, len(*r.AlignResults))
-				crs = r.SeqComparatorResults
-				if len(*crs) == 0 {
+				if len(*r.SimilarityDetails) > 0 {
+					results = append(results, r)
+				}
+			}
+			sort.Slice(results, func(i, j int) bool {
+				return (*results[i].SimilarityDetails)[0].SimilarityScore > (*results[j].SimilarityDetails)[0].SimilarityScore
+			})
+			targets = len(results)
+
+			for _, r := range results {
+				if r.SimilarityDetails == nil {
 					continue
 				}
 
-				for c, chain = range *r.Chains {
-					// ar = (*aligns)[c]
-					// ident = float64(ar.Matches) / float64(ar.Len) * 100
-					cr = (*crs)[c]
-					if cr == nil { // low similartiy seq
-						continue
-					}
-
-					for _, i = range *chain {
+				subs = r.Subs
+				for c, sd = range *r.SimilarityDetails {
+					cr = sd.Similarity
+					for _, i = range *sd.Chain {
 						v = (*subs)[i]
+
 						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
 							queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
 							c+1, cr.AlignedFraction, cr.Identity, idx.RefSeqInfos[r.IdIdx].Len,
