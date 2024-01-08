@@ -43,7 +43,7 @@ var mapCmd = &cobra.Command{
 
 Attentions:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
-  2. The positions are 1-based.
+  2. The positions in output are 1-based.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -181,7 +181,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\ttargets\ttarget\tchain\tafrac\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
 
 		results := make([]*index.SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -197,8 +197,6 @@ Attentions:
 					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f million queries per minute\r", total, speed)
 				}
 			}
-
-			matched++
 
 			queryID := q.seqID
 			var v *index.SubstrPair
@@ -221,6 +219,10 @@ Attentions:
 			})
 			targets = len(results)
 
+			if targets > 0 {
+				matched++
+			}
+
 			for _, r := range results {
 				if r.SimilarityDetails == nil {
 					continue
@@ -241,7 +243,6 @@ Attentions:
 					}
 				}
 				outfh.Flush()
-
 			}
 			idx.RecycleSearchResults(q.result)
 
@@ -273,15 +274,30 @@ Attentions:
 			TopN:            topn,
 
 			MaxGap: float64(maxGap),
-
-			MinAlignedFraction: minAF,
-			MinIdentity:        minIdent,
 		})
 		// idx.SetAlignOptions(&align.AlignOptions{
 		// 	MatchScore:    1,
 		// 	MisMatchScore: -1,
 		// 	GapScore:      -1,
 		// })
+		idx.SetSeqCompareOptions(&index.SeqComparatorOptions{
+			K:         uint8(K),
+			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
+
+			Chaining2Options: index.Chaining2Options{
+				// should be relative small
+				MaxGap: 32,
+				// better be larger than MinPrefix
+				MinScore: minSinglePrefix,
+				// can not be < k
+				MaxDistance: 50,
+				// can not be two small
+				Band: 20,
+			},
+
+			MinAlignedFraction: minAF,
+			MinIdentity:        minIdent,
+		})
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
@@ -376,10 +392,10 @@ func init() {
 	// sequence similarity
 
 	mapCmd.Flags().Float64P("min-aligned-fraction", "f", 70,
-		formatFlagUsage(`Minimum aligned fraction (percentage) of the query sequence`))
+		formatFlagUsage(`Minimum aligned fraction (in percentage) of the query sequence`))
 
 	mapCmd.Flags().Float64P("min-identity", "i", 70,
-		formatFlagUsage(`Minimum identity (percentage) between query and target sequence`))
+		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
 }
@@ -387,12 +403,14 @@ func init() {
 // Strands could be used to output strand for a reverse complement flag
 var Strands = [2]byte{'+', '-'}
 
+// Query is an object for each query sequence, it also contains the query result.
 type Query struct {
 	seqID  []byte
 	seq    []byte
 	result *[]*index.SearchResult
 }
 
+// Reset reset the data for next round of using
 func (q *Query) Reset() {
 	q.seqID = q.seqID[:0]
 	q.seq = q.seq[:0]
@@ -401,7 +419,7 @@ func (q *Query) Reset() {
 
 var poolQuery = &sync.Pool{New: func() interface{} {
 	return &Query{
-		seqID: make([]byte, 0, 128),
-		seq:   make([]byte, 0, 10<<10),
+		seqID: make([]byte, 0, 128),     // the id should be not too long
+		seq:   make([]byte, 0, 100<<10), // initialize with 100K
 	}
 }}
