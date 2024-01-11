@@ -66,7 +66,7 @@ Input:
 Attentions:
   1. Unwanted sequences like plasmid can be filtered out by
      the name via regular expressions (-B/--seq-name-filter).
-  2. By default, LexicMap index each file as a whole genome,
+  2. By default, LexicMap indexes each file as a whole genome,
      you can also use --by-seq to compute for every sequence,
      where sequence IDs in all input files are better to be distinct.
 

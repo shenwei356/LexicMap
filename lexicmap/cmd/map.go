@@ -181,7 +181,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\tqstart\tqend\ttstart\ttend\tlen\n")
+		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\ttstart\ttend\tseeds\n")
 
 		results := make([]*index.SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -199,11 +199,10 @@ Attentions:
 			}
 
 			queryID := q.seqID
-			var v *index.SubstrPair
-			var c, i int
-			var subs *[]*index.SubstrPair
-			// var aligns *[]*align.AlignResult
-			// var ar *align.AlignResult
+			var c int
+			// var v *index.SubstrPair
+			// var i int
+			// var subs *[]*index.SubstrPair
 			var sd *index.SimilarityDetail
 			var cr *index.SeqComparatorResult
 			var targets int
@@ -228,19 +227,27 @@ Attentions:
 					continue
 				}
 
-				subs = r.Subs
+				// subs = r.Subs
 				for c, sd = range *r.SimilarityDetails {
 					cr = sd.Similarity
-					for _, i = range *sd.Chain {
-						v = (*subs)[i]
+					// for _, i = range *sd.Chain {
+					// 	v = (*subs)[i]
 
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
-							queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
-							c+1, cr.AlignedFraction, cr.Identity, idx.RefSeqInfos[r.IdIdx].Len,
-							v.QBegin+1, v.QBegin+v.Len,
-							v.TBegin+1, v.TBegin+v.Len,
-							v.Len)
-					}
+					// 	// fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
+					// 	// 	queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
+					// 	// 	c+1, cr.AlignedFraction, cr.Identity, idx.RefSeqInfos[r.IdIdx].Len,
+					// 	// 	v.QBegin+1, v.QBegin+v.Len,
+					// 	// 	v.TBegin+1, v.TBegin+v.Len,
+					// 	// 	v.Len)
+					// }
+					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+						queryID, len(q.seq),
+						targets, idx.IDs[r.IdIdx],
+						c+1, cr.AlignedFraction, cr.Identity,
+						idx.RefSeqInfos[r.IdIdx].Len,
+						sd.TBegin+1, sd.TEnd+1,
+						len(*sd.Chain),
+					)
 				}
 				outfh.Flush()
 			}
@@ -275,11 +282,6 @@ Attentions:
 
 			MaxGap: float64(maxGap),
 		})
-		// idx.SetAlignOptions(&align.AlignOptions{
-		// 	MatchScore:    1,
-		// 	MisMatchScore: -1,
-		// 	GapScore:      -1,
-		// })
 		idx.SetSeqCompareOptions(&index.SeqComparatorOptions{
 			K:         uint8(K),
 			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
