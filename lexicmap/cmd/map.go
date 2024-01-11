@@ -96,10 +96,14 @@ Attentions:
 		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
 		if minAF > 100 {
 			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction should be in range of [0, 100]"))
+		} else if minAF < 1 {
+			log.Warningf("the value of flag -f/min-aligned-fraction is percentage in a range of [0, 100], you set: %f", minAF)
 		}
 		minIdent := getFlagNonNegativeFloat64(cmd, "min-identity")
 		if minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/min-identity should be in range of [0, 100]"))
+		} else if minIdent < 1 {
+			log.Warningf("the value of flag -i/min-identity is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
 
 		index.Threads = opt.NumCPUs
@@ -181,7 +185,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\ttstart\ttend\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
 
 		results := make([]*index.SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -222,6 +226,7 @@ Attentions:
 				matched++
 			}
 
+			var strand byte
 			for _, r := range results {
 				if r.SimilarityDetails == nil {
 					continue
@@ -240,12 +245,17 @@ Attentions:
 					// 	// 	v.TBegin+1, v.TBegin+v.Len,
 					// 	// 	v.Len)
 					// }
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+					if sd.RC {
+						strand = '-'
+					} else {
+						strand = '+'
+					}
+					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
 						queryID, len(q.seq),
 						targets, idx.IDs[r.IdIdx],
 						c+1, cr.AlignedFraction, cr.Identity,
 						idx.RefSeqInfos[r.IdIdx].Len,
-						sd.TBegin+1, sd.TEnd+1,
+						sd.TBegin+1, sd.TEnd+1, strand,
 						len(*sd.Chain),
 					)
 				}
