@@ -12,7 +12,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/shenwei356/bio v0.12.0
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
-	github.com/shenwei356/lexichash v0.0.0-00010101000000-000000000000
+	github.com/shenwei356/lexichash v0.1.0
 	github.com/shenwei356/util v0.5.2
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553

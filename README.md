@@ -1,6 +1,6 @@
 ## LexicMap
 
-LexicHash-based long-read mapping and metagenomic profiling.
+LexicMap: fast sequence alignment against millions of microbial genomes​.
 
 ## Support
 
