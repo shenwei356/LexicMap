@@ -30,10 +30,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shenwei356/LexicMap/lexicmap/index"
+	"github.com/shenwei356/LexicMap/lexicmap/tree"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
-	"github.com/shenwei356/lexichash/index"
-	"github.com/shenwei356/lexichash/tree"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
 )

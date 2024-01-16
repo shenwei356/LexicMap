@@ -30,10 +30,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/shenwei356/LexicMap/lexicmap/index"
+	"github.com/shenwei356/LexicMap/lexicmap/index/twobit"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
-	"github.com/shenwei356/lexichash/index"
-	"github.com/shenwei356/lexichash/index/twobit"
 	"github.com/spf13/cobra"
 )
 

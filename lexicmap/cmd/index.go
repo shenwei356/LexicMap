@@ -31,9 +31,9 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/shenwei356/LexicMap/lexicmap/index"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
-	"github.com/shenwei356/lexichash/index"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v8"
