@@ -71,3 +71,34 @@ func KmerHasPrefix(code uint64, prefix uint64, k1, k2 uint8) bool {
 func MustKmerHasPrefix(code uint64, prefix uint64, k1, k2 uint8) bool {
 	return code>>((k1-k2)<<1) == prefix
 }
+
+// SharingPrefixKmersMismatch counts the number of mismatch between two k-mers
+// sharing with a p-bp prefix.
+func SharingPrefixKmersMismatch(code1, code2 uint64, k, p uint8) (n uint8) {
+	if p >= k {
+		return 0
+	}
+	var i uint8
+	for i = 0; i < k-p; i++ {
+		if code1&3 != code2&3 {
+			n++
+		}
+		code1 >>= 2
+		code2 >>= 2
+	}
+	return n
+}
+
+// MustSharingPrefixKmersMismatch counts the number of mismatch between two k-mers
+// sharing with a p-bp prefix. This function assumes p<k.
+func MustSharingPrefixKmersMismatch(code1, code2 uint64, k, p uint8) (n uint8) {
+	var i uint8
+	for i = 0; i < k-p; i++ {
+		if code1&3 != code2&3 {
+			n++
+		}
+		code1 >>= 2
+		code2 >>= 2
+	}
+	return n
+}

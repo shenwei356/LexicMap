@@ -78,6 +78,7 @@ func NewSearcher(file string) (*Searcher, error) {
 type SearchResult struct {
 	Kmer      uint64   // searched kmer
 	LenPrefix uint8    // length of common prefix between the query and this k-mer
+	Mismatch  uint8    // number of mismatch, it has meanning only when checking mismatch!
 	Values    []uint64 // value of this key
 }
 
@@ -103,16 +104,22 @@ func RecycleSearchResults(sr *[]*SearchResult) {
 	poolSearchResults.Put(sr)
 }
 
-// Search queries a k-mer and returns k-mers with a minimum prefix of m.
+// Search queries a k-mer and returns k-mers with a minimum prefix of p,
+// and maximum m mismatches.
+// For m <0 or m >= k-p, mismatch will not be checked.
+//
 // Please remember to recycle the results object with RecycleSearchResults().
-func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
+func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, error) {
 	if kmer > scr.maxKmer {
 		return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	}
 	k := scr.K
-	if m < 1 || m > k {
-		m = k
+	if p < 1 || p > k {
+		p = k
 	}
+
+	checkMismatch := m >= 0 && m < int(k-p)
+	m8 := uint8(m)
 
 	// ----------------------------------------------------------
 	// scope to search
@@ -122,8 +129,8 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 	var suffix2 uint8
 	var leftBound, rightBound uint64
 	var mask uint64
-	if k > m {
-		suffix2 = (k - m) << 1
+	if k > p {
+		suffix2 = (k - p) << 1
 		mask = (1 << suffix2) - 1                  // 1111
 		leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
 		rightBound = kmer>>suffix2<<suffix2 + mask // kmer with last 4bits being 1
@@ -161,7 +168,8 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 
 	results := poolSearchResults.Get().(*[]*SearchResult)
 	*results = (*results)[:0]
-	var found bool
+	var found, saveKmer bool
+	var mismatch uint8
 	var v1, v2 *SearchResult
 
 	for _, index := range scr.Indexes {
@@ -203,6 +211,7 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 
 		first = true
 		found = false
+
 		for {
 			// read the control byte
 			_, err = io.ReadFull(r, buf[:1])
@@ -285,10 +294,22 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 
 			// ------------------ values -------------------
 
+			saveKmer = false
 			if found && kmer1 >= leftBound {
+				if checkMismatch {
+					mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+					if mismatch <= m8 {
+						saveKmer = true
+					}
+				} else {
+					saveKmer = true
+				}
+			}
+			if saveKmer {
 				v1 = poolSearchResult.Get().(*SearchResult)
 				v1.Kmer = kmer1
 				v1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
+				v1.Mismatch = mismatch
 				v1.Values = v1.Values[:0]
 
 				for j = 0; j < lenVal1; j++ {
@@ -300,9 +321,7 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 						return nil, ErrBrokenFile
 					}
 
-					if found {
-						v1.Values = append(v1.Values, be.Uint64(buf8))
-					}
+					v1.Values = append(v1.Values, be.Uint64(buf8))
 				}
 				*results = append(*results, v1)
 			} else {
@@ -328,10 +347,23 @@ func (scr *Searcher) Search(kmer uint64, m uint8) (*[]*SearchResult, error) {
 				break
 			}
 
+			saveKmer = false
 			if found {
+				if checkMismatch {
+					mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer2, k, p)
+					if mismatch <= m8 {
+						saveKmer = true
+					}
+				} else {
+					saveKmer = true
+				}
+			}
+
+			if saveKmer {
 				v2 = poolSearchResult.Get().(*SearchResult)
 				v2.Kmer = kmer2
 				v2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+				v2.Mismatch = mismatch
 				v2.Values = v2.Values[:0]
 
 				for j = 0; j < lenVal2; j++ {
