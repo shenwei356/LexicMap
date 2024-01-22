@@ -43,6 +43,9 @@ var Magic = [8]byte{'.', 'k', 'v', '-', 'd', 'a', 't', 'a'}
 // Magic number for the index file
 var MagicIdx = [8]byte{'.', 'k', 'v', 'i', 'n', 'd', 'e', 'x'}
 
+// KVIndexFileExt is the file extension of k-mer data index file.
+var KVIndexFileExt = ".idx"
+
 // MainVersion is use for checking compatibility
 var MainVersion uint8 = 0
 
@@ -60,9 +63,6 @@ var ErrKOverflow = errors.New("k-mer-value data: k-mer size [1, 32] overflow")
 
 // ErrVersionMismatch means version mismatch between files and program
 var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
-
-// KVIndexFileExt is the file extension of k-mer data index file.
-var KVIndexFileExt = ".idx"
 
 // WriteKVData writes k-mer-value data of a chunk of masks to a file.
 // At the same time, the index file is also created with the number of
