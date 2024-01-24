@@ -96,6 +96,7 @@ Attentions:
 		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "seed")
 		chunks := getFlagPositiveInt(cmd, "chunks")
+		partitions := getFlagPositiveInt(cmd, "partitions")
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
@@ -111,7 +112,9 @@ Attentions:
 
 		inDir := getFlagString(cmd, "in-dir")
 
-		if filepath.Clean(inDir) == filepath.Clean(outDir) {
+		outDir = filepath.Clean(outDir)
+
+		if filepath.Clean(inDir) == outDir {
 			checkError(fmt.Errorf("intput and output paths should not be the same: %s", outDir))
 		}
 
@@ -172,6 +175,7 @@ Attentions:
 			// general
 			NumCPUs:      opt.NumCPUs,
 			Verbose:      opt.Verbose,
+			Log2File:     opt.Log2File,
 			Force:        force,
 			MaxOpenFiles: maxOpenFiles,
 
@@ -181,8 +185,9 @@ Attentions:
 			RandSeed:         int64(seed),
 			PrefixForCheckLC: lcPrefix,
 
-			// k-mer index
-			Chunks: chunks,
+			// k-mer-value data
+			Chunks:     chunks,
+			Partitions: partitions,
 
 			// genome batches
 			GenomeBatchSize: batchSize,
@@ -255,6 +260,8 @@ Attentions:
 			log.Infof("rand seed: %d", seed)
 			log.Info()
 			log.Infof("seeds data chunks: %d", chunks)
+			log.Infof("seeds data indexing partitions: %d", partitions)
+			log.Info()
 			log.Infof("genome batch size: %d", batchSize)
 			log.Info()
 			log.Infof("-------------------- [main parameters] --------------------")
@@ -274,7 +281,7 @@ Attentions:
 			log.Infof("finished building LexicMap index in %s from %d files with %d masks",
 				time.Since(timeStart), len(files), nMasks)
 			log.Info()
-			log.Infof("writing to directory: %s ...", outDir)
+			log.Infof("LexicMap index saved: %s", outDir)
 		}
 	},
 }
@@ -307,7 +314,7 @@ func init() {
 	indexCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existed output directory.`))
 
-	// -----------------------------  main parameters   -----------------------------
+	// -----------------------------  lexichash   -----------------------------
 
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
@@ -315,17 +322,25 @@ func init() {
 	indexCmd.Flags().IntP("masks", "m", 10240,
 		formatFlagUsage(`Number of masks.`))
 
-	indexCmd.Flags().IntP("prefix", "p", 15,
+	indexCmd.Flags().IntP("prefix", "", 15,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	indexCmd.Flags().IntP("seed", "s", 1,
 		formatFlagUsage(`Seed for generating random masks.`))
 
+	// -----------------------------  kmer-value data   -----------------------------
+
 	indexCmd.Flags().IntP("chunks", "c", 8,
-		formatFlagUsage(`Number of chunks for storing seeds (k-mer index) file`))
+		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files`))
+	indexCmd.Flags().IntP("partitions", "p", 1024,
+		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files`))
+
+	// -----------------------------  genome batches   -----------------------------
 
 	indexCmd.Flags().IntP("batch-size", "b", 1<<17,
 		formatFlagUsage(`Maximum number of genomes in each batch`))
+
+	// -----------------------------  others   -----------------------------
 
 	indexCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files, used in merging indexes`))

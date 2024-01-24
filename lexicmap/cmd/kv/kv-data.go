@@ -115,6 +115,9 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
+	if len(data[0]) == 0 {
+		return 0, errors.New("k-mer-value data: no data given")
+	}
 
 	var N int // the number of bytes.
 
@@ -138,6 +141,7 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 
 	// check nAnchors
 	nKmers := len(data[0])
+
 	if nAnchors <= 0 {
 		nAnchors = int(math.Sqrt(float64(nKmers)))
 	} else if nAnchors > nKmers {
@@ -360,6 +364,7 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 			N += bufVals.Len()
 		}
 
+		poolUint64s.Put(keys)
 	}
 
 	return N, nil

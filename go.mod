@@ -30,6 +30,7 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shenwei356/breader v0.3.2 // indirect
 	github.com/shenwei356/kmers v0.1.0 // indirect
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect

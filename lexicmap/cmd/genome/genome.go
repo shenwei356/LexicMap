@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package twobit
+package genome
 
 import (
 	"bufio"
@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var be = binary.BigEndian
@@ -78,6 +79,12 @@ type Genome struct {
 	Len        int   // length of contatenated sequences
 	NumSeqs    int   // number of sequences
 	SeqSizes   []int // sizes of sequences
+
+	// only used in index building
+	Kmers     *[]uint64 // lexichash mask result
+	Locses    *[][]int  // lexichash mask result
+	TwoBit    *[]byte   // bit-packed sequence
+	StartTime time.Time
 }
 
 // PoolGenome is the object pool for Genome
@@ -103,6 +110,9 @@ func (r *Genome) Reset() {
 
 // RecycleGenome recycle a Genome
 func RecycleGenome(g *Genome) {
+	if g.TwoBit != nil {
+		RecycleTwoBit(g.TwoBit)
+	}
 	PoolGenome.Put(g)
 }
 
@@ -182,7 +192,12 @@ func (w *Writer) Write(s *Genome) error {
 	}
 
 	// write sequence
-	b2 := Seq2TwoBit(s.Seq)
+	b2 := s.TwoBit
+	var newTwoBit bool
+	if b2 == nil {
+		b2 = Seq2TwoBit(s.Seq)
+		newTwoBit = true
+	}
 	bases := len(s.Seq)
 	nbytes := len(*b2)
 	// possible bases for b2 of n bytes: [n*4-3, n*4]
@@ -207,7 +222,9 @@ func (w *Writer) Write(s *Genome) error {
 	}
 	w.offset += buf0.Len() + nbytes
 
-	poolTwoBit.Put(b2)
+	if newTwoBit {
+		poolTwoBit.Put(b2)
+	}
 	return err
 }
 
