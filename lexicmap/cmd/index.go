@@ -21,23 +21,16 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/shenwei356/LexicMap/lexicmap/index"
 	"github.com/shenwei356/bio/seq"
-	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
-	"github.com/vbauerster/mpb/v8"
-	"github.com/vbauerster/mpb/v8/decor"
 )
 
 var indexCmd = &cobra.Command{
@@ -102,10 +95,12 @@ Attentions:
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "seed")
+		chunks := getFlagPositiveInt(cmd, "chunks")
+		batchSize := getFlagPositiveInt(cmd, "batch-size")
+		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
 		outDir := getFlagString(cmd, "out-dir")
 		force := getFlagBool(cmd, "force")
-		bySeq := getFlagBool(cmd, "by-seq")
 		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		if outDir == "" {
@@ -144,7 +139,6 @@ Attentions:
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
 		var reRefName *regexp.Regexp
-		var extractRefName bool
 		if reRefNameStr != "" {
 			if !regexp.MustCompile(`\(.+\)`).MatchString(reRefNameStr) {
 				checkError(fmt.Errorf(`value of --ref-name-regexp must contains "(" and ")" to capture the ref name from file name`))
@@ -157,7 +151,6 @@ Attentions:
 			if err != nil {
 				checkError(errors.Wrapf(err, "failed to parse regular expression for matching sequence header: %s", reRefName))
 			}
-			extractRefName = true
 		}
 
 		reSeqNameStrs := getFlagStringSlice(cmd, "seq-name-filter")
@@ -172,7 +165,34 @@ Attentions:
 			}
 			reSeqNames = append(reSeqNames, re)
 		}
-		filterNames := len(reSeqNames) > 0
+
+		// ---------------------------------------------------------------
+		// options for building index
+		bopt := &IndexBuildingOptions{
+			// general
+			NumCPUs:      opt.NumCPUs,
+			Verbose:      opt.Verbose,
+			Force:        force,
+			MaxOpenFiles: maxOpenFiles,
+
+			// LexicHash
+			K:                k,
+			Masks:            nMasks,
+			RandSeed:         int64(seed),
+			PrefixForCheckLC: lcPrefix,
+
+			// k-mer index
+			Chunks: chunks,
+
+			// genome batches
+			GenomeBatchSize: batchSize,
+
+			// genome
+			ReRefName:    reRefName,
+			ReSeqExclude: reSeqNames,
+		}
+		err = CheckIndexBuildingOptions(bopt)
+		checkError(err)
 
 		// ---------------------------------------------------------------
 		// out dir
@@ -234,205 +254,20 @@ Attentions:
 			log.Infof("number of masks: %d", nMasks)
 			log.Infof("rand seed: %d", seed)
 			log.Info()
-
-			if bySeq {
-				log.Infof("index each sequence: %v", bySeq)
-				log.Info()
-			}
-
+			log.Infof("seeds data chunks: %d", chunks)
+			log.Infof("genome batch size: %d", batchSize)
+			log.Info()
 			log.Infof("-------------------- [main parameters] --------------------")
 			log.Info()
-			log.Infof("computing ...")
+			log.Infof("building index ...")
 		}
 
 		// ---------------------------------------------------------------
 
-		// process bar
-		var pbs *mpb.Progress
-		var bar *mpb.Bar
-		var chDuration chan time.Duration
-		var doneDuration chan int
-
-		if opt.Verbose {
-			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(len(files)),
-				mpb.PrependDecorators(
-					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
-					decor.Name("", decor.WCSyncSpaceR),
-					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
-				),
-				mpb.AppendDecorators(
-					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 10),
-					decor.OnComplete(decor.Name(""), ". done"),
-				),
-			)
-
-			chDuration = make(chan time.Duration, opt.NumCPUs)
-			doneDuration = make(chan int)
-			go func() {
-				for t := range chDuration {
-					bar.Increment()
-					bar.EwmaIncrBy(1, t)
-				}
-				doneDuration <- 1
-			}()
-		}
-
 		// index
-		idx, err := index.NewIndexWithSeed(k, nMasks, int64(seed), lcPrefix)
+		err = BuildIndex(outDir, files, bopt)
 		if err != nil {
 			checkError(fmt.Errorf("failed to create a new index: %s", err))
-		}
-		// save 2bit-packed sequences
-		err = idx.SetOutputPath(outDir, force)
-		checkError(err)
-
-		// BatchInsert is faster than Insert()
-		input, done := idx.BatchInsert()
-
-		// wait group
-		var wg sync.WaitGroup                 // ensure all jobs done
-		tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
-		threadsFloat := float64(opt.NumCPUs)  // just avoid repeated type conversion
-
-		nnn := bytes.Repeat([]byte{'N'}, k-1)
-
-		for _, file := range files {
-			tokens <- 1
-			wg.Add(1)
-
-			go func(file string) {
-				defer func() {
-					wg.Done()
-					<-tokens
-				}()
-				startTime := time.Now()
-
-				fastxReader, err := fastx.NewReader(nil, file, "")
-				if err != nil {
-					checkError(fmt.Errorf("failed to read seq file: %s", err))
-				}
-				defer fastxReader.Close()
-
-				var record *fastx.Record
-
-				if !bySeq {
-					var ignoreSeq bool
-					var re *regexp.Regexp
-					var baseFile = filepath.Base(file)
-
-					refseq := index.PoolRefSeq.Get().(*index.RefSeq)
-					refseq.Reset()
-
-					var i int = 0
-					for {
-						record, err = fastxReader.Read()
-						if err != nil {
-							if err == io.EOF {
-								break
-							}
-							checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
-							break
-						}
-
-						// filter out sequences shorter than k
-						if len(record.Seq.Seq) < k {
-							continue
-						}
-
-						// filter out sequences with names in the blast list
-						if filterNames {
-							ignoreSeq = false
-							for _, re = range reSeqNames {
-								if re.Match(record.Name) {
-									ignoreSeq = true
-									break
-								}
-							}
-							if ignoreSeq {
-								continue
-							}
-						}
-						if i > 0 {
-							refseq.Seq = append(refseq.Seq, nnn...)
-						}
-						refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
-						refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
-						refseq.RefSeqSize += len(record.Seq.Seq)
-
-						i++
-					}
-
-					if len(refseq.Seq) == 0 {
-						index.PoolRefSeq.Put(refseq)
-						log.Warningf("skipping %s: no valid sequences", file)
-						log.Info()
-						return
-					}
-
-					var seqID string
-					if extractRefName {
-						if reRefName.MatchString(baseFile) {
-							seqID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
-						} else {
-							seqID, _ = filepathTrimExtension(baseFile)
-						}
-					} else {
-						seqID, _ = filepathTrimExtension(baseFile)
-					}
-
-					refseq.ID = []byte(seqID)
-
-					input <- refseq
-
-					if opt.Verbose || opt.Log2File {
-						chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
-					}
-
-					return
-				}
-
-				for {
-					record, err = fastxReader.Read()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						checkError(fmt.Errorf("read seq in %s: %s", file, err))
-						break
-					}
-
-					if len(record.Seq.Seq) < k {
-						continue
-					}
-
-					refseq := index.PoolRefSeq.Get().(*index.RefSeq)
-					refseq.Reset()
-
-					refseq.ID = append(refseq.ID, record.ID...)
-					refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
-					refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
-					refseq.RefSeqSize = len(record.Seq.Seq)
-
-					input <- refseq
-				}
-
-				if opt.Verbose || opt.Log2File {
-					chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
-				}
-
-			}(file)
-		}
-
-		wg.Wait()
-		close(input) // wait BatchInsert
-		<-done       // wait BatchInsert
-
-		if opt.Verbose {
-			close(chDuration)
-			<-doneDuration
-			pbs.Wait()
 		}
 
 		if opt.Verbose || opt.Log2File {
@@ -440,16 +275,6 @@ Attentions:
 				time.Since(timeStart), len(files), nMasks)
 			log.Info()
 			log.Infof("writing to directory: %s ...", outDir)
-		}
-
-		timeStart2 := time.Now()
-		err = idx.WriteToPath(outDir, false, opt.NumCPUs)
-		if err != nil {
-			checkError(fmt.Errorf("save index %s: %s", outDir, err))
-		}
-
-		if opt.Verbose || opt.Log2File {
-			log.Infof("finished writing to disk in %s", time.Since(timeStart2))
 		}
 	},
 }
@@ -464,9 +289,6 @@ func init() {
 
 	indexCmd.Flags().StringP("file-regexp", "r", `\.(f[aq](st[aq])?|fna)(.gz)?$`,
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored.`))
-
-	indexCmd.Flags().BoolP("by-seq", "", false,
-		formatFlagUsage(`Compute k-mers (sketches) for each sequence, instead of the whole file.`))
 
 	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
 		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting reference name from filename.`))
@@ -490,14 +312,25 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "n", 1024,
+	indexCmd.Flags().IntP("masks", "m", 10240,
 		formatFlagUsage(`Number of masks.`))
 
 	indexCmd.Flags().IntP("prefix", "p", 15,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	indexCmd.Flags().IntP("seed", "s", 1,
-		formatFlagUsage(`The seed for generating random masks.`))
+		formatFlagUsage(`Seed for generating random masks.`))
+
+	indexCmd.Flags().IntP("chunks", "c", 8,
+		formatFlagUsage(`Number of chunks for storing seeds (k-mer index) file`))
+
+	indexCmd.Flags().IntP("batch-size", "b", 1<<17,
+		formatFlagUsage(`Maximum number of genomes in each batch`))
+
+	indexCmd.Flags().IntP("max-open-files", "", 512,
+		formatFlagUsage(`Maximum opened files, used in merging indexes`))
+
+	// ----------------------------------------------------------
 
 	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-s <seed>] {[-I <seqs dir>] | <seq files> | -X <file list>} -O <out dir>"))
 }
