@@ -39,29 +39,46 @@ var indexCmd = &cobra.Command{
 	Long: `Generate index from FASTA/Q sequences
 
 Input:
-  1. Input plain or gzipped FASTA/Q files can be given via positional
+ *1. Sequences of each reference genome should be saved in a separate FASTA/Q
+     file, with the reference identifier in the file name.
+  2. Input plain or gzipped FASTA/Q files can be given via positional
      arguments or the flag -X/--infile-list with the list of input files,
-  2. Or a directory containing sequence files via the flag -I/--in-dir,
+  3. Or a directory containing sequence files via the flag -I/--in-dir,
      with multiple-level sub-directories allowed. A regular expression
      for matching sequencing files is available via the flag -r/--file-regexp.
- *3. For taxonomic profiling, the sequences of each reference genome should be
-     saved in a separate file, with the reference identifier in the file name.
 
-  Attention:
-    You may rename the sequence files for convenience because the 
-  sequence/genome identifier in the index and search results would be:
-    1). For the default mode (computing k-mers for the whole file):
-          the basename of file with common FASTA/Q file extension removed,
-          captured via the flag -N/--ref-name-regexp.  
-    2). For computing k-mers for each sequence:
-          the sequence identifier.
+  Attentions:
+    1) You can rename the sequence files for convenience because the genome
+       identifier in the index and search results would be: the basename of file
+       with common FASTA/Q file extension removed, which is extracted via the
+       flag -N/--ref-name-regexp. 
+    2). Unwanted sequences like plasmid can be filtered out by the name via
+       regular expressions (-B/--seq-name-filter).
 
-Attentions:
-  1. Unwanted sequences like plasmid can be filtered out by
-     the name via regular expressions (-B/--seq-name-filter).
-  2. By default, LexicMap indexes each file as a whole genome,
-     you can also use --by-seq to compute for every sequence,
-     where sequence IDs in all input files are better to be distinct.
+Important parameters:
+  --- Lexichash computation ---
+  1. -k/--kmer,        K-mer size. Larger values improve searching specificity and
+                       do not increase index size.
+  2. -m/--masks,       Number of masks. Larger values improve searching sensitivity
+                       and will increase index size
+
+  --- seeds (k-mer-value data) ---
+  1. -c/--chunks,      Number of file chunks. Larger values accelerate searching
+                       speed in cost of high disk reading load. The maximum number
+                       should not exceed the maximum number of open files set by
+                       the operating systems.
+  2. -p/--partitions,  Number of partitions for indexing seeds file. Larger values
+                       improve searching speed in cost of higher memory occupation.
+  3. --max-open-files, Maximum number of open files. It's used in merging indexes
+                       of multiple genome batches.
+
+  -- genome data ---
+  1. -b/--batch-size,  Maximum number of genomes in each batch. If the number of
+                       input files exceed this number, input files are groupped
+                       into multiple batches and indexes are built for all batches.
+                       Next, seeds files are merged into a big one, while genome
+                       data keep unchanged.
+                       Bigger values inrease indexing memory occupation.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -278,10 +295,11 @@ Attentions:
 		}
 
 		if opt.Verbose || opt.Log2File {
+			log.Info()
 			log.Infof("finished building LexicMap index in %s from %d files with %d masks",
 				time.Since(timeStart), len(files), nMasks)
-			log.Info()
 			log.Infof("LexicMap index saved: %s", outDir)
+			log.Info()
 		}
 	},
 }
@@ -334,16 +352,13 @@ func init() {
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files`))
 	indexCmd.Flags().IntP("partitions", "p", 1024,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files`))
+	indexCmd.Flags().IntP("max-open-files", "", 512,
+		formatFlagUsage(`Maximum opened files, used in merging indexes`))
 
 	// -----------------------------  genome batches   -----------------------------
 
 	indexCmd.Flags().IntP("batch-size", "b", 1<<17,
 		formatFlagUsage(`Maximum number of genomes in each batch`))
-
-	// -----------------------------  others   -----------------------------
-
-	indexCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files, used in merging indexes`))
 
 	// ----------------------------------------------------------
 

@@ -76,7 +76,7 @@ type IndexBuildingOptions struct {
 	ReSeqExclude []*regexp.Regexp
 }
 
-// CheckIndexBuildingOptions check the options
+// CheckIndexBuildingOptions checks the important options
 func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.K < 3 || opt.K > 32 {
 		return fmt.Errorf("invalid k value: %d, valid range: [3, 32]", opt.K)
@@ -107,7 +107,10 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	return nil
 }
 
+// BuildIndex builds index from a list of input files
 func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) error {
+	// they are already checked.
+	//
 	// check options
 	// err := CheckIndexBuildingOptions(opt)
 	// if err != nil {
@@ -119,7 +122,9 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	if err != nil {
 		return err
 	}
+	// save mask later
 
+	// it's private variable because the size comes from opt.Masks
 	var poolKmerDatas = &sync.Pool{New: func() interface{} {
 		datas := make([]map[uint64]*[]uint64, opt.Masks)
 		for i := 0; i < opt.Masks; i++ {
@@ -128,17 +133,23 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		return &datas
 	}}
 
+	// split the files in to batches
+	nFiles := len(infiles)
+	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
+	tmpIndexes := make([]string, 0, nBatches)
+
 	// tmp dir
 	tmpDir := filepath.Clean(outdir) + TmpDirExt
 	err = os.RemoveAll(tmpDir)
 	if err != nil {
 		return err
 	}
-
-	// split the files in to batches
-	nFiles := len(infiles)
-	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
-	tmpIndexes := make([]string, 0, nBatches)
+	if nBatches > 1 { // only used for > 1 batches
+		err = os.MkdirAll(tmpDir, 0755)
+		if err != nil {
+			checkError(fmt.Errorf("failed to create dir: %s", err))
+		}
+	}
 
 	var begin, end int
 	for batch := 0; batch < nBatches; batch++ {
@@ -173,6 +184,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	return nil
 }
 
+// build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	poolKmerDatas *sync.Pool,
 	outdir string, files []string, batch int) {
@@ -180,6 +192,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
 		timeStart = time.Now()
+		log.Info()
 		log.Infof("  building index for batch %d with %d files...", batch, len(files))
 		defer func() {
 			log.Infof("  elapsed time: %s", time.Since(timeStart))
@@ -246,20 +259,48 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	// --------------------------------
 	// 2) collect k-mers data & write genomes to file
 	datas := poolKmerDatas.Get().(*[]map[uint64]*[]uint64)
-	for _, data := range *datas {
+	for _, data := range *datas { // reset all maps
 		clear(data)
 	}
 
+	threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
+	genomes := make(chan *genome.Genome, opt.NumCPUs)
+	genomesW := make(chan *genome.Genome, opt.NumCPUs)
+	done := make(chan int)
+
+	// genome writer
 	fileGenomes := filepath.Join(dirGenomes, FileGenomes)
 	gw, err := genome.NewWriter(fileGenomes, uint32(batch))
 	if err != nil {
 		checkError(fmt.Errorf("failed to write genome file: %s", err))
 	}
+	doneGW := make(chan int)
 
-	threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
-	genomes := make(chan *genome.Genome, opt.NumCPUs)
-	done := make(chan int)
+	// write genomes to file
 	go func() {
+		for refseq := range genomesW { // each genome
+			// write the genome to file
+			err = gw.Write(refseq)
+			if err != nil {
+				checkError(fmt.Errorf("failed to write genome: %s", err))
+			}
+
+			// recycle the genome
+			if refseq.Kmers != nil {
+				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
+			}
+			genome.RecycleGenome(refseq)
+
+			if opt.Verbose {
+				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
+			}
+		}
+		doneGW <- 1
+	}()
+
+	// collect k-mer data
+	go func() {
+		posMask := uint64((1 << 30) - 1)
 		var wg sync.WaitGroup
 		threads := opt.NumCPUs
 		tokens := make(chan int, threads)
@@ -270,10 +311,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		var refIdx uint32 // genome number
 
 		for refseq := range genomes { // each genome
+			genomesW <- refseq // send to save to file, asynchronously writing
+
 			_kmers := refseq.Kmers
 			loces := refseq.Locses
 
-			// collect k-mer data
+			// save k-mer data into all masks by chunks
 			for j = 0; j < threads; j++ { // each chunk for storing kmer-value data
 				begin = j * chunkSize
 				end = begin + chunkSize
@@ -301,8 +344,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							//  ref idx:   17 bits
 							//  pos:       29 bits
 							//  strand:     1 bits
-							// here, the location already contains the strand information from Mask().
-							value = uint64(batch)<<47 | uint64(refIdx)<<30 | uint64(loc)
+							// here, the location from Mask() already contains the strand information.
+							value = uint64(batch)<<47 | uint64(refIdx)<<30 | (uint64(loc) & posMask)
 
 							*values = append(*values, value)
 						}
@@ -314,23 +357,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			wg.Wait()
 			refIdx++
-
-			// write genome to file
-			err = gw.Write(refseq)
-			if err != nil {
-				checkError(fmt.Errorf("failed to write genome: %s", err))
-			}
-
-			// recycle the genome
-			if refseq.Kmers != nil {
-				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
-			}
-			genome.RecycleGenome(refseq)
-
-			if opt.Verbose {
-				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
-			}
 		}
+		close(genomesW)
 		done <- 1
 	}()
 
@@ -409,6 +437,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 				refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
 				refseq.Len += len(record.Seq.Seq)
+
 				refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
 				refseq.GenomeSize += len(record.Seq.Seq)
 
@@ -416,7 +445,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 
 			if len(refseq.Seq) == 0 {
-				genome.PoolGenome.Put(refseq)
+				genome.PoolGenome.Put(refseq) // important
 				log.Warningf("skipping %s: no valid sequences", file)
 				log.Info()
 				return
@@ -438,6 +467,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			// --------------------------------
 			// mask with lexichash
+
+			// skip regions around junctions of two sequences.
+
+			// because lh.Mask accepts a list, while when skipRegions is nil, *skipRegions is illegal.
 			var _skipRegions [][2]int
 			var skipRegions *[][2]int
 			if len(refseq.SeqSizes) > 1 {
@@ -464,7 +497,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 
 			// --------------------------------
-			// pack sequence
+			// bit-packed sequences
 			refseq.TwoBit = genome.Seq2TwoBit(refseq.Seq)
 
 			genomes <- refseq
@@ -472,10 +505,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		}(file)
 	}
 
-	wg.Wait()
+	wg.Wait() // all infiles are parsed
 	close(genomes)
-	<-done
+	<-done // all k-mer data are collected
 
+	<-doneGW // all genome data are saved
 	checkError(gw.Close())
 
 	// --------------------------------
@@ -519,7 +553,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			<-tokens
 		}(j, begin, end)
 	}
-	wg.Wait()
+	wg.Wait() // all k-mer-value data are saved.
 
 	poolKmerDatas.Put(datas)
 
