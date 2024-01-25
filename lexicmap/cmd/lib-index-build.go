@@ -10,7 +10,7 @@
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
 //
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OFTestSerializationTestSerialization ANY KIND, EXPRESS OR
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
@@ -45,14 +45,19 @@ var MainVersion uint8 = 0
 // MinorVersion is less important
 var MinorVersion uint8 = 1
 
+// ExtTmpDir is the path extension for temporary files
+const ExtTmpDir = ".tmp"
+const ExtSeeds = ".bin"
+
 const FileMasks = "masks.bin"
 const DirSeeds = "seeds"
 const DirGenomes = "genomes"
 const FileGenomes = "genomes.bin"
 const FileInfo = "info.toml"
 
-// TmpDirExt is the path extension for temporary files
-const TmpDirExt = ".tmp"
+func batchDir(batch int) string {
+	return fmt.Sprintf("batch_%04d", batch)
+}
 
 type IndexBuildingOptions struct {
 	// general
@@ -108,6 +113,11 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 		return fmt.Errorf("invalid genome batch size: %d, valid range: [1, 131072]", opt.GenomeBatchSize)
 	}
 
+	// ------------------------
+
+	if opt.NumCPUs < 1 {
+		return fmt.Errorf("invalid number of CPUs: %d, should be >= 1", opt.NumCPUs)
+	}
 	if opt.MaxOpenFiles < 2 {
 		return fmt.Errorf("invalid max open files: %d, should be >= 2", opt.MaxOpenFiles)
 	}
@@ -147,7 +157,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	tmpIndexes := make([]string, 0, nBatches)
 
 	// tmp dir
-	tmpDir := filepath.Clean(outdir) + TmpDirExt
+	tmpDir := filepath.Clean(outdir) + ExtTmpDir
 	err = os.RemoveAll(tmpDir)
 	if err != nil {
 		return err
@@ -249,7 +259,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 
 	// genomes
-	dirGenomes := filepath.Join(outdir, DirGenomes, fmt.Sprintf("batch_%04d", batch))
+	dirGenomes := filepath.Join(outdir, DirGenomes, batchDir(batch))
 	err = os.MkdirAll(dirGenomes, 0755)
 	if err != nil {
 		checkError(fmt.Errorf("failed to create dir: %s", err))
@@ -567,7 +577,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		wg.Add(1)
 		tokens <- 1
 		go func(chunk, begin, end int) { // a chunk of masks
-			file := filepath.Join(dirSeeds, fmt.Sprintf("chunk_%03d.bin", chunk))
+			file := filepath.Join(dirSeeds, fmt.Sprintf("chunk_%03d%s", chunk, ExtSeeds))
 
 			// for m, data := range (*datas)[begin:end] {
 			// 	for key, values := range data {
@@ -636,6 +646,17 @@ func writeIndexInfo(file string, info *IndexInfo) error {
 	fh.Write(data)
 
 	return fh.Close()
+}
+
+func readIndexInfo(file string) (*IndexInfo, error) {
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	v := &IndexInfo{}
+	err = toml.Unmarshal(data, v)
+	return v, err
 }
 
 var poolSkipRegions = &sync.Pool{New: func() interface{} {

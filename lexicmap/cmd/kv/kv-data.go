@@ -413,7 +413,6 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 	if !same {
 		return 0, -1, nil, ErrInvalidFileFormat
 	}
-
 	// read version information
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
@@ -463,6 +462,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf)
 			if err != nil {
+				// err might be EOF because kmers of some mask might be fewer, due to duplicated k-mers
 				return 0, -1, nil, err
 			}
 			kmer = be.Uint64(buf)

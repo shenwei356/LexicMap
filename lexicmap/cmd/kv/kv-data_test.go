@@ -70,10 +70,14 @@ func TestKVData(t *testing.T) {
 
 	var hit bool
 	var nExpectedResults int
+	kmers := make([]uint64, nMasks)
 	for mPrefix = 1; mPrefix <= k; mPrefix++ {
 		for i = 0; i < n; i++ {
 			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
-			results, err := scr.Search(i, mPrefix, maxMismatch)
+			for j := 0; j < nMasks; j++ {
+				kmers[j] = i
+			}
+			results, err := scr.Search(kmers, mPrefix, maxMismatch)
 			if err != nil {
 				t.Errorf("%s", err)
 				return

@@ -52,12 +52,12 @@ type Searcher struct {
 func NewSearcher(file string) (*Searcher, error) {
 	k, chunkIndex, indexes, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading kv-data file")
+		return nil, errors.Wrapf(err, "reading kv-data index file")
 	}
 
 	fh, err := os.Open(file)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading kv-data index file")
+		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
 
 	scr := &Searcher{
@@ -76,7 +76,8 @@ func NewSearcher(file string) (*Searcher, error) {
 
 // SearchResult represents a search result.
 type SearchResult struct {
-	Kmer      uint64   // searched kmer
+	IQuery    int      // index of the query kmer
+	Kmer      uint64   // matched kmer
 	LenPrefix uint8    // length of common prefix between the query and this k-mer
 	Mismatch  uint8    // number of mismatch, it has meanning only when checking mismatch!
 	Values    []uint64 // value of this key
@@ -109,10 +110,13 @@ func RecycleSearchResults(sr *[]*SearchResult) {
 // For m <0 or m >= k-p, mismatch will not be checked.
 //
 // Please remember to recycle the results object with RecycleSearchResults().
-func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, error) {
-	if kmer > scr.maxKmer {
-		return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
+func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+	if len(kmers) != len(scr.Indexes) {
+		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
 	}
+	// if kmer > scr.maxKmer {
+	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
+	// }
 	k := scr.K
 	if p < 1 || p > k {
 		p = k
@@ -122,28 +126,11 @@ func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, erro
 	m8 := uint8(m)
 
 	// ----------------------------------------------------------
-	// scope to search
-	// e.g., For a query ACGAC and p=3,
-	// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 
 	var suffix2 uint8
 	var leftBound, rightBound uint64
 	var mask uint64
-	if k > p {
-		suffix2 = (k - p) << 1
-		mask = (1 << suffix2) - 1                  // 1111
-		leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
-		rightBound = kmer>>suffix2<<suffix2 + mask // kmer with last 4bits being 1
-	} else {
-		leftBound = kmer
-		rightBound = kmer
-	}
-	// fmt.Printf("k:%d, m:%d\n", k, m)
-	// fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
-	// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
-	// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
 
-	// ----------------------------------------------------------
 	var last, begin, middle, end int
 	var i int
 	var offset uint64 // offset in kv-data file
@@ -172,7 +159,29 @@ func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, erro
 	var mismatch uint8
 	var v1, v2 *SearchResult
 
-	for _, index := range scr.Indexes {
+	var kmer uint64
+
+	for iQ, index := range scr.Indexes {
+		// scope to search
+		// e.g., For a query ACGAC and p=3,
+		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
+
+		kmer = kmers[iQ]
+		if k > p {
+			suffix2 = (k - p) << 1
+			mask = (1 << suffix2) - 1                  // 1111
+			leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
+			rightBound = kmer>>suffix2<<suffix2 + mask // kmer with last 4bits being 1
+		} else {
+			leftBound = kmer
+			rightBound = kmer
+		}
+
+		// fmt.Printf("k:%d, m:%d\n", k, m)
+		// fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
+		// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
+		// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
+
 		// -----------------------------------------------------
 		// find the nearest anchor
 
@@ -307,6 +316,7 @@ func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, erro
 			}
 			if saveKmer {
 				v1 = poolSearchResult.Get().(*SearchResult)
+				v1.IQuery = iQ
 				v1.Kmer = kmer1
 				v1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
 				v1.Mismatch = mismatch
@@ -361,6 +371,7 @@ func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, erro
 
 			if saveKmer {
 				v2 = poolSearchResult.Get().(*SearchResult)
+				v2.IQuery = iQ
 				v2.Kmer = kmer2
 				v2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
 				v2.Mismatch = mismatch
@@ -401,4 +412,9 @@ func (scr *Searcher) Search(kmer uint64, p uint8, m int) (*[]*SearchResult, erro
 	}
 
 	return results, nil
+}
+
+// Close closes the searcher.
+func (scr *Searcher) Close() error {
+	return scr.fh.Close()
 }
