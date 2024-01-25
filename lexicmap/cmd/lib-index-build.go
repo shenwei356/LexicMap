@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pelletier/go-toml/v2"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/bio/seqio/fastx"
@@ -38,10 +39,17 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
+// MainVersion is use for checking compatibility
+var MainVersion uint8 = 0
+
+// MinorVersion is less important
+var MinorVersion uint8 = 1
+
 const FileMasks = "masks.bin"
 const DirSeeds = "seeds"
 const DirGenomes = "genomes"
 const FileGenomes = "genomes.bin"
+const FileInfo = "info.toml"
 
 // TmpDirExt is the path extension for temporary files
 const TmpDirExt = ".tmp"
@@ -195,7 +203,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		log.Info()
 		log.Infof("  building index for batch %d with %d files...", batch, len(files))
 		defer func() {
-			log.Infof("  elapsed time: %s", time.Since(timeStart))
+			log.Infof("  finished building index for batch %d in: %s", batch, time.Since(timeStart))
 		}()
 	}
 
@@ -509,12 +517,38 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	close(genomes)
 	<-done // all k-mer data are collected
 
-	<-doneGW // all genome data are saved
-	checkError(gw.Close())
+	// --------------------------------
+	// 4) Summary file
+	doneInfo := make(chan int)
+	go func() {
+		// index summary
+		info := &IndexInfo{
+			MainVersion:  MainVersion,
+			MinorVersion: MinorVersion,
+
+			K:        uint8(lh.K),
+			Masks:    len(lh.Masks),
+			RandSeed: lh.Seed,
+
+			Chunks:     opt.Chunks,
+			Partitions: opt.Partitions,
+
+			Genomes:         len(files),
+			GenomeBatchSize: len(files), // just for this batch
+			GenomeBatches:   1,          // just for this batch
+		}
+		err = writeIndexInfo(filepath.Join(outdir, FileInfo), info)
+		if err != nil {
+			checkError(fmt.Errorf("failed to write index summary: %s", err))
+		}
+
+		doneInfo <- 1
+	}()
 
 	// --------------------------------
 	// 3) write k-mer data to files
 
+	timeStart2 := time.Now()
 	if opt.Verbose || opt.Log2File {
 		log.Infof("  writing seeds...")
 	}
@@ -554,15 +588,54 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		}(j, begin, end)
 	}
 	wg.Wait() // all k-mer-value data are saved.
+	if opt.Verbose || opt.Log2File {
+		log.Infof("  finished writing seeds in %s", time.Since(timeStart2))
+	}
 
 	poolKmerDatas.Put(datas)
 
 	// -------------------------------------------------------------------
+
+	<-doneGW // all genome data are saved
+	checkError(gw.Close())
+
+	<-doneInfo // info file
+
+	// process bar
 	if opt.Verbose {
 		close(chDuration)
 		<-doneDuration
 		pbs.Wait()
 	}
+}
+
+type IndexInfo struct {
+	MainVersion     uint8 `toml:"main-version" comment:"Index format"`
+	MinorVersion    uint8 `toml:"minor-version"`
+	K               uint8 `toml:"max-K" comment:"LexicHash"`
+	Masks           int   `toml:"masks"`
+	RandSeed        int64 `toml:"rand-seed"`
+	Chunks          int   `toml:"chunks" comment:"Seeds (k-mer-value data) files"`
+	Partitions      int   `toml:"index-partitions"`
+	Genomes         int   `toml:"genomes" comment:"Genome data"`
+	GenomeBatchSize int   `toml:"genome-batch-size"`
+	GenomeBatches   int   `toml:"genome-batches"`
+}
+
+func writeIndexInfo(file string, info *IndexInfo) error {
+	fh, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+
+	data, err := toml.Marshal(info)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
+	fh.Write(data)
+
+	return fh.Close()
 }
 
 var poolSkipRegions = &sync.Pool{New: func() interface{} {

@@ -63,12 +63,12 @@ Important parameters:
                        and will increase index size
 
   --- seeds (k-mer-value data) ---
-  1. -c/--chunks,      Number of file chunks. Larger values accelerate searching
-                       speed in cost of high disk reading load. The maximum number
+  1. -c/--chunks,      Number of seeds file chunks. Larger values accelerate searching
+                       speed at cost of high disk reading load. The maximum number
                        should not exceed the maximum number of open files set by
                        the operating systems.
-  2. -p/--partitions,  Number of partitions for indexing seeds file. Larger values
-                       improve searching speed in cost of higher memory occupation.
+  2. -p/--partitions,  Number of partitions for indexing each seed file. Larger values
+                       improve searching speed at cost of higher memory occupation.
   3. --max-open-files, Maximum number of open files. It's used in merging indexes
                        of multiple genome batches.
 
@@ -296,10 +296,9 @@ Important parameters:
 
 		if opt.Verbose || opt.Log2File {
 			log.Info()
-			log.Infof("finished building LexicMap index in %s from %d files with %d masks",
-				time.Since(timeStart), len(files), nMasks)
+			log.Infof("finished building LexicMap index from %d files with %d masks in %s",
+				len(files), nMasks, time.Since(timeStart))
 			log.Infof("LexicMap index saved: %s", outDir)
-			log.Info()
 		}
 	},
 }

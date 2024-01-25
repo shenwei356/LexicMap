@@ -29,6 +29,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shenwei356/breader v0.3.2 // indirect
@@ -38,4 +39,5 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	golang.org/x/sys v0.15.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
