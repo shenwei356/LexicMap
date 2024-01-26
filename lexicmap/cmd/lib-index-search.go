@@ -86,7 +86,7 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 type Index struct {
 	path string
 
-	openFileTokens chan int
+	openFileTokens chan int // control the max open files
 
 	// lexichash
 	lh *lexichash.LexicHash
@@ -812,7 +812,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				continue
 			}
 
-			if i == 0 {
+			if i == 0 { // record genome information
 				r.ID = append(r.ID, tSeq.ID...)
 				r.GenomeSize = tSeq.GenomeSize
 			}

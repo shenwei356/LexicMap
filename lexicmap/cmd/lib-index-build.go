@@ -241,7 +241,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		doneDuration = make(chan int)
 		go func() {
 			for t := range chDuration {
-				bar.Increment()
 				bar.EwmaIncrBy(1, t)
 			}
 			doneDuration <- 1
@@ -281,7 +280,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		clear(data)
 	}
 
-	threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
 	genomes := make(chan *genome.Genome, opt.NumCPUs)
 	genomesW := make(chan *genome.Genome, opt.NumCPUs)
 	done := make(chan int)
@@ -296,7 +294,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// write genomes to file
 	go func() {
-		for refseq := range genomesW { // each genome
+		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
+		for refseq := range genomesW {       // each genome
 			// write the genome to file
 			err = gw.Write(refseq)
 			if err != nil {

@@ -9,9 +9,11 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/shenwei356/bio v0.12.0
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
+	github.com/shenwei356/kmers v0.1.0
 	github.com/shenwei356/lexichash v0.1.0
 	github.com/shenwei356/util v0.5.2
 	github.com/spf13/cobra v1.8.0
@@ -29,15 +31,12 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shenwei356/breader v0.3.2 // indirect
-	github.com/shenwei356/kmers v0.1.0 // indirect
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
 	github.com/shenwei356/xopen v0.3.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
