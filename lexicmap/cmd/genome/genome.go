@@ -87,6 +87,10 @@ type Genome struct {
 	StartTime time.Time
 }
 
+func (r Genome) String() string {
+	return fmt.Sprintf("%s, genomeSize:%d, len:%d, contigs:%d", r.ID, r.GenomeSize, r.Len, r.NumSeqs)
+}
+
 // PoolGenome is the object pool for Genome
 var PoolGenome = &sync.Pool{New: func() interface{} {
 	return &Genome{
@@ -128,14 +132,18 @@ type Writer struct {
 	buf    []byte // 24 bytes buffer
 	offset int
 
-	// offset
+	// offsets
 	index [][2]int
 }
 
 // NewWriter creates a new Writer.
 // Batch is the batch id for this data file.
 func NewWriter(file string, batch uint32) (*Writer, error) {
-	w := &Writer{batch: batch, file: file}
+	w := &Writer{
+		batch: batch,
+		file:  file,
+		index: make([][2]int, 0, 1024),
+	}
 	var err error
 	w.fh, err = os.Create(file)
 	if err != nil {

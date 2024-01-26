@@ -318,7 +318,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// collect k-mer data
 	go func() {
-		posMask := uint64((1 << 30) - 1)
 		var wg sync.WaitGroup
 		threads := opt.NumCPUs
 		tokens := make(chan int, threads)
@@ -363,7 +362,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							//  pos:       29 bits
 							//  strand:     1 bits
 							// here, the location from Mask() already contains the strand information.
-							value = uint64(batch)<<47 | uint64(refIdx)<<30 | (uint64(loc) & posMask)
+							value = uint64(batch)<<47 | ((uint64(refIdx) & 131071) << 30) | (uint64(loc) & 1073741823)
+							// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
 
 							*values = append(*values, value)
 						}
@@ -573,7 +573,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		if end > nMasks {
 			end = nMasks
 		}
-
+		// fmt.Printf("chunk %d, masks: [%d, %d)\n", j, begin, end)
 		wg.Add(1)
 		tokens <- 1
 		go func(chunk, begin, end int) { // a chunk of masks
@@ -582,7 +582,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// for m, data := range (*datas)[begin:end] {
 			// 	for key, values := range data {
 			// 		for _, v := range *values {
-			// 			fmt.Printf("mask: %d, key: %s, value: %d\n",
+			// 			fmt.Printf("mask: %d, key: %s, value: %064b\n",
 			// 				m, kmers.MustDecode(key, lh.K), v)
 			// 		}
 			// 	}

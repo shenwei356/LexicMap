@@ -80,28 +80,28 @@ Attentions:
 		outFile := getFlagString(cmd, "out-file")
 		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
 		if minPrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -m/--min-prefix should be <= 32"))
+			checkError(fmt.Errorf("the value of flag -m/--min-prefix (%d) should be <= 32", minPrefix))
 		}
 		maxPrefix := getFlagInt(cmd, "max-mismatch")
 		minSinglePrefix := getFlagPositiveInt(cmd, "min-single-prefix")
 		if minSinglePrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be <= 32"))
+			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be <= 32", minSinglePrefix))
 		}
 		if minSinglePrefix < minPrefix {
-			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix should be >= that of -m/--min-prefix "))
+			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be >= that of -m/--min-prefix (%d)", minSinglePrefix, minPrefix))
 		}
 		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 
 		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
 		if minAF > 100 {
-			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction should be in range of [0, 100]"))
+			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction (%f) should be in range of [0, 100]", minAF))
 		} else if minAF < 1 {
 			log.Warningf("the value of flag -f/min-aligned-fraction is percentage in a range of [0, 100], you set: %f", minAF)
 		}
 		minIdent := getFlagNonNegativeFloat64(cmd, "min-identity")
 		if minIdent > 100 {
-			checkError(fmt.Errorf("the value of flag -i/min-identity should be in range of [0, 100]"))
+			checkError(fmt.Errorf("the value of flag -i/min-identity (%f) should be in range of [0, 100]", minIdent))
 		} else if minIdent < 1 {
 			log.Warningf("the value of flag -i/min-identity is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
@@ -393,11 +393,11 @@ func init() {
 	mapCmd.Flags().IntP("min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings`))
 
+	mapCmd.Flags().IntP("min-single-prefix", "P", 20,
+		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
+
 	mapCmd.Flags().IntP("max-mismatch", "m", -1,
 		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings`))
-
-	mapCmd.Flags().IntP("min-single-prefix", "M", 20,
-		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
 
 	mapCmd.Flags().IntP("max-gap", "g", 5000,
 		formatFlagUsage(`max gap`))

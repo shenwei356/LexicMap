@@ -316,7 +316,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			}
 			if saveKmer {
 				v1 = poolSearchResult.Get().(*SearchResult)
-				v1.IQuery = iQ
+				v1.IQuery = iQ + scr.ChunkIndex // do not forget to add mask offset
 				v1.Kmer = kmer1
 				v1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
 				v1.Mismatch = mismatch
@@ -371,7 +371,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 
 			if saveKmer {
 				v2 = poolSearchResult.Get().(*SearchResult)
-				v2.IQuery = iQ
+				v2.IQuery = iQ + scr.ChunkIndex // do not forget to add mask offset
 				v2.Kmer = kmer2
 				v2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
 				v2.Mismatch = mismatch

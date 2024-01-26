@@ -402,8 +402,10 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 
 // SearchResult stores a search result for the given query sequence.
 type SearchResult struct {
-	ID         []byte
-	GenomeSize int
+	GenomeBatch int
+	GenomeIndex int
+	ID          []byte
+	GenomeSize  int
 
 	Subs *[]*SubstrPair // matched substring pairs (query,target)
 
@@ -425,6 +427,8 @@ type SimilarityDetail struct {
 }
 
 func (r *SearchResult) Reset() {
+	r.GenomeBatch = -1
+	r.GenomeIndex = -1
 	r.ID = r.ID[:0]
 	r.Subs = nil
 	r.Score = 0
@@ -516,7 +520,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 		var code uint64
 		var _k int
-		var refIdx, pos, begin int
+		var refBatchAndIdx, pos, begin int
 		var mismatch uint8
 		var rc bool
 
@@ -556,7 +560,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// multiple locations for each MATCHED k-mer
 					// but most of cases, there's only one.
 					for _, refpos = range sr.Values {
-						refIdx = int(refpos >> 30)
+						refBatchAndIdx = int(refpos >> 30) // batch+refIdx
 						pos = int(refpos << 34 >> 35)
 						rc = refpos&1 > 0
 
@@ -574,14 +578,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						_sub2.Mismatch = mismatch
 						_sub2.RC = rc
 
-						fmt.Println(_sub2)
-
 						var r *SearchResult
-						if r, ok = (*m)[refIdx]; !ok {
+						if r, ok = (*m)[refBatchAndIdx]; !ok {
 							subs := poolSubs.Get().(*[]*SubstrPair)
 							*subs = (*subs)[:0]
 
 							r = poolSearchResult.Get().(*SearchResult)
+							r.GenomeBatch = refBatchAndIdx >> 17
+							r.GenomeIndex = refBatchAndIdx & 131071
 							r.ID = r.ID[:0]
 							r.GenomeSize = 0
 							r.Subs = subs
@@ -589,7 +593,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							r.Chains = nil            // important
 							r.SimilarityDetails = nil // important
 
-							(*m)[refIdx] = r
+							(*m)[refBatchAndIdx] = r
 						}
 
 						*r.Subs = append(*r.Subs, _sub2)
@@ -723,12 +727,12 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// check all references
 	var refBatch, refID int
 	var rdr *genome.Reader
-	for refIdx, r := range *rs {
+	for _, r := range *rs {
 		sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
 		*sds = (*sds)[:0]
 
-		refBatch = refIdx >> 17 // batch id
-		refID = refIdx & 131071 // ref id
+		refBatch = r.GenomeBatch
+		refID = r.GenomeIndex
 
 		rdr = <-idx.poolGenomeRdrs[refBatch]
 
@@ -768,7 +772,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				tEnd = te + qlen - qe - 1
 			}
 
-			// fmt.Printf("subject:%s:%d-%d, rc:%v\n", idx.IDs[r.IdIdx], tBegin+1, tEnd+1, rc)
+			// fmt.Printf("%d, subject:%d.%d:%d-%d, rc:%v\n", refIdx, refBatch, refID, tBegin+1, tEnd+1, rc)
 
 			// extract target sequence for comparison.
 			// Right now, we fetch seq from disk for each seq,
@@ -777,6 +781,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			if err != nil {
 				return rs, err
 			}
+
+			// fmt.Println(tSeq)
 
 			if rc { // reverse complement
 				RC(tSeq.Seq)

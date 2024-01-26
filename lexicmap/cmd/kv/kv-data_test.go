@@ -43,7 +43,7 @@ func TestKVData(t *testing.T) {
 	for j := 0; j < nMasks; j++ {
 		m := make(map[uint64]*[]uint64, n)
 		for i = 0; i < n; i++ {
-			m[i] = &[]uint64{i}
+			m[i] = &[]uint64{i + (i << 30)}
 		}
 		data = append(data, m)
 	}
@@ -106,7 +106,7 @@ func TestKVData(t *testing.T) {
 			for _, r := range *results {
 				if r.Kmer == i {
 					hit = true
-					if r.Values[0] != i {
+					if r.Values[0] != i+(i<<30) {
 						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
 						return
 					}

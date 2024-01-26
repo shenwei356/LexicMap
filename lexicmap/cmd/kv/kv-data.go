@@ -147,7 +147,6 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	} else if nAnchors > nKmers {
 		nAnchors = nKmers >> 1
 	}
-	idxChunkSize := (nKmers / nAnchors) >> 1
 
 	// ---------------------------------------------------------------------------
 
@@ -216,7 +215,11 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	var j int
 	var recordedAnchors int
 
+	var idxChunkSize int
+
 	for _, m := range data {
+		idxChunkSize = (len(m) / nAnchors) >> 1 // need to recompute for each data
+
 		hasPrev = false
 		offset = 0
 
