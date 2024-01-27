@@ -160,14 +160,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 	var v1, v2 *SearchResult
 
 	var kmer uint64
+	prefixSearch := p < k
+	chunkIndex := scr.ChunkIndex
 
 	for iQ, index := range scr.Indexes {
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
-
 		kmer = kmers[iQ]
-		if k > p {
+		if prefixSearch {
 			suffix2 = (k - p) << 1
 			mask = (1 << suffix2) - 1                  // 1111
 			leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
@@ -316,7 +317,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			}
 			if saveKmer {
 				v1 = poolSearchResult.Get().(*SearchResult)
-				v1.IQuery = iQ + scr.ChunkIndex // do not forget to add mask offset
+				v1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 				v1.Kmer = kmer1
 				v1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
 				v1.Mismatch = mismatch
@@ -333,6 +334,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 
 					v1.Values = append(v1.Values, be.Uint64(buf8))
 				}
+
 				*results = append(*results, v1)
 			} else {
 				for j = 0; j < lenVal1; j++ {
@@ -371,7 +373,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 
 			if saveKmer {
 				v2 = poolSearchResult.Get().(*SearchResult)
-				v2.IQuery = iQ + scr.ChunkIndex // do not forget to add mask offset
+				v2.IQuery = iQ + chunkIndex // do not forget to add mask offset
 				v2.Kmer = kmer2
 				v2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
 				v2.Mismatch = mismatch
@@ -417,4 +419,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 // Close closes the searcher.
 func (scr *Searcher) Close() error {
 	return scr.fh.Close()
+}
+
+func kmerValueString(v uint64) string {
+	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
+		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
 }

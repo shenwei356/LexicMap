@@ -323,6 +323,10 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 		b := (*subs)[j]
 		if a.QBegin == b.QBegin {
 			return a.QBegin+a.Len >= b.QBegin+b.Len
+			// if a.QBegin+a.Len == b.QBegin+b.Len {
+			// 	return a.TBegin <= b.TBegin
+			// }
+			// return a.QBegin+a.Len > b.QBegin+b.Len
 		}
 		return a.QBegin < b.QBegin
 	})
@@ -514,15 +518,15 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		var refpos uint64
 
 		// query substring
-		var _pos int
-		var _begin int
-		var _rc bool
+		var posQ int
+		var beginQ int
+		var rcQ bool
 
 		var code uint64
-		var _k int
-		var refBatchAndIdx, pos, begin int
+		var kPrefix int
+		var refBatchAndIdx, posT, beginT int
 		var mismatch uint8
-		var rc bool
+		var rcT bool
 
 		K := idx.k
 		K8 := idx.k8
@@ -531,27 +535,26 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		var ok bool
 
 		for srs := range ch {
-
 			// different k-mers in subjects,
 			// most of cases, there are more than one
 			for _, sr = range *srs {
 				// matched length
-				_k = int(sr.LenPrefix)
+				kPrefix = int(sr.LenPrefix)
 				mismatch = sr.Mismatch
 
 				// locations in the query
 				// multiple locations for each QUERY k-mer,
 				// but most of cases, there's only one.
-				locs = (*_locses)[sr.IQuery]
-				for _, _pos = range locs {
-					_rc = _pos&1 > 0 // if on the reverse complement sequence
-					_pos >>= 1
+				locs = (*_locses)[sr.IQuery] // the mask is unknown
+				for _, posQ = range locs {
+					rcQ = posQ&1 > 0 // if on the reverse complement sequence
+					posQ >>= 1
 
-					// query
-					if _rc { // on the negative strand
-						_begin = _pos + K - _k
+					// query location
+					if rcQ { // on the negative strand
+						beginQ = posQ + K - kPrefix
 					} else {
-						_begin = _pos
+						beginQ = posQ
 					}
 
 					// matched
@@ -561,22 +564,23 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// but most of cases, there's only one.
 					for _, refpos = range sr.Values {
 						refBatchAndIdx = int(refpos >> 30) // batch+refIdx
-						pos = int(refpos << 34 >> 35)
-						rc = refpos&1 > 0
+						posT = int(refpos << 34 >> 35)
+						rcT = refpos&1 > 0
 
-						if rc {
-							begin = pos + K - _k
+						// subject location
+						if rcT {
+							beginT = posT + K - kPrefix
 						} else {
-							begin = pos
+							beginT = posT
 						}
 
 						_sub2 := poolSub.Get().(*SubstrPair)
-						_sub2.QBegin = _begin
-						_sub2.TBegin = begin
+						_sub2.QBegin = beginQ
+						_sub2.TBegin = beginT
 						_sub2.Code = code
-						_sub2.Len = _k
+						_sub2.Len = kPrefix
 						_sub2.Mismatch = mismatch
-						_sub2.RC = rc
+						_sub2.RC = rcT
 
 						var r *SearchResult
 						if r, ok = (*m)[refBatchAndIdx]; !ok {
@@ -586,7 +590,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							r = poolSearchResult.Get().(*SearchResult)
 							r.GenomeBatch = refBatchAndIdx >> 17
 							r.GenomeIndex = refBatchAndIdx & 131071
-							r.ID = r.ID[:0]
+							r.ID = r.ID[:0] // extract it from genome file later
 							r.GenomeSize = 0
 							r.Subs = subs
 							r.Score = 0
@@ -623,9 +627,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			if len(*srs) == 0 { // no matcheds
 				kv.RecycleSearchResults(srs)
+			} else {
+				ch <- srs // send result
 			}
-
-			ch <- srs // send result
 
 			<-idx.searcherTokens[iS] // return the access
 			wg.Done()
@@ -643,17 +647,17 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// ----------------------------------------------------------------
 	// chaining matches for all subject sequences
 
-	minChainingScore := idx.chainingOptions.MinScore
+	minSinglePrefix := int(idx.opt.MinSinglePrefix)
 
 	rs := poolSearchResults.Get().(*[]*SearchResult)
 	*rs = (*rs)[:0]
 
-	minSinglePrefix := int(idx.opt.MinSinglePrefix)
 	K := idx.k
 	for _, r := range *m {
 		ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
 
 		// there's no need to chain for a single short seed
+		// TODO: we might give it a chance if the mismatch is low
 		if len(*r.Subs) == 1 && (*r.Subs)[0].Len < minSinglePrefix {
 			// do not forget to recycle filtered result
 			idx.RecycleSearchResult(r)
@@ -689,6 +693,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}
 
 	// chaining
+
+	minChainingScore := idx.chainingOptions.MinScore
 	chainer := idx.poolChainers.Get().(*Chainer)
 	j := 0
 	for _, r := range *rs {
@@ -772,7 +778,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				tEnd = te + qlen - qe - 1
 			}
 
-			// fmt.Printf("%d, subject:%d.%d:%d-%d, rc:%v\n", refIdx, refBatch, refID, tBegin+1, tEnd+1, rc)
+			// fmt.Printf("chain:%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, refBatch, refID, tBegin+1, tEnd+1, rc)
 
 			// extract target sequence for comparison.
 			// Right now, we fetch seq from disk for each seq,
@@ -876,4 +882,13 @@ var rcTable = [256]byte{
 	208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222, 223,
 	224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
 	240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255,
+}
+
+func parseKmerValue(v uint64) (int, int, int, bool) {
+	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), v&1 > 0
+}
+
+func kmerValueString(v uint64) string {
+	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
+		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
 }

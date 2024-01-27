@@ -140,7 +140,14 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	}()
 
 	// check nAnchors
-	nKmers := len(data[0])
+	nKmers := math.MaxInt // find the smallest nKmers
+	var _nKmers int
+	for _, m := range data {
+		_nKmers = len(m)
+		if _nKmers < nKmers {
+			nKmers = _nKmers
+		}
+	}
 
 	if nAnchors <= 0 {
 		nAnchors = int(math.Sqrt(float64(nKmers)))
@@ -217,8 +224,13 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 
 	var idxChunkSize int
 
+	keys := poolUint64s.Get().(*[]uint64)
 	for _, m := range data {
 		idxChunkSize = (len(m) / nAnchors) >> 1 // need to recompute for each data
+
+		if idxChunkSize == 0 { // it happens, e.g., (101/51) >> 1
+			idxChunkSize = 1
+		}
 
 		hasPrev = false
 		offset = 0
@@ -231,7 +243,6 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 		N += 8
 
 		// sort keys
-		keys := poolUint64s.Get().(*[]uint64)
 		*keys = (*keys)[:0]
 		for key = range m {
 			*keys = append(*keys, key)
@@ -258,7 +269,7 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 
 			// ------------------------------------------------------------------------
 			// index anchor
-			if j%idxChunkSize == 0 {
+			if idxChunkSize == 1 || j%idxChunkSize == 0 {
 				if recordedAnchors < nAnchors {
 					recordedAnchors++
 
@@ -366,9 +377,8 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 			}
 			N += bufVals.Len()
 		}
-
-		poolUint64s.Put(keys)
 	}
+	poolUint64s.Put(keys)
 
 	return N, nil
 }
