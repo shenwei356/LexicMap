@@ -8,7 +8,7 @@ LexicMap: efficient sequence alignment against millions of microbial genomes​.
     lexicmap index -I genomes/ -O db.lmi --force
 
     # query
-    lexicmap map -d db.lmi query.fasta -o query.fasta.txt
+    lexicmap search -d db.lmi query.fasta -o query.fasta.txt
 
 ## Installation
 
