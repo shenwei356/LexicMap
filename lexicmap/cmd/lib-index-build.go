@@ -21,7 +21,9 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -39,6 +41,8 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
+var be = binary.BigEndian
+
 // MainVersion is use for checking compatibility
 var MainVersion uint8 = 0
 
@@ -47,13 +51,23 @@ var MinorVersion uint8 = 1
 
 // ExtTmpDir is the path extension for temporary files
 const ExtTmpDir = ".tmp"
+
+// FileMasks is the file for storing lexichash mask
+const FileMasks = "masks.bin"
+
+// DirSeeds is the directory of k-mer-value data files
+const DirSeeds = "seeds"
 const ExtSeeds = ".bin"
 
-const FileMasks = "masks.bin"
-const DirSeeds = "seeds"
+// DirGenomes is the directory of genomes datas
 const DirGenomes = "genomes"
 const FileGenomes = "genomes.bin"
+
+// FileInfo is the summary file
 const FileInfo = "info.toml"
+
+// FileGenomeIndex maps genome id to genome batch id and index in the batch
+const FileGenomeIndex = "genomes.map.bin"
 
 func batchDir(batch int) string {
 	return fmt.Sprintf("batch_%04d", batch)
@@ -324,13 +338,32 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		chunkSize := (nMasks + threads - 1) / threads
 		var j, begin, end int
 
-		var refIdx uint32 // genome number
+		//
+		fileGenomeIndex := filepath.Join(outdir, FileGenomeIndex)
+		fhGI, err := os.Create(fileGenomeIndex)
+		if err != nil {
+			checkError(fmt.Errorf("%s", err))
+		}
+		bw := bufio.NewWriter(fhGI)
+
+		var batchIDAndRefID, batchIDAndRefIDShift, refIdx uint64 // genome number
+		buf := make([]byte, 8)
 
 		for refseq := range genomes { // each genome
 			genomesW <- refseq // send to save to file, asynchronously writing
 
 			_kmers := refseq.Kmers
 			loces := refseq.Locses
+
+			// refseq id -> this
+			batchIDAndRefID = uint64(batch)<<17 | (refIdx & 131071)
+			be.PutUint16(buf[:2], uint16(len(refseq.ID)))
+			bw.Write(buf[:2])
+			bw.Write(refseq.ID)
+			be.PutUint64(buf, batchIDAndRefID)
+			bw.Write(buf)
+
+			batchIDAndRefIDShift = batchIDAndRefID << 30
 
 			// save k-mer data into all masks by chunks
 			for j = 0; j < threads; j++ { // each chunk for storing kmer-value data
@@ -361,7 +394,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							//  pos:       29 bits
 							//  strand:     1 bits
 							// here, the location from Mask() already contains the strand information.
-							value = uint64(batch)<<47 | ((uint64(refIdx) & 131071) << 30) | (uint64(loc) & 1073741823)
+							// value = uint64(batch)<<47 | ((refIdx & 131071) << 30) |
+							value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
 							// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
 
 							*values = append(*values, value)
@@ -375,6 +409,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			wg.Wait()
 			refIdx++
 		}
+
+		bw.Flush()
+		checkError(fhGI.Close())
+
 		close(genomesW)
 		done <- 1
 	}()
@@ -665,6 +703,56 @@ var poolSkipRegions = &sync.Pool{New: func() interface{} {
 	tmp := make([][2]int, 0, 128)
 	return &tmp
 }}
+
+func readGenomeMap(file string) (map[uint64][]byte, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	r := bufio.NewReader(fh)
+	m := make(map[uint64][]byte, 1024)
+
+	buf := make([]byte, 8)
+	var n, lenID int
+	var batchIDAndRefID uint64
+	for {
+		n, err = io.ReadFull(r, buf[:2])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if n < 2 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+		lenID = int(be.Uint16(buf[:2]))
+		id := make([]byte, lenID)
+
+		n, err = io.ReadFull(r, id)
+		if err != nil {
+			return nil, err
+		}
+		if n < lenID {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		n, err = io.ReadFull(r, buf)
+		if err != nil {
+			return nil, err
+		}
+		if n < 8 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		batchIDAndRefID = be.Uint64(buf)
+
+		m[batchIDAndRefID] = id
+	}
+	return m, nil
+}
 
 func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, outdir string, paths []string) {
 

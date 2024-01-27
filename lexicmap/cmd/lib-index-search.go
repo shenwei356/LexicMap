@@ -913,8 +913,8 @@ var rcTable = [256]byte{
 	240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255,
 }
 
-func parseKmerValue(v uint64) (int, int, int, bool) {
-	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), v&1 > 0
+func parseKmerValue(v uint64) (int, int, int, int) {
+	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), int(v & 1)
 }
 
 func kmerValueString(v uint64) string {
