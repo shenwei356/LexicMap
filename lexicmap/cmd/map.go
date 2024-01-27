@@ -36,9 +36,9 @@ import (
 )
 
 var mapCmd = &cobra.Command{
-	Use:   "map",
-	Short: "map sequences against an index",
-	Long: `map sequences against an index
+	Use:   "search",
+	Short: "search sequences against an index",
+	Long: `search sequences against an index
 
 Attentions:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
@@ -82,7 +82,7 @@ Attentions:
 		if minPrefix > 32 {
 			checkError(fmt.Errorf("the value of flag -m/--min-prefix (%d) should be <= 32", minPrefix))
 		}
-		maxPrefix := getFlagInt(cmd, "max-mismatch")
+		maxMismatch := getFlagInt(cmd, "max-mismatch")
 		minSinglePrefix := getFlagPositiveInt(cmd, "min-single-prefix")
 		if minSinglePrefix > 32 {
 			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be <= 32", minSinglePrefix))
@@ -153,7 +153,7 @@ Attentions:
 			MaxOpenFiles: 512,
 
 			MinPrefix:       uint8(minPrefix),
-			MaxMismatch:     maxPrefix,
+			MaxMismatch:     maxMismatch,
 			MinSinglePrefix: uint8(minSinglePrefix),
 			TopN:            topn,
 
@@ -193,7 +193,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\ttarget\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\tseqid\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
 
 		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -211,7 +211,7 @@ Attentions:
 			}
 
 			queryID := q.seqID
-			var c int
+			// var c int
 			// var v *index.SubstrPair
 			// var i int
 			// var subs *[]*index.SubstrPair
@@ -241,7 +241,7 @@ Attentions:
 				}
 
 				// subs = r.Subs
-				for c, sd = range *r.SimilarityDetails {
+				for _, sd = range *r.SimilarityDetails {
 					cr = sd.Similarity
 					// for _, i = range *sd.Chain {
 					// 	v = (*subs)[i]
@@ -258,11 +258,11 @@ Attentions:
 					} else {
 						strand = '+'
 					}
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
+					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
 						queryID, len(q.seq),
 						targets, r.ID,
-						c+1, cr.AlignedFraction, cr.Identity,
-						r.GenomeSize,
+						sd.SeqID, cr.AlignedFraction, cr.Identity,
+						sd.SeqLen,
 						sd.TBegin+1, sd.TEnd+1, strand,
 						len(*sd.Chain),
 					)

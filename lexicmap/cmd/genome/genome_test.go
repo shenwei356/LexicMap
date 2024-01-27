@@ -86,6 +86,8 @@ func TestReadAndWrite(t *testing.T) {
 		g.Len = len(s)
 		g.NumSeqs = 1
 		g.SeqSizes = append(g.SeqSizes, len(s))
+		seqid := []byte("test")
+		g.SeqIDs = append(g.SeqIDs, &seqid)
 
 		err = w.Write(g)
 		if err != nil {

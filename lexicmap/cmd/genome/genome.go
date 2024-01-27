@@ -72,13 +72,14 @@ var ErrVersionMismatch = errors.New("genome data: version mismatch")
 
 // Genome represents a reference sequence to insert and a matched subsequence
 type Genome struct {
-	ID  []byte // ID
+	ID  []byte // genome ID
 	Seq []byte // sequence, bases
 
-	GenomeSize int   // bases of all sequences
-	Len        int   // length of contatenated sequences
-	NumSeqs    int   // number of sequences
-	SeqSizes   []int // sizes of sequences
+	GenomeSize int       // bases of all sequences
+	Len        int       // length of contatenated sequences
+	NumSeqs    int       // number of sequences
+	SeqSizes   []int     // sizes of sequences
+	SeqIDs     []*[]byte // IDs of all sequences
 
 	// only used in index building
 	Kmers     *[]uint64 // lexichash mask result
@@ -110,6 +111,7 @@ func (r *Genome) Reset() {
 	r.Len = 0
 	r.NumSeqs = 0
 	r.SeqSizes = r.SeqSizes[:0]
+	r.SeqIDs = r.SeqIDs[:0]
 }
 
 // RecycleGenome recycle a Genome
@@ -117,8 +119,16 @@ func RecycleGenome(g *Genome) {
 	if g.TwoBit != nil {
 		RecycleTwoBit(g.TwoBit)
 	}
+	for _, id := range g.SeqIDs {
+		poolID.Put(id)
+	}
 	PoolGenome.Put(g)
 }
+
+var poolID = &sync.Pool{New: func() interface{} {
+	tmp := make([]byte, 128)
+	return &tmp
+}}
 
 // Writer saves a list of DNA sequences into 2bit-encoded format,
 // along with its genome information.
@@ -194,9 +204,17 @@ func (w *Writer) Write(s *Genome) error {
 	be.PutUint32(buf[8:12], uint32(len(s.SeqSizes))) // number of contigs
 	buf0.Write(buf[:12])
 
-	for _, size := range s.SeqSizes { // seq sizes
+	var seqid []byte
+	for i, size := range s.SeqSizes {
+		// seq sizes
 		be.PutUint32(buf[:4], uint32(size))
 		buf0.Write(buf[:4])
+
+		// seq ids
+		seqid = *s.SeqIDs[i]
+		be.PutUint16(buf[:2], uint16(len(seqid))) // length of id
+		buf0.Write(buf[:2])
+		buf0.Write(seqid)
 	}
 
 	// write sequence
@@ -493,13 +511,16 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	if n < 12 {
 		return nil, ErrBrokenFile
 	}
-	g.Len = int(be.Uint32(buf[:4]))
+	g.GenomeSize = int(be.Uint32(buf[:4]))
 	g.NumSeqs = int(be.Uint32(buf[4:8]))
 	numSeqs := int(be.Uint32(buf[8:12]))
 	offset += 12
 
-	// SeqSizes
+	// SeqSizes and SeqIDs
 	g.SeqSizes = g.SeqSizes[:0]
+	g.SeqIDs = g.SeqIDs[:0]
+	var j, nappend int
+	var idLen2 int
 	for i := 0; i < numSeqs; i++ {
 		n, err = io.ReadFull(r.fhData, buf[:4])
 		if err != nil {
@@ -509,8 +530,37 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 			return nil, ErrBrokenFile
 		}
 		g.SeqSizes = append(g.SeqSizes, int(be.Uint32(buf[:4])))
+
+		// seq id
+		n, err = io.ReadFull(r.fhData, buf[:2])
+		if err != nil {
+			return nil, err
+		}
+		if n < 2 {
+			return nil, ErrBrokenFile
+		}
+
+		idLen2 = int(be.Uint16(buf[:2]))
+		id := poolID.Get().(*[]byte)
+		if len(*id) >= idLen2 {
+			*id = (*id)[:idLen2]
+		} else {
+			nappend = idLen2 - len(*id)
+			for j = 0; j < nappend; j++ {
+				*id = append(*id, 0)
+			}
+		}
+		n, err = io.ReadFull(r.fhData, *id)
+		if err != nil {
+			return nil, err
+		}
+		if n < idLen2 {
+			return nil, ErrBrokenFile
+		}
+		g.SeqIDs = append(g.SeqIDs, id)
+
+		offset += int64(6 + idLen2)
 	}
-	offset += int64(numSeqs << 2)
 
 	// get sequence
 
@@ -551,7 +601,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 
 	// -- first byte --
 	b := buf[0]
-	j := start & 3
+	j = start & 3
 
 	switch j {
 	case 0:
@@ -615,6 +665,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	}
 
 	*s = (*s)[:l]
+	g.Len = len(g.Seq)
 	return g, nil
 }
 

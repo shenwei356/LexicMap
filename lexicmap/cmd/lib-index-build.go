@@ -456,6 +456,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				refseq.Len += len(record.Seq.Seq)
 
 				refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
+				seqid := []byte(string(record.ID))
+				refseq.SeqIDs = append(refseq.SeqIDs, &seqid)
 				refseq.GenomeSize += len(record.Seq.Seq)
 
 				i++

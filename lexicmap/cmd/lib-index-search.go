@@ -385,7 +385,9 @@ var poolBoolList = &sync.Pool{New: func() interface{} {
 // structs for searching result
 
 var poolSimilarityDetail = &sync.Pool{New: func() interface{} {
-	return &SimilarityDetail{}
+	return &SimilarityDetail{
+		SeqID: make([]byte, 0, 128),
+	}
 }}
 
 var poolSimilarityDetails = &sync.Pool{New: func() interface{} {
@@ -428,12 +430,17 @@ type SimilarityDetail struct {
 	SimilarityScore float64
 	Similarity      *SeqComparatorResult
 	Chain           *[]int
+
+	// sequence details
+	SeqLen int
+	SeqID  []byte // seqid of the region
 }
 
 func (r *SearchResult) Reset() {
 	r.GenomeBatch = -1
 	r.GenomeIndex = -1
 	r.ID = r.ID[:0]
+	r.GenomeSize = 0
 	r.Subs = nil
 	r.Score = 0
 	r.Chains = nil
@@ -507,7 +514,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	searchers := idx.Searchers
 	minPrefix := idx.opt.MinPrefix
-	maxMismatches := idx.opt.MaxMismatch
+	maxMismatch := idx.opt.MaxMismatch
 
 	// later, we will reuse these two objects
 	ch := make(chan *[]*kv.SearchResult, len(idx.Searchers))
@@ -620,7 +627,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		go func(iS, beginM, endM int) {
 			idx.searcherTokens[iS] <- 1 // get the access to the searcher
 
-			srs, err := searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatches)
+			srs, err := searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 			if err != nil {
 				checkError(err)
 			}
@@ -730,6 +737,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	minAF := idx.seqCompareOption.MinAlignedFraction
 	minIdent := idx.seqCompareOption.MinIdentity
 
+	var l, iSeq, posOffset, posOffset1 int
+
 	// check all references
 	var refBatch, refID int
 	var rdr *genome.Reader
@@ -825,12 +834,32 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 
-			sd.TBegin = tBegin
-			sd.TEnd = tEnd
+			// get the index of target seq according to the position
+			iSeq = 0
+			posOffset = 0
+			posOffset1 = 0
+			if tSeq.NumSeqs > 1 {
+				for j, l = range tSeq.SeqSizes {
+					// now posOffset is length sum of 0..j-1
+					posOffset1 += l + idx.k - 1 // length sum of 0..j
+					if tBegin+1 <= posOffset1 {
+						iSeq = j
+						break
+					}
+
+					posOffset = posOffset1
+				}
+			}
+
+			sd.TBegin = tBegin - posOffset
+			sd.TEnd = tEnd - posOffset
 			sd.RC = rc
 			sd.Chain = (*r.Chains)[i]
 			sd.Similarity = cr
 			sd.SimilarityScore = cr.AlignedFraction * cr.Identity
+			sd.SeqID = sd.SeqID[:0]
+			sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+			sd.SeqLen = tSeq.SeqSizes[iSeq]
 
 			*sds = append(*sds, sd)
 
