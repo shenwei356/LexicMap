@@ -44,7 +44,7 @@ type Reader struct {
 	buf8 []uint8
 }
 
-// NewReader
+// NewReader creates a reader
 func NewReader(file string) (*Reader, error) {
 	fh, err := os.Open(file)
 	if err != nil {
@@ -115,14 +115,19 @@ func NewReader(file string) (*Reader, error) {
 	return rdr, nil
 }
 
-var poolKmerData = &sync.Pool{New: func() interface{} {
+var PoolKmerData = &sync.Pool{New: func() interface{} {
 	m := make(map[uint64]*[]uint64, 1024)
 	return &m
 }}
 
 // RecycleKmerData recycles a k-mer data object.
 func RecycleKmerData(m *map[uint64]*[]uint64) {
-	poolKmerData.Put(m)
+	PoolKmerData.Put(m)
+}
+
+// Close closes the reader
+func (rdr *Reader) Close() error {
+	return rdr.fh.Close()
 }
 
 // ReadDataOfAMask reads data of a mask.
@@ -147,7 +152,7 @@ func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
 	var v uint64
 	var ok bool
 
-	m := poolKmerData.Get().(*map[uint64]*[]uint64)
+	m := PoolKmerData.Get().(*map[uint64]*[]uint64)
 	clear(*m)
 	var err error
 
@@ -282,4 +287,102 @@ func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
 	}
 
 	return m, nil
+}
+
+// --------------------------------------------------------------------
+
+type IndexReader struct {
+	K          uint8 // kmer size
+	ChunkIndex int   // index of the first mask in this chunk
+	ChunkSize  int   // the number of masks in this chunk
+	NAnchors   int
+
+	fh *os.File // file handler of the kv-data file
+	r  *bufio.Reader
+
+	buf  []byte
+	buf8 []uint8
+}
+
+// NewIndexReader creates a index reader
+func NewIndexReader(file string) (*IndexReader, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading kv-data file")
+	}
+
+	r := bufio.NewReader(fh)
+
+	rdr := &IndexReader{
+		fh:   fh,
+		r:    r,
+		buf:  make([]byte, 64),
+		buf8: make([]uint8, 8),
+	}
+
+	// ---------------------------------------------
+
+	buf := rdr.buf8
+
+	var n int
+
+	// check the magic number
+	n, err = io.ReadFull(r, buf)
+	if err != nil {
+		return nil, err
+	}
+	if n < 8 {
+		return nil, ErrBrokenFile
+	}
+	same := true
+	for i := 0; i < 8; i++ {
+		if MagicIdx[i] != buf[i] {
+			same = false
+			break
+		}
+	}
+	if !same {
+		return nil, ErrInvalidFileFormat
+	}
+	// read version information
+	n, err = io.ReadFull(r, buf)
+	if err != nil {
+		return nil, err
+	}
+	if n < 8 {
+		return nil, ErrBrokenFile
+	}
+	// check compatibility
+	if MainVersion != buf[0] {
+		return nil, ErrVersionMismatch
+	}
+	rdr.K = buf[2] // k-mer size
+
+	// index of the first mask in current chunk.
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
+		return nil, err
+	}
+	rdr.ChunkIndex = int(be.Uint64(buf))
+
+	// mask chunk size
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
+		return nil, err
+	}
+	rdr.ChunkSize = int(be.Uint64(buf))
+
+	// the number of anchors
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
+		return nil, err
+	}
+	rdr.NAnchors = int(be.Uint64(buf))
+
+	return rdr, nil
+}
+
+// Close closes the reader
+func (rdr *IndexReader) Close() error {
+	return rdr.fh.Close()
 }

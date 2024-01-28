@@ -149,7 +149,7 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	}
 	openFiles := opt.Chunks + 2
 	if opt.MaxOpenFiles < openFiles {
-		return fmt.Errorf("invalid max open files: %d, should be >= 4", openFiles)
+		return fmt.Errorf("invalid max open files: %d, should be >= %d", opt.MaxOpenFiles, openFiles)
 	}
 
 	return nil
@@ -200,6 +200,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 
 	var begin, end int
+	var kvChunks int
 	for batch := 0; batch < nBatches; batch++ {
 		// files for this batch
 		begin = batch * opt.GenomeBatchSize
@@ -219,7 +220,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		buildAnIndex(lh, opt, poolKmerDatas, outdirB, files, batch)
+		kvChunks = buildAnIndex(lh, opt, poolKmerDatas, outdirB, files, batch)
 	}
 
 	if nBatches == 1 {
@@ -227,7 +228,20 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 
 	// merge indexes
-	err = mergeIndexes(lh, opt, outdir, tmpIndexes)
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("merging %d indexes...", len(tmpIndexes))
+	}
+	err = mergeIndexes(lh, opt, kvChunks, outdir, tmpIndexes, tmpDir, 1)
+	if err != nil {
+		return fmt.Errorf("failed to merge indexes: %s", err)
+	}
+
+	// clean tmp dir
+	err = os.RemoveAll(tmpDir)
+	if err != nil {
+		checkError(fmt.Errorf("failed to remove tmp directory: %s", err))
+	}
 
 	return err
 }
@@ -235,7 +249,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	poolKmerDatas *sync.Pool,
-	outdir string, files []string, batch int) {
+	outdir string, files []string, batch int) int {
 
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
@@ -688,6 +702,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	<-doneInfo // info file
 
 	poolKmerDatas.Put(datas)
+
+	return chunks
 }
 
 // IndexInfo contains summary of the index

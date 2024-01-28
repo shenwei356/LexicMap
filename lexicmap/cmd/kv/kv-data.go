@@ -135,6 +135,10 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 		nAnchors = nKmers >> 1
 	}
 
+	if nAnchors == 0 {
+		nAnchors = 1
+	}
+
 	wtr, err := NewWriter(k, MaskOffset, len(data), file, nAnchors)
 	if err != nil {
 		return 0, err
@@ -210,6 +214,10 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int
 		return nil, err
 	}
 	wi := bufio.NewWriter(fhi)
+
+	if nAnchors == 0 {
+		nAnchors = 1
+	}
 
 	wtr := &Writer{
 		K:          k,

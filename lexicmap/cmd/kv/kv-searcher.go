@@ -186,29 +186,36 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 		// -----------------------------------------------------
 		// find the nearest anchor
 
-		last = len(index) - 2
-		// fmt.Printf("len: %d, last: %d\n", len(index), last)
-		begin, end = 0, last
-		for {
-			middle = begin + (end-begin)>>1
-			if middle&1 > 0 {
-				middle--
+		if len(index) == 2 {
+			offset = index[1]
+		} else {
+			last = len(index) - 2
+			// fmt.Printf("len: %d, last: %d\n", len(index), last)
+			begin, end = 0, last
+			for {
+				middle = begin + (end-begin)>>1
+				if middle&1 > 0 {
+					middle--
+				}
+				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+					break
+				}
+				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
+				// 	index[middle], lexichash.MustDecode(index[middle], k))
+				if leftBound < index[middle] {
+					// fmt.Printf(" left\n")
+					end = middle // new end
+				} else {
+					// fmt.Printf(" right\n")
+					begin = middle // new start
+				}
+				if begin+2 == end { // next to eacher
+					i = begin
+					break
+				}
 			}
-			// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-			// 	index[middle], lexichash.MustDecode(index[middle], k))
-			if leftBound < index[middle] {
-				// fmt.Printf(" left\n")
-				end = middle // new end
-			} else {
-				// fmt.Printf(" right\n")
-				begin = middle // new start
-			}
-			if begin+2 == end { // next to eacher
-				i = begin
-				break
-			}
+			offset = index[i+1]
 		}
-		offset = index[i+1]
 
 		// fmt.Printf("i: %d, kmer:%s, offset: %d\n", i, lexichash.MustDecode(index[i], k), offset)
 
