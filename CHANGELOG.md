@@ -1,5 +1,11 @@
 # Changelog
 
+### v0.2.0 - 2014-01-28
+
+- Software architecture and index formats are redesigned to reduce searching memory occupation.
+- Indexing: genomes are processed in batches to reduce RAM usage and indexes of all batches are merged.
+- Searching: seeds matching is performed on disk yet it's ultra-fast.
+
 ### v0.1.0 - 2024-01-15
 
 - The first release.
