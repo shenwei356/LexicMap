@@ -399,10 +399,10 @@ func init() {
 	mapCmd.Flags().IntP("max-mismatch", "m", -1,
 		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings`))
 
-	mapCmd.Flags().IntP("max-gap", "g", 5000,
-		formatFlagUsage(`max gap`))
+	mapCmd.Flags().IntP("max-gap", "g", 2000,
+		formatFlagUsage(`Max gap`))
 
-	mapCmd.Flags().IntP("top-n", "n", 10,
+	mapCmd.Flags().IntP("top-n", "n", 100,
 		formatFlagUsage(`Keep top n matches for a query`))
 
 	// sequence similarity

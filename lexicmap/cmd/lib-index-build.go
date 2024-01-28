@@ -57,10 +57,14 @@ const FileMasks = "masks.bin"
 
 // DirSeeds is the directory of k-mer-value data files
 const DirSeeds = "seeds"
+
+// ExtSeeds is file extention of  k-mer-value data files
 const ExtSeeds = ".bin"
 
 // DirGenomes is the directory of genomes datas
 const DirGenomes = "genomes"
+
+// FileGenomes is the name of each genome file
 const FileGenomes = "genomes.bin"
 
 // FileInfo is the summary file
@@ -69,15 +73,22 @@ const FileInfo = "info.toml"
 // FileGenomeIndex maps genome id to genome batch id and index in the batch
 const FileGenomeIndex = "genomes.map.bin"
 
+// batchDir returns the direcotry name of a genome batch
 func batchDir(batch int) string {
 	return fmt.Sprintf("batch_%04d", batch)
 }
 
+// chunkFile returns the file name of a k-mer-value file
+func chunkFile(chunk int) string {
+	return fmt.Sprintf("chunk_%03d%s", chunk, ExtSeeds)
+}
+
+// IndexBuildingOptions contains all options for building an LexicMap index.
 type IndexBuildingOptions struct {
 	// general
 	NumCPUs      int
 	Verbose      bool // show log
-	Log2File     bool
+	Log2File     bool // log file
 	Force        bool // force overwrite existed index
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
@@ -99,11 +110,11 @@ type IndexBuildingOptions struct {
 
 	// genome
 
-	ReRefName    *regexp.Regexp
-	ReSeqExclude []*regexp.Regexp
+	ReRefName    *regexp.Regexp   // for extracting genome id from the file name
+	ReSeqExclude []*regexp.Regexp // for excluding sequences according to name pattern
 }
 
-// CheckIndexBuildingOptions checks the important options
+// CheckIndexBuildingOptions checks some important options
 func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.K < 3 || opt.K > 32 {
 		return fmt.Errorf("invalid k value: %d, valid range: [3, 32]", opt.K)
@@ -115,8 +126,12 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 		return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.PrefixForCheckLC)
 	}
 
-	if opt.Chunks < 1 || opt.Chunks > 512 {
-		return fmt.Errorf("invalid chunks: %d, valid range: [1, 512]", opt.Chunks)
+	if opt.Chunks < 1 || opt.Chunks > 128 {
+		return fmt.Errorf("invalid chunks: %d, valid range: [1, 128]", opt.Chunks)
+	}
+
+	if opt.Chunks > opt.Masks {
+		return fmt.Errorf("invalid chunks: %d, should be <= masks (%d)", opt.Chunks, opt.Masks)
 	}
 
 	if opt.Partitions < 1 {
@@ -132,8 +147,9 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.NumCPUs < 1 {
 		return fmt.Errorf("invalid number of CPUs: %d, should be >= 1", opt.NumCPUs)
 	}
-	if opt.MaxOpenFiles < 2 {
-		return fmt.Errorf("invalid max open files: %d, should be >= 2", opt.MaxOpenFiles)
+	openFiles := opt.Chunks + 2
+	if opt.MaxOpenFiles < openFiles {
+		return fmt.Errorf("invalid max open files: %d, should be >= 4", openFiles)
 	}
 
 	return nil
@@ -211,9 +227,9 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 
 	// merge indexes
-	mergeIndexes(lh, opt, outdir, tmpIndexes)
+	err = mergeIndexes(lh, opt, outdir, tmpIndexes)
 
-	return nil
+	return err
 }
 
 // build an index for the files of one batch
@@ -306,7 +322,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 	doneGW := make(chan int)
 
-	// write genomes to file
+	// 2.2) write genomes to file
 	go func() {
 		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
 		for refseq := range genomesW {       // each genome
@@ -329,7 +345,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		doneGW <- 1
 	}()
 
-	// collect k-mer data
+	// 2.1) collect k-mer data
 	go func() {
 		var wg sync.WaitGroup
 		threads := opt.NumCPUs
@@ -338,7 +354,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		chunkSize := (nMasks + threads - 1) / threads
 		var j, begin, end int
 
-		//
+		// genome-index mapping file
 		fileGenomeIndex := filepath.Join(outdir, FileGenomeIndex)
 		fhGI, err := os.Create(fileGenomeIndex)
 		if err != nil {
@@ -382,13 +398,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					var ok bool
 					var values *[]uint64
 					for i := begin; i < end; i++ {
-						data := (*datas)[i]
-						kmer = (*_kmers)[i]
+						data := (*datas)[i] // the map to save into
+						kmer = (*_kmers)[i] // captured k-mer by the mask
 						if values, ok = data[kmer]; !ok {
 							values = &[]uint64{}
 							data[kmer] = values
 						}
-						for _, loc = range (*loces)[i] {
+						for _, loc = range (*loces)[i] { // location information of the captured k-mer
 							//  batch idx: 17 bits
 							//  ref idx:   17 bits
 							//  pos:       29 bits
@@ -406,13 +422,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}(begin, end)
 			}
 
-			wg.Wait()
+			wg.Wait() // wait all mask chunks
 			refIdx++
 		}
 
+		// genome index
 		bw.Flush()
 		checkError(fhGI.Close())
 
+		// genome data
 		close(genomesW)
 		done <- 1
 	}()
@@ -454,6 +472,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var re *regexp.Regexp
 			var baseFile = filepath.Base(file)
 
+			// object for storing the genome data
 			refseq := genome.PoolGenome.Get().(*genome.Genome)
 			refseq.Reset()
 
@@ -486,20 +505,24 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						continue
 					}
 				}
-				if i > 0 {
+
+				if i > 0 { // add N's between two contigs
 					refseq.Seq = append(refseq.Seq, nnn...)
 					refseq.Len += len(nnn)
 				}
 				refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
 				refseq.Len += len(record.Seq.Seq)
 
+				// sizes of all contigs
 				refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
+				// ids of all contigs
 				seqid := []byte(string(record.ID))
 				refseq.SeqIDs = append(refseq.SeqIDs, &seqid)
 				refseq.GenomeSize += len(record.Seq.Seq)
 
 				i++
 			}
+			refseq.NumSeqs = i
 
 			if len(refseq.Seq) == 0 {
 				genome.PoolGenome.Put(refseq) // important
@@ -508,18 +531,18 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				return
 			}
 
-			var seqID string
+			var genomeID string // genome id
 			if extractRefName {
 				if reRefName.MatchString(baseFile) {
-					seqID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
+					genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
 				} else {
-					seqID, _ = filepathTrimExtension(baseFile)
+					genomeID, _ = filepathTrimExtension(baseFile)
 				}
 			} else {
-				seqID, _ = filepathTrimExtension(baseFile)
+				genomeID, _ = filepathTrimExtension(baseFile)
 			}
 
-			refseq.ID = []byte(seqID)
+			refseq.ID = []byte(genomeID)
 			refseq.StartTime = startTime
 
 			// --------------------------------
@@ -606,7 +629,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	chunkSize := (nMasks + chunks - 1) / opt.Chunks
 	var j, begin, end int
 
-	tokens = make(chan int, 1)   // hope it reduce memory
+	tokens = make(chan int, 1)   // hope it reduces memory
 	for j = 0; j < chunks; j++ { // each chunk
 		begin = j * chunkSize
 		end = begin + chunkSize
@@ -617,7 +640,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		wg.Add(1)
 		tokens <- 1
 		go func(chunk, begin, end int) { // a chunk of masks
-			file := filepath.Join(dirSeeds, fmt.Sprintf("chunk_%03d%s", chunk, ExtSeeds))
+			file := filepath.Join(dirSeeds, chunkFile(chunk))
 
 			// for m, data := range (*datas)[begin:end] {
 			// 	for key, values := range data {
@@ -632,6 +655,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}
+
+			// if opt.Verbose || opt.Log2File {
+			// 	log.Infof("    seeds file of chunk %d saved", chunk)
+			// }
 
 			wg.Done()
 			<-tokens
@@ -659,6 +686,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 }
 
+// IndexInfo contains summary of the index
 type IndexInfo struct {
 	MainVersion     uint8 `toml:"main-version" comment:"Index format"`
 	MinorVersion    uint8 `toml:"minor-version"`
@@ -672,6 +700,7 @@ type IndexInfo struct {
 	GenomeBatches   int   `toml:"genome-batches"`
 }
 
+// writeIndexInfo writes summary of one index
 func writeIndexInfo(file string, info *IndexInfo) error {
 	fh, err := os.Create(file)
 	if err != nil {
@@ -688,6 +717,7 @@ func writeIndexInfo(file string, info *IndexInfo) error {
 	return fh.Close()
 }
 
+// readIndexInfo reads summary frm a file
 func readIndexInfo(file string) (*IndexInfo, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -704,6 +734,7 @@ var poolSkipRegions = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
+// readGenomeMap reads genome-index mapping file
 func readGenomeMap(file string) (map[uint64][]byte, error) {
 	fh, err := os.Open(file)
 	if err != nil {
@@ -754,6 +785,7 @@ func readGenomeMap(file string) (map[uint64][]byte, error) {
 	return m, nil
 }
 
-func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, outdir string, paths []string) {
-
+// mergeIndexes merge multiple indexes to a big one
+func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, outdir string, paths []string) error {
+	return nil
 }

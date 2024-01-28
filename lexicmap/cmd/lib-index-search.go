@@ -36,12 +36,13 @@ import (
 	"github.com/shenwei356/util/pathutil"
 )
 
+// IndexSearchingOptions contains all options for searching
 type IndexSearchingOptions struct {
 	// general
 	NumCPUs      int
 	Verbose      bool // show log
-	Log2File     bool
-	MaxOpenFiles int // maximum opened files, used in merging indexes
+	Log2File     bool // log file
+	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
 	// seed searching
 	MinPrefix       uint8 // minimum prefix length, e.g., 15
@@ -809,9 +810,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// fast filter with sketching comparison
 
 			// costly (pseudo-)alignment
-
-			// ar := aligner.Global(s, *tSeq)
-			// *ars = append(*ars, ar)
 
 			cr, err := cpr.Compare(tSeq.Seq)
 			if err != nil {

@@ -155,7 +155,7 @@ Attentions:
 			chunk := (mask - 1) / chunkSize
 			iMask := (mask - 1) % chunkSize
 
-			fileSeeds := filepath.Join(dbDir, DirSeeds, fmt.Sprintf("chunk_%03d%s", chunk, ExtSeeds))
+			fileSeeds := filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
 			k, _, indexes, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
