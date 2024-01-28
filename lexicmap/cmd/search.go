@@ -206,9 +206,9 @@ Attentions:
 			}
 
 			if verbose {
-				if (total < 4096 && total&63 == 0) || total&4095 == 0 {
-					speed = float64(total) / 1000000 / time.Since(timeStart1).Minutes()
-					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f million queries per minute\r", total, speed)
+				if (total < 128 && total&7 == 0) || total&127 == 0 {
+					speed = float64(total) / 1000 / time.Since(timeStart1).Minutes()
+					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f thousand queries per minute\r", total, speed)
 				}
 			}
 
@@ -367,9 +367,9 @@ Attentions:
 		if outputLog {
 			fmt.Fprintf(os.Stderr, "\n")
 
-			speed = float64(total) / 1000000 / time.Since(timeStart1).Minutes()
+			speed = float64(total) / 1000 / time.Since(timeStart1).Minutes()
 			log.Infof("")
-			log.Infof("processed queries: %d, speed: %.3f million queries per minute\n", total, speed)
+			log.Infof("processed queries: %d, speed: %.3f thourand queries per minute\n", total, speed)
 			log.Infof("%.4f%% (%d/%d) queries matched", float64(matched)/float64(total)*100, matched, total)
 			log.Infof("done searching")
 			if outFile != "-" {
