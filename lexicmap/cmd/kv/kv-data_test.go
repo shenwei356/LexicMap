@@ -56,7 +56,50 @@ func TestKVData(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	// query
+	// -------------------------------------------------------------------
+	// reader
+	rdr, err := NewReader(file)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+	var ok bool
+	var values *[]uint64
+	for i := 0; i < nMasks; i++ {
+		m1, err := rdr.ReadDataOfAMask()
+		if err != nil {
+			t.Errorf("%s", err)
+		}
+
+		m0 := data[i]
+
+		if len(m0) != len(*m1) {
+			t.Errorf("k-mer number mismatch, expected: %d, result: %d", len(m0), len(*m1))
+			return
+		}
+
+		var j uint64
+		for j = 0; j < n; j++ {
+			if values, ok = (*m1)[j]; !ok {
+				t.Errorf("k-mer missing: %d: %s", i, lexichash.MustDecode(j, k))
+				return
+			}
+			if len(*values) != 1 {
+				t.Errorf("%s: value number mismatch, expected: %d, result: %d, %d",
+					lexichash.MustDecode(j, k), 1, len(*values), *values)
+				return
+			}
+			if (*values)[0] != j+(j<<30) {
+				t.Errorf("%s: value mismatch, expected: %d, result: %d",
+					lexichash.MustDecode(j, k), j+(j<<30), (*values)[0])
+				return
+			}
+		}
+
+		RecycleKmerData(m1)
+	}
+
+	// -------------------------------------------------------------------
+	// searcher
 
 	scr, err := NewSearcher(file)
 	if err != nil {

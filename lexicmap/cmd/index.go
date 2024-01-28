@@ -43,16 +43,18 @@ Input:
      file, with the reference identifier in the file name.
   2. Input plain or gzipped FASTA/Q files can be given via positional
      arguments or the flag -X/--infile-list with the list of input files,
-  3. Or a directory containing sequence files via the flag -I/--in-dir,
-     with multiple-level sub-directories allowed. A regular expression
-     for matching sequencing files is available via the flag -r/--file-regexp.
+     the flag -S/--skip-file-check is optional for skipping file checking.
+  3. Input can also be a directory containing sequence files via the flag
+     -I/--in-dir, with multiple-level sub-directories allowed.
+     A regular expression for matching sequencing files is available via the
+     flag -r/--file-regexp.
 
   Attentions:
     1) You can rename the sequence files for convenience because the genome
-       identifier in the index and search results would be: the basename of file
-       with common FASTA/Q file extension removed, which is extracted via the
-       flag -N/--ref-name-regexp. 
-    2). Unwanted sequences like plasmid can be filtered out by the name via
+       identifiers in the index and search result would be: the basenames of
+       files with common FASTA/Q file extensions removed, which are extracted
+       via the flag -N/--ref-name-regexp. 
+    2) Unwanted sequences like plasmid can be filtered out by the name via
        regular expressions (-B/--seq-name-filter).
 
 Important parameters:
@@ -72,9 +74,9 @@ Important parameters:
   3. --max-open-files, Maximum number of open files. It's used in merging indexes
                        of multiple genome batches.
 
-  -- genome data ---
+  --- genome data ---
   1. -b/--batch-size,  Maximum number of genomes in each batch. If the number of
-                       input files exceed this number, input files are groupped
+                       input files exceed this number, input files are grouped
                        into multiple batches and indexes are built for all batches.
                        Next, seeds files are merged into a big one, while genome
                        data keep unchanged.
@@ -111,7 +113,7 @@ Important parameters:
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
-		seed := getFlagPositiveInt(cmd, "seed")
+		seed := getFlagPositiveInt(cmd, "rand-seed")
 		chunks := getFlagPositiveInt(cmd, "chunks")
 		partitions := getFlagPositiveInt(cmd, "partitions")
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
@@ -263,7 +265,7 @@ Important parameters:
 
 		if opt.Verbose || opt.Log2File {
 			log.Info()
-			log.Infof("-------------------- [main parameters] --------------------")
+			log.Infof("--------------------- [main parameters] ---------------------")
 			log.Info()
 			log.Info("input and output:")
 			log.Infof("  input directory: %s", inDir)
@@ -281,7 +283,7 @@ Important parameters:
 			log.Info()
 			log.Infof("genome batch size: %d", batchSize)
 			log.Info()
-			log.Infof("-------------------- [main parameters] --------------------")
+			log.Infof("--------------------- [main parameters] ---------------------")
 			log.Info()
 			log.Infof("building index ...")
 		}
@@ -315,13 +317,13 @@ func init() {
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored.`))
 
 	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting reference name from filename.`))
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting reference name from the filename.`))
 
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
 
 	indexCmd.Flags().BoolP("skip-file-check", "S", false,
-		formatFlagUsage(`skip input file checking when given files or a file list`))
+		formatFlagUsage(`skip input file checking when given files or a file list.`))
 
 	// -----------------------------  output  -----------------------------
 
@@ -329,7 +331,7 @@ func init() {
 		formatFlagUsage(`Output directory.`))
 
 	indexCmd.Flags().BoolP("force", "", false,
-		formatFlagUsage(`Overwrite existed output directory.`))
+		formatFlagUsage(`Overwrite existing output directory.`))
 
 	// -----------------------------  lexichash   -----------------------------
 
@@ -342,26 +344,26 @@ func init() {
 	indexCmd.Flags().IntP("prefix", "", 15,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
-	indexCmd.Flags().IntP("seed", "s", 1,
-		formatFlagUsage(`Seed for generating random masks.`))
+	indexCmd.Flags().IntP("rand-seed", "s", 1,
+		formatFlagUsage(`Rnand seed for generating random masks.`))
 
 	// -----------------------------  kmer-value data   -----------------------------
 
 	indexCmd.Flags().IntP("chunks", "c", 8,
-		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files`))
+		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files.`))
 	indexCmd.Flags().IntP("partitions", "p", 1024,
-		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files`))
+		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files.`))
 	indexCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files, used in merging indexes`))
+		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
 
 	// -----------------------------  genome batches   -----------------------------
 
 	indexCmd.Flags().IntP("batch-size", "b", 1<<17,
-		formatFlagUsage(`Maximum number of genomes in each batch`))
+		formatFlagUsage(`Maximum number of genomes in each batch.`))
 
 	// ----------------------------------------------------------
 
-	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-s <seed>] {[-I <seqs dir>] | <seq files> | -X <file list>} -O <out dir>"))
+	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] {[-I <seqs dir>] | -X <file list>} -O <out dir>"))
 }
 
 var reIgnoreCaseStr = "(?i)"

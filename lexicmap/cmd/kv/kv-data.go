@@ -119,26 +119,6 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 		return 0, errors.New("k-mer-value data: no data given")
 	}
 
-	var N int // the number of bytes.
-
-	// file handlers
-	fh, err := os.Create(file)
-	if err != nil {
-		return N, err
-	}
-	w := bufio.NewWriter(fh)
-	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
-	if err != nil {
-		return N, err
-	}
-	wi := bufio.NewWriter(fhi)
-	defer func() {
-		w.Flush()
-		fh.Close()
-		wi.Flush()
-		fhi.Close()
-	}()
-
 	// check nAnchors
 	nKmers := math.MaxInt // find the smallest nKmers
 	var _nKmers int
@@ -155,26 +135,120 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 		nAnchors = nKmers >> 1
 	}
 
+	wtr, err := NewWriter(k, MaskOffset, len(data), file, nAnchors)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, m := range data {
+		err = wtr.WriteDataOfAMask(m)
+		if err != nil {
+			return 0, err
+		}
+	}
+	err = wtr.Close()
+	if err != nil {
+		return 0, err
+	}
+
+	return wtr.N, nil
+}
+
+// Writer is used for k-mer-value data for multiple mask
+type Writer struct {
+	K          uint8 // kmer size
+	ChunkIndex int   // index of the first mask in this chunk
+	ChunkSize  int   // the number of masks in this chunk
+	nAnchors   int
+
+	// bufers
+	bufVar []byte // needs at most 8+8=16
+	buf    []byte // needs at most 1+16+1+16=34
+	buf8   []byte // for writing uint8
+
+	// for kv data
+	N  int // the number of bytes.
+	fh *os.File
+	w  *bufio.Writer
+
+	// for index file
+	fhi *os.File
+	wi  *bufio.Writer
+}
+
+// Close is very important
+func (wtr *Writer) Close() (err error) {
+	err = wtr.w.Flush()
+	if err != nil {
+		return err
+	}
+	err = wtr.fh.Close()
+	if err != nil {
+		return err
+	}
+	err = wtr.wi.Flush()
+	if err != nil {
+		return err
+	}
+	err = wtr.fhi.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// NewWriter returns a new writer
+func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int) (*Writer, error) {
+	// file handlers
+	fh, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+	w := bufio.NewWriter(fh)
+	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
+	if err != nil {
+		return nil, err
+	}
+	wi := bufio.NewWriter(fhi)
+
+	wtr := &Writer{
+		K:          k,
+		ChunkIndex: MaskOffset,
+		ChunkSize:  chunkSize,
+		fh:         fh,
+		w:          w,
+		fhi:        fhi,
+		wi:         wi,
+
+		bufVar: make([]byte, 16),
+		buf:    make([]byte, 36),
+		buf8:   make([]byte, 8),
+
+		nAnchors: nAnchors,
+	}
+
 	// ---------------------------------------------------------------------------
+
+	var N int // the number of bytes.
 
 	// 8-byte magic number
 	err = binary.Write(w, be, Magic)
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 	N += 8
 
 	// 8-byte meta info
 	err = binary.Write(w, be, [8]uint8{MainVersion, MinorVersion, k})
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 	N += 8
 
 	// 16-byte the MaskOffset and the chunk size
-	err = binary.Write(w, be, [2]uint64{uint64(MaskOffset), uint64(len(data))})
+	err = binary.Write(w, be, [2]uint64{uint64(MaskOffset), uint64(chunkSize)})
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 	N += 16
 
@@ -183,38 +257,44 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	// 8-byte magic number
 	err = binary.Write(wi, be, MagicIdx)
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 
 	// 8-byte meta info
 	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k})
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 
 	// 16-byte the MaskOffset and the chunk size
-	err = binary.Write(wi, be, [2]uint64{uint64(MaskOffset), uint64(len(data))})
+	err = binary.Write(wi, be, [2]uint64{uint64(MaskOffset), uint64(chunkSize)})
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 
 	// 8-byte the number of anchors
 	err = binary.Write(wi, be, uint64(nAnchors))
 	if err != nil {
-		return N, err
+		return nil, err
 	}
 
 	// ---------------------------------------------------------------------------
 
+	wtr.N = N
+	return wtr, nil
+}
+
+// WriteDataOfAMask writes data of one mask.
+func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var hasPrev bool
 	var preKey, key, _v uint64
 	var preVal, v *[]uint64
 	var offset uint64
 	var ctrlByteKey, ctrlByteVal byte
 	var nBytesKey, nBytesVal, n int
-	bufVar := make([]byte, 16) // needs at most 8+8=16
-	buf := make([]byte, 36)    // needs at most 1+16+1+16=34
-	buf8 := make([]byte, 8)    // for writing uint8
+	bufVar := wtr.bufVar // needs at most 8+8=16
+	buf := wtr.buf       // needs at most 1+16+1+16=34
+	buf8 := wtr.buf8     // for writing uint8
 	bufVals := poolBytesBuffer.Get().(*bytes.Buffer)
 	defer poolBytesBuffer.Put(bufVals)
 	var even bool
@@ -224,163 +304,166 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 
 	var idxChunkSize int
 
+	nAnchors := wtr.nAnchors
+	w := wtr.w
+	wi := wtr.wi
+
 	keys := poolUint64s.Get().(*[]uint64)
-	for _, m := range data {
-		idxChunkSize = (len(m) / nAnchors) >> 1 // need to recompute for each data
+	idxChunkSize = (len(m) / nAnchors) >> 1 // need to recompute for each data
 
-		if idxChunkSize == 0 { // it happens, e.g., (101/51) >> 1
-			idxChunkSize = 1
-		}
-
-		hasPrev = false
-		offset = 0
-
-		// 8-byte the number of k-mers
-		err = binary.Write(w, be, uint64(len(m)))
-		if err != nil {
-			return N, err
-		}
-		N += 8
-
-		// sort keys
-		*keys = (*keys)[:0]
-		for key = range m {
-			*keys = append(*keys, key)
-		}
-		sortutil.Uint64s(*keys)
-
-		// for decide should we set flag for the last control byte of the last k-mer
-		even = len(*keys)&1 == 0 // the number of kmers is even
-		nm1 = len(*keys) - 1     // idx of the last element
-
-		j = 0
-		recordedAnchors = 0
-
-		for i, key = range *keys {
-			v = m[key]
-
-			if !hasPrev { // write it later
-				preKey = key
-				preVal = v
-				hasPrev = true
-
-				continue
-			}
-
-			// ------------------------------------------------------------------------
-			// index anchor
-			if idxChunkSize == 1 || j%idxChunkSize == 0 {
-				if recordedAnchors < nAnchors {
-					recordedAnchors++
-
-					// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, i, preKey, N)
-					be.PutUint64(buf[:8], preKey)      // k-mer
-					be.PutUint64(buf[8:16], uint64(N)) // offset
-					_, err = wi.Write(buf[:16])
-					if err != nil {
-						return N, err
-					}
-				}
-
-				j = 0
-			}
-			j++
-
-			// ------------------------------------------------------------------------
-
-			// 2 k-mers and numbers of values
-
-			// only save key2 - key1, which is small so it could be saved in few bytes
-			ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, key-preKey)
-			if even && i == nm1 {
-				// fmt.Printf("write last two kmers: %s, %s\n",
-				// 	lexichash.MustDecode(preKey, k), lexichash.MustDecode(key, k))
-				ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask
-			}
-			buf[0] = ctrlByteKey
-			copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
-			n = nBytesKey + 1
-
-			// save lengths of values
-			ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), uint64(len(*v)))
-			buf[n] = ctrlByteVal
-			copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
-			n += nBytesVal + 1
-
-			_, err = w.Write(buf[:n])
-			if err != nil {
-				return N, err
-			}
-			N += n
-
-			// values
-
-			bufVals.Reset()
-			for _, _v = range *preVal {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-			for _, _v = range *v {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-
-			_, err = w.Write(bufVals.Bytes())
-			if err != nil {
-				return N, err
-			}
-			N += bufVals.Len()
-
-			// update
-
-			offset = key
-			hasPrev = false
-		}
-
-		if hasPrev { // the last single one
-			// fmt.Printf("write the last two kmer: %s\n",
-			// 	lexichash.MustDecode(preKey, k))
-
-			// 2 k-mers and numbers of values
-
-			// only save key2 - key1, which is small so it could be saved in few bytes
-			ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, 0)
-			ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask.
-			ctrlByteKey |= 1 << 6 // it means this is the last single record
-			buf[0] = ctrlByteKey
-			copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
-			n = nBytesKey + 1
-
-			// save lengths of values
-			ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), 0)
-			buf[n] = ctrlByteVal
-			copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
-			n += nBytesVal + 1
-
-			_, err = w.Write(buf[:n])
-			if err != nil {
-				return N, err
-			}
-			N += n
-
-			// values
-
-			bufVals.Reset()
-			for _, _v = range *preVal {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-
-			_, err = w.Write(bufVals.Bytes())
-			if err != nil {
-				return N, err
-			}
-			N += bufVals.Len()
-		}
+	if idxChunkSize == 0 { // it happens, e.g., (101/51) >> 1
+		idxChunkSize = 1
 	}
+
+	hasPrev = false
+	offset = 0
+
+	// 8-byte the number of k-mers
+	err = binary.Write(w, be, uint64(len(m)))
+	if err != nil {
+		return err
+	}
+	wtr.N += 8
+
+	// sort keys
+	*keys = (*keys)[:0]
+	for key = range m {
+		*keys = append(*keys, key)
+	}
+	sortutil.Uint64s(*keys)
+
+	// for decide should we set flag for the last control byte of the last k-mer
+	even = len(*keys)&1 == 0 // the number of kmers is even
+	nm1 = len(*keys) - 1     // idx of the last element
+
+	j = 0
+	recordedAnchors = 0
+
+	for i, key = range *keys {
+		v = m[key]
+
+		if !hasPrev { // write it later
+			preKey = key
+			preVal = v
+			hasPrev = true
+
+			continue
+		}
+
+		// ------------------------------------------------------------------------
+		// index anchor
+		if idxChunkSize == 1 || j%idxChunkSize == 0 {
+			if recordedAnchors < nAnchors {
+				recordedAnchors++
+
+				// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, i, preKey, N)
+				be.PutUint64(buf[:8], preKey)          // k-mer
+				be.PutUint64(buf[8:16], uint64(wtr.N)) // offset
+				_, err = wi.Write(buf[:16])
+				if err != nil {
+					return err
+				}
+			}
+
+			j = 0
+		}
+		j++
+
+		// ------------------------------------------------------------------------
+
+		// 2 k-mers and numbers of values
+
+		// only save key2 - key1, which is small so it could be saved in few bytes
+		ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, key-preKey)
+		if even && i == nm1 {
+			// fmt.Printf("write last two kmers: %s, %s\n",
+			// 	lexichash.MustDecode(preKey, k), lexichash.MustDecode(key, k))
+			ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask
+		}
+		buf[0] = ctrlByteKey
+		copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
+		n = nBytesKey + 1
+
+		// save lengths of values
+		ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), uint64(len(*v)))
+		buf[n] = ctrlByteVal
+		copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
+		n += nBytesVal + 1
+
+		_, err = w.Write(buf[:n])
+		if err != nil {
+			return err
+		}
+		wtr.N += n
+
+		// values
+
+		bufVals.Reset()
+		for _, _v = range *preVal {
+			be.PutUint64(buf8, _v)
+			bufVals.Write(buf8)
+		}
+		for _, _v = range *v {
+			be.PutUint64(buf8, _v)
+			bufVals.Write(buf8)
+		}
+
+		_, err = w.Write(bufVals.Bytes())
+		if err != nil {
+			return err
+		}
+		wtr.N += bufVals.Len()
+
+		// update
+
+		offset = key
+		hasPrev = false
+	}
+
+	if hasPrev { // the last single one
+		// fmt.Printf("write the last two kmer: %s\n",
+		// 	lexichash.MustDecode(preKey, k))
+
+		// 2 k-mers and numbers of values
+
+		// only save key2 - key1, which is small so it could be saved in few bytes
+		ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, 0)
+		ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask.
+		ctrlByteKey |= 1 << 6 // it means this is the last single record
+		buf[0] = ctrlByteKey
+		copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
+		n = nBytesKey + 1
+
+		// save lengths of values
+		ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), 0)
+		buf[n] = ctrlByteVal
+		copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
+		n += nBytesVal + 1
+
+		_, err = w.Write(buf[:n])
+		if err != nil {
+			return err
+		}
+		wtr.N += n
+
+		// values
+
+		bufVals.Reset()
+		for _, _v = range *preVal {
+			be.PutUint64(buf8, _v)
+			bufVals.Write(buf8)
+		}
+
+		_, err = w.Write(bufVals.Bytes())
+		if err != nil {
+			return err
+		}
+		wtr.N += bufVals.Len()
+	}
+
 	poolUint64s.Put(keys)
 
-	return N, nil
+	return nil
 }
 
 // ReadKVIndex parses the k-mer-value index file.

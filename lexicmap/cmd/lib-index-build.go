@@ -212,7 +212,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		// outdir for this batch
 		var outdirB string
 		if nBatches > 1 {
-			outdirB = filepath.Join(tmpDir, fmt.Sprintf("batch_%4d", batch))
+			outdirB = filepath.Join(tmpDir, batchDir(batch))
 			tmpIndexes = append(tmpIndexes, outdirB)
 		} else {
 			outdirB = outdir
@@ -241,6 +241,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	if opt.Verbose || opt.Log2File {
 		timeStart = time.Now()
 		log.Info()
+		log.Infof("  ------------------------[ batch %d ]------------------------", batch)
 		log.Infof("  building index for batch %d with %d files...", batch, len(files))
 		defer func() {
 			log.Infof("  finished building index for batch %d in: %s", batch, time.Since(timeStart))
@@ -280,9 +281,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	// -------------------------------------------------------------------
 	// dir structure
 
+	err := os.MkdirAll(outdir, 0755)
+	if err != nil {
+		checkError(fmt.Errorf("failed to create dir: %s", err))
+	}
+
 	// masks
 	fileMask := filepath.Join(outdir, FileMasks)
-	_, err := lh.WriteToFile(fileMask)
+	_, err = lh.WriteToFile(fileMask)
 	if err != nil {
 		checkError(fmt.Errorf("failed to write masks: %s", err))
 	}
@@ -589,6 +595,16 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	close(genomes)
 	<-done // all k-mer data are collected
 
+	<-doneGW // all genome data are saved
+	checkError(gw.Close())
+
+	// process bar
+	if opt.Verbose {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+	}
+
 	// --------------------------------
 	// 4) Summary file
 	doneInfo := make(chan int)
@@ -669,21 +685,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		log.Infof("  finished writing seeds in %s", time.Since(timeStart2))
 	}
 
-	poolKmerDatas.Put(datas)
-
-	// -------------------------------------------------------------------
-
-	<-doneGW // all genome data are saved
-	checkError(gw.Close())
-
 	<-doneInfo // info file
 
-	// process bar
-	if opt.Verbose {
-		close(chDuration)
-		<-doneDuration
-		pbs.Wait()
-	}
+	poolKmerDatas.Put(datas)
 }
 
 // IndexInfo contains summary of the index
@@ -783,9 +787,4 @@ func readGenomeMap(file string) (map[uint64][]byte, error) {
 		m[batchIDAndRefID] = id
 	}
 	return m, nil
-}
-
-// mergeIndexes merge multiple indexes to a big one
-func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, outdir string, paths []string) error {
-	return nil
 }
