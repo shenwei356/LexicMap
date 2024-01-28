@@ -843,7 +843,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				continue
 			}
 
-			if i == 0 { // record genome information
+			if len(r.ID) == 0 { // record genome information
 				r.ID = append(r.ID, tSeq.ID...)
 				r.GenomeSize = tSeq.GenomeSize
 			}
