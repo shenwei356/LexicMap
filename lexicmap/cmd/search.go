@@ -106,6 +106,8 @@ Attentions:
 			log.Warningf("the value of flag -i/min-identity is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
 
+		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+
 		// ---------------------------------------------------------------
 
 		if outputLog {
@@ -150,7 +152,7 @@ Attentions:
 			NumCPUs:      opt.NumCPUs,
 			Verbose:      opt.Verbose,
 			Log2File:     opt.Log2File,
-			MaxOpenFiles: 512,
+			MaxOpenFiles: maxOpenFiles,
 
 			MinPrefix:       uint8(minPrefix),
 			MaxMismatch:     maxMismatch,
@@ -388,6 +390,9 @@ func init() {
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
+	mapCmd.Flags().IntP("max-open-files", "", 512,
+		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
+
 	// seed searching
 
 	mapCmd.Flags().IntP("min-prefix", "p", 15,
@@ -414,6 +419,7 @@ func init() {
 		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
+
 }
 
 // Strands could be used to output strand for a reverse complement flag

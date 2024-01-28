@@ -171,7 +171,6 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 
 		// -------------------------------------------------------------------
 		// genomes/, just move
-
 		var dirGenomesIn, dirG string
 		var files []fs.DirEntry
 		var file fs.DirEntry
@@ -234,6 +233,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 			}
 
 			info.Genomes += info2.Genomes
+			info.GenomeBatches += info2.GenomeBatches
 		}
 
 		err = writeIndexInfo(filepath.Join(outdir1, FileInfo), info)

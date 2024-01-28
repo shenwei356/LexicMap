@@ -111,6 +111,7 @@ type Index struct {
 
 	// genome data reader
 	poolGenomeRdrs []chan *genome.Reader
+	hasGenomeRdrs  bool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -222,9 +223,15 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		return nil, fmt.Errorf("failed to read info file: %s", err)
 	}
 
+	if idx.opt.MaxOpenFiles < info.Chunks+2 {
+		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) +2",
+			idx.opt.MaxOpenFiles, info.Chunks)
+	}
+
 	// we can create genome reader pool
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
-	if n > 4 {
+	if n < 2 {
+	} else {
 		n >>= 1
 		if n > opt.NumCPUs {
 			n = opt.NumCPUs
@@ -247,6 +254,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				idx.openFileTokens <- 1
 			}
 		}
+
+		idx.hasGenomeRdrs = true
 	}
 
 	// other resources
@@ -743,6 +752,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// check all references
 	var refBatch, refID int
 	var rdr *genome.Reader
+	var fileGenome string
 	for _, r := range *rs {
 		sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
 		*sds = (*sds)[:0]
@@ -750,7 +760,15 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		refBatch = r.GenomeBatch
 		refID = r.GenomeIndex
 
-		rdr = <-idx.poolGenomeRdrs[refBatch]
+		if idx.hasGenomeRdrs {
+			rdr = <-idx.poolGenomeRdrs[refBatch]
+		} else {
+			fileGenome = filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
+			rdr, err = genome.NewReader(fileGenome)
+			if err != nil {
+				checkError(fmt.Errorf("failed to read genome data file: %s", err))
+			}
+		}
 
 		// check sequences from all chains
 		for i, chain = range *r.Chains {
@@ -869,7 +887,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		})
 		r.SimilarityDetails = sds
 
-		idx.poolGenomeRdrs[refBatch] <- rdr
+		if idx.hasGenomeRdrs {
+			idx.poolGenomeRdrs[refBatch] <- rdr
+		} else {
+			err = rdr.Close()
+			if err != nil {
+				checkError(fmt.Errorf("failed to close genome data file: %s", err))
+			}
+		}
 	}
 
 	// recycle the tree data for this query
