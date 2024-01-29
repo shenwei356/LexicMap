@@ -192,7 +192,7 @@ func getFlagStringSlice(cmd *cobra.Command, flag string) []string {
 }
 
 func getFileList(args []string, checkFile bool) []string {
-	files := make([]string, 0, 1000)
+	files := make([]string, 0, 1024)
 	if len(args) == 0 {
 		files = append(files, "-")
 	} else {
@@ -213,13 +213,19 @@ func getFileList(args []string, checkFile bool) []string {
 }
 
 func getFileListFromFile(file string, checkFile bool) ([]string, error) {
-	fh, err := os.Open(file)
-	if err != nil {
-		return nil, fmt.Errorf("read file list from '%s': %s", file, err)
+	var fh *os.File
+	var err error
+	if file == "-" {
+		fh = os.Stdin
+	} else {
+		fh, err = os.Open(file)
+		if err != nil {
+			return nil, fmt.Errorf("read file list from '%s': %s", file, err)
+		}
 	}
 
 	var _file string
-	lists := make([]string, 0, 1000)
+	lists := make([]string, 0, 1024)
 	scanner := bufio.NewScanner(fh)
 	for scanner.Scan() {
 		_file = scanner.Text()

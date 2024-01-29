@@ -548,6 +548,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				genome.PoolGenome.Put(refseq) // important
 				log.Warningf("skipping %s: no valid sequences", file)
 				log.Info()
+				if opt.Verbose {
+					chDuration <- time.Duration(0) // important, or the progress bar will get hung
+				}
 				return
 			}
 
