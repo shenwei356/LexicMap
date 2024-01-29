@@ -228,7 +228,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			idx.opt.MaxOpenFiles, info.Chunks)
 	}
 
-	// we can create genome reader pool
+	// we can create genome reader pools
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
 	if n < 2 {
 	} else {
@@ -237,23 +237,36 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			n = opt.NumCPUs
 		}
 		if opt.Verbose || opt.Log2File {
-			log.Infof("  creating genome reader pool, each batch with %d reader...", n)
+			log.Infof("  creating genome reader pools, each batch with %d readers...", n)
 		}
 		idx.poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
 		for i := 0; i < info.GenomeBatches; i++ {
 			idx.poolGenomeRdrs[i] = make(chan *genome.Reader, n)
-			for j := 0; j < n; j++ {
-				fileGenomes := filepath.Join(outDir, DirGenomes, batchDir(i), FileGenomes)
-				rdr, err := genome.NewReader(fileGenomes)
-				if err != nil {
-					return nil, fmt.Errorf("failed to create genome reader: %s", err)
-				}
-				idx.poolGenomeRdrs[i] <- rdr
+		}
 
-				idx.openFileTokens <- 1
-				idx.openFileTokens <- 1
+		// parallelize it
+		var wg sync.WaitGroup
+		tokens := make(chan int, opt.NumCPUs)
+		for i := 0; i < info.GenomeBatches; i++ {
+			for j := 0; j < n; j++ {
+				tokens <- 1
+				wg.Add(1)
+				go func(i int) {
+					fileGenomes := filepath.Join(outDir, DirGenomes, batchDir(i), FileGenomes)
+					rdr, err := genome.NewReader(fileGenomes)
+					if err != nil {
+						checkError(fmt.Errorf("failed to create genome reader: %s", err))
+					}
+					idx.poolGenomeRdrs[i] <- rdr
+
+					idx.openFileTokens <- 1
+					idx.openFileTokens <- 1
+					wg.Done()
+					<-tokens
+				}(i)
 			}
 		}
+		wg.Wait()
 
 		idx.hasGenomeRdrs = true
 	}
@@ -763,6 +776,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		if idx.hasGenomeRdrs {
 			rdr = <-idx.poolGenomeRdrs[refBatch]
 		} else {
+			idx.openFileTokens <- 1
+			idx.openFileTokens <- 1
 			fileGenome = filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
 			rdr, err = genome.NewReader(fileGenome)
 			if err != nil {
@@ -894,6 +909,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			if err != nil {
 				checkError(fmt.Errorf("failed to close genome data file: %s", err))
 			}
+			<-idx.openFileTokens
+			<-idx.openFileTokens
 		}
 	}
 
