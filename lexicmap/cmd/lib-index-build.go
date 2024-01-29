@@ -550,7 +550,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				log.Warningf("skipping %s: no valid sequences", file)
 				log.Info()
 				if opt.Verbose {
-					chDuration <- time.Duration(0) // important, or the progress bar will get hung
+					chDuration <- time.Microsecond // important, or the progress bar will get hung
 				}
 				return
 			}

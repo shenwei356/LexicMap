@@ -18,7 +18,7 @@ require (
 	github.com/shenwei356/util v0.5.2
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
-	github.com/vbauerster/mpb/v8 v8.7.0
+	github.com/vbauerster/mpb/v8 v8.7.2
 )
 
 require (
@@ -38,5 +38,5 @@ require (
 	github.com/shenwei356/xopen v0.3.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 )
