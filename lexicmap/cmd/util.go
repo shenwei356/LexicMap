@@ -42,7 +42,7 @@ import (
 var mapInitSize = 1 << 20 // 1M
 
 // the minimum k value
-var minK = 3
+var minK = 5
 
 // Options contains the global flags
 type Options struct {

@@ -589,7 +589,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 				_skipRegions = *skipRegions
 			}
-			kmers, locses, err := lh.Mask(refseq.Seq, _skipRegions)
+			var kmers *[]uint64
+			var locses *[][]int
+
+			if len(lh.Masks) > 1024 && len(refseq.Seq) > 1048576 {
+				kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
+			} else {
+				kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
+			}
+
 			if err != nil {
 				panic(err)
 			}
