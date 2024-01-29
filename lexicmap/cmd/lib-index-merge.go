@@ -52,6 +52,15 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 	var j, begin, end int
 	tmpIndexes := make([]string, 0, 8)
 
+	var rdr *kv.Reader
+	var m, m1 *map[uint64]*[]uint64
+	var i int
+	var kmer uint64
+	var values, values1 *[]uint64
+	var ok bool
+
+	m = kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
+
 	var pathB []string
 
 	for j = 0; j < batches; j++ { // each chunk for storing kmer-value data
@@ -119,15 +128,6 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 				}
 			}
 
-			var rdr *kv.Reader
-			var m, m1 *map[uint64]*[]uint64
-			var i int
-			var kmer uint64
-			var values, values1 *[]uint64
-			var ok bool
-
-			m = kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
-
 			for c := 0; c < rdrIdx.ChunkSize; c++ { // for all mask
 				clear(*m)
 
@@ -154,7 +154,6 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 				}
 
 			}
-			kv.RecycleKmerData(m)
 
 			for _, rdr = range rdrs {
 				err = rdr.Close()
@@ -168,6 +167,8 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 				checkError(fmt.Errorf("failed to close kv-data file: %s", err))
 			}
 		}
+
+		kv.RecycleKmerData(m)
 
 		// -------------------------------------------------------------------
 		// genomes/, just move
