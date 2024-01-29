@@ -757,8 +757,8 @@ var poolSkipRegions = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-// readGenomeMap reads genome-index mapping file
-func readGenomeMap(file string) (map[uint64][]byte, error) {
+// readGenomeMapIdx2Name reads genome-index mapping file
+func readGenomeMapIdx2Name(file string) (map[uint64][]byte, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -804,6 +804,57 @@ func readGenomeMap(file string) (map[uint64][]byte, error) {
 		batchIDAndRefID = be.Uint64(buf)
 
 		m[batchIDAndRefID] = id
+	}
+	return m, nil
+}
+
+// readGenomeMap reads genome-index mapping file
+func readGenomeMapName2Idx(file string) (map[string]uint64, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	r := bufio.NewReader(fh)
+	m := make(map[string]uint64, 1024)
+
+	buf := make([]byte, 8)
+	var n, lenID int
+	var batchIDAndRefID uint64
+	for {
+		n, err = io.ReadFull(r, buf[:2])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if n < 2 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+		lenID = int(be.Uint16(buf[:2]))
+		id := make([]byte, lenID)
+
+		n, err = io.ReadFull(r, id)
+		if err != nil {
+			return nil, err
+		}
+		if n < lenID {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		n, err = io.ReadFull(r, buf)
+		if err != nil {
+			return nil, err
+		}
+		if n < 8 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		batchIDAndRefID = be.Uint64(buf)
+
+		m[string(id)] = batchIDAndRefID
 	}
 	return m, nil
 }

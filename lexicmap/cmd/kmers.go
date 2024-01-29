@@ -114,7 +114,7 @@ Attentions:
 		}
 
 		// genomes.map file for mapping index to genome id
-		m, err := readGenomeMap(filepath.Join(dbDir, FileGenomeIndex))
+		m, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}

@@ -199,7 +199,7 @@ func (w *Writer) Write(s *Genome) error {
 	buf0.Write(s.ID)
 
 	// meta
-	be.PutUint32(buf[:4], uint32(len(s.Seq)))        // genome size
+	be.PutUint32(buf[:4], uint32(s.GenomeSize))      // genome size
 	be.PutUint32(buf[4:8], uint32(s.Len))            // length of contatenated sequences
 	be.PutUint32(buf[8:12], uint32(len(s.SeqSizes))) // number of contigs
 	buf0.Write(buf[:12])
@@ -512,8 +512,8 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 		return nil, ErrBrokenFile
 	}
 	g.GenomeSize = int(be.Uint32(buf[:4]))
-	g.NumSeqs = int(be.Uint32(buf[4:8]))
-	numSeqs := int(be.Uint32(buf[8:12]))
+	g.Len = int(be.Uint32(buf[4:8]))
+	g.NumSeqs = int(be.Uint32(buf[8:12]))
 	offset += 12
 
 	// SeqSizes and SeqIDs
@@ -521,7 +521,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	g.SeqIDs = g.SeqIDs[:0]
 	var j, nappend int
 	var idLen2 int
-	for i := 0; i < numSeqs; i++ {
+	for i := 0; i < g.NumSeqs; i++ {
 		n, err = io.ReadFull(r.fhData, buf[:4])
 		if err != nil {
 			return nil, err
@@ -561,6 +561,263 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 
 		offset += int64(6 + idLen2)
 	}
+
+	// get sequence
+
+	// start of byte, 8 is #bytes+#bases
+	offset += 8 + int64(start>>2)
+	_, err = r.fhData.Seek(offset, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	nBytes := end>>2 - start>>2 + 1
+
+	// prepair the buf
+	if nBytes <= len(r.buf) {
+		buf = r.buf[:nBytes]
+	} else {
+		n := nBytes - len(r.buf)
+		for i := 0; i < n; i++ {
+			r.buf = append(r.buf, 0)
+		}
+		buf = r.buf
+	}
+	n, err = io.ReadFull(r.fhData, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if n < nBytes {
+		return nil, ErrBrokenFile
+	}
+
+	l := end - start + 1
+
+	// initialize with l+4 blank values, because if there less than 4 bases
+	// to extract, code below would panic.
+	s := &g.Seq
+	*s = (*s)[:4]
+
+	// -- first byte --
+	b := buf[0]
+	j = start & 3
+
+	switch j {
+	case 0:
+		(*s)[3] = bit2base[b&3]
+		b >>= 2
+		(*s)[2] = bit2base[b&3]
+		b >>= 2
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 1:
+		(*s)[2] = bit2base[b&3]
+		b >>= 2
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 2:
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 3:
+		(*s)[0] = bit2base[b&3]
+	}
+	j = 4 - j
+	*s = (*s)[:j]
+	if j >= l {
+		*s = (*s)[:l]
+		return g, nil
+	}
+
+	// -- middle byte --
+	if nBytes > 2 {
+		for _, b = range buf[1 : nBytes-1] {
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+			*s = append(*s, bit2base[b&3])
+		}
+	}
+
+	if nBytes > 1 {
+		// -- last byte --
+		b = buf[nBytes-1]
+		j = end & 3
+		switch j {
+		case 0:
+			*s = append(*s, bit2base[b>>6&3])
+		case 1:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+		case 2:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+		case 3:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+			*s = append(*s, bit2base[b&3])
+		}
+	}
+
+	*s = (*s)[:l]
+	g.Len = len(g.Seq)
+	return g, nil
+}
+
+// SubSeq2 returns the subsequence of one sequence (idx is 0-based),
+// from start to end (both are 0-based and included).
+// Please call RecycleGenome() after using the result.
+func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, error) {
+	if idx < 0 || idx >= int(r.nSeqs) {
+		return nil, fmt.Errorf("sequence index (%d) out of range: [0, %d]", idx, int(r.nSeqs)-1)
+	}
+
+	buf := r.buf
+
+	// -----------------------------------------------------------
+	// read index information
+	// 24 + 12 * idx
+	r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
+
+	// offset in the data file and bases
+	n, err := io.ReadFull(r.fh, buf[:12])
+	if err != nil {
+		return nil, err
+	}
+	if n < 12 {
+		return nil, ErrBrokenFile
+	}
+	offset := int64(be.Uint64(buf[:8]))
+	nBases := int(be.Uint32(buf[8:12])) // for check end
+
+	if start < 0 {
+		start = 0
+	}
+	if end >= nBases-1 {
+		end = nBases - 1
+	}
+	if end < start {
+		end = start
+	}
+
+	// -----------------------------------------------------------
+	// get sequence information
+
+	g := PoolGenome.Get().(*Genome)
+
+	r.fhData.Seek(offset, 0)
+
+	// ID length
+	n, err = io.ReadFull(r.fhData, buf[:2])
+	if err != nil {
+		return nil, err
+	}
+	if n < 2 {
+		return nil, ErrBrokenFile
+	}
+	idLen := be.Uint16(buf[:2])
+	offset += 2
+
+	// ID
+	n, err = io.ReadFull(r.fhData, buf[:idLen])
+	if err != nil {
+		return nil, err
+	}
+	if n < int(idLen) {
+		return nil, ErrBrokenFile
+	}
+	g.ID = g.ID[:0]
+	g.ID = append(g.ID, buf[:idLen]...)
+	offset += int64(idLen)
+
+	// genome size, Len of concatenated seqs, NumSeqs
+	n, err = io.ReadFull(r.fhData, buf[:12])
+	if err != nil {
+		return nil, err
+	}
+	if n < 12 {
+		return nil, ErrBrokenFile
+	}
+	g.GenomeSize = int(be.Uint32(buf[:4]))
+	g.Len = int(be.Uint32(buf[4:8]))
+	g.NumSeqs = int(be.Uint32(buf[8:12]))
+	offset += 12
+
+	// SeqSizes and SeqIDs
+	g.SeqSizes = g.SeqSizes[:0]
+	g.SeqIDs = g.SeqIDs[:0]
+	var j, nappend int
+	var idLen2 int
+
+	// --------------------------------------------------
+	var foundSeqID bool
+	var seqSize, lenSum int
+	interval := (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+	// --------------------------------------------------
+
+	for i := 0; i < g.NumSeqs; i++ {
+		n, err = io.ReadFull(r.fhData, buf[:4])
+		if err != nil {
+			return nil, err
+		}
+		if n < 4 {
+			return nil, ErrBrokenFile
+		}
+
+		seqSize = int(be.Uint32(buf[:4]))
+		g.SeqSizes = append(g.SeqSizes, seqSize)
+
+		// seq id
+		n, err = io.ReadFull(r.fhData, buf[:2])
+		if err != nil {
+			return nil, err
+		}
+		if n < 2 {
+			return nil, ErrBrokenFile
+		}
+
+		idLen2 = int(be.Uint16(buf[:2]))
+		id := poolID.Get().(*[]byte)
+		if len(*id) >= idLen2 {
+			*id = (*id)[:idLen2]
+		} else {
+			nappend = idLen2 - len(*id)
+			for j = 0; j < nappend; j++ {
+				*id = append(*id, 0)
+			}
+		}
+		n, err = io.ReadFull(r.fhData, *id)
+		if err != nil {
+			return nil, err
+		}
+		if n < idLen2 {
+			return nil, ErrBrokenFile
+		}
+		g.SeqIDs = append(g.SeqIDs, id)
+
+		offset += int64(6 + idLen2)
+
+		// --------------------------------------------------
+		if bytes.Equal(*id, seqid) { // found it!
+			foundSeqID = true
+			start += lenSum
+			end += lenSum
+		} else {
+			lenSum += seqSize
+			lenSum += interval
+		}
+		// --------------------------------------------------
+	}
+	// --------------------------------------------------
+	if !foundSeqID {
+		return nil, fmt.Errorf("seqid not found: %s", seqid)
+	}
+	// --------------------------------------------------
 
 	// get sequence
 

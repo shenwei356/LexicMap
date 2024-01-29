@@ -53,7 +53,10 @@ Input:
     1) You can rename the sequence files for convenience because the genome
        identifiers in the index and search result would be: the basenames of
        files with common FASTA/Q file extensions removed, which are extracted
-       via the flag -N/--ref-name-regexp. 
+       via the flag -N/--ref-name-regexp.
+       The extracted genome identifiers better be distinct/unique, which will
+       be shown in search results and are used to extract subsequences in the
+       command "lexicmap utils subseq".
     2) Unwanted sequences like plasmid can be filtered out by the name via
        regular expressions (-B/--seq-name-filter).
 
