@@ -111,11 +111,11 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
-func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file string, nAnchors int) (int, error) {
+func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, nAnchors int) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
-	if len(data[0]) == 0 {
+	if len(*data[0]) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
 
@@ -123,7 +123,7 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	nKmers := math.MaxInt // find the smallest nKmers
 	var _nKmers int
 	for _, m := range data {
-		_nKmers = len(m)
+		_nKmers = len(*m)
 		if _nKmers < nKmers {
 			nKmers = _nKmers
 		}
@@ -145,7 +145,7 @@ func WriteKVData(k uint8, MaskOffset int, data []map[uint64]*[]uint64, file stri
 	}
 
 	for _, m := range data {
-		err = wtr.WriteDataOfAMask(m)
+		err = wtr.WriteDataOfAMask(*m)
 		if err != nil {
 			return 0, err
 		}

@@ -35,7 +35,7 @@ func TestKVData(t *testing.T) {
 
 	// generate data
 
-	data := make([]map[uint64]*[]uint64, 0, 4)
+	data := make([]*map[uint64]*[]uint64, 0, 4)
 
 	var n uint64 = 1 << (k << 1) // all value for k=5
 	var i uint64
@@ -45,7 +45,7 @@ func TestKVData(t *testing.T) {
 		for i = 0; i < n; i++ {
 			m[i] = &[]uint64{i + (i << 30)}
 		}
-		data = append(data, m)
+		data = append(data, &m)
 	}
 
 	// write data
@@ -72,8 +72,8 @@ func TestKVData(t *testing.T) {
 
 		m0 := data[i]
 
-		if len(m0) != len(*m1) {
-			t.Errorf("k-mer number mismatch, expected: %d, result: %d", len(m0), len(*m1))
+		if len(*m0) != len(*m1) {
+			t.Errorf("k-mer number mismatch, expected: %d, result: %d", len(*m0), len(*m1))
 			return
 		}
 

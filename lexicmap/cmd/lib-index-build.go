@@ -174,9 +174,10 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	// it's private variable because the size comes from opt.Masks
 	var poolKmerDatas = &sync.Pool{New: func() interface{} {
-		datas := make([]map[uint64]*[]uint64, opt.Masks)
+		datas := make([]*map[uint64]*[]uint64, opt.Masks)
 		for i := 0; i < opt.Masks; i++ {
-			datas[i] = make(map[uint64]*[]uint64, 1024)
+			m := kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
+			datas[i] = m
 		}
 		return &datas
 	}}
@@ -325,9 +326,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// --------------------------------
 	// 2) collect k-mers data & write genomes to file
-	datas := poolKmerDatas.Get().(*[]map[uint64]*[]uint64)
+	datas := poolKmerDatas.Get().(*[]*map[uint64]*[]uint64)
 	for _, data := range *datas { // reset all maps
-		clear(data)
+		clear(*data)
 	}
 
 	genomes := make(chan *genome.Genome, opt.NumCPUs)
@@ -420,9 +421,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					for i := begin; i < end; i++ {
 						data := (*datas)[i] // the map to save into
 						kmer = (*_kmers)[i] // captured k-mer by the mask
-						if values, ok = data[kmer]; !ok {
+						if values, ok = (*data)[kmer]; !ok {
 							values = &[]uint64{}
-							data[kmer] = values
+							(*data)[kmer] = values
 						}
 						for _, loc = range (*loces)[i] { // location information of the captured k-mer
 							//  batch idx: 17 bits
@@ -712,6 +713,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	<-doneInfo // info file
 
+	for _, m := range *datas {
+		kv.RecycleKmerData(m)
+	}
 	poolKmerDatas.Put(datas)
 
 	return chunks
