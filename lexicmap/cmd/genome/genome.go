@@ -757,7 +757,10 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, er
 	// --------------------------------------------------
 	var foundSeqID bool
 	var seqSize, lenSum int
-	interval := (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+	var interval int
+	if g.NumSeqs > 1 {
+		interval = (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+	}
 	// --------------------------------------------------
 
 	for i := 0; i < g.NumSeqs; i++ {

@@ -80,11 +80,11 @@ var subseqCmd = &cobra.Command{
 		checkError(err)
 		end, err = strconv.Atoi(r[1])
 		checkError(err)
-		if start == 0 || end == 0 {
-			checkError(fmt.Errorf("both start and end should not be 0"))
+		if start <= 0 || end <= 0 {
+			checkError(fmt.Errorf("both begin and end position should not be <= 0"))
 		}
-		if start < 0 && end > 0 {
-			checkError(fmt.Errorf("when start < 0, end should not > 0"))
+		if start > end {
+			checkError(fmt.Errorf("begin position should be < end position"))
 		}
 
 		outFile := getFlagString(cmd, "out-file")
