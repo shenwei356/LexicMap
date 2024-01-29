@@ -37,8 +37,8 @@ import (
 
 var mapCmd = &cobra.Command{
 	Use:   "search",
-	Short: "search sequences against an index",
-	Long: `search sequences against an index
+	Short: "Search sequences against an index",
+	Long: `Search sequences against an index
 
 Attentions:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.

@@ -37,8 +37,8 @@ import (
 
 var kmersCmd = &cobra.Command{
 	Use:   "kmers",
-	Short: "view k-mers captured by the masks",
-	Long: `view k-mers captured by the masks
+	Short: "View k-mers captured by the masks",
+	Long: `View k-mers captured by the masks
 
 Attentions:
   1. Mask index (column mask) is 1-based.
