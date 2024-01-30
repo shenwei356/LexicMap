@@ -11,7 +11,7 @@ Building an index
         -k 31 --masks 10000
 
     # from a file list
-    lexicmap index -X files.txt -S -O db.lmi --force
+    lexicmap index -X files.txt -S -O db.lmi --force \
         -k 31 --masks 10000
 
 Querying

@@ -35,8 +35,8 @@ import (
 
 var indexCmd = &cobra.Command{
 	Use:   "index",
-	Short: "Generate index from FASTA/Q sequences",
-	Long: `Generate index from FASTA/Q sequences
+	Short: "Generate an index from FASTA/Q sequences",
+	Long: `Generate an index from FASTA/Q sequences
 
 Input:
  *1. Sequences of each reference genome should be saved in a separate FASTA/Q
@@ -50,39 +50,39 @@ Input:
      flag -r/--file-regexp.
 
   Attentions:
-    1) You can rename the sequence files for convenience because the genome
+   *1) You can rename the sequence files for convenience because the genome
        identifiers in the index and search result would be: the basenames of
        files with common FASTA/Q file extensions removed, which are extracted
        via the flag -N/--ref-name-regexp.
        The extracted genome identifiers better be distinct/unique, which will
        be shown in search results and are used to extract subsequences in the
        command "lexicmap utils subseq".
-    2) Unwanted sequences like plasmid can be filtered out by the name via
+    2) Unwanted sequences like plasmids can be filtered out by the name via
        regular expressions (-B/--seq-name-filter).
 
 Important parameters:
-  --- Lexichash computation ---
-  1. -k/--kmer,        K-mer size. Larger values improve searching specificity and
-                       do not increase index size.
-  2. -m/--masks,       Number of masks. Larger values improve searching sensitivity
-                       and will increase index size
+  --- LexicHash computation ---
+  1. -k/--kmer,        K-mer size. Larger values improve the search specificity and
+                       do not increase the index size.
+  2. -m/--masks,       Number of masks. Larger values improve the search sensitivity
+                       and will increase the index size
 
   --- seeds (k-mer-value data) ---
-  1. -c/--chunks,      Number of seeds file chunks. Larger values accelerate searching
-                       speed at cost of high disk reading load. The maximum number
-                       should not exceed the maximum number of open files set by
-                       the operating systems.
+  1. -c/--chunks,      Number of seeds file chunks. Larger values accelerate the search
+                       speed at the cost of a high disk reading load. The maximum number
+                       should not exceed the maximum number of open files set by the
+                       operating systems.
   2. -p/--partitions,  Number of partitions for indexing each seed file. Larger values
-                       improve searching speed at cost of higher memory occupation.
-  3. --max-open-files, Maximum number of open files. It's used in merging indexes
+                       improve the search speed at the cost of higher memory occupation.
+  3. --max-open-files, Maximum number of open files. It's only used in merging indexes
                        of multiple genome batches.
 
   --- genome data ---
   1. -b/--batch-size,  Maximum number of genomes in each batch. If the number of
                        input files exceed this number, input files are grouped
                        into multiple batches and indexes are built for all batches.
-                       Next, seeds files are merged into a big one, while genome
-                       data keep unchanged.
+                       Next, seed files are merged into a big one, while genome
+                       data files are kept unchanged and collected.
                        Bigger values inrease indexing memory occupation.
 
 `,
@@ -320,7 +320,7 @@ func init() {
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored.`))
 
 	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting reference name from the filename.`))
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename.`))
 
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
@@ -348,7 +348,7 @@ func init() {
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	indexCmd.Flags().IntP("rand-seed", "s", 1,
-		formatFlagUsage(`Rnand seed for generating random masks.`))
+		formatFlagUsage(`Rand seed for generating random masks.`))
 
 	// -----------------------------  kmer-value data   -----------------------------
 
@@ -366,7 +366,7 @@ func init() {
 
 	// ----------------------------------------------------------
 
-	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] {[-I <seqs dir>] | -X <file list>} -O <out dir>"))
+	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>"))
 }
 
 var reIgnoreCaseStr = "(?i)"

@@ -385,18 +385,18 @@ func init() {
 	RootCmd.AddCommand(mapCmd)
 
 	mapCmd.Flags().StringP("index", "d", "",
-		formatFlagUsage(`Index directory created by "lexicprof index".`))
+		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
+		formatFlagUsage(`Maximum opened files.`))
 
 	// seed searching
 
 	mapCmd.Flags().IntP("min-prefix", "p", 15,
-		formatFlagUsage(`Minimum length of shared substrings`))
+		formatFlagUsage(`Minimum length of shared substrings (seeds)`))
 
 	mapCmd.Flags().IntP("min-single-prefix", "P", 20,
 		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
@@ -405,10 +405,10 @@ func init() {
 		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings`))
 
 	mapCmd.Flags().IntP("max-gap", "g", 2000,
-		formatFlagUsage(`Max gap`))
+		formatFlagUsage(`Max gap in seed chaining`))
 
 	mapCmd.Flags().IntP("top-n", "n", 100,
-		formatFlagUsage(`Keep top n matches for a query`))
+		formatFlagUsage(`Keep top N matches for a query`))
 
 	// sequence similarity
 
@@ -418,7 +418,7 @@ func init() {
 	mapCmd.Flags().Float64P("min-identity", "i", 70,
 		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence`))
 
-	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [read.fq.gz ...] [-o read.tsv.gz]"))
+	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 
 }
 

@@ -164,7 +164,7 @@ func init() {
 	subseqCmd.Flags().BoolP("revcom", "R", false,
 		formatFlagUsage("Extract subsequence on the negative strand"))
 
-	RootCmd.PersistentFlags().IntP("line-width", "w", 60,
+	subseqCmd.Flags().IntP("line-width", "w", 60,
 		formatFlagUsage("Line width of sequence (0 for no wrap)"))
 
 	subseqCmd.SetUsageTemplate(usageTemplate(""))

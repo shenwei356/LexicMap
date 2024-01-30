@@ -429,6 +429,27 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	}
 
 	if hasPrev { // the last single one
+		// ------------------------------------------------------------------------
+		// index anchor. this happened only for len(*kmers) == 1
+		if idxChunkSize == 1 || j%idxChunkSize == 0 {
+			if recordedAnchors < nAnchors {
+				recordedAnchors++
+
+				// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, i, preKey, N)
+				be.PutUint64(buf[:8], preKey)          // k-mer
+				be.PutUint64(buf[8:16], uint64(wtr.N)) // offset
+				_, err = wi.Write(buf[:16])
+				if err != nil {
+					return err
+				}
+			}
+
+			j = 0
+		}
+		j++
+
+		// ------------------------------------------------------------------------
+
 		// fmt.Printf("write the last two kmer: %s\n",
 		// 	lexichash.MustDecode(preKey, k))
 
