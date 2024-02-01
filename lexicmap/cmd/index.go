@@ -73,7 +73,8 @@ Important parameters:
                        should not exceed the maximum number of open files set by the
                        operating systems.
   2. -p/--partitions,  Number of partitions for indexing each seed file. Larger values
-                       improve the search speed at the cost of higher memory occupation.
+                       slightly improve the search speed at the cost of higher memory
+                       occupation.
   3. --max-open-files, Maximum number of open files. It's only used in merging indexes
                        of multiple genome batches.
 
@@ -83,7 +84,8 @@ Important parameters:
                        into multiple batches and indexes are built for all batches.
                        Next, seed files are merged into a big one, while genome
                        data files are kept unchanged and collected.
-                       Bigger values inrease indexing memory occupation.
+                       Bigger values inrease indexing memory occupation, while improve
+                       the search speed.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -361,7 +363,7 @@ func init() {
 
 	// -----------------------------  genome batches   -----------------------------
 
-	indexCmd.Flags().IntP("batch-size", "b", 1<<17,
+	indexCmd.Flags().IntP("batch-size", "b", 10000,
 		formatFlagUsage(`Maximum number of genomes in each batch.`))
 
 	// ----------------------------------------------------------
