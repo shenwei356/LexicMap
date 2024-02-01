@@ -172,15 +172,11 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 	// save mask later
 
-	// it's private variable because the size comes from opt.Masks
-	var poolKmerDatas = &sync.Pool{New: func() interface{} {
-		datas := make([]*map[uint64]*[]uint64, opt.Masks)
-		for i := 0; i < opt.Masks; i++ {
-			m := kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
-			datas[i] = m
-		}
-		return &datas
-	}}
+	datas := make([]*map[uint64]*[]uint64, opt.Masks)
+	for i := 0; i < opt.Masks; i++ {
+		m := kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
+		datas[i] = m
+	}
 
 	// split the files in to batches
 	nFiles := len(infiles)
@@ -221,7 +217,11 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		kvChunks = buildAnIndex(lh, opt, poolKmerDatas, outdirB, files, batch)
+		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch)
+	}
+
+	for _, data := range datas {
+		kv.PoolKmerData.Put(data)
 	}
 
 	if nBatches == 1 {
@@ -249,7 +249,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
-	poolKmerDatas *sync.Pool,
+	datas *[]*map[uint64]*[]uint64,
 	outdir string, files []string, batch int) int {
 
 	var timeStart time.Time
@@ -326,7 +326,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// --------------------------------
 	// 2) collect k-mers data & write genomes to file
-	datas := poolKmerDatas.Get().(*[]*map[uint64]*[]uint64)
 	for _, data := range *datas { // reset all maps
 		clear(*data)
 	}
@@ -712,11 +711,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 
 	<-doneInfo // info file
-
-	for _, m := range *datas {
-		kv.RecycleKmerData(m)
-	}
-	poolKmerDatas.Put(datas)
 
 	return chunks
 }
