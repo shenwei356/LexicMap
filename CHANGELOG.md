@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.2.0 - 2014-01-30
+### v0.2.0 - 2014-02-02
 
 - Software architecture and index formats are redesigned to reduce searching memory occupation.
 - Indexing: genomes are processed in batches to reduce RAM usage, then indexes of all batches are merged.
