@@ -39,53 +39,48 @@ var indexCmd = &cobra.Command{
 	Long: `Generate an index from FASTA/Q sequences
 
 Input:
- *1. Sequences of each reference genome should be saved in a separate FASTA/Q
-     file, with the reference identifier in the file name.
-  2. Input plain or gzipped FASTA/Q files can be given via positional
-     arguments or the flag -X/--infile-list with the list of input files,
-     the flag -S/--skip-file-check is optional for skipping file checking.
-  3. Input can also be a directory containing sequence files via the flag
-     -I/--in-dir, with multiple-level sub-directories allowed.
-     A regular expression for matching sequencing files is available via the
-     flag -r/--file-regexp.
+ *1. Sequences of each reference genome should be saved in a separate FASTA/Q file, with the reference
+     identifier in the file name.
+  2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
+     with the list of input files, the flag -S/--skip-file-check is optional for skipping file checking.
+  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
+     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
+     -r/--file-regexp.
 
   Attentions:
-   *1) You can rename the sequence files for convenience because the genome
-       identifiers in the index and search result would be: the basenames of
-       files with common FASTA/Q file extensions removed, which are extracted
-       via the flag -N/--ref-name-regexp.
-       The extracted genome identifiers better be distinct/unique, which will
-       be shown in search results and are used to extract subsequences in the
-       command "lexicmap utils subseq".
-    2) Unwanted sequences like plasmids can be filtered out by the name via
-       regular expressions (-B/--seq-name-filter).
+   *1) ► You can rename the sequence files for convenience because the genome identifiers in the index and
+       search result would be: the basenames of files with common FASTA/Q file extensions removed, which
+       are extracted via the flag -N/--ref-name-regexp.
+       ► The extracted genome identifiers better be distinct/unique, which will be shown in search results
+       and are used to extract subsequences in the command "lexicmap utils subseq".
+    2) ► Unwanted sequences like plasmids can be filtered out by the name via regular expressions
+       (-B/--seq-name-filter).
 
 Important parameters:
   --- LexicHash computation ---
-  1. -k/--kmer,        K-mer size. Larger values improve the search specificity and
-                       do not increase the index size.
-  2. -m/--masks,       Number of masks. Larger values improve the search sensitivity
-                       and will increase the index size
+  1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
+                       ► Bigger values improve the search specificity and do not increase the index size.
+
+  2. -m/--masks,       ► Number of masks (default: 10240).
+                       ► Bigger values improve the search sensitivity and increase the index size.
 
   --- seeds (k-mer-value data) ---
-  1. -c/--chunks,      Number of seeds file chunks. Larger values accelerate the search
-                       speed at the cost of a high disk reading load. The maximum number
-                       should not exceed the maximum number of open files set by the
+  1. -c/--chunks,      ► Number of seed file chunks (default: 8).
+                       ► Bigger values accelerate the search speed at the cost of a high disk reading load.
+                       The maximum number should not exceed the maximum number of open files set by the
                        operating systems.
-  2. -p/--partitions,  Number of partitions for indexing each seed file. Larger values
-                       slightly improve the search speed at the cost of higher memory
-                       occupation.
-  3. --max-open-files, Maximum number of open files. It's only used in merging indexes
-                       of multiple genome batches.
+  2. -p/--partitions,  ► Number of partitions for indexing each seed file (default: 1024).
+                       ► Bigger values slightly improve the search speed at the cost of slightly higher
+                       memory occupation.
+  3. --max-open-files, ► Maximum number of open files (default: 512).
+                       ► It's only used in merging indexes of multiple genome batches.
 
   --- genome data ---
-  1. -b/--batch-size,  Maximum number of genomes in each batch. If the number of
-                       input files exceed this number, input files are grouped
-                       into multiple batches and indexes are built for all batches.
-                       Next, seed files are merged into a big one, while genome
-                       data files are kept unchanged and collected.
-                       Bigger values inrease indexing memory occupation, while improve
-                       the search speed.
+  1. -b/--batch-size,  ► Maximum number of genomes in each batch (maximum: 131072,default: 10000).
+                       ► If the number of input files exceeds this number, input files are into multiple
+                       batches and indexes are built for all batches. Next, seed files are merged into a
+                       big one, while genome data files are kept unchanged and collected.
+                       ► Bigger values increase indexing memory occupation, while improving the search speed.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -364,7 +359,7 @@ func init() {
 	// -----------------------------  genome batches   -----------------------------
 
 	indexCmd.Flags().IntP("batch-size", "b", 10000,
-		formatFlagUsage(`Maximum number of genomes in each batch.`))
+		formatFlagUsage(`Maximum number of genomes in each batch (maximum value: 131072)`))
 
 	// ----------------------------------------------------------
 
