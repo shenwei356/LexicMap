@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -61,11 +62,11 @@ Important parameters:
   1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
                        ► Bigger values improve the search specificity and do not increase the index size.
 
-  2. -m/--masks,       ► Number of masks (default: 10240).
+  2. -m/--masks,       ► Number of masks (default: 20480).
                        ► Bigger values improve the search sensitivity and increase the index size.
 
   --- seeds (k-mer-value data) ---
-  1. -c/--chunks,      ► Number of seed file chunks (default: 8).
+  1. -c/--chunks,      ► Number of seed file chunks (maximum: 128, default: #CPUs).
                        ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                        The maximum number should not exceed the maximum number of open files set by the
                        operating systems.
@@ -338,7 +339,7 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "m", 10240,
+	indexCmd.Flags().IntP("masks", "m", 20480,
 		formatFlagUsage(`Number of masks.`))
 
 	indexCmd.Flags().IntP("prefix", "", 15,
@@ -349,7 +350,11 @@ func init() {
 
 	// -----------------------------  kmer-value data   -----------------------------
 
-	indexCmd.Flags().IntP("chunks", "c", 8,
+	defaultChunks := runtime.NumCPU()
+	if defaultChunks > 128 {
+		defaultChunks = 128
+	}
+	indexCmd.Flags().IntP("chunks", "c", defaultChunks,
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files.`))
 	indexCmd.Flags().IntP("partitions", "p", 1024,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files.`))
