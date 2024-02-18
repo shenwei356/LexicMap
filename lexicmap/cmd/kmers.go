@@ -33,6 +33,8 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
 	"github.com/spf13/cobra"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 var kmersCmd = &cobra.Command{
@@ -139,17 +141,51 @@ Attentions:
 
 		// ---------------------------------------------------------------
 
+		// process bar
+		var pbs *mpb.Progress
+		var bar *mpb.Bar
+		var chDuration chan time.Duration
+		var doneDuration chan int
+
 		var masks []int
 		if mask == 0 {
 			masks = make([]int, len(lh.Masks))
 			for i := range masks {
 				masks[i] = i + 1
 			}
+
+			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+			bar = pbs.AddBar(int64(len(lh.Masks)),
+				mpb.PrependDecorators(
+					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
+					decor.Name("", decor.WCSyncSpaceR),
+					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+				),
+				mpb.AppendDecorators(
+					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+					decor.EwmaETA(decor.ET_STYLE_GO, 10),
+					decor.OnComplete(decor.Name(""), ". done"),
+				),
+			)
+
+			if opt.Verbose {
+				chDuration = make(chan time.Duration, opt.NumCPUs)
+				doneDuration = make(chan int)
+				go func() {
+					for t := range chDuration {
+						bar.EwmaIncrBy(1, t)
+					}
+					doneDuration <- 1
+				}()
+			}
 		} else {
 			masks = []int{mask}
 		}
 
+		var startTime time.Time
 		for _, mask = range masks {
+			startTime = time.Now()
+
 			// compute the chunk
 			chunkSize := (len(lh.Masks) + info.Chunks - 1) / info.Chunks
 			chunk := (mask - 1) / chunkSize
@@ -306,6 +342,16 @@ Attentions:
 			}
 
 			r.Close()
+
+			if len(masks) > 1 {
+				chDuration <- time.Duration(float64(time.Since(startTime)))
+			}
+		}
+
+		if len(masks) > 1 && opt.Verbose {
+			close(chDuration)
+			<-doneDuration
+			pbs.Wait()
 		}
 
 	},
