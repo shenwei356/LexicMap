@@ -138,7 +138,7 @@ func init() {
 	utilsCmd.AddCommand(masksCmd)
 
 	masksCmd.Flags().StringP("index", "d", "",
-		formatFlagUsage(`Index directory created by "lexicprof index".`))
+		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	masksCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))

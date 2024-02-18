@@ -315,7 +315,7 @@ func init() {
 	utilsCmd.AddCommand(kmersCmd)
 
 	kmersCmd.Flags().StringP("index", "d", "",
-		formatFlagUsage(`Index directory created by "lexicprof index".`))
+		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	kmersCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))

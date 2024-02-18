@@ -70,7 +70,7 @@ var subseqCmd = &cobra.Command{
 		lineWidth := getFlagNonNegativeInt(cmd, "line-width")
 
 		if !reRegion.MatchString(region) {
-			checkError(fmt.Errorf(`invalid region: %s. type "lexicprof utils subseq -h" for more examples`, region))
+			checkError(fmt.Errorf(`invalid region: %s. type "lexicmap utils subseq -h" for more examples`, region))
 		}
 		var start, end int
 		var err error
