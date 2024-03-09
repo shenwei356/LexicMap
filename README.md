@@ -7,12 +7,10 @@ LexicMap: efficient sequence alignment against millions of microbial genomes​.
 Building an index
 
     # from a directory
-    lexicmap index -I genomes/ -O db.lmi --force \
-        -k 31 --masks 10000
+    lexicmap index -I genomes/ -O db.lmi --force
 
     # from a file list
-    lexicmap index -X files.txt -S -O db.lmi --force \
-        -k 31 --masks 10000
+    lexicmap index -X files.txt -S -O db.lmi --force
 
 Querying
 

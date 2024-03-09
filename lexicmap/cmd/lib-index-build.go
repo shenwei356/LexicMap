@@ -559,10 +559,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				if reRefName.MatchString(baseFile) {
 					genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
 				} else {
-					genomeID, _ = filepathTrimExtension(baseFile)
+					genomeID, _, _ = filepathTrimExtension(baseFile, nil)
 				}
 			} else {
-				genomeID, _ = filepathTrimExtension(baseFile)
+				genomeID, _, _ = filepathTrimExtension(baseFile, nil)
 			}
 
 			refseq.ID = []byte(genomeID)

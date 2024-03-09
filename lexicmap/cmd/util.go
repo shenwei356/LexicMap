@@ -145,38 +145,29 @@ func getFileListFromDir(path string, pattern *regexp.Regexp, threads int) ([]str
 	return files, err
 }
 
-func filepathTrimExtension(file string) (string, string) {
-	gz := strings.HasSuffix(file, ".gz") || strings.HasSuffix(file, ".GZ")
-	if gz {
-		file = file[0 : len(file)-3]
+var defaultExts = []string{".gz", ".xz", ".zst", ".bz"}
+
+func filepathTrimExtension(file string, suffixes []string) (string, string, string) {
+	if suffixes == nil {
+		suffixes = defaultExts
 	}
 
-	fasta := strings.HasSuffix(file, ".fasta") || strings.HasSuffix(file, ".FASTA")
-	fastq := strings.HasSuffix(file, ".fastq") || strings.HasSuffix(file, ".FASTQ")
-	var fa, fq bool
-	if fasta || fastq {
-		file = file[0 : len(file)-6]
-	} else {
-		fa = strings.HasSuffix(file, ".fa") || strings.HasSuffix(file, ".FA") || strings.HasSuffix(file, ".fna") || strings.HasSuffix(file, ".FNA")
-		fq = strings.HasSuffix(file, ".fq") || strings.HasSuffix(file, ".FQ")
+	var e, e1, e2 string
+	f := strings.ToLower(file)
+	for _, s := range suffixes {
+		// e = strings.ToLower(s)
+		e = s
+		if strings.HasSuffix(f, e) {
+			e2 = e
+			file = file[0 : len(file)-len(e)]
+			break
+		}
 	}
 
-	extension := filepath.Ext(file)
-	name := file[0 : len(file)-len(extension)]
-	switch {
-	case fasta:
-		extension += ".fasta"
-	case fastq:
-		extension += ".fastq"
-	case fa:
-		extension += ".fa"
-	case fq:
-		extension += ".fq"
-	}
-	if gz {
-		extension += ".gz"
-	}
-	return name, extension
+	e1 = filepath.Ext(file)
+	name := file[0 : len(file)-len(e1)]
+
+	return name, e1, e2
 }
 
 func stringSplitN(s string, sep string, n int, a *[]string) {
