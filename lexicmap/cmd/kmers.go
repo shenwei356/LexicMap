@@ -368,11 +368,5 @@ func init() {
 	kmersCmd.Flags().IntP("mask", "m", 1,
 		formatFlagUsage(`View k-mers captured by Xth mask. (0 for all)`))
 
-	kmersCmd.Flags().BoolP("show-path", "p", false,
-		formatFlagUsage(`Append paths of the k-mers`))
-
-	kmersCmd.Flags().StringP("separator", "s", "-",
-		formatFlagUsage(`Separator of nodes in the path".`))
-
 	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> [-m <mask index>] [-o out.tsv.gz]"))
 }
