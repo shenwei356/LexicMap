@@ -37,6 +37,11 @@ var subseqCmd = &cobra.Command{
 	Short: "extract subsequence via reference name, sequence ID, position and strand",
 	Long: `exextract subsequence via reference name, sequence ID, position and strand
 
+Attention:
+  1. The option -s/--seq-id is optional.
+     1) If given, the positions are that in the original sequence.
+	 2) If not given, the positions are that in the concatenated sequence.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -55,8 +60,9 @@ var subseqCmd = &cobra.Command{
 		}
 
 		seqid := getFlagString(cmd, "seq-id")
+		var concatenatedPositions bool
 		if seqid == "" {
-			checkError(fmt.Errorf("flag -s/--seq-id needed"))
+			concatenatedPositions = true
 		}
 
 		var reRegion = regexp.MustCompile(`\-?\d+:\-?\d+`)
@@ -112,7 +118,12 @@ var subseqCmd = &cobra.Command{
 			checkError(fmt.Errorf("failed to read genome data file: %s", err))
 		}
 
-		tSeq, err := rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+		var tSeq *genome.Genome
+		if concatenatedPositions {
+			tSeq, err = rdr.SubSeq(genomeIdx, start-1, end-1)
+		} else {
+			tSeq, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+		}
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genome data file: %s", err))
 		}
@@ -134,7 +145,11 @@ var subseqCmd = &cobra.Command{
 			s.RevComInplace()
 		}
 
-		fmt.Fprintf(outfh, ">%s:%d-%d\n", seqid, start, end)
+		if concatenatedPositions {
+			fmt.Fprintf(outfh, ">%s:%d-%d\n", refname, start, end)
+		} else {
+			fmt.Fprintf(outfh, ">%s:%d-%d\n", seqid, start, end)
+		}
 		outfh.Write(s.FormatSeq(lineWidth))
 		outfh.WriteByte('\n')
 
@@ -150,22 +165,22 @@ func init() {
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	subseqCmd.Flags().StringP("ref-name", "n", "",
-		formatFlagUsage(`Reference name`))
+		formatFlagUsage(`Reference name.`))
 
 	subseqCmd.Flags().StringP("seq-id", "s", "",
-		formatFlagUsage(`Sequence ID`))
+		formatFlagUsage(`Sequence ID. If the value is empty, the positions in the region are treated as that in the concatenated sequence.`))
 
 	subseqCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
 	subseqCmd.Flags().StringP("region", "r", "",
-		formatFlagUsage(`Region of the subsequence (1-based)`))
+		formatFlagUsage(`Region of the subsequence (1-based).`))
 
 	subseqCmd.Flags().BoolP("revcom", "R", false,
-		formatFlagUsage("Extract subsequence on the negative strand"))
+		formatFlagUsage("Extract subsequence on the negative strand."))
 
 	subseqCmd.Flags().IntP("line-width", "w", 60,
-		formatFlagUsage("Line width of sequence (0 for no wrap)"))
+		formatFlagUsage("Line width of sequence (0 for no wrap)."))
 
 	subseqCmd.SetUsageTemplate(usageTemplate(""))
 }

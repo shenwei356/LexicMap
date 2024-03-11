@@ -47,7 +47,6 @@ Attentions:
   2. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of (k-1) N's.
-     So the positions might not be straightforward for extracting subsequences.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
