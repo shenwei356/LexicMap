@@ -122,7 +122,6 @@ Important parameters:
 
 		outDir := getFlagString(cmd, "out-dir")
 		force := getFlagBool(cmd, "force")
-		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		if outDir == "" {
 			checkError(fmt.Errorf("flag -O/--out-dir is needed"))
@@ -131,6 +130,7 @@ Important parameters:
 		var err error
 
 		inDir := getFlagString(cmd, "in-dir")
+		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		outDir = filepath.Clean(outDir)
 
