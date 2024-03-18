@@ -25,6 +25,7 @@ import (
 	"container/heap"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,6 +36,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/iterator"
@@ -421,6 +423,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 		}
 	} else {
 		filesTop = files
+		topN = len(files)
 	}
 
 	// --------------------------------------------------------------------
@@ -448,7 +451,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 			),
 			mpb.AppendDecorators(
 				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 3),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1),
 				decor.OnComplete(decor.Name(""), ". done"),
 			),
 		)
@@ -465,8 +468,6 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 
 	// 2. Collect k-mers
 
-	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
-	// var data [][]map[uint64][]uint32
 	nPrefix := 1
 	for 1<<(nPrefix<<1) <= opt.Masks {
 		nPrefix++
@@ -485,17 +486,47 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 	genomes := make(chan *Genome, opt.NumCPUs)
 	done := make(chan int)
 
+	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
+	data := make([][]map[uint64][]uint32, int(math.Pow(4, float64(nPrefix))))
+
 	go func() {
 		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
-		for refseq := range genomes {        // each genome
+		var kmer uint64
+		var m map[uint64][]uint32
+		var locs *[]uint32
+		var prefix int
+		k8 := uint8(opt.K)
+		p8 := uint8(nPrefix)
+		var iG int                    // index of genome
+		for refseq := range genomes { // each genome
 			fmt.Printf("refseq: %s, size: %d bp, kmers: %d\n",
 				refseq.ID, refseq.GenomeSize, len(refseq.Kmers))
+
+			for kmer, locs = range refseq.Kmers {
+				prefix = int(util.KmerPrefix(kmer, k8, p8))
+				if data[prefix] == nil {
+					data[prefix] = make([]map[uint64][]uint32, topN)
+				}
+
+				m = data[prefix][iG]
+				if m == nil {
+					data[prefix][iG] = make(map[uint64][]uint32, 8)
+					m = data[prefix][iG]
+				}
+
+				_locs := make([]uint32, len(*locs))
+				copy(_locs, *locs)
+				m[kmer] = _locs
+			}
+
+			iG++
 
 			poolGenomes.Put(refseq)
 
 			if opt.Verbose {
 				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
 			}
+
 		}
 		done <- 1
 	}()
@@ -602,7 +633,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 				genomeID, _, _ = filepathTrimExtension(baseFile, nil)
 			}
 
-			refseq.ID = []byte(genomeID)
+			refseq.ID = append(refseq.ID, []byte(genomeID)...)
 			refseq.StartTime = startTime
 
 			// --------------------------------
