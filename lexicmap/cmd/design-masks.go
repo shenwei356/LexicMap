@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -35,13 +36,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+	"github.com/rdleal/intervalst/interval"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
+	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -158,7 +160,11 @@ var designMasksCmd = &cobra.Command{
 			log.Infof("  %d input file(s) given", len(files))
 		}
 
+		// ----------------------------------------------------------------
+
 		topN := getFlagPositiveInt(cmd, "top-n")
+		_prefix := getFlagPositiveInt(cmd, "prefix-ext")
+
 		// ---------------------------------------------------------------
 
 		outFile := getFlagString(cmd, "out-file")
@@ -193,19 +199,19 @@ var designMasksCmd = &cobra.Command{
 
 		// ---------------------------------------------------------------
 		// output file handler
-		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
-		checkError(err)
-		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
-		}()
+		// outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
+		// checkError(err)
+		// defer func() {
+		// 	outfh.Flush()
+		// 	if gw != nil {
+		// 		gw.Close()
+		// 	}
+		// 	w.Close()
+		// }()
 
 		// ---------------------------------------------------------------
 
-		DesignMasks(files, bopt, topN)
+		DesignMasks(files, bopt, topN, _prefix, outFile)
 	},
 }
 
@@ -234,9 +240,6 @@ func init() {
 	designMasksCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
-	designMasksCmd.Flags().IntP("top-n", "n", 100,
-		formatFlagUsage(`Choose top n fils with the biggest genome size`))
-
 	// -----------------------------  lexichash   -----------------------------
 
 	designMasksCmd.Flags().IntP("kmer", "k", 31,
@@ -251,10 +254,28 @@ func init() {
 	designMasksCmd.Flags().IntP("prefix", "p", 15,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
+	// -----------------------------  design mask   -----------------------------
+
+	designMasksCmd.Flags().IntP("top-n", "n", 100,
+		formatFlagUsage(`Choose top n fils with the biggest genome size`))
+
+	designMasksCmd.Flags().IntP("prefix-ext", "P", 4,
+		formatFlagUsage(`Extension length for prefixes, higher value -> smaller maximum seed distance`))
+
 	designMasksCmd.SetUsageTemplate(usageTemplate("{ -d <index path> | [-k <k>] [-n <masks>] [-s <seed>] } [-o out.tsv.gz]"))
 }
 
-func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
+func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix int, outFile string) error {
+	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), 5)
+	checkError(err)
+	defer func() {
+		outfh.Flush()
+		if gw != nil {
+			gw.Close()
+		}
+		w.Close()
+	}()
+
 	// if topN < 100 {
 	// 	topN = 100
 	// }
@@ -271,10 +292,13 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 
 	var filesTop []string
 	file2gsizes := &File2GSizes{}
-	if len(files) > topN {
+
+	var maxGenome int
+	{
 		// find topn genome files with biggest genome size
 		if opt.Verbose || opt.Log2File {
-			log.Infof("check genomes sizes of %d files...", len(files))
+			log.Info()
+			log.Infof("checking genomes sizes of %d files...", len(files))
 		}
 
 		// process bar
@@ -413,16 +437,18 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 
 		filesTop = make([]string, 0, topN)
 		sort.Sort(*file2gsizes) // make sure it's sorted
+		maxGenome = (*file2gsizes)[len(*file2gsizes)-1].Size
+
 		if opt.Verbose || opt.Log2File {
 			log.Infof("  genome size range in the top %d files: [%d, %d]",
-				topN, (*file2gsizes)[0].Size, (*file2gsizes)[len(*file2gsizes)-1].Size)
+				topN, (*file2gsizes)[0].Size, maxGenome)
 		}
 
 		for _, gs := range *file2gsizes {
 			filesTop = append(filesTop, gs.File)
 		}
-	} else {
-		filesTop = files
+	}
+	if topN > len(files) {
 		topN = len(files)
 	}
 
@@ -430,13 +456,13 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 	// anlysis
 	if opt.Verbose || opt.Log2File {
 		log.Info()
-		log.Infof("analyzing %d files...", len(filesTop))
+		log.Infof("collecting k-mers from %d files...", len(filesTop))
 	}
 
 	// -------------------------------------------------
 	// count k-mers from the top n files
-	// process bar
 
+	// process bar
 	var pbs *mpb.Progress
 	var bar *mpb.Bar
 	var chDuration chan time.Duration
@@ -466,227 +492,424 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int) error {
 		}()
 	}
 
-	// 2. Collect k-mers
+	// Collect k-mers
 
-	nPrefix := 1
-	for 1<<(nPrefix<<1) <= opt.Masks {
-		nPrefix++
+	lenPrefix := 1
+	for 1<<(lenPrefix<<1) <= opt.Masks {
+		lenPrefix++
 	}
-	nPrefix-- // 7 for 20,000 files
-
-	poolGenomes := &sync.Pool{New: func() interface{} {
-		g := &Genome{
-			ID:    make([]byte, 0, 128),
-			Seq:   make([]byte, 0, 10<<20),
-			Kmers: make(map[uint64]*[]uint32, 10<<20),
-		}
-		return g
-	}}
-
-	genomes := make(chan *Genome, opt.NumCPUs)
-	done := make(chan int)
+	lenPrefix-- // 7 for 20,000 files
 
 	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
-	data := make([][]map[uint64][]uint32, int(math.Pow(4, float64(nPrefix))))
+	nPrefix := int(math.Pow(4, float64(lenPrefix)))
+	data := make([][]map[uint64]*[]int32, nPrefix)
 
-	go func() {
-		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
-		var kmer uint64
-		var m map[uint64][]uint32
-		var locs *[]uint32
-		var prefix int
-		k8 := uint8(opt.K)
-		p8 := uint8(nPrefix)
-		var iG int                    // index of genome
-		for refseq := range genomes { // each genome
-			fmt.Printf("refseq: %s, size: %d bp, kmers: %d\n",
-				refseq.ID, refseq.GenomeSize, len(refseq.Kmers))
+	var m map[uint64]*[]int32
+	var prefix int
+	k8 := uint8(opt.K)
+	p8 := uint8(lenPrefix)
+	genomeIDs := make([]string, topN)
 
-			for kmer, locs = range refseq.Kmers {
-				prefix = int(util.KmerPrefix(kmer, k8, p8))
-				if data[prefix] == nil {
-					data[prefix] = make([]map[uint64][]uint32, topN)
-				}
-
-				m = data[prefix][iG]
-				if m == nil {
-					data[prefix][iG] = make(map[uint64][]uint32, 8)
-					m = data[prefix][iG]
-				}
-
-				_locs := make([]uint32, len(*locs))
-				copy(_locs, *locs)
-				m[kmer] = _locs
-			}
-
-			iG++
-
-			poolGenomes.Put(refseq)
-
-			if opt.Verbose {
-				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
-			}
-
-		}
-		done <- 1
-	}()
-
-	// --------------------------
-
-	// 1. Compute k-mers from the topn files
 	k := opt.K
 	nnn := bytes.Repeat([]byte{'N'}, k-1)
 	reRefName := opt.ReRefName
 	extractRefName := reRefName != nil
 	filterNames := len(opt.ReSeqExclude) > 0
+	var _startTime time.Time
+	_seq := make([]byte, 0, 10<<20)
+	var iter *iterator.Iterator
 
-	var wg sync.WaitGroup                 // ensure all jobs done
-	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
+	var i int
 
-	for _, file := range filesTop {
-		tokens <- 1
-		wg.Add(1)
+	var record *fastx.Record
 
-		go func(file string) {
-			defer func() {
-				wg.Done()
-				<-tokens
-			}()
-			startTime := time.Now()
+	var ignoreSeq bool
+	var re *regexp.Regexp
+	var baseFile string
 
-			// --------------------------------
-			// read sequence
+	var kmer, kmerRC uint64
+	var ok bool
+	var j int
+	var locs *[]int32
 
-			fastxReader, err := fastx.NewReader(nil, file, "")
+	for iG, file := range filesTop {
+		_seq = _seq[:0]
+
+		baseFile = filepath.Base(file)
+
+		fastxReader, err := fastx.NewReader(nil, file, "")
+		if err != nil {
+			checkError(fmt.Errorf("failed to read seq file: %s", err))
+		}
+		fastxReader.Close()
+
+		// concatenate contigs
+		i = 0
+		for {
+			record, err = fastxReader.Read()
 			if err != nil {
-				checkError(fmt.Errorf("failed to read seq file: %s", err))
-			}
-			defer fastxReader.Close()
-
-			var record *fastx.Record
-
-			var ignoreSeq bool
-			var re *regexp.Regexp
-			var baseFile = filepath.Base(file)
-
-			// object for storing the genome data
-			refseq := poolGenomes.Get().(*Genome)
-			refseq.Reset()
-
-			var i int = 0
-			for {
-				record, err = fastxReader.Read()
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
+				if err == io.EOF {
 					break
 				}
+				checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
+				break
+			}
 
-				// filter out sequences shorter than k
-				if len(record.Seq.Seq) < k {
+			// filter out sequences shorter than k
+			if len(record.Seq.Seq) < k {
+				continue
+			}
+
+			// filter out sequences with names in the blast list
+			if filterNames {
+				ignoreSeq = false
+				for _, re = range opt.ReSeqExclude {
+					if re.Match(record.Name) {
+						ignoreSeq = true
+						break
+					}
+				}
+				if ignoreSeq {
 					continue
 				}
-
-				// filter out sequences with names in the blast list
-				if filterNames {
-					ignoreSeq = false
-					for _, re = range opt.ReSeqExclude {
-						if re.Match(record.Name) {
-							ignoreSeq = true
-							break
-						}
-					}
-					if ignoreSeq {
-						continue
-					}
-				}
-
-				if i > 0 { // add N's between two contigs
-					refseq.Seq = append(refseq.Seq, nnn...)
-				}
-				refseq.Seq = append(refseq.Seq, record.Seq.Seq...)
-				refseq.GenomeSize += len(record.Seq.Seq)
-
-				i++
 			}
 
-			if len(refseq.Seq) == 0 {
-				genome.PoolGenome.Put(refseq) // important
-				log.Warningf("skipping %s: no valid sequences", file)
-				log.Info()
-				if opt.Verbose {
-					chDuration <- time.Microsecond // important, or the progress bar will get hung
-				}
-				return
+			if i > 0 { // add N's between two contigs
+				_seq = append(_seq, nnn...)
 			}
+			_seq = append(_seq, record.Seq.Seq...)
 
-			var genomeID string // genome id
-			if extractRefName {
-				if reRefName.MatchString(baseFile) {
-					genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
-				} else {
-					genomeID, _, _ = filepathTrimExtension(baseFile, nil)
-				}
+			i++
+		}
+
+		if len(_seq) == 0 {
+			log.Warningf("skipping %s: no valid sequences", file)
+			log.Info()
+			if opt.Verbose {
+				chDuration <- time.Microsecond // important, or the progress bar will get hung
+			}
+			continue
+		}
+
+		// genome id
+		var genomeID string
+		if extractRefName {
+			if reRefName.MatchString(baseFile) {
+				genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
 			} else {
 				genomeID, _, _ = filepathTrimExtension(baseFile, nil)
 			}
+		} else {
+			genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+		}
+		genomeIDs[iG] = genomeID
 
-			refseq.ID = append(refseq.ID, []byte(genomeID)...)
-			refseq.StartTime = startTime
+		// --------------------------------
+		// generate k-mers
 
-			// --------------------------------
+		iter, err = iterator.NewKmerIterator(_seq, k)
+		if err != nil {
+			checkError(fmt.Errorf("count kmer for %s: %s", file, err))
+		}
 
-			iter, err := iterator.NewKmerIterator(refseq.Seq, k)
-			if err != nil {
-				checkError(fmt.Errorf("count kmer for %s: %s", file, err))
+		for {
+			kmer, kmerRC, ok, _ = iter.NextKmer()
+			if !ok {
+				break
 			}
-			var kmer, kmerRC uint64
-			var ok bool
-			var j int
-			kmers := refseq.Kmers
-			var locs *[]uint32
-			for {
-				kmer, kmerRC, ok, _ = iter.NextKmer()
-				if !ok {
-					break
-				}
-				if kmer == 0 { // all bases are A's or N's.
-					continue
-				}
-
-				j = iter.Index()
-
-				if locs, ok = kmers[kmer]; !ok {
-					tmp := []uint32{uint32(j)}
-					kmers[kmer] = &tmp
-				} else {
-					*locs = append(*locs, uint32(j))
-				}
-
-				if locs, ok = kmers[kmerRC]; !ok {
-					tmp := []uint32{uint32(j)}
-					kmers[kmerRC] = &tmp
-				} else {
-					*locs = append(*locs, uint32(j))
-				}
+			if kmer == 0 { // all bases are A's or N's.
+				continue
 			}
 
-			genomes <- refseq
+			j = iter.Index()
 
-		}(file)
+			// --- kmer
+
+			prefix = int(util.KmerPrefix(kmer, k8, p8))
+			if data[prefix] == nil {
+				data[prefix] = make([]map[uint64]*[]int32, topN)
+			}
+			m = data[prefix][iG]
+			if m == nil {
+				data[prefix][iG] = make(map[uint64]*[]int32, 8)
+				m = data[prefix][iG]
+			}
+
+			if locs, ok = m[kmer]; !ok {
+				tmp := []int32{int32(j)}
+				m[kmer] = &tmp
+			} else {
+				*locs = append(*locs, int32(j))
+			}
+
+			// --- kmerRC
+
+			kmer = kmerRC
+
+			prefix = int(util.KmerPrefix(kmer, k8, p8))
+			if data[prefix] == nil {
+				data[prefix] = make([]map[uint64]*[]int32, topN)
+			}
+			m = data[prefix][iG]
+			if m == nil {
+				data[prefix][iG] = make(map[uint64]*[]int32, 8)
+				m = data[prefix][iG]
+			}
+
+			if locs, ok = m[kmer]; !ok {
+				tmp := []int32{int32(j)}
+				m[kmer] = &tmp
+			} else {
+				*locs = append(*locs, int32(j))
+			}
+		}
+
+		chDuration <- time.Since(_startTime)
+
+		fastxReader.Close()
 	}
-
-	wg.Wait() // all infiles are parsed
-	close(genomes)
-	<-done // all k-mer data are collected
 
 	// process bar
 	if opt.Verbose {
 		close(chDuration)
 		<-doneDuration
 		pbs.Wait()
+	}
+
+	// --------------------------------------------------------------------
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("generating masks...")
+	}
+
+	// count prefixes and sort in descending order.
+	counts := make([][2]int, nPrefix)
+	var dRefs []map[uint64]*[]int32 // kmer data of all refs
+	var n int
+	for i, dRefs = range data {
+		n = 0
+		for _, m = range dRefs {
+			n += len(m)
+		}
+		counts[i] = [2]int{i, n} // prefix, count
+	}
+	sort.Slice(counts, func(i, j int) bool { return counts[i][1] < counts[j][1] })
+
+	// ATTATAACGCCACGGGGAGCCGCGGGGTTTC
+	// ------- prefix
+	//        ---- _prefix
+	//            -------------------- will be generated randomly
+
+	// frequency table for bases behind the prefix.
+
+	_nPrefix := int(math.Pow(4, float64(_lenPrefix)))
+	var _prefix int
+	_p8 := uint8(_lenPrefix)
+	lenPrefix8 := uint8(lenPrefix)
+
+	freqs := make([]map[int]interface{}, _nPrefix)
+	for i := range freqs {
+		freqs[i] = make(map[int]interface{}, topN)
+	}
+	_counts := make([][2]int, _nPrefix)
+	for i = range _counts {
+		_counts[i] = [2]int{}
+	}
+	_sortFunc := func(i, j int) bool { return _counts[i][1] > _counts[j][1] }
+	var _m map[int]interface{}
+
+	// var _n int
+
+	r := rand.New(rand.NewSource(opt.RandSeed))
+	var _mask uint64 = 1<<(uint64(k-lenPrefix-_lenPrefix)<<1) - 1
+	shiftP := uint64(k-lenPrefix) << 1
+	_shiftP := uint64(k-lenPrefix-_lenPrefix) << 1
+	var prefix64 uint64
+	var mask uint64
+	var v uint64
+	var hash, minHash, minKmer uint64
+	var minLocs *[]int32
+	var loc int32
+
+	flank := int32(maxGenome / nPrefix)
+	cmpFn := func(x, y int32) int { return int(x - y) }
+	itrees := make([]*interval.SearchTree[uint64, int32], topN)
+	for i := 0; i < topN; i++ {
+		itrees[i] = interval.NewSearchTree[uint64, int32](cmpFn)
+	}
+	var overlap bool
+	k32 := int32(k)
+
+	locations := make([][]int32, topN) // k-mer locations in all genomes
+	for i := 0; i < topN; i++ {
+		locations[i] = make([]int32, 0, opt.Masks)
+	}
+
+	// prefix -> map of k-mers
+	masks := make([]map[uint64]interface{}, opt.Masks)
+	for _, count := range counts { // for all prefix
+		if count[1] == 0 { // a prefix not existing in any genome
+			continue
+		}
+
+		prefix = count[0]
+
+		prefix64 = uint64(prefix)
+
+		// log.Infof("%d, %d, %s\n", j, count[1],
+		// 	lexichash.MustDecode(uint64(prefix), uint8(lenPrefix)))
+
+		// -----------------------------------------------------------------
+		// extend the prefix according to existing k-mers and generate a mask
+
+		// clear the freqs table
+		for i = range freqs {
+			clear(freqs[i])
+		}
+		// count how many genomes have k-mers with this _prefix
+		for i, m = range data[prefix] { // i is the genome idx
+			for kmer, locs = range m {
+				// check if this kmer overlap with existing intervals
+				overlap = false
+				for _, loc = range *locs {
+					if _, ok = itrees[i].AnyIntersection(loc, loc+k32); ok {
+						overlap = true
+					}
+				}
+				if overlap {
+					continue
+				}
+
+				// extract prefix and count it
+				_prefix = int(util.KmerPrefix(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8, _p8))
+
+				// log.Infof("  %s, suffix: %s\n", lexichash.MustDecode(kmer, k8),
+				// 	lexichash.MustDecode(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8))
+				freqs[_prefix][i] = struct{}{}
+			}
+		}
+
+		// clear the count table
+		for _prefix, _m = range freqs {
+			if len(_m) == 0 { // a _prefix not existing in any genome
+				_counts[_prefix][0] = 0
+				_counts[_prefix][1] = 0
+				continue
+			}
+			_counts[_prefix][0] = _prefix
+			_counts[_prefix][1] = len(_m)
+		}
+		sort.Slice(_counts, _sortFunc)
+
+		// _n = 0
+		// for i = range _counts {
+		// 	if _counts[i][1] == 0 {
+		// 		break
+		// 	} else {
+		// 		_n++
+		// 	}
+		// }
+		// log.Infof("  ", _counts[:_n])
+
+		// randomly choose one of the most frequent _prefixes.
+		// TODO: _counts[0][1] might be 0, that means there's no k-mers available
+		_prefix = _counts[0][0]
+		// log.Infof("  randomly choose one of the most frequent _prefixes: %s, existing in %d genomes\n",
+		// 	lexichash.MustDecode(uint64(_prefix), uint8(_lenPrefix)), _counts[0][1])
+
+		// generate one random mask with a prefix of "prefix"+"_prefix"
+		v = r.Uint64()
+		// mask = prefix + _ prefix + random
+		mask = util.Hash64(v)&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
+
+		// recordd it
+		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
+
+		// log.Infof("  mask: %s\n", lexichash.MustDecode(mask, k8))
+
+		// -----------------------------------------------------------------
+
+		// capture the most similar k-mer in each genome
+		for i, m = range data[prefix] { // each genome, i is the genome idx
+			minHash = math.MaxUint64
+			for kmer, locs = range m { // each kmer
+				hash = mask ^ kmer // lexichash
+				// log.Infof("      : %s, %d\n", lexichash.MustDecode(kmer, k8), hash)
+
+				if hash < minHash { // it can not be hash == minHash, because they are saved in a map
+					minKmer = kmer
+					minLocs = locs
+					minHash = hash
+				}
+			}
+			// add the region this k-mer to the interval tree of the genome
+			// log.Infof("  [%02d]: %s\n", i, lexichash.MustDecode(minKmer, k8))
+			for _, loc = range *minLocs {
+				itrees[i].Insert(loc-flank, loc+flank, minKmer)
+
+				locations[i] = append(locations[i], loc)
+			}
+		}
+	}
+
+	// generate left (Masks - nPrefix) masks
+	if opt.Masks-nPrefix > 0 {
+		prefixes := make([]int, nPrefix)
+		for i = 0; i < nPrefix; i++ {
+			prefixes[i] = i
+		}
+		r.Shuffle(nPrefix, func(i, j int) { prefixes[i], prefixes[j] = prefixes[j], prefixes[i] })
+		var _mask uint64 = 1<<(uint64(k-nPrefix)<<1) - 1
+		for _, prefix = range prefixes[:opt.Masks-nPrefix] {
+			prefix64 = uint64(prefix)
+			for {
+				mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP
+				if _, ok = masks[prefix][mask]; !ok {
+					masks[prefix][mask] = struct{}{}
+					break
+				}
+			}
+
+			// capture the most similar k-mer in each genome
+			for i, m = range data[prefix] { // each genome, i is the genome idx
+				minHash = math.MaxUint64
+				for kmer, locs = range m { // each kmer
+					hash = mask ^ kmer // lexichash
+					// log.Infof("      : %s, %d\n", lexichash.MustDecode(kmer, k8), hash)
+
+					if hash < minHash { // it can not be hash == minHash, because they are saved in a map
+						minLocs = locs
+						minHash = hash
+					}
+				}
+				// add the region this k-mer to the interval tree of the genome
+				// log.Infof("  [%02d]: %s\n", i, lexichash.MustDecode(minKmer, k8))
+				locations[i] = append(locations[i], *minLocs...)
+			}
+		}
+	}
+
+	//  check max distance
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("  maximum distance between seeds:")
+	}
+
+	var _loc, dist, maxDist int32
+	for i, locs2 := range locations {
+		sortutil.Int32s(locs2)
+		_loc = 0
+		maxDist = 0
+		for j, loc = range locs2 {
+			dist = loc - _loc
+			fmt.Fprintf(outfh, "%d\t%d\n", i, dist)
+			if dist > maxDist {
+				maxDist = dist
+			}
+			_loc = loc
+		}
+
+		log.Infof("    %s: %d\n", genomeIDs[i], maxDist)
 	}
 
 	return nil
@@ -714,19 +937,4 @@ func (h *File2GSizes) Pop() any {
 	x := old[n-1]
 	*h = old[0 : n-1]
 	return x
-}
-
-type Genome struct {
-	GenomeSize int
-	ID         []byte
-	Seq        []byte
-	Kmers      map[uint64]*[]uint32
-	StartTime  time.Time
-}
-
-func (g *Genome) Reset() {
-	g.ID = g.ID[:0]
-	g.Seq = g.Seq[:0]
-	clear(g.Kmers)
-
 }
