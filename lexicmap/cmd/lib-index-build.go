@@ -93,11 +93,11 @@ type IndexBuildingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
 	// LexicHash
-
-	K                int   // k-mer size
-	Masks            int   // number of masks
-	RandSeed         int64 // random seed
-	PrefixForCheckLC int   // length of prefix for checking low-complexity
+	MaskFile         string // file of custom masks
+	K                int    // k-mer size
+	Masks            int    // number of masks
+	RandSeed         int64  // random seed
+	PrefixForCheckLC int    // length of prefix for checking low-complexity
 
 	// k-mer-value data
 
@@ -166,7 +166,14 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	// }
 
 	// generate masks
-	lh, err := lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
+	var lh *lexichash.LexicHash
+	var err error
+
+	if opt.MaskFile != "" {
+		lh, err = lexichash.NewFromTextFile(opt.MaskFile)
+	} else {
+		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
+	}
 	if err != nil {
 		return err
 	}

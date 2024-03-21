@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"container/heap"
 	"fmt"
@@ -40,6 +41,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
+	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
@@ -48,17 +50,37 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
-var designMasksCmd = &cobra.Command{
-	Use:   "design-masks",
-	Short: "Design-masks from genomes",
-	Long: `Design-masks from genomes
+var geneMasksCmd = &cobra.Command{
+	Use:   "gen-masks",
+	Short: "Generate masks from genomes",
+	Long: `Generate masks from genomes
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		// ------------------- input -------------------------
+		var fhLog *os.File
+		if opt.Log2File {
+			fhLog = addLog(opt.LogFile, opt.Verbose)
+		}
+
+		outputLog := opt.Verbose || opt.Log2File
+
+		timeStart := time.Now()
+		defer func() {
+			if outputLog {
+				log.Info()
+				log.Infof("elapsed time: %s", time.Since(timeStart))
+				log.Info()
+			}
+			if opt.Log2File {
+				fhLog.Close()
+			}
+		}()
+
+		// ---------------------------------------------------------------
+		// input
 
 		var err error
 
@@ -116,26 +138,54 @@ var designMasksCmd = &cobra.Command{
 			reSeqNames = append(reSeqNames, re)
 		}
 
-		// ------------------------------------
+		// ---------------------------------------------------------------
+		// basic flags
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
+		maxGenomeSize := getFlagPositiveInt(cmd, "max-genome")
+		fileBigGenomes := getFlagString(cmd, "big-genomes")
+		topN := getFlagPositiveInt(cmd, "top-n")
+		_prefix := getFlagPositiveInt(cmd, "prefix-ext")
+
+		k := getFlagPositiveInt(cmd, "kmer")
+		if k < minK || k > 32 {
+			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [%d, 32]", minK))
 		}
 
-		outputLog := opt.Verbose || opt.Log2File
+		nMasks := getFlagPositiveInt(cmd, "masks")
 
-		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
+		outFile := getFlagString(cmd, "out-file")
+		seedPosFile := getFlagString(cmd, "seed-pos")
+		if seedPosFile == "-" {
+			checkError(fmt.Errorf(`stdin ("-") not supported for the flag --seed-pos`))
+		}
+
+		bopt := &IndexBuildingOptions{
+			// general
+			NumCPUs:      opt.NumCPUs,
+			Verbose:      opt.Verbose,
+			Log2File:     opt.Log2File,
+			Force:        false,
+			MaxOpenFiles: 512,
+
+			// LexicHash
+			K:     k,
+			Masks: nMasks,
+
+			// genome
+			ReRefName:    reRefName,
+			ReSeqExclude: reSeqNames,
+		}
+
+		// ---------------------------------------------------------------
+		// checking input files
+
+		if opt.Verbose || opt.Log2File {
+			log.Infof("LexicMap v%s", VERSION)
+			log.Info("  https://github.com/shenwei356/LexicMap")
+			log.Info()
+
+			log.Info("checking input files ...")
+		}
 
 		var files []string
 		if readFromDir {
@@ -160,129 +210,119 @@ var designMasksCmd = &cobra.Command{
 			log.Infof("  %d input file(s) given", len(files))
 		}
 
-		// ----------------------------------------------------------------
-
-		topN := getFlagPositiveInt(cmd, "top-n")
-		_prefix := getFlagPositiveInt(cmd, "prefix-ext")
-
-		// ---------------------------------------------------------------
-
-		outFile := getFlagString(cmd, "out-file")
-
-		k := getFlagPositiveInt(cmd, "kmer")
-		if k < minK || k > 32 {
-			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [%d, 32]", minK))
-		}
-
-		nMasks := getFlagPositiveInt(cmd, "masks")
-		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
-		seed := getFlagPositiveInt(cmd, "seed")
-
-		bopt := &IndexBuildingOptions{
-			// general
-			NumCPUs:      opt.NumCPUs,
-			Verbose:      opt.Verbose,
-			Log2File:     opt.Log2File,
-			Force:        false,
-			MaxOpenFiles: 512,
-
-			// LexicHash
-			K:                k,
-			Masks:            nMasks,
-			RandSeed:         int64(seed),
-			PrefixForCheckLC: lcPrefix,
-
-			// genome
-			ReRefName:    reRefName,
-			ReSeqExclude: reSeqNames,
-		}
-
 		// ---------------------------------------------------------------
 		// output file handler
-		// outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
-		// checkError(err)
-		// defer func() {
-		// 	outfh.Flush()
-		// 	if gw != nil {
-		// 		gw.Close()
-		// 	}
-		// 	w.Close()
-		// }()
+		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
+		checkError(err)
+		defer func() {
+			outfh.Flush()
+			if gw != nil {
+				gw.Close()
+			}
+			w.Close()
+		}()
 
 		// ---------------------------------------------------------------
 
-		DesignMasks(files, bopt, topN, _prefix, outFile)
+		masks, skippedFiles, err := GenerateMasks(files, bopt, maxGenomeSize, topN, _prefix, seedPosFile)
+		checkError(err)
+
+		for _, mask := range masks {
+			fmt.Fprintf(outfh, "%s\n", kmers.MustDecode(mask, bopt.K))
+		}
+
+		if fileBigGenomes != "" {
+			outfh2, err := os.Create(fileBigGenomes)
+			if err != nil {
+				checkError(fmt.Errorf("failed to write file: %s", fileBigGenomes))
+				return
+			}
+			for _, file := range skippedFiles {
+				fmt.Fprintf(outfh2, "%s\n", file)
+			}
+			outfh2.Close()
+		}
 	},
 }
 
 func init() {
-	utilsCmd.AddCommand(designMasksCmd)
+	utilsCmd.AddCommand(geneMasksCmd)
 
 	// -----------------------------  input  -----------------------------
 
-	designMasksCmd.Flags().StringP("in-dir", "I", "",
+	geneMasksCmd.Flags().StringP("in-dir", "I", "",
 		formatFlagUsage(`Directory containing FASTA/Q files. Directory symlinks are followed.`))
 
-	designMasksCmd.Flags().StringP("file-regexp", "r", `\.(f[aq](st[aq])?|fna)(.gz)?$`,
+	geneMasksCmd.Flags().StringP("file-regexp", "r", `\.(f[aq](st[aq])?|fna)(.gz)?$`,
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored.`))
 
-	designMasksCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
+	geneMasksCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
 		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename.`))
 
-	designMasksCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
+	geneMasksCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
 
-	designMasksCmd.Flags().BoolP("skip-file-check", "S", false,
-		formatFlagUsage(`skip input file checking when given files or a file list.`))
+	geneMasksCmd.Flags().BoolP("skip-file-check", "S", false,
+		formatFlagUsage(`Skip input file checking when given files or a file list.`))
+
+	geneMasksCmd.Flags().IntP("max-genome", "g", 20000000,
+		formatFlagUsage(`Maximum genome size. Extreme large genomes (non-isolate assemblies) will be skipped.`))
+
+	geneMasksCmd.Flags().StringP("big-genomes", "G", "",
+		formatFlagUsage(`Out file of files with genomes >= -G/--max-genome`))
 
 	// -----------------------------  output   -----------------------------
 
-	designMasksCmd.Flags().StringP("out-file", "o", "-",
-		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
+	geneMasksCmd.Flags().StringP("out-file", "o", "-",
+		formatFlagUsage(`Out file of generated masks. The ".gz" suffix is not recommended. ("-" for stdout).`))
+
+	geneMasksCmd.Flags().StringP("seed-pos", "D", "",
+		formatFlagUsage(`Out file of seed postions and distances, supports and recommends a ".gz" suffix.`))
 
 	// -----------------------------  lexichash   -----------------------------
 
-	designMasksCmd.Flags().IntP("kmer", "k", 31,
+	geneMasksCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	designMasksCmd.Flags().IntP("masks", "m", 20480,
+	geneMasksCmd.Flags().IntP("masks", "m", 20480,
 		formatFlagUsage(`Number of masks.`))
-
-	designMasksCmd.Flags().IntP("seed", "s", 1,
-		formatFlagUsage(`The seed for generating random masks.`))
-
-	designMasksCmd.Flags().IntP("prefix", "p", 15,
-		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	// -----------------------------  design mask   -----------------------------
 
-	designMasksCmd.Flags().IntP("top-n", "n", 100,
-		formatFlagUsage(`Choose top n fils with the biggest genome size`))
+	geneMasksCmd.Flags().IntP("top-n", "n", 20,
+		formatFlagUsage(`Select the top N largest genomes for analysis.`))
 
-	designMasksCmd.Flags().IntP("prefix-ext", "P", 4,
-		formatFlagUsage(`Extension length for prefixes, higher value -> smaller maximum seed distance`))
+	geneMasksCmd.Flags().IntP("prefix-ext", "P", 4,
+		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distance.`))
 
-	designMasksCmd.SetUsageTemplate(usageTemplate("{ -d <index path> | [-k <k>] [-n <masks>] [-s <seed>] } [-o out.tsv.gz]"))
+	geneMasksCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-n <top-n>] [-D <seeds.tsv.gz>] [-o masks.txt] { -I <seqs dir> | -X <file list>}"))
 }
 
-func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix int, outFile string) error {
-	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), 5)
-	checkError(err)
-	defer func() {
-		outfh.Flush()
-		if gw != nil {
-			gw.Close()
-		}
-		w.Close()
-	}()
+// GenerateMasks generate Masks from the top N largest genomes
+func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int, topN int, _lenPrefix int, outFile string) ([]uint64, []string, error) {
+	var outfh *bufio.Writer
+	if outFile != "" { // output seed locations and distance
+		var gw io.WriteCloser
+		var w *os.File
+		var err error
+		outfh, gw, w, err = outStream(outFile, strings.HasSuffix(outFile, ".gz"), 5)
+		checkError(err)
+		defer func() {
+			outfh.Flush()
+			if gw != nil {
+				gw.Close()
+			}
+			w.Close()
+		}()
+	}
 
-	// if topN < 100 {
-	// 	topN = 100
-	// }
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
 		timeStart = time.Now()
+		log.Info()
+		log.Infof("generating mask from the top %d out of %d genomes...", topN, len(files))
 		defer func() {
+			log.Info()
 			log.Infof("  finished in: %s", time.Since(timeStart))
 		}()
 	}
@@ -294,173 +334,12 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 	file2gsizes := &File2GSizes{}
 
 	var maxGenome int
-	{
-		// find topn genome files with biggest genome size
-		if opt.Verbose || opt.Log2File {
-			log.Info()
-			log.Infof("checking genomes sizes of %d files...", len(files))
-		}
 
-		// process bar
-		var pbs *mpb.Progress
-		var bar *mpb.Bar
-		var chDuration chan time.Duration
-		var doneDuration chan int
-		if opt.Verbose {
-			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(len(files)),
-				mpb.PrependDecorators(
-					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
-					decor.Name("", decor.WCSyncSpaceR),
-					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
-				),
-				mpb.AppendDecorators(
-					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 3),
-					decor.OnComplete(decor.Name(""), ". done"),
-				),
-			)
-
-			chDuration = make(chan time.Duration, opt.NumCPUs)
-			doneDuration = make(chan int)
-			go func() {
-				for t := range chDuration {
-					bar.EwmaIncrBy(1, t)
-				}
-				doneDuration <- 1
-			}()
-		}
-
-		// receiver
-
-		chGS := make(chan File2GSize, opt.NumCPUs)
-		doneGS := make(chan int)
-		heap.Init(file2gsizes)
-		go func() {
-			for gs := range chGS {
-				heap.Push(file2gsizes, File2GSize{File: gs.File, Size: gs.Size})
-				if len(*file2gsizes) == topN {
-					heap.Init(file2gsizes)
-				} else if len(*file2gsizes) > topN {
-					heap.Pop(file2gsizes)
-				}
-			}
-			doneGS <- 1
-		}()
-
-		// do it
-		var wg sync.WaitGroup                 // ensure all jobs done
-		tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
-		k := opt.K
-		filterNames := len(opt.ReSeqExclude) > 0
-		for _, file := range files {
-			tokens <- 1
-			wg.Add(1)
-
-			go func(file string) {
-				defer func() {
-					wg.Done()
-					<-tokens
-				}()
-				startTime := time.Now()
-
-				fastxReader, err := fastx.NewReader(nil, file, "")
-				if err != nil {
-					checkError(fmt.Errorf("failed to read seq file: %s", err))
-				}
-				defer fastxReader.Close()
-
-				var record *fastx.Record
-
-				var ignoreSeq bool
-				var re *regexp.Regexp
-
-				var genomeSize int
-				var i int = 0
-				for {
-					record, err = fastxReader.Read()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
-						break
-					}
-
-					// filter out sequences shorter than k
-					if len(record.Seq.Seq) < k {
-						continue
-					}
-
-					// filter out sequences with names in the blast list
-					if filterNames {
-						ignoreSeq = false
-						for _, re = range opt.ReSeqExclude {
-							if re.Match(record.Name) {
-								ignoreSeq = true
-								break
-							}
-						}
-						if ignoreSeq {
-							continue
-						}
-					}
-
-					genomeSize += len(record.Seq.Seq)
-				}
-
-				if genomeSize == 0 {
-					log.Warningf("skipping %s: no valid sequences", file)
-					log.Info()
-					if opt.Verbose {
-						chDuration <- time.Microsecond // important, or the progress bar will get hung
-					}
-					return
-				}
-
-				chGS <- File2GSize{File: file, Size: genomeSize}
-
-				chDuration <- time.Since(startTime)
-			}(file)
-		}
-
-		wg.Wait()
-		close(chGS)
-		<-doneGS
-
-		// process bar
-		if opt.Verbose {
-			close(chDuration)
-			<-doneDuration
-			pbs.Wait()
-		}
-
-		filesTop = make([]string, 0, topN)
-		sort.Sort(*file2gsizes) // make sure it's sorted
-		maxGenome = (*file2gsizes)[len(*file2gsizes)-1].Size
-
-		if opt.Verbose || opt.Log2File {
-			log.Infof("  genome size range in the top %d files: [%d, %d]",
-				topN, (*file2gsizes)[0].Size, maxGenome)
-		}
-
-		for _, gs := range *file2gsizes {
-			filesTop = append(filesTop, gs.File)
-		}
-	}
-	if topN > len(files) {
-		topN = len(files)
-	}
-
-	// --------------------------------------------------------------------
-	// anlysis
+	// find top n genome files with biggest genome size
 	if opt.Verbose || opt.Log2File {
 		log.Info()
-		log.Infof("collecting k-mers from %d files...", len(filesTop))
+		log.Infof("  checking genomes sizes of %d files...", len(files))
 	}
-
-	// -------------------------------------------------
-	// count k-mers from the top n files
 
 	// process bar
 	var pbs *mpb.Progress
@@ -469,7 +348,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 	var doneDuration chan int
 	if opt.Verbose {
 		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-		bar = pbs.AddBar(int64(len(filesTop)),
+		bar = pbs.AddBar(int64(len(files)),
 			mpb.PrependDecorators(
 				decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
 				decor.Name("", decor.WCSyncSpaceR),
@@ -477,7 +356,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 			),
 			mpb.AppendDecorators(
 				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 1),
+				decor.EwmaETA(decor.ET_STYLE_GO, 3),
 				decor.OnComplete(decor.Name(""), ". done"),
 			),
 		)
@@ -492,6 +371,160 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 		}()
 	}
 
+	// receiver
+
+	chGS := make(chan File2GSize, opt.NumCPUs)
+	doneGS := make(chan int)
+	heap.Init(file2gsizes)
+	go func() {
+		for gs := range chGS {
+			heap.Push(file2gsizes, File2GSize{File: gs.File, Size: gs.Size})
+			if len(*file2gsizes) == topN {
+				heap.Init(file2gsizes)
+			} else if len(*file2gsizes) > topN {
+				heap.Pop(file2gsizes)
+			}
+		}
+		doneGS <- 1
+	}()
+
+	chSkippedFiles := make(chan string, 8)
+	doneSkip := make(chan int)
+	skippedFiles := make([]string, 0, 8)
+	go func() {
+		for file := range chSkippedFiles {
+			skippedFiles = append(skippedFiles, file)
+		}
+		doneSkip <- 1
+	}()
+
+	// do it
+	var wg sync.WaitGroup                 // ensure all jobs done
+	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
+	k := opt.K
+	filterNames := len(opt.ReSeqExclude) > 0
+	for _, file := range files {
+		tokens <- 1
+		wg.Add(1)
+
+		go func(file string) {
+			defer func() {
+				wg.Done()
+				<-tokens
+			}()
+			startTime := time.Now()
+
+			fastxReader, err := fastx.NewReader(nil, file, "")
+			if err != nil {
+				checkError(fmt.Errorf("failed to read seq file: %s", err))
+			}
+			defer fastxReader.Close()
+
+			var record *fastx.Record
+
+			var ignoreSeq bool
+			var re *regexp.Regexp
+
+			var genomeSize int
+			var i int = 0
+			for {
+				record, err = fastxReader.Read()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					checkError(fmt.Errorf("read seq %d in %s: %s", i, file, err))
+					break
+				}
+
+				// filter out sequences shorter than k
+				if len(record.Seq.Seq) < k {
+					continue
+				}
+
+				// filter out sequences with names in the blast list
+				if filterNames {
+					ignoreSeq = false
+					for _, re = range opt.ReSeqExclude {
+						if re.Match(record.Name) {
+							ignoreSeq = true
+							break
+						}
+					}
+					if ignoreSeq {
+						continue
+					}
+				}
+
+				genomeSize += len(record.Seq.Seq)
+			}
+
+			if genomeSize == 0 {
+				log.Warningf("skipping %s: no valid sequences", file)
+				log.Info()
+				if opt.Verbose {
+					chDuration <- time.Microsecond // important, or the progress bar will get hung
+				}
+				return
+			}
+			if genomeSize > maxGenomeSize {
+				if opt.Verbose || opt.Log2File {
+					log.Warningf("skipping big genome (%d bp): %s", genomeSize, file)
+					if !opt.Log2File {
+						log.Info()
+					}
+				}
+				chSkippedFiles <- file
+				chDuration <- time.Since(startTime)
+				return
+			}
+
+			chGS <- File2GSize{File: file, Size: genomeSize}
+
+			chDuration <- time.Since(startTime)
+		}(file)
+	}
+
+	wg.Wait()
+	close(chGS)
+	<-doneGS
+	close(chSkippedFiles)
+	<-doneSkip
+
+	// process bar
+	if opt.Verbose {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+	}
+
+	if topN > len(files)-len(skippedFiles) {
+		topN = len(files) - len(skippedFiles)
+	}
+
+	filesTop = make([]string, 0, topN)
+	sort.Sort(*file2gsizes) // make sure it's sorted
+	maxGenome = (*file2gsizes)[len(*file2gsizes)-1].Size
+
+	if opt.Verbose || opt.Log2File {
+		log.Infof("    genome size range in the top %d files: [%d, %d]",
+			topN, (*file2gsizes)[0].Size, maxGenome)
+	}
+
+	for _, gs := range *file2gsizes {
+		filesTop = append(filesTop, gs.File)
+	}
+
+	// --------------------------------------------------------------------
+	// anlysis
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("  collecting k-mers from %d files...", len(filesTop))
+	}
+
+	// -------------------------------------------------
+	// count k-mers from the top n files
+
 	// Collect k-mers
 
 	lenPrefix := 1
@@ -502,6 +535,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 
 	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
 	nPrefix := int(math.Pow(4, float64(lenPrefix)))
+
 	data := make([][]map[uint64]*[]int32, nPrefix)
 
 	var m map[uint64]*[]int32
@@ -510,12 +544,9 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 	p8 := uint8(lenPrefix)
 	genomeIDs := make([]string, topN)
 
-	k := opt.K
 	nnn := bytes.Repeat([]byte{'N'}, k-1)
 	reRefName := opt.ReRefName
 	extractRefName := reRefName != nil
-	filterNames := len(opt.ReSeqExclude) > 0
-	var _startTime time.Time
 	_seq := make([]byte, 0, 10<<20)
 	var iter *iterator.Iterator
 
@@ -585,9 +616,6 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 		if len(_seq) == 0 {
 			log.Warningf("skipping %s: no valid sequences", file)
 			log.Info()
-			if opt.Verbose {
-				chDuration <- time.Microsecond // important, or the progress bar will get hung
-			}
 			continue
 		}
 
@@ -664,22 +692,20 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 			}
 		}
 
-		chDuration <- time.Since(_startTime)
-
 		fastxReader.Close()
-	}
 
-	// process bar
+		if opt.Verbose {
+			fmt.Fprintf(os.Stderr, "\rprocessed files: %d/%d", iG+1, topN)
+		}
+	}
 	if opt.Verbose {
-		close(chDuration)
-		<-doneDuration
-		pbs.Wait()
+		fmt.Fprintln(os.Stderr)
 	}
 
 	// --------------------------------------------------------------------
 	if opt.Verbose || opt.Log2File {
 		log.Info()
-		log.Infof("generating masks...")
+		log.Infof("  generating masks...")
 	}
 
 	// count prefixes and sort in descending order.
@@ -726,7 +752,6 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 	_shiftP := uint64(k-lenPrefix-_lenPrefix) << 1
 	var prefix64 uint64
 	var mask uint64
-	var v uint64
 	var hash, minHash, minKmer uint64
 	var minLocs *[]int32
 	var loc int32
@@ -746,8 +771,15 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 	}
 
 	// prefix -> map of k-mers
+	if opt.Verbose || opt.Log2File {
+		log.Infof("    generating %d masks covering all %d-bp prefixes...", nPrefix, lenPrefix)
+	}
 	masks := make([]map[uint64]interface{}, opt.Masks)
-	for _, count := range counts { // for all prefix
+	for j, count := range counts { // for all prefix
+		if opt.Verbose {
+			fmt.Fprintf(os.Stderr, "\rprocessed prefixes: %d/%d", j+1, nPrefix)
+		}
+
 		if count[1] == 0 { // a prefix not existing in any genome
 			continue
 		}
@@ -780,18 +812,18 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 					continue
 				}
 
-				// extract prefix and count it
+				// extract _prefix and count it
 				_prefix = int(util.KmerPrefix(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8, _p8))
-
 				// log.Infof("  %s, suffix: %s\n", lexichash.MustDecode(kmer, k8),
 				// 	lexichash.MustDecode(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8))
+
 				freqs[_prefix][i] = struct{}{}
 			}
 		}
 
 		// clear the count table
 		for _prefix, _m = range freqs {
-			if len(_m) == 0 { // a _prefix not existing in any genome
+			if len(_m) == 0 { // a _prefix not existing in any genome, reset the count
 				_counts[_prefix][0] = 0
 				_counts[_prefix][1] = 0
 				continue
@@ -801,6 +833,7 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 		}
 		sort.Slice(_counts, _sortFunc)
 
+		// frequencies of _prefix
 		// _n = 0
 		// for i = range _counts {
 		// 	if _counts[i][1] == 0 {
@@ -818,14 +851,12 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 		// 	lexichash.MustDecode(uint64(_prefix), uint8(_lenPrefix)), _counts[0][1])
 
 		// generate one random mask with a prefix of "prefix"+"_prefix"
-		v = r.Uint64()
 		// mask = prefix + _ prefix + random
-		mask = util.Hash64(v)&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
-
-		// recordd it
-		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
-
+		mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
 		// log.Infof("  mask: %s\n", lexichash.MustDecode(mask, k8))
+
+		// record it
+		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
 
 		// -----------------------------------------------------------------
 
@@ -834,57 +865,71 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 			minHash = math.MaxUint64
 			for kmer, locs = range m { // each kmer
 				hash = mask ^ kmer // lexichash
-				// log.Infof("      : %s, %d\n", lexichash.MustDecode(kmer, k8), hash)
 
-				if hash < minHash { // it can not be hash == minHash, because they are saved in a map
+				if hash < minHash { // hash == minHash would not happen, because they are saved in a map
 					minKmer = kmer
 					minLocs = locs
 					minHash = hash
 				}
 			}
-			// add the region this k-mer to the interval tree of the genome
-			// log.Infof("  [%02d]: %s\n", i, lexichash.MustDecode(minKmer, k8))
 			for _, loc = range *minLocs {
+				// add the region of this k-mer to the interval tree of the genome
 				itrees[i].Insert(loc-flank, loc+flank, minKmer)
 
+				// store locations for further report
 				locations[i] = append(locations[i], loc)
 			}
 		}
 	}
+	if opt.Verbose {
+		fmt.Fprintln(os.Stderr)
+	}
 
 	// generate left (Masks - nPrefix) masks
 	if opt.Masks-nPrefix > 0 {
+		leftMasks := opt.Masks - nPrefix // left masks to generate
+		if opt.Verbose || opt.Log2File {
+			log.Infof("    generating left %d masks...", leftMasks)
+		}
 		prefixes := make([]int, nPrefix)
 		for i = 0; i < nPrefix; i++ {
 			prefixes[i] = i
 		}
 		r.Shuffle(nPrefix, func(i, j int) { prefixes[i], prefixes[j] = prefixes[j], prefixes[i] })
 		var _mask uint64 = 1<<(uint64(k-nPrefix)<<1) - 1
-		for _, prefix = range prefixes[:opt.Masks-nPrefix] {
-			prefix64 = uint64(prefix)
-			for {
-				mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP
-				if _, ok = masks[prefix][mask]; !ok {
-					masks[prefix][mask] = struct{}{}
-					break
-				}
+
+		rounds := leftMasks/nPrefix + 1 // the round of using the prefixes
+		var last int                    // the last element
+		for round := 0; round < rounds; round++ {
+			if round < rounds-1 { // for previous rounds, all the prefixes are used
+				last = nPrefix
+			} else { // for the last round, only a part of prefixes is used
+				last = leftMasks % nPrefix
 			}
 
-			// capture the most similar k-mer in each genome
-			for i, m = range data[prefix] { // each genome, i is the genome idx
-				minHash = math.MaxUint64
-				for kmer, locs = range m { // each kmer
-					hash = mask ^ kmer // lexichash
-					// log.Infof("      : %s, %d\n", lexichash.MustDecode(kmer, k8), hash)
-
-					if hash < minHash { // it can not be hash == minHash, because they are saved in a map
-						minLocs = locs
-						minHash = hash
+			for _, prefix = range prefixes[:last] {
+				prefix64 = uint64(prefix)
+				for { // avoid dupicated mask
+					mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP
+					if _, ok = masks[prefix][mask]; !ok {
+						masks[prefix][mask] = struct{}{}
+						break
 					}
 				}
-				// add the region this k-mer to the interval tree of the genome
-				// log.Infof("  [%02d]: %s\n", i, lexichash.MustDecode(minKmer, k8))
-				locations[i] = append(locations[i], *minLocs...)
+
+				// capture the most similar k-mer in each genome
+				for i, m = range data[prefix] { // each genome, i is the genome idx
+					minHash = math.MaxUint64
+					for kmer, locs = range m { // each kmer
+						hash = mask ^ kmer // lexichash
+
+						if hash < minHash { // hash == minHash would not happen, because they are saved in a map
+							minLocs = locs
+							minHash = hash
+						}
+					}
+					locations[i] = append(locations[i], *minLocs...)
+				}
 			}
 		}
 	}
@@ -895,24 +940,51 @@ func DesignMasks(files []string, opt *IndexBuildingOptions, topN int, _lenPrefix
 		log.Infof("  maximum distance between seeds:")
 	}
 
+	writeLocs := outFile != ""
+
 	var _loc, dist, maxDist int32
+	if writeLocs {
+		fmt.Fprintf(outfh, "ref\tpos\tdist\n")
+	}
 	for i, locs2 := range locations {
 		sortutil.Int32s(locs2)
 		_loc = 0
 		maxDist = 0
 		for j, loc = range locs2 {
 			dist = loc - _loc
-			fmt.Fprintf(outfh, "%d\t%d\n", i, dist)
+
+			if writeLocs {
+				fmt.Fprintf(outfh, "%s\t%d\t%d\n", genomeIDs[i], loc, dist)
+			}
+
 			if dist > maxDist {
 				maxDist = dist
 			}
 			_loc = loc
 		}
 
-		log.Infof("    %s: %d\n", genomeIDs[i], maxDist)
+		if opt.Verbose {
+			log.Infof("    %s: %d\n", genomeIDs[i], maxDist)
+		}
+	}
+	if writeLocs {
+		if opt.Verbose || opt.Log2File {
+			log.Info()
+			log.Infof("  seed locations and distances of the %d genomes are saved to %s, ", topN, outFile)
+			log.Infof("  you can plot the histogram of seed distances:")
+			log.Infof("    csvtk grep -t -f ref -p %s %s | csvtk plot hist -t -f dist -o hist.png", genomeIDs[i], outFile)
+		}
 	}
 
-	return nil
+	_masks := make([]uint64, 0, opt.Masks)
+	for _, m := range masks {
+		for kmer = range m {
+			_masks = append(_masks, kmer)
+		}
+	}
+	sort.Slice(_masks, func(i, j int) bool { return _masks[i] < _masks[j] })
+
+	return _masks, skippedFiles, nil
 }
 
 type File2GSize struct {

@@ -28,6 +28,7 @@ lexicmap/*.fasta
 lexicmap/indexes
 name.map
 taxid.map
+masks.txt
 
 # data
 t_*
