@@ -171,6 +171,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	if opt.MaskFile != "" {
 		lh, err = lexichash.NewFromTextFile(opt.MaskFile)
+		opt.K = lh.K
 	} else {
 		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
 	}

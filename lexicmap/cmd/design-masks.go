@@ -152,6 +152,7 @@ var geneMasksCmd = &cobra.Command{
 		}
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
+		seed := getFlagPositiveInt(cmd, "rand-seed")
 
 		outFile := getFlagString(cmd, "out-file")
 		seedPosFile := getFlagString(cmd, "seed-pos")
@@ -168,8 +169,9 @@ var geneMasksCmd = &cobra.Command{
 			MaxOpenFiles: 512,
 
 			// LexicHash
-			K:     k,
-			Masks: nMasks,
+			K:        k,
+			Masks:    nMasks,
+			RandSeed: int64(seed),
 
 			// genome
 			ReRefName:    reRefName,
@@ -287,12 +289,15 @@ func init() {
 	geneMasksCmd.Flags().IntP("masks", "m", 20480,
 		formatFlagUsage(`Number of masks.`))
 
+	geneMasksCmd.Flags().IntP("rand-seed", "s", 1,
+		formatFlagUsage(`Rand seed for generating random masks.`))
+
 	// -----------------------------  design mask   -----------------------------
 
 	geneMasksCmd.Flags().IntP("top-n", "n", 20,
 		formatFlagUsage(`Select the top N largest genomes for analysis.`))
 
-	geneMasksCmd.Flags().IntP("prefix-ext", "P", 4,
+	geneMasksCmd.Flags().IntP("prefix-ext", "P", 6,
 		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distance.`))
 
 	geneMasksCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-n <top-n>] [-D <seeds.tsv.gz>] [-o masks.txt] { -I <seqs dir> | -X <file list>}"))
@@ -844,9 +849,11 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		// }
 		// log.Infof("  ", _counts[:_n])
 
-		// randomly choose one of the most frequent _prefixes.
-		// TODO: _counts[0][1] might be 0, that means there's no k-mers available
-		_prefix = _counts[0][0]
+		if _counts[0][1] == 0 { // there's no k-mers available,just generate one
+			_prefix = r.Intn(_nPrefix)
+		} else { // randomly choose one of the most frequent _prefixes.
+			_prefix = _counts[0][0]
+		}
 		// log.Infof("  randomly choose one of the most frequent _prefixes: %s, existing in %d genomes\n",
 		// 	lexichash.MustDecode(uint64(_prefix), uint8(_lenPrefix)), _counts[0][1])
 
