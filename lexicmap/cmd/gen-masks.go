@@ -42,6 +42,7 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/kmers"
+	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
@@ -844,7 +845,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 		// generate one random mask with a prefix of "prefix"+"_prefix"
 		// mask = prefix + _ prefix + random
-		mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
+		mask = prefix64<<shiftP | uint64(_prefix)<<_shiftP | util.Hash64(r.Uint64())&_mask
 
 		// record it
 		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
@@ -882,21 +883,26 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		if opt.Verbose || opt.Log2File {
 			log.Infof("    generating left %d masks...", leftMasks)
 		}
-		prefixes := make([]int, nPrefix)
+		// shuffle all prefixes
+		prefixes := make([]int, 0, nPrefix) // only use non-low-complexity prefix
 		for i = 0; i < nPrefix; i++ {
-			prefixes[i] = i
+			if lexichash.IsLowComplexity(uint64(i), lenPrefix) {
+				continue
+			}
+			prefixes = append(prefixes, i)
 		}
-		r.Shuffle(nPrefix, func(i, j int) { prefixes[i], prefixes[j] = prefixes[j], prefixes[i] })
-		var _mask uint64 = 1<<(uint64(k-nPrefix)<<1) - 1
+		nPrefix2 := len(prefixes)
+		r.Shuffle(nPrefix2, func(i, j int) { prefixes[i], prefixes[j] = prefixes[j], prefixes[i] })
+		// var _mask uint64 = 1<<(uint64(k-lenPrefix)<<1) - 1
 
-		rounds := leftMasks/nPrefix + 1 // the round of using the prefixes
-		var last int                    // the last element
+		rounds := leftMasks/nPrefix2 + 1 // the round of using the prefixes
+		var last int                     // the last element
 		j = 0
 		for round := 0; round < rounds; round++ {
 			if round < rounds-1 { // for previous rounds, all the prefixes are used
-				last = nPrefix
+				last = nPrefix2
 			} else { // for the last round, only a part of prefixes is used
-				last = leftMasks % nPrefix
+				last = leftMasks % nPrefix2
 			}
 
 			for _, prefix = range prefixes[:last] {
@@ -979,7 +985,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 				// generate one random mask with a prefix of "prefix"+"_prefix"
 				// mask = prefix + _ prefix + random
-				mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
+				mask = prefix64<<shiftP | uint64(_prefix)<<_shiftP | util.Hash64(r.Uint64())&_mask
 
 				// record it
 				// it's different here !!!!!!!!!!!!1
