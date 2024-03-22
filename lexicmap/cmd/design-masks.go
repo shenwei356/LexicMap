@@ -303,10 +303,10 @@ func init() {
 	geneMasksCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-n <top-n>] [-D <seeds.tsv.gz>] [-o masks.txt] { -I <seqs dir> | -X <file list>}"))
 }
 
-// GenerateMasks generate Masks from the top N largest genomes
+// GenerateMasks generates Masks from the top N largest genomes.
 func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int, topN int, _lenPrefix int, outFile string) ([]uint64, []string, error) {
 	var outfh *bufio.Writer
-	if outFile != "" { // output seed locations and distance
+	if outFile != "" { // output seed locations and distances
 		var gw io.WriteCloser
 		var w *os.File
 		var err error
@@ -376,8 +376,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		}()
 	}
 
-	// receiver
-
+	// genome size
 	chGS := make(chan File2GSize, opt.NumCPUs)
 	doneGS := make(chan int)
 	heap.Init(file2gsizes)
@@ -393,6 +392,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		doneGS <- 1
 	}()
 
+	// skipped extreme big genomes
 	chSkippedFiles := make(chan string, 8)
 	doneSkip := make(chan int)
 	skippedFiles := make([]string, 0, 8)
@@ -403,7 +403,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		doneSkip <- 1
 	}()
 
-	// do it
+	// read seq file and count bases
 	var wg sync.WaitGroup                 // ensure all jobs done
 	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
 	k := opt.K
@@ -503,6 +503,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		pbs.Wait()
 	}
 
+	// topN might be > the number of available files
 	if topN > len(files)-len(skippedFiles) {
 		topN = len(files) - len(skippedFiles)
 	}
@@ -521,26 +522,22 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	}
 
 	// --------------------------------------------------------------------
-	// anlysis
+	// count k-mers from the top n files
+
 	if opt.Verbose || opt.Log2File {
 		log.Info()
 		log.Infof("  collecting k-mers from %d files...", len(filesTop))
 	}
 
-	// -------------------------------------------------
-	// count k-mers from the top n files
-
-	// Collect k-mers
-
 	lenPrefix := 1
 	for 1<<(lenPrefix<<1) <= opt.Masks {
 		lenPrefix++
 	}
-	lenPrefix-- // 7 for 20,000 files
+	lenPrefix-- // 7 for 20,000 masks
 
-	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
 	nPrefix := int(math.Pow(4, float64(lenPrefix)))
 
+	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
 	data := make([][]map[uint64]*[]int32, nPrefix)
 
 	var m map[uint64]*[]int32
@@ -579,7 +576,9 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		}
 		fastxReader.Close()
 
+		// --------------------------------
 		// concatenate contigs
+
 		i = 0
 		for {
 			record, err = fastxReader.Read()
@@ -656,7 +655,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 			j = iter.Index()
 
-			// --- kmer
+			// --- kmer ---
 
 			prefix = int(util.KmerPrefix(kmer, k8, p8))
 			if data[prefix] == nil {
@@ -675,7 +674,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 				*locs = append(*locs, int32(j))
 			}
 
-			// --- kmerRC
+			// --- kmerRC ---
 
 			kmer = kmerRC
 
@@ -708,12 +707,14 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	}
 
 	// --------------------------------------------------------------------
+	// generate mask
+
 	if opt.Verbose || opt.Log2File {
 		log.Info()
 		log.Infof("  generating masks...")
 	}
 
-	// count prefixes and sort in descending order.
+	// count prefixes' k-mers and sort in descending order.
 	counts := make([][2]int, nPrefix)
 	var dRefs []map[uint64]*[]int32 // kmer data of all refs
 	var n int
@@ -728,8 +729,8 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 	// ATTATAACGCCACGGGGAGCCGCGGGGTTTC
 	// ------- prefix
-	//        ---- _prefix
-	//            -------------------- will be generated randomly
+	//        -------- _prefix
+	//                ---------------- will be generated randomly
 
 	// frequency table for bases behind the prefix.
 
@@ -749,8 +750,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	_sortFunc := func(i, j int) bool { return _counts[i][1] > _counts[j][1] }
 	var _m map[int]interface{}
 
-	// var _n int
-
 	r := rand.New(rand.NewSource(opt.RandSeed))
 	var _mask uint64 = 1<<(uint64(k-lenPrefix-_lenPrefix)<<1) - 1
 	shiftP := uint64(k-lenPrefix) << 1
@@ -761,6 +760,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	var minLocs *[]int32
 	var loc int32
 
+	// for intervals
 	flank := int32(maxGenome / nPrefix)
 	cmpFn := func(x, y int32) int { return int(x - y) }
 	itrees := make([]*interval.SearchTree[uint64, int32], topN)
@@ -785,16 +785,16 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 			fmt.Fprintf(os.Stderr, "\rprocessed prefixes: %d/%d", j+1, nPrefix)
 		}
 
-		if count[1] == 0 { // a prefix not existing in any genome
+		// a prefix not existing in any genome.
+		// maybe it's just because we don't have enough genomes.
+		// in a test of top 5 genomes with 7-bp prefix, it did not happen.
+		if count[1] == 0 {
 			continue
 		}
 
 		prefix = count[0]
 
 		prefix64 = uint64(prefix)
-
-		// log.Infof("%d, %d, %s\n", j, count[1],
-		// 	lexichash.MustDecode(uint64(prefix), uint8(lenPrefix)))
 
 		// -----------------------------------------------------------------
 		// extend the prefix according to existing k-mers and generate a mask
@@ -819,8 +819,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 				// extract _prefix and count it
 				_prefix = int(util.KmerPrefix(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8, _p8))
-				// log.Infof("  %s, suffix: %s\n", lexichash.MustDecode(kmer, k8),
-				// 	lexichash.MustDecode(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8))
 
 				freqs[_prefix][i] = struct{}{}
 			}
@@ -836,38 +834,24 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 			_counts[_prefix][0] = _prefix
 			_counts[_prefix][1] = len(_m)
 		}
-		sort.Slice(_counts, _sortFunc)
+		sort.Slice(_counts, _sortFunc) // sort in descending order of frequencies
 
-		// frequencies of _prefix
-		// _n = 0
-		// for i = range _counts {
-		// 	if _counts[i][1] == 0 {
-		// 		break
-		// 	} else {
-		// 		_n++
-		// 	}
-		// }
-		// log.Infof("  ", _counts[:_n])
-
-		if _counts[0][1] == 0 { // there's no k-mers available,just generate one
+		if _counts[0][1] == 0 { // there's no k-mers available, just generate a random one
 			_prefix = r.Intn(_nPrefix)
 		} else { // randomly choose one of the most frequent _prefixes.
 			_prefix = _counts[0][0]
 		}
-		// log.Infof("  randomly choose one of the most frequent _prefixes: %s, existing in %d genomes\n",
-		// 	lexichash.MustDecode(uint64(_prefix), uint8(_lenPrefix)), _counts[0][1])
 
 		// generate one random mask with a prefix of "prefix"+"_prefix"
 		// mask = prefix + _ prefix + random
 		mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
-		// log.Infof("  mask: %s\n", lexichash.MustDecode(mask, k8))
 
 		// record it
 		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
 
 		// -----------------------------------------------------------------
-
 		// capture the most similar k-mer in each genome
+
 		for i, m = range data[prefix] { // each genome, i is the genome idx
 			minHash = math.MaxUint64
 			for kmer, locs = range m { // each kmer
@@ -907,6 +891,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 
 		rounds := leftMasks/nPrefix + 1 // the round of using the prefixes
 		var last int                    // the last element
+		j = 0
 		for round := 0; round < rounds; round++ {
 			if round < rounds-1 { // for previous rounds, all the prefixes are used
 				last = nPrefix
@@ -915,33 +900,122 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 			}
 
 			for _, prefix = range prefixes[:last] {
+				if opt.Verbose {
+					j++
+					fmt.Fprintf(os.Stderr, "\rprocessed prefixes: %d/%d", j, leftMasks)
+				}
+
 				prefix64 = uint64(prefix)
-				for { // avoid dupicated mask
-					mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP
-					if _, ok = masks[prefix][mask]; !ok {
-						masks[prefix][mask] = struct{}{}
-						break
+
+				// randomly generated
+
+				// for { // avoid dupicated mask
+				// 	mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP // random
+				// 	if _, ok = masks[prefix][mask]; !ok {
+				// 		masks[prefix][mask] = struct{}{}
+				// 		break
+				// 	}
+				// }
+
+				// // capture the most similar k-mer in each genome
+				// for i, m = range data[prefix] { // each genome, i is the genome idx
+				// 	minHash = math.MaxUint64
+				// 	for kmer, locs = range m { // each kmer
+				// 		hash = mask ^ kmer // lexichash
+
+				// 		if hash < minHash { // hash == minHash would not happen, because they are saved in a map
+				// 			minLocs = locs
+				// 			minHash = hash
+				// 		}
+				// 	}
+				// 	locations[i] = append(locations[i], *minLocs...)
+				// }
+
+				// -----------------------------------------------------------------
+				// extend the prefix according to existing k-mers and generate a mask
+
+				// clear the freqs table
+				for i = range freqs {
+					clear(freqs[i])
+				}
+				// count how many genomes have k-mers with this _prefix
+				for i, m = range data[prefix] { // i is the genome idx
+					for kmer, locs = range m {
+						// check if this kmer overlap with existing intervals
+						overlap = false
+						for _, loc = range *locs {
+							if _, ok = itrees[i].AnyIntersection(loc, loc+k32); ok {
+								overlap = true
+							}
+						}
+						if overlap {
+							continue
+						}
+
+						// extract _prefix and count it
+						_prefix = int(util.KmerPrefix(util.KmerSuffix(kmer, k8, lenPrefix8), k8-p8, _p8))
+
+						freqs[_prefix][i] = struct{}{}
 					}
 				}
 
+				// clear the count table
+				for _prefix, _m = range freqs {
+					if len(_m) == 0 { // a _prefix not existing in any genome, reset the count
+						_counts[_prefix][0] = 0
+						_counts[_prefix][1] = 0
+						continue
+					}
+					_counts[_prefix][0] = _prefix
+					_counts[_prefix][1] = len(_m)
+				}
+				sort.Slice(_counts, _sortFunc) // sort in descending order of frequencies
+
+				if _counts[0][1] == 0 { // there's no k-mers available, just generate a random one
+					_prefix = r.Intn(_nPrefix)
+				} else { // randomly choose one of the most frequent _prefixes.
+					_prefix = _counts[0][0]
+				}
+
+				// generate one random mask with a prefix of "prefix"+"_prefix"
+				// mask = prefix + _ prefix + random
+				mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP | uint64(_prefix)<<_shiftP
+
+				// record it
+				// it's different here !!!!!!!!!!!!1
+				// masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
+				masks[prefix][mask] = struct{}{}
+
+				// -----------------------------------------------------------------
 				// capture the most similar k-mer in each genome
+
 				for i, m = range data[prefix] { // each genome, i is the genome idx
 					minHash = math.MaxUint64
 					for kmer, locs = range m { // each kmer
 						hash = mask ^ kmer // lexichash
 
 						if hash < minHash { // hash == minHash would not happen, because they are saved in a map
+							minKmer = kmer
 							minLocs = locs
 							minHash = hash
 						}
 					}
-					locations[i] = append(locations[i], *minLocs...)
+					for _, loc = range *minLocs {
+						// add the region of this k-mer to the interval tree of the genome
+						itrees[i].Insert(loc-flank, loc+flank, minKmer)
+
+						// store locations for further report
+						locations[i] = append(locations[i], loc)
+					}
 				}
 			}
 		}
+		if opt.Verbose {
+			fmt.Fprintln(os.Stderr)
+		}
 	}
 
-	//  check max distance
+	// check the max distance in each genome
 	if opt.Verbose || opt.Log2File {
 		log.Info()
 		log.Infof("  maximum distance between seeds:")
@@ -983,6 +1057,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		}
 	}
 
+	// collect masks to return
 	_masks := make([]uint64, 0, opt.Masks)
 	for _, m := range masks {
 		for kmer = range m {
