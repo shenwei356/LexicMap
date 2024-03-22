@@ -287,7 +287,7 @@ func init() {
 	geneMasksCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	geneMasksCmd.Flags().IntP("masks", "m", 20480,
+	geneMasksCmd.Flags().IntP("masks", "m", 20000,
 		formatFlagUsage(`Number of masks.`))
 
 	geneMasksCmd.Flags().IntP("rand-seed", "s", 1,
@@ -298,7 +298,7 @@ func init() {
 	geneMasksCmd.Flags().IntP("top-n", "n", 20,
 		formatFlagUsage(`Select the top N largest genomes for analysis.`))
 
-	geneMasksCmd.Flags().IntP("prefix-ext", "P", 6,
+	geneMasksCmd.Flags().IntP("prefix-ext", "P", 8,
 		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distance.`))
 
 	geneMasksCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-n <top-n>] [-D <seeds.tsv.gz>] [-o masks.txt] { -I <seqs dir> | -X <file list>}"))
@@ -748,6 +748,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	for i = range _counts {
 		_counts[i] = [2]int{}
 	}
+	var _count [2]int
 	_sortFunc := func(i, j int) bool { return _counts[i][1] > _counts[j][1] }
 	var _m map[int]interface{}
 
@@ -780,7 +781,13 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	if opt.Verbose || opt.Log2File {
 		log.Infof("    generating %d masks covering all %d-bp prefixes...", nPrefix, lenPrefix)
 	}
-	masks := make([]map[uint64]interface{}, opt.Masks)
+
+	// masks: prefix -> mask
+	masks := make([]map[uint64]interface{}, nPrefix)
+
+	// for deduplicating: prefix -> _prefix
+	masks2 := make([]map[int]interface{}, nPrefix)
+
 	for j, count := range counts { // for all prefix
 		if opt.Verbose {
 			fmt.Fprintf(os.Stderr, "\rprocessed prefixes: %d/%d", j+1, nPrefix)
@@ -840,15 +847,26 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		if _counts[0][1] == 0 { // there's no k-mers available, just generate a random one
 			_prefix = r.Intn(_nPrefix)
 		} else { // randomly choose one of the most frequent _prefixes.
-			_prefix = _counts[0][0]
+			_prefix = -1
+			for _, _count = range _counts {
+				if _, ok = masks2[prefix][_count[0]]; !ok { // make sure that prefix+_prefix is unique.
+					_prefix = _count[0]
+					break
+				}
+			}
+			if _prefix == -1 { // have no choice
+				_prefix = _counts[0][0]
+			}
 		}
 
 		// generate one random mask with a prefix of "prefix"+"_prefix"
 		// mask = prefix + _ prefix + random
 		mask = prefix64<<shiftP | uint64(_prefix)<<_shiftP | util.Hash64(r.Uint64())&_mask
 
-		// record it
+		// record it: prefix -> mask
 		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
+
+		masks2[prefix] = map[int]interface{}{_prefix: struct{}{}}
 
 		// -----------------------------------------------------------------
 		// capture the most similar k-mer in each genome
@@ -893,7 +911,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 		}
 		nPrefix2 := len(prefixes)
 		r.Shuffle(nPrefix2, func(i, j int) { prefixes[i], prefixes[j] = prefixes[j], prefixes[i] })
-		// var _mask uint64 = 1<<(uint64(k-lenPrefix)<<1) - 1
 
 		rounds := leftMasks/nPrefix2 + 1 // the round of using the prefixes
 		var last int                     // the last element
@@ -912,30 +929,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 				}
 
 				prefix64 = uint64(prefix)
-
-				// randomly generated
-
-				// for { // avoid dupicated mask
-				// 	mask = util.Hash64(r.Uint64())&_mask | prefix64<<shiftP // random
-				// 	if _, ok = masks[prefix][mask]; !ok {
-				// 		masks[prefix][mask] = struct{}{}
-				// 		break
-				// 	}
-				// }
-
-				// // capture the most similar k-mer in each genome
-				// for i, m = range data[prefix] { // each genome, i is the genome idx
-				// 	minHash = math.MaxUint64
-				// 	for kmer, locs = range m { // each kmer
-				// 		hash = mask ^ kmer // lexichash
-
-				// 		if hash < minHash { // hash == minHash would not happen, because they are saved in a map
-				// 			minLocs = locs
-				// 			minHash = hash
-				// 		}
-				// 	}
-				// 	locations[i] = append(locations[i], *minLocs...)
-				// }
 
 				// -----------------------------------------------------------------
 				// extend the prefix according to existing k-mers and generate a mask
@@ -980,7 +973,16 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 				if _counts[0][1] == 0 { // there's no k-mers available, just generate a random one
 					_prefix = r.Intn(_nPrefix)
 				} else { // randomly choose one of the most frequent _prefixes.
-					_prefix = _counts[0][0]
+					_prefix = -1
+					for _, _count = range _counts {
+						if _, ok = masks2[prefix][_count[0]]; !ok { // make sure that prefix+_prefix is unique.
+							_prefix = _count[0]
+							break
+						}
+					}
+					if _prefix == -1 { // have no choice
+						_prefix = _counts[0][0]
+					}
 				}
 
 				// generate one random mask with a prefix of "prefix"+"_prefix"
@@ -991,6 +993,8 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 				// it's different here !!!!!!!!!!!!1
 				// masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
 				masks[prefix][mask] = struct{}{}
+
+				masks2[prefix][_prefix] = struct{}{}
 
 				// -----------------------------------------------------------------
 				// capture the most similar k-mer in each genome
