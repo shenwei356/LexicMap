@@ -308,12 +308,13 @@ type SubstrPair struct {
 
 	Mismatch uint8 // number of mismatches
 
-	RC bool // is the substring from the reference seq on the negative strand.
+	TRC bool // is the substring from the reference seq on the negative strand.
+	QRC bool // is the substring from the query seq on the negative strand.
 }
 
 func (s SubstrPair) String() string {
-	return fmt.Sprintf("%3d-%3d vs %3d-%3d len:%2d, mismatches:%d, rc:%v",
-		s.QBegin+1, s.QBegin+s.Len, s.TBegin+1, s.TBegin+s.Len, s.Len, s.Mismatch, s.RC)
+	return fmt.Sprintf("%3d-%3d (rc: %v) vs %3d-%3d (rc: %v), len:%2d, mismatches:%d",
+		s.QBegin+1, s.QBegin+s.Len, s.QRC, s.TBegin+1, s.TBegin+s.Len, s.TRC, s.Len, s.Mismatch)
 }
 
 var poolSub = &sync.Pool{New: func() interface{} {
@@ -610,7 +611,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						_sub2.Code = code
 						_sub2.Len = kPrefix
 						_sub2.Mismatch = mismatch
-						_sub2.RC = rcT
+						_sub2.QRC = rcQ
+						_sub2.TRC = rcT
 
 						var r *SearchResult
 						if r, ok = (*m)[refBatchAndIdx]; !ok {
@@ -801,7 +803,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			te = sub.TBegin + sub.Len
 
 			if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
-				rc = sub.RC
+				rc = sub.QRC != sub.TRC
 			} else { // check the strand according to coordinates of seeds
 				rc = ts > sub.TBegin
 			}

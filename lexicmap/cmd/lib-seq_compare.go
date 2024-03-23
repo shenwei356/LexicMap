@@ -185,7 +185,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 				_sub2.TBegin = int(v)
 				_sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
 				_sub2.Len = int(sr.LenPrefix)
-				_sub2.RC = false
+				_sub2.TRC = false
 
 				*subs = append(*subs, _sub2)
 			}
