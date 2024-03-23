@@ -179,7 +179,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int) {
 				continue
 			}
 
-			s = maxscores[j] + b.Len - g // compute the socre
+			s = maxscores[j] + b.Len - g // compute the score
 			// scores[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
