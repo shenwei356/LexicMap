@@ -53,8 +53,21 @@ import (
 
 var geneMasksCmd = &cobra.Command{
 	Use:   "gen-masks",
-	Short: "Generate masks from top N largest genomes",
-	Long: `Generate masks from top N largest genomes
+	Short: "Generate masks from the top N largest genomes",
+	Long: `Generate masks from the top N largest genomes
+
+How:
+
+    |ATTATAACGCCACGGGGAGCCGCGGGGTTTC One k-bp mask
+    |--------========_______________
+    |
+    |-------- Prefixes for covering all possible P-bp DNA.
+    |         The length is the largest number for 4^P <= #masks
+    |
+    |--------======== Extend prefixes, chosen from the most frequent extended prefixes
+    |                 of which the prefix-derived k-mers do not overlap masked k-mers.
+    |
+    |                _______________ Randomly generated bases
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -169,10 +182,18 @@ var geneMasksCmd = &cobra.Command{
 			Force:        false,
 			MaxOpenFiles: 512,
 
+			// skip extremely large genomes
+			MaxGenomeSize: maxGenomeSize,
+			BigGenomeFile: fileBigGenomes,
+
 			// LexicHash
 			K:        k,
 			Masks:    nMasks,
 			RandSeed: int64(seed),
+
+			// generate masks
+			TopN:      topN,
+			PrefixExt: _prefix,
 
 			// genome
 			ReRefName:    reRefName,
@@ -227,7 +248,7 @@ var geneMasksCmd = &cobra.Command{
 
 		// ---------------------------------------------------------------
 
-		masks, skippedFiles, err := GenerateMasks(files, bopt, maxGenomeSize, topN, _prefix, seedPosFile)
+		masks, skippedFiles, err := GenerateMasks(files, bopt, seedPosFile)
 		checkError(err)
 
 		for _, mask := range masks {
@@ -269,15 +290,15 @@ func init() {
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
 	geneMasksCmd.Flags().IntP("max-genome", "g", 20000000,
-		formatFlagUsage(`Maximum genome size. Extreme large genomes (non-isolate assemblies) will be skipped.`))
-
-	geneMasksCmd.Flags().StringP("big-genomes", "G", "",
-		formatFlagUsage(`Out file of files with genomes >= -G/--max-genome`))
+		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
 
 	// -----------------------------  output   -----------------------------
 
 	geneMasksCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file of generated masks. The ".gz" suffix is not recommended. ("-" for stdout).`))
+
+	geneMasksCmd.Flags().StringP("big-genomes", "G", "",
+		formatFlagUsage(`Out file of skipped files with genomes >= -G/--max-genome`))
 
 	geneMasksCmd.Flags().StringP("seed-pos", "D", "",
 		formatFlagUsage(`Out file of seed postions and distances, supports and recommends a ".gz" suffix.`))
@@ -293,19 +314,23 @@ func init() {
 	geneMasksCmd.Flags().IntP("rand-seed", "s", 1,
 		formatFlagUsage(`Rand seed for generating random masks.`))
 
-	// -----------------------------  design mask   -----------------------------
+	// -----------------------------  generate mask   -----------------------------
 
 	geneMasksCmd.Flags().IntP("top-n", "n", 20,
-		formatFlagUsage(`Select the top N largest genomes for analysis.`))
+		formatFlagUsage(`Select the top N largest genomes for generating masks.`))
 
 	geneMasksCmd.Flags().IntP("prefix-ext", "P", 8,
-		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distance.`))
+		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distances.`))
 
 	geneMasksCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-n <masks>] [-n <top-n>] [-D <seeds.tsv.gz>] [-o masks.txt] { -I <seqs dir> | -X <file list>}"))
 }
 
 // GenerateMasks generates Masks from the top N largest genomes.
-func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int, topN int, _lenPrefix int, outFile string) ([]uint64, []string, error) {
+func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([]uint64, []string, error) {
+	maxGenomeSize := opt.MaxGenomeSize
+	topN := opt.TopN
+	_lenPrefix := opt.PrefixExt
+
 	var outfh *bufio.Writer
 	if outFile != "" { // output seed locations and distances
 		var gw io.WriteCloser
@@ -326,10 +351,10 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, maxGenomeSize int,
 	if opt.Verbose || opt.Log2File {
 		timeStart = time.Now()
 		log.Info()
-		log.Infof("generating mask from the top %d out of %d genomes...", topN, len(files))
+		log.Infof("generating masks from the top %d out of %d genomes...", topN, len(files))
 		defer func() {
 			log.Info()
-			log.Infof("  finished in: %s", time.Since(timeStart))
+			log.Infof("  finished generating masks in: %s", time.Since(timeStart))
 		}()
 	}
 

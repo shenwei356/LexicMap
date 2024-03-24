@@ -92,12 +92,23 @@ type IndexBuildingOptions struct {
 	Force        bool // force overwrite existed index
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
+	// skipping extremely large genome
+	MaxGenomeSize int    // Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped
+	BigGenomeFile string // Out file of skipped files with genomes
+
 	// LexicHash
-	MaskFile         string // file of custom masks
-	K                int    // k-mer size
-	Masks            int    // number of masks
-	RandSeed         int64  // random seed
-	PrefixForCheckLC int    // length of prefix for checking low-complexity
+	MaskFile string // file of custom masks
+
+	K        int   // k-mer size
+	Masks    int   // number of masks
+	RandSeed int64 // random seed
+
+	//   generate mask randomly
+	PrefixForCheckLC int // length of prefix for checking low-complexity
+
+	//   generate mask from the top N biggest genomes
+	TopN      int // Select the the top N largest genomes for generating masks
+	PrefixExt int // Extension length of prefixes
 
 	// k-mer-value data
 
@@ -119,8 +130,8 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.K < 3 || opt.K > 32 {
 		return fmt.Errorf("invalid k value: %d, valid range: [3, 32]", opt.K)
 	}
-	if opt.Masks < 4 {
-		return fmt.Errorf("invalid numer of masks: %d, should be >=4", opt.Masks)
+	if opt.Masks < 64 {
+		return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
 	}
 	if opt.PrefixForCheckLC > opt.K {
 		return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.PrefixForCheckLC)
@@ -165,20 +176,60 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	// 	return err
 	// }
 
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("--------------------- [ generating masks ] ---------------------")
+	}
+
 	// generate masks
 	var lh *lexichash.LexicHash
 	var err error
 
 	if opt.MaskFile != "" {
+		if opt.Verbose || opt.Log2File {
+			log.Info()
+			log.Infof("reading masks from file: %s", opt.MaskFile)
+		}
 		lh, err = lexichash.NewFromTextFile(opt.MaskFile)
+		checkError(err)
+		if len(lh.Masks) < 64 {
+			return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
+		}
 		opt.K = lh.K
 	} else {
-		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
+		masks, skippedFiles, err := GenerateMasks(infiles, opt, "")
+		checkError(err)
+
+		lh, err = lexichash.NewWithMasks(opt.K, masks)
+		checkError(err)
+
+		if opt.BigGenomeFile != "" {
+			outfh2, err := os.Create(opt.BigGenomeFile)
+			if err != nil {
+				checkError(fmt.Errorf("failed to write file: %s", opt.BigGenomeFile))
+			}
+			for _, file := range skippedFiles {
+				fmt.Fprintf(outfh2, "%s\n", file)
+			}
+			outfh2.Close()
+			if opt.Verbose || opt.Log2File {
+				log.Infof("  finished saving skipped genome files: %s", opt.BigGenomeFile)
+			}
+		}
 	}
-	if err != nil {
-		return err
-	}
+	// } else {
+	// 	lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
+	// if err != nil {
+	// 	return err
+	// }
+	// }
+
 	// save mask later
+
+	if opt.Verbose || opt.Log2File {
+		log.Info()
+		log.Infof("--------------------- [ building index ] ---------------------")
+	}
 
 	datas := make([]*map[uint64]*[]uint64, opt.Masks)
 	for i := 0; i < opt.Masks; i++ {

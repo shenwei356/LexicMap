@@ -47,6 +47,9 @@ Input:
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
      sub-directories allowed. A regular expression for matching sequencing files is available via the flag
      -r/--file-regexp.
+  4. Some none-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
+     The flag -g/--max-genome is used to skip these input files, and the file list would be write to a file
+     (-G/--big-genomes).
 
   Attentions:
    *1) ► You can rename the sequence files for convenience because the genome identifiers in the index and
@@ -58,12 +61,16 @@ Input:
        (-B/--seq-name-filter).
 
 Important parameters:
-  --- LexicHash computation ---
+  --- LexicHash mask generation ---
+  0. -M/--mask-file,   ► File with custom masks, which could be genrated by "lexicmap utils gen-masks".
+                       This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -n/--top-n, and -P/--prefix-ext.
   1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
                        ► Bigger values improve the search specificity and do not increase the index size.
-
   2. -m/--masks,       ► Number of masks (default: 20480).
                        ► Bigger values improve the search sensitivity and increase the index size.
+  3. -n/--top-n,       ► The top N largest genomes for generating mask
+  4. -P/--prefix-ext,  ► Extension length of prefixes.
+                       ► Bigger values improve the search sensitivity by decreasing the maximum seed distances.
 
   --- seeds (k-mer-value data) ---
   1. -c/--chunks,      ► Number of seed file chunks (maximum: 128, default: #CPUs).
@@ -113,13 +120,19 @@ Important parameters:
 		}
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
-		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
+		// lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
 		maskFile := getFlagString(cmd, "mask-file")
 		chunks := getFlagPositiveInt(cmd, "chunks")
 		partitions := getFlagPositiveInt(cmd, "partitions")
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+
+		maxGenomeSize := getFlagNonNegativeInt(cmd, "max-genome")
+		fileBigGenomes := getFlagString(cmd, "big-genomes")
+
+		topN := getFlagPositiveInt(cmd, "top-n")
+		prefixExt := getFlagPositiveInt(cmd, "prefix-ext")
 
 		outDir := getFlagString(cmd, "out-dir")
 		force := getFlagBool(cmd, "force")
@@ -200,12 +213,20 @@ Important parameters:
 			Force:        force,
 			MaxOpenFiles: maxOpenFiles,
 
+			// skip extremely large genomes
+			MaxGenomeSize: maxGenomeSize,
+			BigGenomeFile: fileBigGenomes,
+
 			// LexicHash
-			MaskFile:         maskFile,
-			K:                k,
-			Masks:            nMasks,
-			RandSeed:         int64(seed),
-			PrefixForCheckLC: lcPrefix,
+			MaskFile: maskFile,
+			K:        k,
+			Masks:    nMasks,
+			RandSeed: int64(seed),
+			// PrefixForCheckLC: lcPrefix,
+
+			// generate masks
+			TopN:      topN,
+			PrefixExt: prefixExt,
 
 			// k-mer-value data
 			Chunks:     chunks,
@@ -268,27 +289,34 @@ Important parameters:
 
 		if opt.Verbose || opt.Log2File {
 			log.Info()
-			log.Infof("--------------------- [main parameters] ---------------------")
+			log.Infof("--------------------- [ main parameters ] ---------------------")
 			log.Info()
 			log.Info("input and output:")
 			log.Infof("  input directory: %s", inDir)
 			log.Infof("    regular expression of input files: %s", reFileStr)
 			log.Infof("    *regular expression for extracting reference name from file name: %s", reRefNameStr)
 			log.Infof("    *regular expressions for filtering out sequences: %s", reSeqNameStrs)
+			log.Infof("  max genome size: %d", maxGenomeSize)
 			log.Infof("  output directory: %s", outDir)
+			if fileBigGenomes != "" {
+				log.Infof("  output file of skipped genomes: %s", fileBigGenomes)
+			}
 			log.Info()
-			log.Infof("k-mer size: %d", k)
-			log.Infof("number of masks: %d", nMasks)
-			log.Infof("rand seed: %d", seed)
+			if maskFile != "" {
+				log.Infof("  custom mask file: %s", maskFile)
+			} else {
+				log.Infof("k-mer size: %d", k)
+				log.Infof("number of masks: %d", nMasks)
+				log.Infof("rand seed: %d", seed)
+				log.Infof("top N genomes for generating mask: %d", topN)
+				log.Infof("prefix estension length: %d", prefixExt)
+			}
 			log.Info()
 			log.Infof("seeds data chunks: %d", chunks)
 			log.Infof("seeds data indexing partitions: %d", partitions)
 			log.Info()
 			log.Infof("genome batch size: %d", batchSize)
 			log.Info()
-			log.Infof("--------------------- [main parameters] ---------------------")
-			log.Info()
-			log.Infof("building index ...")
 		}
 
 		// ---------------------------------------------------------------
@@ -328,15 +356,21 @@ func init() {
 	indexCmd.Flags().BoolP("skip-file-check", "S", false,
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
+	indexCmd.Flags().IntP("max-genome", "g", 20000000,
+		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
+
 	// -----------------------------  output  -----------------------------
 
 	indexCmd.Flags().StringP("out-dir", "O", "",
 		formatFlagUsage(`Output directory.`))
 
+	indexCmd.Flags().StringP("big-genomes", "G", "",
+		formatFlagUsage(`Out file of skipped files with genomes >= -G/--max-genome`))
+
 	indexCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existing output directory.`))
 
-	// -----------------------------  lexichash   -----------------------------
+	// -----------------------------  lexichash masks   -----------------------------
 
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
@@ -344,14 +378,24 @@ func init() {
 	indexCmd.Flags().IntP("masks", "m", 20000,
 		formatFlagUsage(`Number of masks.`))
 
-	indexCmd.Flags().IntP("prefix", "", 15,
-		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
-
 	indexCmd.Flags().IntP("rand-seed", "s", 1,
 		formatFlagUsage(`Rand seed for generating random masks.`))
 
 	indexCmd.Flags().StringP("mask-file", "M", "",
-		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, --prefix, and -s/--rand-seed.`))
+		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, --prefix, -n/--top-n, and -P/--prefix-ext.`))
+
+	// ------  generate masks randomly
+
+	// indexCmd.Flags().IntP("prefix", "", 15,
+	// 	formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
+
+	// ------  generate mask from the top N biggest genomes
+
+	indexCmd.Flags().IntP("top-n", "n", 20,
+		formatFlagUsage(`Select the top N largest genomes for generating masks.`))
+
+	indexCmd.Flags().IntP("prefix-ext", "P", 8,
+		formatFlagUsage(`Extension length of prefixes, higher values -> smaller maximum seed distances.`))
 
 	// -----------------------------  kmer-value data   -----------------------------
 

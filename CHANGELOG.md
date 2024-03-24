@@ -1,6 +1,12 @@
 # Changelog
 
-### v0.2.0 - 2014-02-02
+### v0.3.0 - 2024-03-24
+
+- `lexicmap index`:
+    - Generating masks from the top N biggest genomes instead of randomly generating.
+- New command: `lexicmap utils gen-masks`.
+
+### v0.2.0 - 2024-02-02
 
 - Software architecture and index formats are redesigned to reduce searching memory occupation.
 - Indexing: genomes are processed in batches to reduce RAM usage, then indexes of all batches are merged.
