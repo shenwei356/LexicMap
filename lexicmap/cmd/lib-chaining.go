@@ -41,7 +41,7 @@ var DefaultChainingOptions = ChainingOptions{
 type Chainer struct {
 	options *ChainingOptions
 
-	scores        []float64
+	scores        []float64 // actually, it's not necessary
 	maxscores     []float64
 	maxscoresIdxs []int
 	visited       []bool
@@ -107,7 +107,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 	// a list for storing triangular score matrix, the size is n*(n+1)>>1
 	scores := ce.scores[:0]
-	for k = 0; k < n*(n+1)>>1; k++ {
+	_n := n * (n + 1) >> 1
+	for k = 0; k < _n; k++ {
 		scores = append(scores, 0)
 	}
 	// the maximum score for each seed, the size is n
@@ -188,48 +189,51 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 	path := poolChain.Get().(*[]int)
 	*path = (*path)[:0]
-	i = n - 1
-	first = true
+
+	var M float64
+	var Mi int
+
 	for {
-		// find the larget unvisited i
-		for ; i >= 0; i-- {
-			if !visited[i] {
-				break
+		// find the next highest score
+		M = 0
+		for i, m = range maxscores {
+			if visited[i] {
+				continue
+			}
+			if m > M {
+				M, Mi = m, i
 			}
 		}
-		// all are visited
-		if i == -1 {
+		if M < minScore { // no valid anchors
 			break
 		}
 
-		if first && maxscores[i] < minScore {
-			visited[i] = true
-			i--
-			continue
-		}
+		i = Mi
+		first = true
+		for {
+			j = maxscoresIdxs[i] // previous anchor
+			if visited[j] {      // curent anchor is abandoned
+				visited[i] = true // do not check it again
+				break
+			}
 
-		j = maxscoresIdxs[i] // previous seed
-		if visited[j] {      // curent seed is abandoned
-			i--
-			continue
-		}
+			*path = append(*path, i) // record the anchor
+			visited[i] = true        // mark as visited
+			if first {
+				sumMaxScore += maxscores[i]
+				first = false
+			}
+			if i != j {
+				i = j
+			} else { // the path starts here
+				reverseInts(*path)
+				*paths = append(*paths, path)
 
-		*path = append(*path, i) // record the seed
-		visited[i] = true        // mark as visited
-		if first {
-			sumMaxScore += maxscores[i]
-			first = false
-		}
-		if i != j {
-			i = j
-		} else { // the path starts here
-			reverseInts(*path)
-			*paths = append(*paths, path)
-
-			path = poolChain.Get().(*[]int)
-			*path = (*path)[:0]
-			i = n - 1 // re-track from the end
-			first = true
+				path = poolChain.Get().(*[]int)
+				*path = (*path)[:0]
+				i = n - 1 // re-track from the end
+				first = true
+			}
 		}
 	}
 

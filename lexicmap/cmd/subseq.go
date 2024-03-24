@@ -34,8 +34,8 @@ import (
 
 var subseqCmd = &cobra.Command{
 	Use:   "subseq",
-	Short: "extract subsequence via reference name, sequence ID, position and strand",
-	Long: `exextract subsequence via reference name, sequence ID, position and strand
+	Short: "Extract subsequence via reference name, sequence ID, position and strand",
+	Long: `Exextract subsequence via reference name, sequence ID, position and strand
 
 Attention:
   1. The option -s/--seq-id is optional.

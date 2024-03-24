@@ -37,6 +37,14 @@ func TestChaining(t *testing.T) {
 		// {QBegin: 1924, TBegin: 1547, Len: 31},
 		// {QBegin: 1924, TBegin: 3638544, Len: 31},
 
+		// a kmer has multiple matches
+		{QBegin: 1384, TBegin: 628584, Len: 31},
+		{QBegin: 1490, TBegin: 628690, Len: 31},
+		{QBegin: 1879, TBegin: 900465, Len: 31},
+		{QBegin: 1879, TBegin: 629079, Len: 31},
+		{QBegin: 1879, TBegin: 627005, Len: 31},
+		{QBegin: 1910, TBegin: 6123921, Len: 23},
+
 		// same strands
 
 		{QBegin: 182, TBegin: 1282695, Len: 26},

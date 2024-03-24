@@ -115,6 +115,7 @@ Important parameters:
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
+		maskFile := getFlagString(cmd, "mask-file")
 		chunks := getFlagPositiveInt(cmd, "chunks")
 		partitions := getFlagPositiveInt(cmd, "partitions")
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
@@ -122,7 +123,6 @@ Important parameters:
 
 		outDir := getFlagString(cmd, "out-dir")
 		force := getFlagBool(cmd, "force")
-		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		if outDir == "" {
 			checkError(fmt.Errorf("flag -O/--out-dir is needed"))
@@ -131,6 +131,7 @@ Important parameters:
 		var err error
 
 		inDir := getFlagString(cmd, "in-dir")
+		skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		outDir = filepath.Clean(outDir)
 
@@ -200,6 +201,7 @@ Important parameters:
 			MaxOpenFiles: maxOpenFiles,
 
 			// LexicHash
+			MaskFile:         maskFile,
 			K:                k,
 			Masks:            nMasks,
 			RandSeed:         int64(seed),
@@ -324,7 +326,7 @@ func init() {
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
 
 	indexCmd.Flags().BoolP("skip-file-check", "S", false,
-		formatFlagUsage(`skip input file checking when given files or a file list.`))
+		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
 	// -----------------------------  output  -----------------------------
 
@@ -339,7 +341,7 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "m", 20480,
+	indexCmd.Flags().IntP("masks", "m", 20000,
 		formatFlagUsage(`Number of masks.`))
 
 	indexCmd.Flags().IntP("prefix", "", 15,
@@ -347,6 +349,9 @@ func init() {
 
 	indexCmd.Flags().IntP("rand-seed", "s", 1,
 		formatFlagUsage(`Rand seed for generating random masks.`))
+
+	indexCmd.Flags().StringP("mask-file", "M", "",
+		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, --prefix, and -s/--rand-seed.`))
 
 	// -----------------------------  kmer-value data   -----------------------------
 

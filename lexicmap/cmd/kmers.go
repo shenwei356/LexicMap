@@ -156,7 +156,7 @@ Attentions:
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
 			bar = pbs.AddBar(int64(len(lh.Masks)),
 				mpb.PrependDecorators(
-					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
+					decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
 					decor.Name("", decor.WCSyncSpaceR),
 					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
 				),
