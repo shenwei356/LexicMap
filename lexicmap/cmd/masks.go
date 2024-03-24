@@ -35,8 +35,8 @@ import (
 
 var masksCmd = &cobra.Command{
 	Use:   "masks",
-	Short: "View masks of the index or generate some new",
-	Long: `View masks of the index or generate some new
+	Short: "View masks of the index or generate new masks randomly",
+	Long: `View masks of the index or generate new masks randomly
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

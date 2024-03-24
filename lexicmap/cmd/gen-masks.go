@@ -53,8 +53,8 @@ import (
 
 var geneMasksCmd = &cobra.Command{
 	Use:   "gen-masks",
-	Short: "Generate masks from genomes",
-	Long: `Generate masks from genomes
+	Short: "Generate masks from top N largest genomes",
+	Long: `Generate masks from top N largest genomes
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
