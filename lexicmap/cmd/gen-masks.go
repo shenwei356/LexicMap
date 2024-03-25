@@ -597,6 +597,11 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	var ok bool
 	var j int
 	var locs *[]int32
+	// store k-mer-location pairs in a list, sort them and handle them.
+	// sorted k-mers have the same prefix, so the k-mer maps
+	// (map[uint64]*[]int32) would be next to each other.
+	// This increases the data locality and improves the speed of later processes
+	// which need frequently iterate these maps.
 	_kmers := make([][2]uint64, 40<<20)
 	var _kmers2 [][2]uint64
 	var kmer2loc [2]uint64
@@ -743,7 +748,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	}
 
 	// --------------------------------------------------------------------
-	// generate mask
+	// generate masks
 
 	if opt.Verbose || opt.Log2File {
 		log.Info()
@@ -775,7 +780,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	_p8 := uint8(_lenPrefix)
 	lenPrefix8 := uint8(lenPrefix)
 
-	freqs := make([]map[int]interface{}, _nPrefix)
+	freqs := make([]map[int]interface{}, _nPrefix) // list of _prefix
 	for i := range freqs {
 		freqs[i] = make(map[int]interface{}, topN)
 	}
