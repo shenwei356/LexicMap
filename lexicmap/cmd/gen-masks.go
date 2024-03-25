@@ -46,6 +46,7 @@ import (
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
+	"github.com/twotwotwo/sorts"
 	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
@@ -568,7 +569,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	for i := range data {
 		data[i] = make([]map[uint64]*[]int32, topN)
 		for j := range data[i] {
-			data[i][j] = make(map[uint64]*[]int32, 32)
+			data[i][j] = make(map[uint64]*[]int32, 8)
 		}
 	}
 
@@ -596,6 +597,11 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	var ok bool
 	var j int
 	var locs *[]int32
+	_kmers := make([][2]uint64, 40<<20)
+	var _kmers2 [][2]uint64
+	var kmer2loc [2]uint64
+	var loc int32
+	var iK, lenKmers int
 
 	for iG, file := range filesTop {
 		_seq = _seq[:0]
@@ -676,6 +682,8 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 			checkError(fmt.Errorf("count kmer for %s: %s", file, err))
 		}
 
+		lenKmers = len(_kmers)
+		iK = 0
 		for {
 			kmer, kmerRC, ok, _ = iter.NextKmer()
 			if !ok {
@@ -687,34 +695,44 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 
 			j = iter.Index()
 
-			// --- kmer ---
-
-			prefix = int(util.KmerPrefix(kmer, k8, p8))
-			m = data[prefix][iG]
-
-			if locs, ok = m[kmer]; !ok {
-				tmp := []int32{int32(j)}
-				m[kmer] = &tmp
+			if iK < lenKmers { //
+				_kmers[iK][0] = kmer
+				_kmers[iK][1] = uint64(j)
 			} else {
-				*locs = append(*locs, int32(j))
+				_kmers = append(_kmers, [2]uint64{kmer, uint64(j)})
 			}
+			iK++
 
-			// --- kmerRC ---
-
-			kmer = kmerRC
-
-			prefix = int(util.KmerPrefix(kmer, k8, p8))
-			m = data[prefix][iG]
-
-			if locs, ok = m[kmer]; !ok {
-				tmp := []int32{int32(j)}
-				m[kmer] = &tmp
+			if iK < lenKmers {
+				_kmers[iK][0] = kmerRC
+				_kmers[iK][1] = uint64(j)
 			} else {
-				*locs = append(*locs, int32(j))
+				_kmers = append(_kmers, [2]uint64{kmerRC, uint64(j)})
 			}
+			iK++
 		}
 
 		fastxReader.Close()
+
+		_kmers2 = _kmers[:iK] // only used data
+		// sort.Slice(_kmers2, func(i, j int) bool { return _kmers2[i][0] < _kmers2[j][0] })
+		sorts.Quicksort(Kmer2Locs(_kmers2))
+
+		for _, kmer2loc = range _kmers2 {
+			kmer = kmer2loc[0]
+			loc = int32(kmer2loc[1])
+
+			prefix = int(util.KmerPrefix(kmer, k8, p8))
+			m = data[prefix][iG]
+
+			if locs, ok = m[kmer]; !ok {
+				tmp := []int32{loc}
+				m[kmer] = &tmp
+			} else {
+				*locs = append(*locs, loc)
+			}
+			// fmt.Printf("%s, %d, %d\n", kmers.Decode(uint64(prefix), lenPrefix), iG, len(data[prefix][iG]))
+		}
 
 		if opt.Verbose {
 			fmt.Fprintf(os.Stderr, "\rprocessed files: %d/%d", iG+1, topN)
@@ -777,7 +795,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	var mask uint64
 	var hash, minHash, minKmer uint64
 	var minLocs *[]int32
-	var loc int32
+	// var loc int32
 
 	// for intervals
 	flank := int32(maxGenome / nPrefix)
@@ -1119,3 +1137,9 @@ func (h *File2GSizes) Pop() any {
 	*h = old[0 : n-1]
 	return x
 }
+
+type Kmer2Locs [][2]uint64
+
+func (h Kmer2Locs) Len() int           { return len(h) }
+func (h Kmer2Locs) Less(i, j int) bool { return h[i][0] < h[j][0] }
+func (h Kmer2Locs) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
