@@ -565,6 +565,12 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 
 	// prefix (list, 16384) -> refs (list, #refs) -> kmers (map, might >10k) -> location (list, small)
 	data := make([][]map[uint64]*[]int32, nPrefix)
+	for i := range data {
+		data[i] = make([]map[uint64]*[]int32, topN)
+		for j := range data[i] {
+			data[i][j] = make(map[uint64]*[]int32, 32)
+		}
+	}
 
 	var m map[uint64]*[]int32
 	var prefix int
@@ -684,14 +690,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 			// --- kmer ---
 
 			prefix = int(util.KmerPrefix(kmer, k8, p8))
-			if data[prefix] == nil {
-				data[prefix] = make([]map[uint64]*[]int32, topN)
-			}
 			m = data[prefix][iG]
-			if m == nil {
-				data[prefix][iG] = make(map[uint64]*[]int32, 8)
-				m = data[prefix][iG]
-			}
 
 			if locs, ok = m[kmer]; !ok {
 				tmp := []int32{int32(j)}
@@ -705,14 +704,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 			kmer = kmerRC
 
 			prefix = int(util.KmerPrefix(kmer, k8, p8))
-			if data[prefix] == nil {
-				data[prefix] = make([]map[uint64]*[]int32, topN)
-			}
 			m = data[prefix][iG]
-			if m == nil {
-				data[prefix][iG] = make(map[uint64]*[]int32, 8)
-				m = data[prefix][iG]
-			}
 
 			if locs, ok = m[kmer]; !ok {
 				tmp := []int32{int32(j)}
