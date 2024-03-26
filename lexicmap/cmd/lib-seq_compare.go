@@ -125,6 +125,11 @@ type SeqComparatorResult struct {
 
 	AlignedFraction float64 // aligned fraction, percentage
 	Identity        float64 // identity (fraction of same bases), percentage
+
+	QBegin int
+	QEnd   int
+	TBegin int
+	TEnd   int
 }
 
 var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
@@ -211,7 +216,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	// --------------------------------------------------------------
 	// chaining paired substrings
 
-	chains, nMatchedBases, nAlignedBases := cpr.chainer.Chain(subs)
+	chains, nMatchedBases, nAlignedBases, qB, qE, tB, tE := cpr.chainer.Chain(subs)
 	if len(*chains) == 0 {
 		RecycleChainingResult(chains)
 		RecycleSubstrPairs(subs)
@@ -238,6 +243,10 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	if r.AlignedFraction > 100 {
 		r.AlignedFraction = 100
 	}
+	r.QBegin = qB
+	r.QEnd = qE
+	r.TBegin = tB
+	r.TEnd = tE
 
 	RecycleChainingResult(chains)
 	RecycleSubstrPairs(subs)

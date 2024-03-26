@@ -455,6 +455,8 @@ type SearchResult struct {
 }
 
 type SimilarityDetail struct {
+	QBegin int
+	QEnd   int
 	TBegin int
 	TEnd   int
 	RC     bool
@@ -888,20 +890,32 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			posOffset = 0
 			posOffset1 = 0
 			if tSeq.NumSeqs > 1 {
+				iSeq = -1
 				for j, l = range tSeq.SeqSizes {
-					// now posOffset is length sum of 0..j-1
-					posOffset1 += l + idx.k - 1 // length sum of 0..j
-					if tBegin+1 <= posOffset1 {
+					// now posOffset is length sum of 0..j-1 + j*(k-1)
+					posOffset1 += l // length sum of 0..j
+					if tBegin+1 >= posOffset && tEnd+1 <= posOffset1 {
 						iSeq = j
 						break
 					}
 
-					posOffset = posOffset1
+					posOffset1 += idx.k - 1 // add k-1
+					posOffset = posOffset1  // record offset
+				}
+				if iSeq < 0 { // this means the aligned sequence crosses two sequences
+					continue
 				}
 			}
 
-			sd.TBegin = tBegin - posOffset
-			sd.TEnd = tEnd - posOffset
+			sd.QBegin = cr.QBegin
+			sd.QEnd = cr.QEnd
+			if rc {
+				sd.TBegin = tBegin - posOffset + (len(tSeq.Seq) - cr.TEnd - 1)
+				sd.TEnd = tEnd - posOffset - cr.TBegin
+			} else {
+				sd.TBegin = tBegin - posOffset + cr.TBegin
+				sd.TEnd = tEnd - posOffset - (len(tSeq.Seq) - cr.TEnd - 1)
+			}
 			sd.RC = rc
 			sd.Chain = (*r.Chains)[i]
 			sd.Similarity = cr

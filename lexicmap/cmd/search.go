@@ -195,7 +195,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\trefs\tref\tseqid\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
 
 		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -207,8 +207,8 @@ Attentions:
 
 			if verbose {
 				if (total < 128 && total&7 == 0) || total&127 == 0 {
-					speed = float64(total) / 1000 / time.Since(timeStart1).Minutes()
-					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f thousand queries per minute\r", total, speed)
+					speed = float64(total) / time.Since(timeStart1).Minutes()
+					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f queries per minute\r", total, speed)
 				}
 			}
 
@@ -260,8 +260,9 @@ Attentions:
 					} else {
 						strand = '+'
 					}
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
+					fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
 						queryID, len(q.seq),
+						sd.QBegin+1, sd.QEnd+1,
 						targets, r.ID,
 						sd.SeqID, cr.AlignedFraction, cr.Identity,
 						sd.SeqLen,
@@ -367,9 +368,9 @@ Attentions:
 		if outputLog {
 			fmt.Fprintf(os.Stderr, "\n")
 
-			speed = float64(total) / 1000 / time.Since(timeStart1).Minutes()
+			speed = float64(total) / time.Since(timeStart1).Minutes()
 			log.Infof("")
-			log.Infof("processed queries: %d, speed: %.3f thousand queries per minute\n", total, speed)
+			log.Infof("processed queries: %d, speed: %.3f queries per minute\n", total, speed)
 			log.Infof("%.4f%% (%d/%d) queries matched", float64(matched)/float64(total)*100, matched, total)
 			log.Infof("done searching")
 			if outFile != "-" {

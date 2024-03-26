@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"math"
 	"sync"
 )
 
@@ -96,7 +97,11 @@ var poolChain2 = &sync.Pool{New: func() interface{} {
 //  1. Paths.
 //  2. The number of matched bases.
 //  3. The number of aligned bases.
-func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int) {
+//  4. Query begin position (0-based)
+//  5. Query end position (0-based)
+//  6. Target begin position (0-based)
+//  7. Target end position (0-based)
+func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int, int, int, int, int) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
@@ -112,10 +117,10 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int) {
 
 			*paths = append(*paths, path)
 
-			return paths, sub.Len, sub.Len
+			return paths, sub.Len, sub.Len, 0, 0, 0, 0
 		}
 
-		return paths, 0, 0
+		return paths, 0, 0, 0, 0, 0, 0
 	}
 
 	var i, _b, j, k int
@@ -219,14 +224,14 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int) {
 	// check the highest score, for early quit,
 	// but what's the number?
 	if M < 100 {
-		return paths, 0, 0
+		return paths, 0, 0, 0, 0, 0, 0
 	}
 
 	var nMatchedBases, nAlignedBases int
 	minScore := ce.options.MinScore
 	bounds := ce.bounds[:0]
 
-	chainARegion(
+	_, qB, qE, tB, tE := chainARegion(
 		subs,
 		maxscores,
 		maxscoresIdxs,
@@ -239,7 +244,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int) {
 		&bounds,
 	)
 
-	return paths, nMatchedBases, nAlignedBases
+	return paths, nMatchedBases, nAlignedBases, qB, qE, tB, tE
 }
 
 func chainARegion(subs *[]*SubstrPair, // a region of the subs
@@ -252,6 +257,12 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	nAlignedBases *int,
 	Mi0 int, // found Mi
 	bounds *[]int, // intervals of previous chains
+) (
+	int, // score
+	int, // query begin position (0-based)
+	int, // query end position (0-based)
+	int, // target begin position (0-based)
+	int, // target end position (0-based)
 ) {
 	// fmt.Printf("region: [%d, %d]\n", offset, offset+len(*subs)-1)
 	var m, M int
@@ -264,7 +275,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			}
 		}
 		if M < minScore { // no valid anchors
-			return
+			return 0, -1, -1, -1, -1
 		}
 	} else {
 		Mi = Mi0
@@ -273,7 +284,9 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 	i = Mi
 	var j int
-	var qb, qe, tb, te int // the bound
+	var qB, qE, tB, tE int // the bound of the chain (0-based)
+	qB, tB = math.MaxInt, math.MaxInt
+	var qb, qe, tb, te int // the bound (0-based)
 	var sub *SubstrPair
 	var beginOfNextAnchor int
 	var overlapped bool
@@ -326,6 +339,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				firstAnchorOfAChain = false
 
 				qe = sub.QBegin + sub.Len - 1   // end
+				te = sub.TBegin + sub.Len - 1   // end
 				qb, tb = sub.QBegin, sub.TBegin // in case there's only one anchor
 
 				*nMatchedBases += sub.Len
@@ -375,12 +389,16 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	*bounds = append(*bounds, tb)
 	*bounds = append(*bounds, te)
 
+	// initialize the boundary
+	qB, qE = qb, qe
+	tB, tE = tb, te
+
 	// fmt.Printf("  i: %d\n", i)
 
 	// the unchecked region on the right
 	if Mi != len(maxscores)-1 { // Mi is not the last element
 		tmp := (*subs)[Mi+1:]
-		chainARegion(
+		_score, _qB, _qE, _tB, _tE := chainARegion(
 			&tmp,
 			maxscores[Mi+1:],
 			maxscoresIdxs[Mi+1:],
@@ -392,12 +410,26 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			-1,
 			bounds,
 		)
+		if _score > 0 {
+			if _qB < qB {
+				qB = _qB
+			}
+			if _qE > qE {
+				qE = _qE
+			}
+			if _tB < tB {
+				tB = _tB
+			}
+			if _tE > tE {
+				tE = _tE
+			}
+		}
 	}
 
 	// the unchecked region on the left
 	if i > 0 { // the first anchor is not the first element
 		tmp := (*subs)[:i]
-		chainARegion(
+		_score, _qB, _qE, _tB, _tE := chainARegion(
 			&tmp,
 			maxscores[:i],
 			maxscoresIdxs[:i],
@@ -409,7 +441,23 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			-1,
 			bounds,
 		)
+		if _score > 0 {
+			if _qB < qB {
+				qB = _qB
+			}
+			if _qE > qE {
+				qE = _qE
+			}
+			if _tB < tB {
+				tB = _tB
+			}
+			if _tE > tE {
+				tE = _tE
+			}
+		}
 	}
+
+	return M, qB, qE, tB, tE
 }
 
 func distance2(a, b *SubstrPair) int {

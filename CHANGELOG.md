@@ -1,12 +1,13 @@
 # Changelog
 
-### v0.3.0 - 2024-03-24
+### v0.3.0 - 2024-04-xx
 
 - `lexicmap index`:
     - Generating masks from the top N biggest genomes instead of randomly generating.
 - `lexicmap search`:
     - Fix a seed-chaining bug.
     - Fix a target sequence extracting bug.
+    - Add output of query start and end positions.
 - New command: `lexicmap utils gen-masks`.
 
 ### v0.2.0 - 2024-02-02
