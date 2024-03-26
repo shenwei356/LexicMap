@@ -388,7 +388,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 			),
 			mpb.AppendDecorators(
 				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 3),
+				decor.EwmaETA(decor.ET_STYLE_GO, 20),
 				decor.OnComplete(decor.Name(""), ". done"),
 			),
 		)
@@ -540,6 +540,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	maxGenome = (*file2gsizes)[len(*file2gsizes)-1].Size
 
 	if opt.Verbose || opt.Log2File {
+		log.Infof("    %d genomes longer than %d are filtered out", len(skippedFiles), maxGenomeSize)
 		log.Infof("    genome size range in the top %d files: [%d, %d]",
 			topN, (*file2gsizes)[0].Size, maxGenome)
 	}

@@ -37,6 +37,11 @@ func TestChaining(t *testing.T) {
 		// {QBegin: 1924, TBegin: 1547, Len: 31},
 		// {QBegin: 1924, TBegin: 3638544, Len: 31},
 
+		// not perfect in this case, there are two chains: 0,1 and 2., while it should be one.
+		{QBegin: 552, TBegin: 3798905, Len: 17},
+		{QBegin: 667, TBegin: 3799019, Len: 15},
+		{QBegin: 1332, TBegin: 3799686, Len: 31},
+
 		// a kmer has multiple matches
 		{QBegin: 1384, TBegin: 628584, Len: 31},
 		{QBegin: 1490, TBegin: 628690, Len: 31},

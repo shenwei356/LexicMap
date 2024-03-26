@@ -313,8 +313,16 @@ type SubstrPair struct {
 }
 
 func (s SubstrPair) String() string {
-	return fmt.Sprintf("%3d-%3d (rc: %v) vs %3d-%3d (rc: %v), len:%2d, mismatches:%d",
-		s.QBegin+1, s.QBegin+s.Len, s.QRC, s.TBegin+1, s.TBegin+s.Len, s.TRC, s.Len, s.Mismatch)
+	s1 := "+"
+	s2 := "+"
+	if s.QRC {
+		s1 = "-"
+	}
+	if s.TRC {
+		s2 = "-"
+	}
+	return fmt.Sprintf("%3d-%3d (%s) vs %3d-%3d (%s), len:%2d, mismatches:%d",
+		s.QBegin+1, s.QBegin+s.Len, s1, s.TBegin+1, s.TBegin+s.Len, s2, s.Len, s.Mismatch)
 }
 
 var poolSub = &sync.Pool{New: func() interface{} {
@@ -737,6 +745,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		} else {
 			(*rs)[j] = r
 			j++
+
+			// fmt.Printf("genome: %d.%d\n", r.GenomeBatch, r.GenomeIndex)
+			// for _, sub := range *r.Subs {
+			// 	fmt.Printf("  %s\n", *sub)
+			// }
+			// for _, chain := range *r.Chains {
+			// 	fmt.Printf("  chains: %d\n", *chain)
+			// }
 		}
 	}
 	*rs = (*rs)[:j]
@@ -823,7 +839,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				tEnd = te + qlen - qe - 1
 			}
 
-			// fmt.Printf("chain:%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, refBatch, refID, tBegin+1, tEnd+1, rc)
+			// fmt.Printf("chain:%d, %d, subject:%d.%d:%d-%d, rc:%v\n", i+1, *chain, refBatch, refID, tBegin+1, tEnd+1, rc)
 
 			// extract target sequence for comparison.
 			// Right now, we fetch seq from disk for each seq,
