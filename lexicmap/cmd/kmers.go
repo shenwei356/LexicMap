@@ -216,10 +216,9 @@ Attentions:
 			var lastPair bool  // check if this is the last pair
 			var hasKmer2 bool  // check if there's a kmer2
 			var _offset uint64 // offset of kmer
-			var bytes [2]uint8
 			var nBytes int
 			var nReaded, nDecoded int
-			var decodedVals [2]uint64
+			var v1, v2 uint64
 			var kmer1, kmer2 uint64
 			var lenVal1, lenVal2 uint64
 			var j uint64
@@ -240,8 +239,7 @@ Attentions:
 				ctrlByte &= 63
 
 				// parse the control byte
-				bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
-				nBytes = int(bytes[0] + bytes[1])
+				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 				// read encoded bytes
 				nReaded, err = io.ReadFull(r, buf[:nBytes])
@@ -252,7 +250,7 @@ Attentions:
 					checkError(kv.ErrBrokenFile)
 				}
 
-				decodedVals, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+				v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 				if nDecoded == 0 {
 					checkError(kv.ErrBrokenFile)
 				}
@@ -261,9 +259,9 @@ Attentions:
 					kmer1 = indexes[iMask][0] // from the index
 					first = false
 				} else {
-					kmer1 = decodedVals[0] + _offset
+					kmer1 = v1 + _offset
 				}
-				kmer2 = kmer1 + decodedVals[1]
+				kmer2 = kmer1 + v2
 				_offset = kmer2
 
 				// ------------------ lengths of values -------------------
@@ -276,8 +274,7 @@ Attentions:
 				ctrlByte = buf[0]
 
 				// parse the control byte
-				bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
-				nBytes = int(bytes[0] + bytes[1])
+				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 				// read encoded bytes
 				nReaded, err = io.ReadFull(r, buf[:nBytes])
@@ -288,13 +285,10 @@ Attentions:
 					checkError(kv.ErrBrokenFile)
 				}
 
-				decodedVals, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+				lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 				if nDecoded == 0 {
 					checkError(kv.ErrBrokenFile)
 				}
-
-				lenVal1 = decodedVals[0]
-				lenVal2 = decodedVals[1]
 
 				// ------------------ values -------------------
 

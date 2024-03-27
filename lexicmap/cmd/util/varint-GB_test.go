@@ -31,67 +31,75 @@ var testsUint32 [][4]uint32
 func init() {
 	ntests := 10000
 	testsUint64 = make([][2]uint64, ntests)
+	testsUint32 = make([][4]uint32, ntests)
 	var i int
 	for ; i < ntests/4; i++ {
 		testsUint64[i] = [2]uint64{rand.Uint64(), rand.Uint64()}
+		testsUint32[i] = [4]uint32{rand.Uint32(), rand.Uint32(), rand.Uint32(), rand.Uint32()}
 	}
 	for ; i < ntests/2; i++ {
 		testsUint64[i] = [2]uint64{uint64(rand.Uint32()), uint64(rand.Uint32())}
+		testsUint32[i] = [4]uint32{rand.Uint32(), rand.Uint32(), rand.Uint32(), rand.Uint32()}
 	}
 	for ; i < ntests*3/4; i++ {
 		testsUint64[i] = [2]uint64{uint64(rand.Intn(65536)), uint64(rand.Intn(256))}
+		testsUint32[i] = [4]uint32{uint32(rand.Intn(65536)), uint32(rand.Intn(256)), uint32(rand.Intn(65536)), uint32(rand.Intn(256))}
 	}
 	for ; i < ntests; i++ {
 		testsUint64[i] = [2]uint64{uint64(rand.Intn(256)), uint64(rand.Intn(256))}
+		testsUint32[i] = [4]uint32{uint32(rand.Intn(256)), uint32(rand.Intn(256)), uint32(rand.Intn(256)), uint32(rand.Intn(256))}
 	}
 }
 
 func TestStreamVByte64(t *testing.T) {
 	buf := make([]byte, 16)
+	var ctrl byte
+	var n, n2 int
+	var v1, v2 uint64
 	for i, test := range testsUint64 {
-		ctrl, n := PutUint64s(buf, test[0], test[1])
+		ctrl, n = PutUint64s(buf, test[0], test[1])
+		if CtrlByte2ByteLengthsUint64(ctrl) != n {
+			t.Errorf("#%d, wrong byte length", i)
+		}
 
-		result, n2 := Uint64s(ctrl, buf[0:n])
+		v1, v2, n2 = Uint64s(ctrl, buf[0:n])
 		if n2 == 0 {
 			t.Errorf("#%d, wrong decoded number", i)
 		}
 
-		if result[0] != test[0] || result[1] != test[1] {
-			t.Errorf("#%d, wrong decoded result: %d, %d, answer: %d, %d", i, result[0], result[1], test[0], test[1])
+		if v1 != test[0] || v2 != test[1] {
+			t.Errorf("#%d, wrong decoded result: %d, %d, answer: %d, %d", i, v1, v2, test[0], test[1])
 		}
 		// fmt.Printf("%d, %d => n=%d, buf=%v\n", test[0], test[1], n, buf[0:n])
 	}
 }
 
-var _result [2]uint64
-
-// BenchmarkEncode tests speed of Encode()
-func BenchmarkUint64s(b *testing.B) {
+func TestStreamVByte32(t *testing.T) {
 	buf := make([]byte, 16)
 	var ctrl byte
 	var n, n2 int
-	var result [2]uint64
-	for i := 0; i < b.N; i++ {
-		for i, test := range testsUint64 {
-			ctrl, n = PutUint64s(buf, test[0], test[1])
-
-			result, n2 = Uint64s(ctrl, buf[0:n])
-			if n2 == 0 {
-				b.Errorf("#%d, wrong decoded number", i)
-			}
-
-			if result[0] != test[0] || result[1] != test[1] {
-				b.Errorf("#%d, wrong decoded result: %d, %d, answer: %d, %d", i, result[0], result[1], test[0], test[1])
-			}
-			// fmt.Printf("%d, %d => n=%d, buf=%v\n", test[0], test[1], n, buf[0:n])
+	var v1, v2, v3, v4 uint32
+	for i, test := range testsUint32 {
+		ctrl, n = PutUint32s(buf, test[0], test[1], test[2], test[3])
+		if CtrlByte2ByteLengthsUint32(ctrl) != n {
+			t.Errorf("#%d, wrong byte length", i)
 		}
+
+		v1, v2, v3, v4, n2 = Uint32s(ctrl, buf[0:n])
+		if n2 == 0 {
+			t.Errorf("#%d, wrong decoded number", i)
+		}
+
+		if v1 != test[0] || v2 != test[1] || v3 != test[2] || v4 != test[3] {
+			t.Errorf("#%d, wrong decoded result: %d, %d, %d, %d, answer: %d, %d, %d, %d", i, v1, v2, v3, v4, test[0], test[1], test[2], test[3])
+		}
+		// fmt.Printf("%d, %d => n=%d, buf=%v\n", test[0], test[1], n, buf[0:n])
 	}
-	_result = result
 }
 
 var _v1, _v2 uint64
 
-func BenchmarkUint64s2(b *testing.B) {
+func BenchmarkUint64s(b *testing.B) {
 	buf := make([]byte, 16)
 	var ctrl byte
 	var n, n2 int
@@ -100,7 +108,7 @@ func BenchmarkUint64s2(b *testing.B) {
 		for i, test := range testsUint64 {
 			ctrl, n = PutUint64s(buf, test[0], test[1])
 
-			v1, v2, n2 = Uint64s2(ctrl, buf[0:n])
+			v1, v2, n2 = Uint64s(ctrl, buf[0:n])
 			if n2 == 0 {
 				b.Errorf("#%d, wrong decoded number", i)
 			}
@@ -114,25 +122,27 @@ func BenchmarkUint64s2(b *testing.B) {
 	_v1, _v2 = v1, v2
 }
 
-func BenchmarkUint64sOld(b *testing.B) {
+var __v1, __v2, __v3, __v4 uint32
+
+func BenchmarkUint32s(b *testing.B) {
 	buf := make([]byte, 16)
 	var ctrl byte
 	var n, n2 int
-	var result [2]uint64
+	var v1, v2, v3, v4 uint32
 	for i := 0; i < b.N; i++ {
-		for i, test := range testsUint64 {
-			ctrl, n = PutUint64s(buf, test[0], test[1])
+		for i, test := range testsUint32 {
+			ctrl, n = PutUint32s(buf, test[0], test[1], test[2], test[3])
 
-			result, n2 = Uint64sOld(ctrl, buf[0:n])
+			v1, v2, v3, v4, n2 = Uint32s(ctrl, buf[0:n])
 			if n2 == 0 {
 				b.Errorf("#%d, wrong decoded number", i)
 			}
 
-			if result[0] != test[0] || result[1] != test[1] {
-				b.Errorf("#%d, wrong decoded result: %d, %d, answer: %d, %d", i, result[0], result[1], test[0], test[1])
+			if v1 != test[0] || v2 != test[1] || v3 != test[2] || v4 != test[3] {
+				b.Errorf("#%d, wrong decoded result: %d, %d, %d, %d, answer: %d, %d, %d, %d", i, v1, v2, v3, v4, test[0], test[1], test[2], test[3])
 			}
 			// fmt.Printf("%d, %d => n=%d, buf=%v\n", test[0], test[1], n, buf[0:n])
 		}
 	}
-	_result = result
+	__v1, __v2, __v3, __v4 = v1, v2, v3, v4
 }

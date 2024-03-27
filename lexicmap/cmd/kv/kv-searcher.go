@@ -141,10 +141,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 
 	var _offset uint64 // offset of kmer
 	var ctrlByte byte
-	var bytes [2]uint8
 	var nBytes int
 	var nReaded, nDecoded int
-	var decodedVals [2]uint64
+	var v1, v2 uint64
 	var kmer1, kmer2 uint64
 	var lenVal1, lenVal2 uint64
 	var j uint64
@@ -157,7 +156,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	var mismatch uint8
-	var v1, v2 *SearchResult
+	var sr1, sr2 *SearchResult
 
 	var kmer uint64
 	prefixSearch := p < k
@@ -243,8 +242,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			ctrlByte &= 63
 
 			// parse the control byte
-			bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
-			nBytes = int(bytes[0] + bytes[1])
+			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 			// read encoded bytes
 			nReaded, err = io.ReadFull(r, buf[:nBytes])
@@ -255,7 +253,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 				return nil, ErrBrokenFile
 			}
 
-			decodedVals, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+			v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 			if nDecoded == 0 {
 				return nil, ErrBrokenFile
 			}
@@ -264,9 +262,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 				kmer1 = index[i] // from the index
 				first = false
 			} else {
-				kmer1 = decodedVals[0] + _offset
+				kmer1 = v1 + _offset
 			}
-			kmer2 = kmer1 + decodedVals[1]
+			kmer2 = kmer1 + v2
 			_offset = kmer2
 
 			if kmer1 > rightBound { // finished
@@ -289,8 +287,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			ctrlByte = buf[0]
 
 			// parse the control byte
-			bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
-			nBytes = int(bytes[0] + bytes[1])
+			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 			// read encoded bytes
 			nReaded, err = io.ReadFull(r, buf[:nBytes])
@@ -301,13 +298,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 				return nil, ErrBrokenFile
 			}
 
-			decodedVals, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+			lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 			if nDecoded == 0 {
 				return nil, ErrBrokenFile
 			}
-
-			lenVal1 = decodedVals[0]
-			lenVal2 = decodedVals[1]
 
 			// ------------------ values -------------------
 
@@ -323,12 +317,12 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 				}
 			}
 			if saveKmer {
-				v1 = poolSearchResult.Get().(*SearchResult)
-				v1.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				v1.Kmer = kmer1
-				v1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
-				v1.Mismatch = mismatch
-				v1.Values = v1.Values[:0]
+				sr1 = poolSearchResult.Get().(*SearchResult)
+				sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
+				sr1.Kmer = kmer1
+				sr1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
+				sr1.Mismatch = mismatch
+				sr1.Values = sr1.Values[:0]
 
 				for j = 0; j < lenVal1; j++ {
 					nReaded, err = io.ReadFull(r, buf8)
@@ -339,10 +333,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 						return nil, ErrBrokenFile
 					}
 
-					v1.Values = append(v1.Values, be.Uint64(buf8))
+					sr1.Values = append(sr1.Values, be.Uint64(buf8))
 				}
 
-				*results = append(*results, v1)
+				*results = append(*results, sr1)
 			} else {
 				for j = 0; j < lenVal1; j++ {
 					nReaded, err = io.ReadFull(r, buf8)
@@ -379,12 +373,12 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			}
 
 			if saveKmer {
-				v2 = poolSearchResult.Get().(*SearchResult)
-				v2.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				v2.Kmer = kmer2
-				v2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
-				v2.Mismatch = mismatch
-				v2.Values = v2.Values[:0]
+				sr2 = poolSearchResult.Get().(*SearchResult)
+				sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
+				sr2.Kmer = kmer2
+				sr2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+				sr2.Mismatch = mismatch
+				sr2.Values = sr2.Values[:0]
 
 				for j = 0; j < lenVal2; j++ {
 					nReaded, err = io.ReadFull(r, buf8)
@@ -395,10 +389,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 						return nil, ErrBrokenFile
 					}
 
-					v2.Values = append(v2.Values, be.Uint64(buf8))
+					sr2.Values = append(sr2.Values, be.Uint64(buf8))
 				}
 
-				*results = append(*results, v2)
+				*results = append(*results, sr2)
 			} else {
 				for j = 0; j < lenVal2; j++ {
 					nReaded, err = io.ReadFull(r, buf8)
