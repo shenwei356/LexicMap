@@ -86,6 +86,9 @@ type Genome struct {
 	Locses    *[][]int  // lexichash mask result
 	TwoBit    *[]byte   // bit-packed sequence
 	StartTime time.Time
+
+	// seed positions to write to the file
+	Locs []uint32
 }
 
 func (r Genome) String() string {
@@ -112,6 +115,10 @@ func (r *Genome) Reset() {
 	r.NumSeqs = 0
 	r.SeqSizes = r.SeqSizes[:0]
 	r.SeqIDs = r.SeqIDs[:0]
+
+	if r.Locs != nil {
+		r.Locs = r.Locs[:0]
+	}
 }
 
 // RecycleGenome recycle a Genome
@@ -432,12 +439,12 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-// Seq returns the sequence with index of idx (0-based).
+// Seq returns the sequence with index of genome (0-based).
 func (r *Reader) Seq(idx int) (*Genome, error) {
 	return r.SubSeq(idx, 0, math.MaxUint32)
 }
 
-// SubSeq returns the subsequence of sequence (idx is 0-based),
+// SubSeq returns the subsequence of a genome (idx is 0-based),
 // from start to end (both are 0-based and included).
 // Please call RecycleGenome() after using the result.
 func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
@@ -669,12 +676,12 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	return g, nil
 }
 
-// SubSeq2 returns the subsequence of one sequence (idx is 0-based),
+// SubSeq2 returns the subsequence of one genome (idx is 0-based),
 // from start to end (both are 0-based and included).
 // Please call RecycleGenome() after using the result.
 func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, error) {
 	if idx < 0 || idx >= int(r.nSeqs) {
-		return nil, fmt.Errorf("sequence index (%d) out of range: [0, %d]", idx, int(r.nSeqs)-1)
+		return nil, fmt.Errorf("genome index (%d) out of range: [0, %d]", idx, int(r.nSeqs)-1)
 	}
 
 	buf := r.buf
