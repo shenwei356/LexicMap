@@ -9,6 +9,8 @@
     - Fix a target sequence extracting bug.
     - Add output of query start and end positions.
 - New command: `lexicmap utils gen-masks`.
+- `lexicmap utils kmers`:
+    - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
 
 ### v0.2.0 - 2024-02-02
 

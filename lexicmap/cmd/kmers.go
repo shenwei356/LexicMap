@@ -331,7 +331,7 @@ Attentions:
 					pos, rc = int(v<<34>>35), int(v&1)
 					batchIDAndRefID = v >> 30
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%s\t%d\t%c\n",
-						mask, decoder(kmer2, k), lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
+						mask, decoder(kmer2, k), lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
 				}
 
 				if lastPair {
