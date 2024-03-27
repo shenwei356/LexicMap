@@ -243,7 +243,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			ctrlByte &= 63
 
 			// parse the control byte
-			bytes = util.CtrlByte2ByteLengths[ctrlByte]
+			bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
 			nBytes = int(bytes[0] + bytes[1])
 
 			// read encoded bytes
@@ -289,7 +289,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 			ctrlByte = buf[0]
 
 			// parse the control byte
-			bytes = util.CtrlByte2ByteLengths[ctrlByte]
+			bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
 			nBytes = int(bytes[0] + bytes[1])
 
 			// read encoded bytes

@@ -180,7 +180,7 @@ func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
 		ctrlByte &= 63
 
 		// parse the control byte
-		bytes = util.CtrlByte2ByteLengths[ctrlByte]
+		bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
 		nBytes = int(bytes[0] + bytes[1])
 
 		// read encoded bytes
@@ -213,7 +213,7 @@ func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
 		ctrlByte = buf[0]
 
 		// parse the control byte
-		bytes = util.CtrlByte2ByteLengths[ctrlByte]
+		bytes = util.CtrlByte2ByteLengthsUint64[ctrlByte]
 		nBytes = int(bytes[0] + bytes[1])
 
 		// read encoded bytes
