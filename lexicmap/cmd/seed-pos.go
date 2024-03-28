@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -31,9 +32,15 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
+	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
+	"gonum.org/v1/gonum/stat"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
 )
 
 var seedPosCmd = &cobra.Command{
@@ -67,8 +74,31 @@ Attentions:
 
 		outFile := getFlagString(cmd, "out-file")
 
-		// plotDir := getFlagString(cmd, "plot-dir")
-		// force := getFlagBool(cmd, "force")
+		// ------------------------------
+
+		plotDir := getFlagString(cmd, "plot-dir")
+		force := getFlagBool(cmd, "force")
+
+		outputPlotDir := plotDir != ""
+		if outputPlotDir {
+			makeOutDir(plotDir, force, "plot-dir")
+		}
+
+		bins := getFlagPositiveInt(cmd, "bins")
+
+		colorIndex := getFlagPositiveInt(cmd, "color-index")
+		if colorIndex > 7 {
+			checkError(fmt.Errorf("unsupported color index"))
+		}
+
+		// percentiles := getFlagBool(cmd, "percentiles")
+		width := vg.Length(getFlagPositiveFloat64(cmd, "width"))
+		height := vg.Length(getFlagPositiveFloat64(cmd, "height"))
+		plotExt := getFlagString(cmd, "plot-ext")
+		if plotExt == "" {
+			checkError(fmt.Errorf("the value of --plot-ext should not be empty"))
+		}
+		plotTitle := getFlagBool(cmd, "plot-title")
 
 		// ---------------------------------------------------------------
 
@@ -77,6 +107,16 @@ Attentions:
 		info, err := readIndexInfo(fileInfo)
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
+		}
+
+		fileSeedLoc := filepath.Join(dbDir, DirGenomes, batchDir(0), FileSeedPositions)
+		ok, err := pathutil.Exists(fileSeedLoc)
+		if err != nil {
+			checkError(fmt.Errorf("check index file structure: %s", err))
+		}
+		if !ok {
+			log.Warningf("no seed position file detected in %s, which was not built with --save-seed-pos.", dbDir)
+			return
 		}
 
 		// genomes.map file for mapping index to genome id
@@ -111,7 +151,7 @@ Attentions:
 				),
 				mpb.AppendDecorators(
 					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 20),
+					decor.EwmaETA(decor.ET_STYLE_GO, 5),
 					decor.OnComplete(decor.Name(""), ". done"),
 				),
 			)
@@ -178,9 +218,17 @@ Attentions:
 		go func() {
 			var pos2str, pos, pre uint32
 			var refname string
+			v := make(plotter.Values, 0, 40<<20)
+			var filePlot string
+			var p *plot.Plot
+			threadsFloat := float64(opt.NumCPUs)
+
 			for ref2locs := range ch {
-				if len(*ref2locs.Locs) == 0 && showProgressBar {
-					chDuration <- time.Since(ref2locs.StartTime)
+				if len(*ref2locs.Locs) == 0 {
+					if showProgressBar {
+						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
+					}
+					poolRef2Locs.Put(ref2locs)
 				}
 
 				n++
@@ -192,9 +240,70 @@ Attentions:
 					pre = pos
 				}
 
+				if !outputPlotDir {
+					if showProgressBar {
+						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
+					}
+					poolRef2Locs.Put(ref2locs)
+					continue
+				}
+
+				// ---------------------------------------------------------
+				// plot histogram
+
+				v = v[:0]
+				pre = 0
+				for _, pos2str = range *ref2locs.Locs {
+					pos = pos2str >> 1
+					v = append(v, float64(pos-pre))
+					pre = pos
+				}
+
+				p = plot.New()
+
+				h, err := plotter.NewHist(v, bins)
+				if err != nil {
+					checkError(err)
+				}
+
+				// h.Normalize(1)
+				h.FillColor = plotutil.Color(0)
+				p.Add(h)
+
+				if plotTitle {
+					p.Title.Text = refname
+				} else {
+					p.Title.Text = ""
+				}
+				p.Title.TextStyle.Font.Size = 16
+				//if percentiles {
+				sort.Float64s(v)
+				p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",
+					"Seed distance (bp)", getPercentile(0.99, v), getPercentile(0.999, v), getPercentile(0.5, v), v[len(v)-1])
+				// } else {
+				// 	p.X.Label.Text = "Seed distance (bp)"
+				// }
+				p.Y.Label.Text = "Frequency"
+				p.X.Label.TextStyle.Font.Size = 14
+				p.Y.Label.TextStyle.Font.Size = 14
+				p.X.Width = 1.5
+				p.Y.Width = 1.5
+				p.X.Tick.Width = 1.5
+				p.Y.Tick.Width = 1.5
+				p.X.Tick.Label.Font.Size = 12
+				p.Y.Tick.Label.Font.Size = 12
+
+				// Save image
+
+				filePlot = filepath.Join(plotDir, refname+plotExt)
+				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
+
+				// ---------------------------------------------------------
+
 				if showProgressBar {
 					chDuration <- time.Since(ref2locs.StartTime)
 				}
+				poolRef2Locs.Put(ref2locs)
 			}
 			done <- 1
 		}()
@@ -254,7 +363,8 @@ Attentions:
 		}
 
 		if opt.Verbose {
-			log.Infof("seed positions of %d file(s) saved to %s", n, outFile)
+			log.Infof("seed positions of %d genomes(s) saved to %s", n, outFile)
+			log.Infof("histograms of %d genomes(s) saved to %s", n, plotDir)
 		}
 	},
 }
@@ -275,10 +385,31 @@ func init() {
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
-		formatFlagUsage(`Output directory for histgrams of seed distance.`))
+		formatFlagUsage(`Output directory for histograms of seed distances.`))
 
 	seedPosCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existing output directory.`))
 
+	// for histogram
+	seedPosCmd.Flags().IntP("bins", "b", 100,
+		formatFlagUsage(`Number of bins in histograms.`))
+	seedPosCmd.Flags().IntP("color-index", "", 1,
+		formatFlagUsage(`Color index (1-7).`))
+	// seedPosCmd.Flags().BoolP("percentiles", "p", false,
+	// 	formatFlagUsage(`Calculate percentiles`))
+	seedPosCmd.Flags().Float64P("width", "", 6,
+		formatFlagUsage(`Histogram width (unit: inch).`))
+	seedPosCmd.Flags().Float64P("height", "", 4,
+		formatFlagUsage(`Histogram height (unit: inch).`))
+	seedPosCmd.Flags().StringP("plot-ext", "", ".png",
+		formatFlagUsage(`Histogram plot file extention.`))
+	seedPosCmd.Flags().BoolP("plot-title", "t", false,
+		formatFlagUsage(`Plot genome ID as the title.`))
+
 	seedPosCmd.SetUsageTemplate(usageTemplate(""))
+}
+
+func getPercentile(percentile float64, vals []float64) (p float64) {
+	p = stat.Quantile(percentile, stat.Empirical, vals, nil)
+	return
 }

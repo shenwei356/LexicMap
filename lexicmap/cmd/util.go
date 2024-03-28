@@ -90,7 +90,7 @@ func checkFileSuffix(opt *Options, suffix string, files ...string) {
 	}
 }
 
-func makeOutDir(outDir string, force bool) {
+func makeOutDir(outDir string, force bool, logname string) {
 	pwd, _ := os.Getwd()
 	if outDir != "./" && outDir != "." && pwd != filepath.Clean(outDir) {
 		existed, err := pathutil.DirExists(outDir)
@@ -103,7 +103,7 @@ func makeOutDir(outDir string, force bool) {
 					log.Infof("removing old output directory: %s", outDir)
 					checkError(os.RemoveAll(outDir))
 				} else {
-					checkError(fmt.Errorf("out-dir not empty: %s, use --force to overwrite", outDir))
+					checkError(fmt.Errorf("%s not empty: %s, use --force to overwrite", logname, outDir))
 				}
 			} else {
 				checkError(os.RemoveAll(outDir))
@@ -111,7 +111,7 @@ func makeOutDir(outDir string, force bool) {
 		}
 		checkError(os.MkdirAll(outDir, 0777))
 	} else {
-		log.Errorf("out-dir should not be current directory")
+		log.Errorf("%s should not be current directory", logname)
 	}
 }
 

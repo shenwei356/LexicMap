@@ -240,7 +240,7 @@ Important parameters:
 			ReRefName:    reRefName,
 			ReSeqExclude: reSeqNames,
 
-			SaveSeedPositions: getFlagBool(cmd, "save-seed-loc"),
+			SaveSeedPositions: getFlagBool(cmd, "save-seed-pos"),
 		}
 		err = CheckIndexBuildingOptions(bopt)
 		checkError(err)
@@ -250,7 +250,7 @@ Important parameters:
 
 		outputDir := outDir != ""
 		if outputDir {
-			makeOutDir(outDir, force)
+			makeOutDir(outDir, force, "out-dir")
 		}
 
 		// ---------------------------------------------------------------
@@ -413,7 +413,7 @@ func init() {
 	indexCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
 
-	indexCmd.Flags().BoolP("save-seed-loc", "L", false,
+	indexCmd.Flags().BoolP("save-seed-pos", "", false,
 		formatFlagUsage(`Save seed positions, which can be inspect with "lexicmap utils seed-positions".`))
 
 	// -----------------------------  genome batches   -----------------------------

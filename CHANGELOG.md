@@ -11,7 +11,7 @@
 - `lexicmap utils kmers`:
     - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
 - New commands:
-    - `lexicmap utils gen-masks` for generate masks from the top N largest genomes.
+    - `lexicmap utils gen-masks` for generating masks from the top N largest genomes.
     - `lexicmap utils seed-pos` for extracting seed positions via reference names.
 
 ### v0.2.0 - 2024-02-02
