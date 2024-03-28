@@ -35,8 +35,10 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash"
+	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -66,6 +68,9 @@ const DirGenomes = "genomes"
 
 // FileGenomes is the name of each genome file
 const FileGenomes = "genomes.bin"
+
+// FileSeedPositions is the name of seed position file
+const FileSeedPositions = "seed_positions.bin"
 
 // FileInfo is the summary file
 const FileInfo = "info.toml"
@@ -123,6 +128,8 @@ type IndexBuildingOptions struct {
 
 	ReRefName    *regexp.Regexp   // for extracting genome id from the file name
 	ReSeqExclude []*regexp.Regexp // for excluding sequences according to name pattern
+
+	SaveSeedPositions bool
 }
 
 // CheckIndexBuildingOptions checks some important options
@@ -401,6 +408,17 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 	doneGW := make(chan int)
 
+	// seed positions
+	var fileSeedLoc string
+	var locw *seedposition.Writer
+	if opt.SaveSeedPositions {
+		fileSeedLoc = filepath.Join(dirGenomes, FileSeedPositions)
+		locw, err = seedposition.NewWriter(fileSeedLoc, uint32(batch))
+		if err != nil {
+			checkError(fmt.Errorf("failed to write seed position file: %s", err))
+		}
+	}
+
 	// 2.2) write genomes to file
 	go func() {
 		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
@@ -416,6 +434,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
 			}
 			genome.RecycleGenome(refseq)
+
+			// --------------------------------
+			// seed positions
+			if opt.SaveSeedPositions {
+				err = locw.Write(*refseq.Locs)
+				if err != nil {
+					checkError(fmt.Errorf("failed to write seed position: %s", err))
+				}
+			}
 
 			if opt.Verbose {
 				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
@@ -483,12 +510,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							values = &[]uint64{}
 							(*data)[kmer] = values
 						}
-						for _, loc = range (*loces)[i] { // location information of the captured k-mer
+						for _, loc = range (*loces)[i] { // position information of the captured k-mer
 							//  batch idx: 17 bits
 							//  ref idx:   17 bits
 							//  pos:       29 bits
 							//  strand:     1 bits
-							// here, the location from Mask() already contains the strand information.
+							// here, the position from Mask() already contains the strand information.
 							// value = uint64(batch)<<47 | ((refIdx & 131071) << 30) |
 							value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
 							// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
@@ -670,6 +697,21 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// bit-packed sequences
 			refseq.TwoBit = genome.Seq2TwoBit(refseq.Seq)
 
+			// --------------------------------
+			// seed positions
+			if opt.SaveSeedPositions {
+				locs := poolSeedLocs.Get().(*[]uint32)
+				*locs = (*locs)[:0]
+				var loc int
+				for _, _locs := range *locses {
+					for _, loc = range _locs {
+						*locs = append(*locs, uint32(loc&4294967295))
+					}
+				}
+				sortutil.Uint32s(*locs)
+				refseq.Locs = locs
+			}
+
 			genomes <- refseq
 
 		}(file)
@@ -681,6 +723,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	<-doneGW // all genome data are saved
 	checkError(gw.Close())
+	checkError(locw.Close())
 
 	// process bar
 	if opt.Verbose {
@@ -923,3 +966,8 @@ func readGenomeMapName2Idx(file string) (map[string]uint64, error) {
 	}
 	return m, nil
 }
+
+var poolSeedLocs = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint32, 0, 40<<20)
+	return &tmp
+}}

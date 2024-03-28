@@ -239,6 +239,8 @@ Important parameters:
 			// genome
 			ReRefName:    reRefName,
 			ReSeqExclude: reSeqNames,
+
+			SaveSeedPositions: getFlagBool(cmd, "save-seed-loc"),
 		}
 		err = CheckIndexBuildingOptions(bopt)
 		checkError(err)
@@ -410,6 +412,9 @@ func init() {
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files.`))
 	indexCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
+
+	indexCmd.Flags().BoolP("save-seed-loc", "L", false,
+		formatFlagUsage(`Save seed positions, which can be inspect with "lexicmap utils seed-positions".`))
 
 	// -----------------------------  genome batches   -----------------------------
 

@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package location
+package seedposition
 
 import (
 	"bufio"
@@ -43,8 +43,8 @@ var Magic = [8]byte{'.', 's', 'e', 'e', 'd', 'l', 'o', 'c'}
 // Magic number for the index file
 var MagicIdx = [8]byte{'.', 'l', 'o', 'c', 'i', 'd', 'e', 'x'}
 
-// LocationsIndexFileExt is the file extension of seed location index file.
-var LocationsIndexFileExt = ".idx"
+// PositionsIndexFileExt is the file extension of seed position index file.
+var PositionsIndexFileExt = ".idx"
 
 // MainVersion is use for checking compatibility
 var MainVersion uint8 = 0
@@ -56,15 +56,15 @@ var MinorVersion uint8 = 1
 var BufferSize = 65536 // os.Getpagesize()
 
 // ErrInvalidFileFormat means invalid file format.
-var ErrInvalidFileFormat = errors.New("seed locations: invalid binary format")
+var ErrInvalidFileFormat = errors.New("seed position data: invalid binary format")
 
 // ErrBrokenFile means the file is not complete.
-var ErrBrokenFile = errors.New("seed locations: broken file")
+var ErrBrokenFile = errors.New("seed position data: broken file")
 
 // ErrVersionMismatch means version mismatch between files and program
-var ErrVersionMismatch = errors.New("seed locations: version mismatch")
+var ErrVersionMismatch = errors.New("seed position data: version mismatch")
 
-// Writer saves a list of seed locations to a file.
+// Writer saves a list of seed positions to a file.
 type Writer struct {
 	batch uint32
 	file  string
@@ -113,7 +113,9 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 	return w, nil
 }
 
-// Write writes a list of sorted uint32s.
+// Write writes a list of SORTED uint32s.
+// The data should be sorted, because writing is seriallized,
+// while sorting can be asynchronous.
 func (w *Writer) Write(locs []uint32) error {
 	n := len(locs)
 	// collect data for the index file
@@ -124,7 +126,7 @@ func (w *Writer) Write(locs []uint32) error {
 	buf0 := w.bBuf
 	buf0.Reset()
 
-	// The number of locations
+	// The number of positions/records
 	be.PutUint32(buf[:4], uint32(n))
 	buf0.Write(buf[:4])
 
@@ -184,7 +186,7 @@ func (w *Writer) Write(locs []uint32) error {
 	return err
 }
 
-// Close writes the index file and finish writing.
+// Close writes the index file and finishes the writing.
 func (w *Writer) Close() error {
 	err := w.w.Flush()
 	if err != nil {
@@ -198,7 +200,7 @@ func (w *Writer) Close() error {
 
 	// write the index
 
-	fh, err := os.Create(filepath.Clean(w.file) + LocationsIndexFileExt)
+	fh, err := os.Create(filepath.Clean(w.file) + PositionsIndexFileExt)
 	if err != nil {
 		return err
 	}
@@ -230,7 +232,7 @@ func (w *Writer) Close() error {
 	buf = w.buf[:12]
 	for _, data := range w.index {
 		be.PutUint64(buf[:8], uint64(data[0]))   // offset
-		be.PutUint32(buf[8:12], uint32(data[1])) // number of locations
+		be.PutUint32(buf[8:12], uint32(data[1])) // number of positions
 		buf0.Write(buf)
 	}
 
@@ -247,7 +249,7 @@ func (w *Writer) Close() error {
 	return fh.Close()
 }
 
-// Reader is for read the seed location of a genome
+// Reader is for reading the seed position of a genome
 type Reader struct {
 	batch    uint32
 	nRecords uint32
@@ -266,16 +268,16 @@ var poolReader = &sync.Pool{New: func() interface{} {
 	}
 }}
 
-// NewReader returns a reader from a seed location file.
+// NewReader returns a reader from a seed position file.
 // The reader is recycled after calling Close().
 func NewReader(file string) (*Reader, error) {
-	if strings.HasSuffix(file, LocationsIndexFileExt) {
-		return nil, fmt.Errorf("seed location file, not the index file should be given")
+	if strings.HasSuffix(file, PositionsIndexFileExt) {
+		return nil, fmt.Errorf("seed position file, not the index file should be given")
 	}
 
 	// ------------  index file ----------------
 
-	fileIndex := filepath.Clean(file) + LocationsIndexFileExt
+	fileIndex := filepath.Clean(file) + PositionsIndexFileExt
 	var err error
 	r := poolReader.Get().(*Reader)
 
@@ -362,8 +364,8 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-// SeedLocations returns the sequence with index of idx (0-based).
-func (r *Reader) SeedLocations(idx int, locs *[]uint32) error {
+// SeedPositions returns the seed positions with an index of idx (0-based).
+func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 	if idx < 0 || idx >= int(r.nRecords) {
 		return fmt.Errorf("genome index (%d) out of range: [0, %d]", idx, int(r.nRecords)-1)
 	}

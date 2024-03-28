@@ -88,7 +88,7 @@ type Genome struct {
 	StartTime time.Time
 
 	// seed positions to write to the file
-	Locs []uint32
+	Locs *[]uint32
 }
 
 func (r Genome) String() string {
@@ -116,9 +116,11 @@ func (r *Genome) Reset() {
 	r.SeqSizes = r.SeqSizes[:0]
 	r.SeqIDs = r.SeqIDs[:0]
 
-	if r.Locs != nil {
-		r.Locs = r.Locs[:0]
-	}
+	// for safety
+	r.Kmers = nil
+	r.Locses = nil
+	r.TwoBit = nil
+	r.Locs = nil
 }
 
 // RecycleGenome recycle a Genome
@@ -261,7 +263,7 @@ func (w *Writer) Write(s *Genome) error {
 	return err
 }
 
-// Close writes the index file and finish writing.
+// Close writes the index file and finishes the writing.
 func (w *Writer) Close() error {
 	err := w.w.Flush()
 	if err != nil {

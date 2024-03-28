@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package location
+package seedposition
 
 import (
 	"math/rand"
@@ -26,7 +26,7 @@ import (
 	"testing"
 )
 
-func TestSeedLocations(t *testing.T) {
+func TestSeedPositions(t *testing.T) {
 	tests := [][]uint32{
 		{},
 		{1},
@@ -83,25 +83,26 @@ func TestSeedLocations(t *testing.T) {
 
 	for _, i := range idxs {
 		test = tests[i]
-		err = rdr.SeedLocations(i, &locs)
+		err = rdr.SeedPositions(i, &locs)
 		if err != nil {
 			t.Errorf("read #%d data: %s", i, err)
 			return
 		}
 
 		if len(locs) != len(test) {
-			t.Errorf("[#%d] unequal of location numbers, expected: %d, returned %d",
+			t.Errorf("[#%d] unequal of position numbers, expected: %d, returned %d",
 				i, len(test), len(locs))
 			return
 		}
 
 		for j, v = range locs {
 			if v != test[j] {
-				t.Errorf("[#%d] unequal of locations, expected: %d, returned %d", i, test[j], v)
+				t.Errorf("[#%d] unequal of positions, expected: %d, returned %d", i, test[j], v)
 				return
 			}
 		}
 	}
+
 	// clean up
 
 	err = os.RemoveAll(file)
@@ -110,7 +111,7 @@ func TestSeedLocations(t *testing.T) {
 		return
 	}
 
-	err = os.RemoveAll(file + LocationsIndexFileExt)
+	err = os.RemoveAll(file + PositionsIndexFileExt)
 	if err != nil {
 		t.Error(err)
 		return
