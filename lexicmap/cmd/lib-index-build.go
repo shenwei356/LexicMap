@@ -723,7 +723,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	<-doneGW // all genome data are saved
 	checkError(gw.Close())
-	checkError(locw.Close())
+	if opt.SaveSeedPositions {
+		checkError(locw.Close())
+	}
 
 	// process bar
 	if opt.Verbose {
