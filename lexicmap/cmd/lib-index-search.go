@@ -978,14 +978,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 			}
 
-			sd.QBegin = cr.QBegin
-			sd.QEnd = cr.QEnd
+			sd.QBegin = cr.TBegin
+			sd.QEnd = cr.TEnd
 			if rc {
-				sd.TBegin = tBegin - posOffset + (len(tSeq.Seq) - cr.TEnd - 1)
-				sd.TEnd = tEnd - posOffset - cr.TBegin
+				sd.TBegin = tBegin - posOffset + (len(tSeq.Seq) - cr.QEnd - 1)
+				sd.TEnd = tEnd - posOffset - cr.QBegin
 			} else {
-				sd.TBegin = tBegin - posOffset + cr.TBegin
-				sd.TEnd = tEnd - posOffset - (len(tSeq.Seq) - cr.TEnd - 1)
+				sd.TBegin = tBegin - posOffset + cr.QBegin
+				sd.TEnd = tEnd - posOffset - (len(tSeq.Seq) - cr.QEnd - 1)
 			}
 			sd.RC = rc
 			sd.Chain = (*r.Chains)[i]
