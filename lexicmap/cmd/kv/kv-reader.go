@@ -31,7 +31,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 )
 
-// Reader provides
+// Reader provides methods for reading kv data of a mask, used in kv-data merging.
 type Reader struct {
 	K          uint8 // kmer size
 	ChunkIndex int   // index of the first mask in this chunk
@@ -44,7 +44,7 @@ type Reader struct {
 	buf8 []uint8
 }
 
-// NewReader creates a reader
+// NewReader creates a reader.
 func NewReader(file string) (*Reader, error) {
 	fh, err := os.Open(file)
 	if err != nil {
@@ -130,9 +130,9 @@ func (rdr *Reader) Close() error {
 	return rdr.fh.Close()
 }
 
-// ReadDataOfAMask reads data of a mask.
+// ReadDataOfAMaskAsMap reads data of a mask.
 // Please remember to recycle the result.
-func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
+func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	buf := rdr.buf
 	buf8 := rdr.buf8
 	r := rdr.r
@@ -283,8 +283,153 @@ func (rdr *Reader) ReadDataOfAMask() (*map[uint64]*[]uint64, error) {
 	return m, nil
 }
 
+// ReadDataOfAMaskAndCreateNewIndex reads data of a mask,
+// and create a new index with n anchors.
+// Returned: a list of k-mer and value pairs are intermittently saved in a []uint64.
+func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
+	buf := rdr.buf
+	buf8 := rdr.buf8
+	r := rdr.r
+
+	var ctrlByte byte
+	var lastPair bool  // check if this is the last pair
+	var hasKmer2 bool  // check if there's a kmer2
+	var _offset uint64 // offset of kmer
+	var nBytes int
+	var nReaded, nDecoded int
+	var v1, v2 uint64
+	var kmer1, kmer2 uint64
+	var lenVal1, lenVal2 uint64
+	var j uint64
+	var v uint64
+
+	var err error
+
+	// 8-byte the number of k-mers
+	nReaded, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return nil, err
+	}
+	if nReaded < 8 {
+		return nil, ErrBrokenFile
+	}
+	nKmers := int(be.Uint64(buf8))
+
+	m := make([]uint64, 0, nKmers<<1) // A list of k-mer and value pairs are intermittently saved in a []uint64
+
+	for {
+		// read the control byte
+		_, err = io.ReadFull(r, buf[:1])
+		if err != nil {
+			return nil, err
+		}
+		ctrlByte = buf[0]
+
+		lastPair = ctrlByte&128 > 0 // 1<<7
+		hasKmer2 = ctrlByte&64 == 0 // 1<<6
+
+		ctrlByte &= 63
+
+		// parse the control byte
+		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+		// read encoded bytes
+		nReaded, err = io.ReadFull(r, buf[:nBytes])
+		if err != nil {
+			return nil, err
+		}
+		if nReaded < nBytes {
+			return nil, ErrBrokenFile
+		}
+
+		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+		if nDecoded == 0 {
+			return nil, ErrBrokenFile
+		}
+
+		kmer1 = v1 + _offset
+		kmer2 = kmer1 + v2
+		_offset = kmer2
+
+		// fmt.Printf("%s, %s\n", lexichash.MustDecode(kmer1, rdr.K), lexichash.MustDecode(kmer2, rdr.K))
+
+		// ------------------ lengths of values -------------------
+
+		// read the control byte
+		_, err = io.ReadFull(r, buf[:1])
+		if err != nil {
+			return nil, err
+		}
+		ctrlByte = buf[0]
+
+		// parse the control byte
+		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+		// read encoded bytes
+		nReaded, err = io.ReadFull(r, buf[:nBytes])
+		if err != nil {
+			return nil, err
+		}
+		if nReaded < nBytes {
+			return nil, ErrBrokenFile
+		}
+
+		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+		if nDecoded == 0 {
+			return nil, ErrBrokenFile
+		}
+
+		// ------------------ values -------------------
+
+		for j = 0; j < lenVal1; j++ {
+			nReaded, err = io.ReadFull(r, buf8)
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < 8 {
+				return nil, ErrBrokenFile
+			}
+
+			v = be.Uint64(buf8)
+
+			m = append(m, kmer1)
+			m = append(m, v)
+		}
+
+		if lastPair && !hasKmer2 {
+			break
+		}
+
+		for j = 0; j < lenVal2; j++ {
+			nReaded, err = io.ReadFull(r, buf8)
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < 8 {
+				return nil, ErrBrokenFile
+			}
+
+			v = be.Uint64(buf8)
+
+			m = append(m, kmer2)
+			m = append(m, v)
+		}
+
+		if lastPair {
+			break
+		}
+	}
+
+	if len(m)>>1 < nKmers {
+		return m, fmt.Errorf("number of k-mers mismatch. expected: >=%d, got: %d", nKmers, len(m)>>1)
+	}
+
+	return m, nil
+}
+
 // --------------------------------------------------------------------
 
+// IndexReader provides methods for reading kv-data index data.
 type IndexReader struct {
 	K          uint8 // kmer size
 	ChunkIndex int   // index of the first mask in this chunk

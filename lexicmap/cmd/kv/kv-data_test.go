@@ -65,7 +65,7 @@ func TestKVData(t *testing.T) {
 	var ok bool
 	var values *[]uint64
 	for i := 0; i < nMasks; i++ {
-		m1, err := rdr.ReadDataOfAMask()
+		m1, err := rdr.ReadDataOfAMaskAsMap()
 		if err != nil {
 			t.Errorf("%s", err)
 		}
@@ -96,6 +96,49 @@ func TestKVData(t *testing.T) {
 		}
 
 		RecycleKmerData(m1)
+	}
+
+	// -------------------------------------------------------------------
+	// reader
+	rdr2, err := NewReader(file)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	var v uint64
+	for i := 0; i < nMasks; i++ {
+		m0 := make(map[uint64]uint64) // input
+		var _i uint64
+		for _i = 0; _i < n; _i++ {
+			m0[_i] = _i + (_i << 30)
+		}
+
+		m1, err := rdr2.ReadDataOfAMaskAsList()
+		if err != nil {
+			t.Errorf("%s", err)
+		}
+
+		if len(m0) > len(m1) {
+			t.Errorf("k-mer number mismatch, expected: >=%d, result: %d", len(m0), len(m1))
+			return
+		}
+
+		var j uint64
+		for j = 0; j < n; j++ {
+			if v, ok = m0[j]; !ok {
+				t.Errorf("missing k-mer: %d: %s", i, lexichash.MustDecode(j, k))
+				return
+			}
+			if v != j+(j<<30) {
+				t.Errorf("%s: value mismatch, expected: %d, result: %d",
+					lexichash.MustDecode(j, k), j+(j<<30), (*values)[0])
+				return
+			}
+			delete(m0, j)
+		}
+		if len(m0) != 0 {
+			t.Errorf("wanted %d k-mer", len(m0))
+		}
 	}
 
 	// -------------------------------------------------------------------
@@ -167,6 +210,73 @@ func TestKVData(t *testing.T) {
 			}
 		}
 	}
+
+	// -------------------------------------------------------------------
+	// in memory searcher
+
+	scr2, err := NewInMemomrySearcher(file)
+	if err != nil {
+		t.Errorf("%s", err)
+	}
+
+	// exactly query
+	mPrefix = k
+
+	for mPrefix = k; mPrefix <= k; mPrefix++ {
+		for i = 0; i < n; i++ {
+			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
+			for j := 0; j < nMasks; j++ {
+				kmers[j] = i
+			}
+			results, err := scr2.Search(kmers, mPrefix, maxMismatch)
+			if err != nil {
+				t.Errorf("%s", err)
+				return
+			}
+
+			// for _, r := range *results {
+			// 	for _, v := range r.Values {
+			// 		t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+			// 			lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
+			// 	}
+			// }
+
+			nExpectedResults = nMasks * (1 << ((k - mPrefix) << 1))
+			if len(*results) != nExpectedResults {
+				t.Logf("query: %s\n", lexichash.MustDecode(i, k))
+				t.Errorf("unexpected number of results: %d, expected: %d", len(*results), nExpectedResults)
+				for _, r := range *results {
+					for _, v := range r.Values {
+						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+					}
+				}
+			}
+
+			hit = false
+			for _, r := range *results {
+				if r.Kmer == i {
+					hit = true
+					if r.Values[0] != i+(i<<30) {
+						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
+						return
+					}
+				}
+			}
+			if !hit {
+				t.Errorf("query (%s) not found in the results:", lexichash.MustDecode(i, k))
+				for _, r := range *results {
+					for _, v := range r.Values {
+						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+					}
+				}
+				return
+			}
+		}
+	}
+
+	// -------------------------------------------------------------------
 
 	// clean up
 	if os.RemoveAll(file) != nil {

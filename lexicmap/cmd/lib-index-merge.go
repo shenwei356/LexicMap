@@ -132,7 +132,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 				clear(*m)
 
 				for i, rdr = range rdrs {
-					m1, err = rdr.ReadDataOfAMask()
+					m1, err = rdr.ReadDataOfAMaskAsMap()
 					if err != nil {
 						checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
 							c+rdr.ChunkIndex, pathB[i], err))

@@ -92,6 +92,7 @@ Attentions:
 		}
 		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
+		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
 		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
 		if minAF > 100 {
@@ -158,6 +159,7 @@ Attentions:
 			MaxMismatch:     maxMismatch,
 			MinSinglePrefix: uint8(minSinglePrefix),
 			TopN:            topn,
+			InMemorySearch:  inMemorySearch,
 
 			MaxGap: float64(maxGap),
 		}
@@ -397,27 +399,30 @@ func init() {
 	// seed searching
 
 	mapCmd.Flags().IntP("min-prefix", "p", 15,
-		formatFlagUsage(`Minimum length of shared substrings (seeds)`))
+		formatFlagUsage(`Minimum length of shared substrings (seeds).`))
 
 	mapCmd.Flags().IntP("min-single-prefix", "P", 20,
-		formatFlagUsage(`Minimum length of shared substrings if there's only one pair`))
+		formatFlagUsage(`Minimum length of shared substrings if there's only one pair.`))
 
 	mapCmd.Flags().IntP("max-mismatch", "m", -1,
-		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings`))
+		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings.`))
 
 	mapCmd.Flags().IntP("max-gap", "g", 2000,
-		formatFlagUsage(`Max gap in seed chaining`))
+		formatFlagUsage(`Max gap in seed chaining.`))
 
 	mapCmd.Flags().IntP("top-n", "n", 100,
-		formatFlagUsage(`Keep top N matches for a query`))
+		formatFlagUsage(`Keep top N matches for a query.`))
+
+	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
+		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
 	// sequence similarity
 
 	mapCmd.Flags().Float64P("min-aligned-fraction", "f", 70,
-		formatFlagUsage(`Minimum aligned fraction (in percentage) of the query sequence`))
+		formatFlagUsage(`Minimum aligned fraction (in percentage) of the query sequence.`))
 
 	mapCmd.Flags().Float64P("min-identity", "i", 70,
-		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence`))
+		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence.`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 

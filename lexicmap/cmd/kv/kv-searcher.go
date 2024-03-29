@@ -41,7 +41,9 @@ type Searcher struct {
 
 	fh *os.File // file handler of the kv-data file
 
-	Indexes [][]uint64 // indexes of the ChunkSize masks
+	// indexes of the ChunkSize masks.
+	// A list of k-mer and offset pairs are intermittently saved in a []uint64
+	Indexes [][]uint64
 
 	maxKmer uint64
 	buf     []byte

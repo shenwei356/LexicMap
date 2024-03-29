@@ -45,6 +45,7 @@ type IndexSearchingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
 	// seed searching
+	InMemorySearch  bool  // load the seed/kv data into memory
 	MinPrefix       uint8 // minimum prefix length, e.g., 15
 	MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
@@ -95,8 +96,9 @@ type Index struct {
 	k8 uint8
 
 	// k-mer-value searchers
-	Searchers      []*kv.Searcher
-	searcherTokens []chan int // make sure one seachers is only used by one query
+	Searchers         []*kv.Searcher
+	InMemorySearchers []*kv.InMemorySearcher
+	searcherTokens    []chan int // make sure one seachers is only used by one query
 
 	// general options, and some for seed searching
 	opt *IndexSearchingOptions
@@ -153,6 +155,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// -----------------------------------------------------
 	// read index of seeds
 
+	inMemorySearch := idx.opt.InMemorySearch
+
 	threads := opt.NumCPUs
 	dirSeeds := filepath.Join(outDir, DirSeeds)
 	fileSeeds := make([]string, 0, 64)
@@ -166,7 +170,11 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if len(fileSeeds) == 0 {
 		return nil, fmt.Errorf("seeds file not found in: %s", dirSeeds)
 	}
-	idx.Searchers = make([]*kv.Searcher, 0, len(fileSeeds))
+	if inMemorySearch {
+		idx.InMemorySearchers = make([]*kv.InMemorySearcher, 0, len(fileSeeds))
+	} else {
+		idx.Searchers = make([]*kv.Searcher, 0, len(fileSeeds))
+	}
 	idx.searcherTokens = make([]chan int, len(fileSeeds))
 	for i := range idx.searcherTokens {
 		idx.searcherTokens[i] = make(chan int, 1)
@@ -181,38 +189,67 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// read indexes
 
 	if opt.Verbose || opt.Log2File {
-		log.Infof("  reading index of seeds (k-mer-value) data...")
+		if inMemorySearch {
+			log.Infof("  reading seeds (k-mer-value) data into memory...")
+		} else {
+			log.Infof("  reading index of seeds (k-mer-value) data...")
+		}
 	}
 	done := make(chan int)
-	ch := make(chan *kv.Searcher, threads)
-	go func() {
-		for scr := range ch {
-			idx.Searchers = append(idx.Searchers, scr)
+	var ch chan *kv.Searcher
+	var chIM chan *kv.InMemorySearcher
 
-			idx.openFileTokens <- 1 // increase the number of open files
-		}
-		done <- 1
-	}()
+	if inMemorySearch {
+		chIM = make(chan *kv.InMemorySearcher, threads)
+		go func() {
+			for scr := range chIM {
+				idx.InMemorySearchers = append(idx.InMemorySearchers, scr)
+			}
+			done <- 1
+		}()
+	} else {
+		ch = make(chan *kv.Searcher, threads)
+		go func() {
+			for scr := range ch {
+				idx.Searchers = append(idx.Searchers, scr)
 
+				idx.openFileTokens <- 1 // increase the number of open files
+			}
+			done <- 1
+		}()
+	}
 	var wg sync.WaitGroup
 	tokens := make(chan int, threads)
 	for _, file := range fileSeeds {
 		wg.Add(1)
 		tokens <- 1
 		go func(file string) {
-			scr, err := kv.NewSearcher(file)
-			if err != nil {
-				checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
-			}
+			if inMemorySearch {
+				scr, err := kv.NewInMemomrySearcher(file)
+				if err != nil {
+					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
+				}
 
-			ch <- scr
+				chIM <- scr
+			} else {
+				scr, err := kv.NewSearcher(file)
+				if err != nil {
+					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
+				}
+
+				ch <- scr
+			}
 
 			wg.Done()
 			<-tokens
 		}(file)
 	}
 	wg.Wait()
-	close(ch)
+	if inMemorySearch {
+		close(chIM)
+	} else {
+		close(ch)
+	}
 	<-done
 
 	// -----------------------------------------------------
@@ -287,10 +324,19 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 // Close closes the searcher.
 func (idx *Index) Close() error {
 	var _err error
-	for _, scr := range idx.Searchers {
-		err := scr.Close()
-		if err != nil {
-			_err = err
+	if idx.opt.InMemorySearch {
+		for _, scr := range idx.InMemorySearchers {
+			err := scr.Close()
+			if err != nil {
+				_err = err
+			}
+		}
+	} else {
+		for _, scr := range idx.Searchers {
+			err := scr.Close()
+			if err != nil {
+				_err = err
+			}
 		}
 	}
 	return _err
@@ -546,12 +592,25 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	m := poolSearchResultsMap.Get().(*map[int]*SearchResult)
 	clear(*m) // requires go >= v1.21
 
-	searchers := idx.Searchers
+	inMemorySearch := idx.opt.InMemorySearch
+
+	var searchers []*kv.Searcher
+	var searchersIM []*kv.InMemorySearcher
+	var nSearchers int
+
+	if inMemorySearch {
+		searchersIM = idx.InMemorySearchers
+		nSearchers = len(searchersIM)
+	} else {
+		searchers = idx.Searchers
+		nSearchers = len(searchers)
+	}
+
 	minPrefix := idx.opt.MinPrefix
 	maxMismatch := idx.opt.MaxMismatch
 
 	// later, we will reuse these two objects
-	ch := make(chan *[]*kv.SearchResult, len(idx.Searchers))
+	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int)
 
 	// 2) collect search results
@@ -653,16 +712,28 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}()
 
 	// 1) search with multiple searchers
+
 	var wg sync.WaitGroup
 	var beginM, endM int // range of mask of a chunk
-	for iS, scr := range searchers {
-		beginM, endM = scr.ChunkIndex, scr.ChunkIndex+scr.ChunkSize
+	for iS := 0; iS < nSearchers; iS++ {
+		if inMemorySearch {
+			beginM = searchersIM[iS].ChunkIndex
+			endM = searchersIM[iS].ChunkIndex + searchersIM[iS].ChunkSize
+		} else {
+			beginM = searchers[iS].ChunkIndex
+			endM = searchers[iS].ChunkIndex + searchers[iS].ChunkSize
+		}
 
 		wg.Add(1)
 		go func(iS, beginM, endM int) {
 			idx.searcherTokens[iS] <- 1 // get the access to the searcher
-
-			srs, err := searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+			var srs *[]*kv.SearchResult
+			var err error
+			if inMemorySearch {
+				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+			} else {
+				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+			}
 			if err != nil {
 				checkError(err)
 			}

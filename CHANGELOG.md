@@ -8,6 +8,7 @@
     - Fix a seed-chaining bug.
     - Fix a target sequence extracting bug.
     - Add output of query start and end positions.
+    - Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search.
 - `lexicmap utils kmers`:
     - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
 - New commands:
