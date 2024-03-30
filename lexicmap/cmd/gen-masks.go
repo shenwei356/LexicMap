@@ -435,6 +435,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
 	k := opt.K
 	filterNames := len(opt.ReSeqExclude) > 0
+	threadsFloat := float64(opt.NumCPUs)
 	for _, file := range files {
 		tokens <- 1
 		wg.Add(1)
@@ -507,13 +508,17 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 					}
 				}
 				chSkippedFiles <- file
-				chDuration <- time.Since(startTime)
+				if opt.Verbose {
+					chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
+				}
 				return
 			}
 
 			chGS <- File2GSize{File: file, Size: genomeSize}
 
-			chDuration <- time.Since(startTime)
+			if opt.Verbose {
+				chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
+			}
 		}(file)
 	}
 
