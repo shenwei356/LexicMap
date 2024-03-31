@@ -312,7 +312,7 @@ Important parameters:
 				log.Infof("number of masks: %d", nMasks)
 				log.Infof("rand seed: %d", seed)
 				log.Infof("top N genomes for generating mask: %d", topN)
-				log.Infof("prefix estension length: %d", prefixExt)
+				log.Infof("prefix extension length: %d", prefixExt)
 			}
 			log.Info()
 			log.Infof("seeds data chunks: %d", chunks)

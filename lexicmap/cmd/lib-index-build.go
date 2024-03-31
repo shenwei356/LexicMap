@@ -396,6 +396,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		clear(*data)
 	}
 
+	threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
+
 	genomes := make(chan *genome.Genome, opt.NumCPUs)
 	genomesW := make(chan *genome.Genome, opt.NumCPUs)
 	done := make(chan int)
@@ -421,19 +423,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// 2.2) write genomes to file
 	go func() {
-		threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
-		for refseq := range genomesW {       // each genome
+
+		for refseq := range genomesW { // each genome
 			// write the genome to file
 			err = gw.Write(refseq)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write genome: %s", err))
 			}
-
-			// recycle the genome
-			if refseq.Kmers != nil {
-				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
-			}
-			genome.RecycleGenome(refseq)
 
 			// --------------------------------
 			// seed positions
@@ -444,9 +440,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 			}
 
-			if opt.Verbose {
-				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
-			}
+			// send signal of genome being written
+			refseq.Done <- 1
 		}
 		doneGW <- 1
 	}()
@@ -529,6 +524,20 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 
 			wg.Wait() // wait all mask chunks
+
+			// wait the genome data being written
+			<-refseq.Done
+
+			// recycle the genome
+			if refseq.Kmers != nil {
+				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
+			}
+			genome.RecycleGenome(refseq)
+
+			if opt.Verbose {
+				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
+			}
+
 			refIdx++
 		}
 
@@ -675,19 +684,19 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 				_skipRegions = *skipRegions
 			}
-			var kmers *[]uint64
+			var _kmers *[]uint64
 			var locses *[][]int
 
 			if len(lh.Masks) > 1024 && len(refseq.Seq) > 1048576 {
-				kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
+				_kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
 			} else {
-				kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
+				_kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
 			}
 
 			if err != nil {
 				panic(err)
 			}
-			refseq.Kmers = kmers
+			refseq.Kmers = _kmers
 			refseq.Locses = locses
 			if skipRegions != nil {
 				poolSkipRegions.Put(skipRegions)
@@ -700,8 +709,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// --------------------------------
 			// seed positions
 			if opt.SaveSeedPositions {
-				locs := poolSeedLocs.Get().(*[]uint32)
+				if refseq.Locs == nil {
+					tmp := make([]uint32, 0, 40<<20)
+					refseq.Locs = &tmp
+				}
+				locs := refseq.Locs
 				*locs = (*locs)[:0]
+
 				var loc int
 				for _, _locs := range *locses {
 					for _, loc = range _locs {
@@ -709,7 +723,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					}
 				}
 				sortutil.Uint32s(*locs)
-				refseq.Locs = locs
 			}
 
 			genomes <- refseq

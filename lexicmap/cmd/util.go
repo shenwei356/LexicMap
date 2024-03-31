@@ -78,7 +78,7 @@ func getOptions(cmd *cobra.Command) *Options {
 	}
 }
 
-func checkFileSuffix(opt *Options, suffix string, files ...string) {
+func checkFileSuffix(suffix string, files ...string) {
 	for _, file := range files {
 		if isStdin(file) {
 			continue

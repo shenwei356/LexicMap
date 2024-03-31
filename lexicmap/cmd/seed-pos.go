@@ -301,7 +301,7 @@ Attentions:
 				// ---------------------------------------------------------
 
 				if showProgressBar {
-					chDuration <- time.Since(ref2locs.StartTime)
+					chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 				}
 				poolRef2Locs.Put(ref2locs)
 			}

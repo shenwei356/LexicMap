@@ -89,6 +89,9 @@ type Genome struct {
 
 	// seed positions to write to the file
 	Locs *[]uint32
+
+	// for making sure both genome and key-value data being written
+	Done chan int
 }
 
 func (r Genome) String() string {
@@ -103,6 +106,8 @@ var PoolGenome = &sync.Pool{New: func() interface{} {
 
 		GenomeSize: 0,
 		SeqSizes:   make([]int, 0, 128),
+
+		Done: make(chan int),
 	}
 }}
 
@@ -120,7 +125,6 @@ func (r *Genome) Reset() {
 	r.Kmers = nil
 	r.Locses = nil
 	r.TwoBit = nil
-	r.Locs = nil
 }
 
 // RecycleGenome recycle a Genome

@@ -4,6 +4,7 @@
 
 - `lexicmap index`:
     - Generating masks from the top N biggest genomes instead of randomly generating.
+    - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
 - `lexicmap search`:
     - Fix a seed-chaining bug.
     - Fix a target sequence extracting bug.
