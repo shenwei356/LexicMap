@@ -335,8 +335,7 @@ type Reader struct {
 	batch uint32
 	nSeqs uint32
 
-	fh     *os.File
-	offset int // offset of the first index record
+	Index []uint64 // index data of all genome records, (offset, nbases)
 
 	buf []byte
 
@@ -362,15 +361,16 @@ func NewReader(file string) (*Reader, error) {
 	var err error
 	r := poolReader.Get().(*Reader)
 
-	r.fh, err = os.Open(fileIndex)
+	fh, err := os.Open(fileIndex)
 	if err != nil {
 		return nil, err
 	}
+	bfh := bufio.NewReader(fh)
 
 	buf := r.buf
 
 	// check the magic number
-	n, err := io.ReadFull(r.fh, buf[:8])
+	n, err := io.ReadFull(bfh, buf[:8])
 	if err != nil {
 		return nil, err
 	}
@@ -387,17 +387,15 @@ func NewReader(file string) (*Reader, error) {
 	if !same {
 		return nil, ErrInvalidFileFormat
 	}
-	r.offset += 8
 
 	// read metadata
-	n, err = io.ReadFull(r.fh, buf[:8])
+	n, err = io.ReadFull(bfh, buf[:8])
 	if err != nil {
 		return nil, err
 	}
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
-	r.offset += 8
 
 	// check compatibility
 	if MainVersion != buf[0] {
@@ -405,17 +403,37 @@ func NewReader(file string) (*Reader, error) {
 	}
 
 	// batch number and the number seqs
-	n, err = io.ReadFull(r.fh, buf[:8])
+	n, err = io.ReadFull(bfh, buf[:8])
 	if err != nil {
 		return nil, err
 	}
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
-	r.offset += 8
 
 	r.batch = be.Uint32(buf[:4])
 	r.nSeqs = be.Uint32(buf[4:8])
+
+	// read all index data, because it's small
+	r.Index = make([]uint64, r.nSeqs<<1)
+	var i2 int
+	for i := 0; i < int(r.nSeqs); i++ {
+		// offset in the data file and bases
+		n, err = io.ReadFull(bfh, buf[:12])
+		if err != nil {
+			return nil, err
+		}
+		if n < 12 {
+			return nil, ErrBrokenFile
+		}
+		i2 = i << 1
+		r.Index[i2] = be.Uint64(buf[:8])
+		r.Index[i2+1] = uint64(be.Uint32(buf[8:12]))
+	}
+	err = fh.Close()
+	if err != nil {
+		return r, err
+	}
 
 	// ------------ genome data file ----------------
 
@@ -429,13 +447,13 @@ func NewReader(file string) (*Reader, error) {
 
 // Close closes and recycles the reader.
 func (r *Reader) Close() error {
-	err := r.fh.Close()
-	if err != nil {
-		poolReader.Put(r)
-		return err
-	}
+	// err := r.fh.Close()
+	// if err != nil {
+	// 	poolReader.Put(r)
+	// 	return err
+	// }
 
-	err = r.fhData.Close()
+	err := r.fhData.Close()
 	if err != nil {
 		poolReader.Put(r)
 		return err
@@ -461,20 +479,28 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	buf := r.buf
 
 	// -----------------------------------------------------------
-	// read index information
-	// 24 + 12 * idx
-	r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
+	// // read index information
+	// // 24 + 12 * idx
+	// r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
 
-	// offset in the data file and bases
-	n, err := io.ReadFull(r.fh, buf[:12])
-	if err != nil {
-		return nil, err
-	}
-	if n < 12 {
-		return nil, ErrBrokenFile
-	}
-	offset := int64(be.Uint64(buf[:8]))
-	nBases := int(be.Uint32(buf[8:12])) // for check end
+	// // offset in the data file and bases
+	// n, err := io.ReadFull(r.fh, buf[:12])
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if n < 12 {
+	// 	return nil, ErrBrokenFile
+	// }
+	// offset := int64(be.Uint64(buf[:8]))
+	// nBases := int(be.Uint32(buf[8:12])) // for check end
+
+	var n int
+	var err error
+	i2 := idx << 1
+	offset := int64(r.Index[i2])
+	nBases := int(r.Index[i2+1])
+
+	// -----------------------------------------------------------
 
 	if start < 0 {
 		start = 0
@@ -693,20 +719,28 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, er
 	buf := r.buf
 
 	// -----------------------------------------------------------
-	// read index information
-	// 24 + 12 * idx
-	r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
+	// // read index information
+	// // 24 + 12 * idx
+	// r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
 
-	// offset in the data file and bases
-	n, err := io.ReadFull(r.fh, buf[:12])
-	if err != nil {
-		return nil, err
-	}
-	if n < 12 {
-		return nil, ErrBrokenFile
-	}
-	offset := int64(be.Uint64(buf[:8]))
-	nBases := int(be.Uint32(buf[8:12])) // for check end
+	// // offset in the data file and bases
+	// n, err := io.ReadFull(r.fh, buf[:12])
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if n < 12 {
+	// 	return nil, ErrBrokenFile
+	// }
+	// offset := int64(be.Uint64(buf[:8]))
+	// nBases := int(be.Uint32(buf[8:12])) // for check end
+
+	var n int
+	var err error
+	i2 := idx << 1
+	offset := int64(r.Index[i2])
+	nBases := int(r.Index[i2+1])
+
+	// -----------------------------------------------------------
 
 	if start < 0 {
 		start = 0

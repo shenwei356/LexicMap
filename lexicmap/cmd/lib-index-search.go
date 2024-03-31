@@ -83,8 +83,8 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MaxGap: 5000,
 }
 
-// Index creates LexicMap index from a path
-// and supports searching with a query sequence.
+// Index creates a LexicMap index from a path
+// and supports searching with query sequences.
 type Index struct {
 	path string
 
@@ -124,6 +124,7 @@ func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 	}}
 }
 
+// NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
 	ok, err := pathutil.DirExists(outDir)
 	if err != nil {
@@ -192,7 +193,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		if inMemorySearch {
 			log.Infof("  reading seeds (k-mer-value) data into memory...")
 		} else {
-			log.Infof("  reading index of seeds (k-mer-value) data...")
+			log.Infof("  reading indexes of seeds (k-mer-value) data...")
 		}
 	}
 	done := make(chan int)
@@ -224,14 +225,14 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		wg.Add(1)
 		tokens <- 1
 		go func(file string) {
-			if inMemorySearch {
+			if inMemorySearch { // read all the k-mer-value data into memory
 				scr, err := kv.NewInMemomrySearcher(file)
 				if err != nil {
-					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
+					checkError(fmt.Errorf("failed to create a in-memory searcher from file: %s: %s", file, err))
 				}
 
 				chIM <- scr
-			} else {
+			} else { // just read the index data
 				scr, err := kv.NewSearcher(file)
 				if err != nil {
 					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
@@ -296,8 +297,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 					}
 					idx.poolGenomeRdrs[i] <- rdr
 
-					idx.openFileTokens <- 1
-					idx.openFileTokens <- 1
+					idx.openFileTokens <- 1 // genome file
+					// idx.openFileTokens <- 1 // genome index file
 					wg.Done()
 					<-tokens
 				}(i)

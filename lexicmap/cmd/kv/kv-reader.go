@@ -315,7 +315,11 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	}
 	nKmers := int(be.Uint64(buf8))
 
-	m := make([]uint64, 0, nKmers<<1) // A list of k-mer and value pairs are intermittently saved in a []uint64
+	// A list of k-mer and value pairs are intermittently saved in a []uint64
+	m := make([]uint64, 0, nKmers<<1)
+	// multiping 2.2 is because that some k-mers would have more than one locations,
+	// it help to reduce slice growing, but it's slightly slower in batch querying, interesting.
+	// m := make([]uint64, 0, int(float64(nKmers)*2.2))
 
 	for {
 		// read the control byte

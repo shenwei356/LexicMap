@@ -125,7 +125,7 @@ Attention:
 			tSeq, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
 		}
 		if err != nil {
-			checkError(fmt.Errorf("failed to read genome data file: %s", err))
+			checkError(fmt.Errorf("failed to read subsequence: %s", err))
 		}
 
 		// output file handler
