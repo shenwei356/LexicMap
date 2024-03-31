@@ -623,7 +623,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 		if err != nil {
 			checkError(fmt.Errorf("failed to read seq file: %s", err))
 		}
-		fastxReader.Close()
 
 		// --------------------------------
 		// concatenate contigs
@@ -667,6 +666,8 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 		}
 
 		if len(_seq) == 0 {
+			fastxReader.Close()
+
 			log.Warningf("skipping %s: no valid sequences", file)
 			log.Info()
 			continue
@@ -918,6 +919,10 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 		// capture the most similar k-mer in each genome
 
 		for i, m = range data[prefix] { // each genome, i is the genome idx
+			if len(m) == 0 { // this genome does not have k-mers starting with the prefix
+				continue
+			}
+
 			minHash = math.MaxUint64
 			for kmer, locs = range m { // each kmer
 				hash = mask ^ kmer // lexichash
@@ -1046,6 +1051,9 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 				// capture the most similar k-mer in each genome
 
 				for i, m = range data[prefix] { // each genome, i is the genome idx
+					if len(m) == 0 { // this genome does not have k-mers starting with the prefix
+						continue
+					}
 					minHash = math.MaxUint64
 					for kmer, locs = range m { // each kmer
 						hash = mask ^ kmer // lexichash
