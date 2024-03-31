@@ -868,8 +868,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		if idx.hasGenomeRdrs {
 			rdr = <-idx.poolGenomeRdrs[refBatch]
 		} else {
-			idx.openFileTokens <- 1
-			idx.openFileTokens <- 1
+			idx.openFileTokens <- 1 // genome file
+			// idx.openFileTokens <- 1 // genome index file
 			fileGenome = filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
 			rdr, err = genome.NewReader(fileGenome)
 			if err != nil {
@@ -1014,7 +1014,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				checkError(fmt.Errorf("failed to close genome data file: %s", err))
 			}
 			<-idx.openFileTokens
-			<-idx.openFileTokens
+			// <-idx.openFileTokens
 		}
 	}
 
