@@ -844,6 +844,17 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 		// maybe it's just because we don't have enough genomes.
 		// in a test of top 5 genomes with 7-bp prefix, it did not happen.
 		if count[1] == 0 {
+			prefix = count[0]
+			prefix64 = uint64(prefix)
+			_prefix = r.Intn(_nPrefix)
+			// generate one random mask with a prefix of "prefix"+"_prefix"
+			// mask = prefix + _ prefix + random
+			mask = prefix64<<shiftP | uint64(_prefix)<<_shiftP | util.Hash64(r.Uint64())&_mask
+
+			// record it: prefix -> mask
+			masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
+			masks2[prefix] = map[int]interface{}{_prefix: struct{}{}}
+
 			continue
 		}
 
@@ -912,7 +923,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 
 		// record it: prefix -> mask
 		masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
-
 		masks2[prefix] = map[int]interface{}{_prefix: struct{}{}}
 
 		// -----------------------------------------------------------------
@@ -1044,7 +1054,6 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 				// it's different here !!!!!!!!!!!!1
 				// masks[prefix] = map[uint64]interface{}{mask: struct{}{}}
 				masks[prefix][mask] = struct{}{}
-
 				masks2[prefix][_prefix] = struct{}{}
 
 				// -----------------------------------------------------------------

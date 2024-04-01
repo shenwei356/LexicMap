@@ -142,6 +142,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchR
 		if len(data) == 2 {
 			i = 0
 			last = 0
+			// fmt.Printf("len: %d\n", len(data))
 		} else {
 			last = len(data) - 2
 			// fmt.Printf("len: %d, last: %d\n", len(data), last)
@@ -152,6 +153,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchR
 					middle--
 				}
 				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+					i = begin
 					break
 				}
 				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
