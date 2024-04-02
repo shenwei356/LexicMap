@@ -135,6 +135,18 @@ var reindexSeedsCmd = &cobra.Command{
 			<-doneDuration
 			pbs.Wait()
 		}
+
+		if opt.Verbose {
+			log.Infof("update index information file: %s", fileInfo)
+		}
+		info.Partitions = partitions
+		err = writeIndexInfo(fileInfo, info)
+		if err != nil {
+			checkError(fmt.Errorf("failed to write info file: %s", err))
+		}
+		if opt.Verbose {
+			log.Infof("  finished updating the index information file: %s", fileInfo)
+		}
 	},
 }
 

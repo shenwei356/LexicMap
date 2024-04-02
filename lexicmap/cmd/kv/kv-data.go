@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -291,8 +292,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 	nKmers := len(m)
 	if nAnchors <= 0 {
 		nAnchors = int(math.Sqrt(float64(nKmers)))
-	} else if nAnchors > nKmers {
-		nAnchors = nKmers >> 1
 	}
 	if nAnchors == 0 {
 		nAnchors = 1
@@ -300,7 +299,8 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 
 	idxChunkSize := (nKmers / nAnchors) >> 1 // need to recompute for each data
 	if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
-		idxChunkSize = 1
+		idxChunkSize = 1       // idxChunkSize should be at least be 1
+		nAnchors = nKmers >> 1 // then nkmers = 50
 	}
 
 	w := wtr.w
@@ -578,7 +578,6 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf)
 			if err != nil {
-				// err might be EOF because kmers of some mask might be fewer, due to duplicated k-mers
 				return 0, -1, nil, err
 			}
 			kmer = be.Uint64(buf)
@@ -744,8 +743,6 @@ func CreateKVIndex(file string, nAnchors int) error {
 		_nAnchors = nAnchors
 		if _nAnchors <= 0 {
 			_nAnchors = int(math.Sqrt(float64(nKmers)))
-		} else if _nAnchors > nKmers {
-			_nAnchors = nKmers >> 1
 		}
 		if _nAnchors == 0 {
 			_nAnchors = 1
@@ -753,7 +750,8 @@ func CreateKVIndex(file string, nAnchors int) error {
 
 		idxChunkSize = (nKmers / _nAnchors) >> 1 // need to recompute for each data
 		if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
-			idxChunkSize = 1
+			idxChunkSize = 1        // idxChunkSize should be at least be 1
+			_nAnchors = nKmers >> 1 // then nkmers = 50
 		}
 
 		// 8-byte the number of anchors
@@ -888,6 +886,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 			}
 		}
 
+		if recordedAnchors != _nAnchors {
+			return fmt.Errorf("[mask %d] the number of recorded anchor %d is not equal to %d, nKmers: %d", ChunkIndex+i, recordedAnchors, _nAnchors, nKmers)
+		}
 		// fmt.Printf("offset: %d\n", offset)
 	}
 
