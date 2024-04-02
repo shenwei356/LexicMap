@@ -111,11 +111,10 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 			if err != nil {
 				checkError(fmt.Errorf("failed to read info from an index file: %s", err))
 			}
-			rdrIdx.Close()
 
 			// outfile
 			file := filepath.Join(dirSeeds, chunkFile(chunk))
-			wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, rdrIdx.NAnchors)
+			wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
 			}
@@ -148,7 +147,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 					kv.RecycleKmerData(m1)
 				}
 
-				err = wtr.WriteDataOfAMask(*m)
+				err = wtr.WriteDataOfAMask(*m, opt.Partitions)
 				if err != nil {
 					checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
 				}
@@ -161,6 +160,8 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 					checkError(fmt.Errorf("failed to close kv-data file: %s", err))
 				}
 			}
+
+			rdrIdx.Close()
 
 			err = wtr.Close()
 			if err != nil {

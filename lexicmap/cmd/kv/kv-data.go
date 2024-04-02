@@ -103,10 +103,10 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //	Blank, 5 bytes.
 //	Mask start index, 8 bytes. The index of the first index.
 //	Mask chunk size, 8 bytes. The number of masks in this file.
-//	Number of anchors, 8 bytes, default: $(squre root of ref genomes).
 //
 // For each mask:
 //
+//	Number of anchors, 8 bytes.
 //	kmer-offset data:
 //
 //		k-mer: 8 bytes
@@ -129,23 +129,13 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 		}
 	}
 
-	if nAnchors <= 0 {
-		nAnchors = int(math.Sqrt(float64(nKmers)))
-	} else if nAnchors > nKmers {
-		nAnchors = nKmers >> 1
-	}
-
-	if nAnchors == 0 {
-		nAnchors = 1
-	}
-
-	wtr, err := NewWriter(k, MaskOffset, len(data), file, nAnchors)
+	wtr, err := NewWriter(k, MaskOffset, len(data), file)
 	if err != nil {
 		return 0, err
 	}
 
 	for _, m := range data {
-		err = wtr.WriteDataOfAMask(*m)
+		err = wtr.WriteDataOfAMask(*m, nAnchors)
 		if err != nil {
 			return 0, err
 		}
@@ -163,7 +153,6 @@ type Writer struct {
 	K          uint8 // kmer size
 	ChunkIndex int   // index of the first mask in this chunk
 	ChunkSize  int   // the number of masks in this chunk
-	nAnchors   int
 
 	// bufers
 	bufVar []byte // needs at most 8+8=16
@@ -202,7 +191,7 @@ func (wtr *Writer) Close() (err error) {
 }
 
 // NewWriter returns a new writer
-func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int) (*Writer, error) {
+func NewWriter(k uint8, MaskOffset int, chunkSize int, file string) (*Writer, error) {
 	// file handlers
 	fh, err := os.Create(file)
 	if err != nil {
@@ -214,10 +203,6 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int
 		return nil, err
 	}
 	wi := bufio.NewWriter(fhi)
-
-	if nAnchors == 0 {
-		nAnchors = 1
-	}
 
 	wtr := &Writer{
 		K:          k,
@@ -231,8 +216,6 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int
 		bufVar: make([]byte, 16),
 		buf:    make([]byte, 36),
 		buf8:   make([]byte, 8),
-
-		nAnchors: nAnchors,
 	}
 
 	// ---------------------------------------------------------------------------
@@ -280,12 +263,6 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int
 		return nil, err
 	}
 
-	// 8-byte the number of anchors
-	err = binary.Write(wi, be, uint64(nAnchors))
-	if err != nil {
-		return nil, err
-	}
-
 	// ---------------------------------------------------------------------------
 
 	wtr.N = N
@@ -293,7 +270,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, nAnchors int
 }
 
 // WriteDataOfAMask writes data of one mask.
-func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
+func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err error) {
 	var hasPrev bool
 	var preKey, key, _v uint64
 	var preVal, v *[]uint64
@@ -310,29 +287,42 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var j int
 	var recordedAnchors int
 
-	var idxChunkSize int
+	// compute nAnchors for this mask
+	nKmers := len(m)
+	if nAnchors <= 0 {
+		nAnchors = int(math.Sqrt(float64(nKmers)))
+	} else if nAnchors > nKmers {
+		nAnchors = nKmers >> 1
+	}
+	if nAnchors == 0 {
+		nAnchors = 1
+	}
 
-	nAnchors := wtr.nAnchors
-	w := wtr.w
-	wi := wtr.wi
-
-	keys := poolUint64s.Get().(*[]uint64)
-	idxChunkSize = (len(m) / nAnchors) >> 1 // need to recompute for each data
-
-	if idxChunkSize == 0 { // it happens, e.g., (101/51) >> 1
+	idxChunkSize := (nKmers / nAnchors) >> 1 // need to recompute for each data
+	if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
 		idxChunkSize = 1
 	}
+
+	w := wtr.w
+	wi := wtr.wi
 
 	hasPrev = false
 	offset = 0
 
 	// 8-byte the number of k-mers
-	err = binary.Write(w, be, uint64(len(m)))
+	err = binary.Write(w, be, uint64(nKmers))
 	if err != nil {
 		return err
 	}
 	wtr.N += 8
 
+	// 8-byte the number of anchors
+	err = binary.Write(wi, be, uint64(nAnchors))
+	if err != nil {
+		return err
+	}
+
+	keys := poolUint64s.Get().(*[]uint64)
 	// sort keys
 	*keys = (*keys)[:0]
 	for key = range m {
@@ -570,11 +560,6 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 
 	// the number of anchors
 	var nAnchors int
-	_, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, nil, err
-	}
-	nAnchors = int(be.Uint64(buf))
 
 	// ---------------------------------------------
 
@@ -583,6 +568,12 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 	var kmer, offset uint64
 	var j int
 	for i := 0; i < nMasks; i++ {
+		_, err = io.ReadFull(r, buf)
+		if err != nil {
+			return 0, -1, nil, err
+		}
+		nAnchors = int(be.Uint64(buf))
+
 		index := make([]uint64, 0, nAnchors<<1)
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf)
