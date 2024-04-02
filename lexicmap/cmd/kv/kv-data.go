@@ -24,13 +24,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/twotwotwo/sorts/sortutil"
 )
@@ -606,3 +606,302 @@ var poolUint64s = &sync.Pool{New: func() interface{} {
 	tmp := make([]uint64, 0, 1<<20)
 	return &tmp
 }}
+
+// CreateKVIndex recreates kv index file for the kv-data file.
+func CreateKVIndex(file string, nAnchors int) error {
+	fh, err := os.Open(file)
+	if err != nil {
+		return errors.Wrapf(err, "reading kv-data file")
+	}
+
+	r := bufio.NewReader(fh)
+
+	// --------------------------------------------------------------------
+	// header information of kv-data file
+
+	var offset int
+
+	buf8 := make([]byte, 8)
+	buf := make([]byte, 64)
+
+	var n int
+
+	// check the magic number
+	n, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return err
+	}
+	if n < 8 {
+		return ErrBrokenFile
+	}
+	same := true
+	for i := 0; i < 8; i++ {
+		if Magic[i] != buf8[i] {
+			same = false
+			break
+		}
+	}
+	if !same {
+		return ErrInvalidFileFormat
+	}
+	offset += 8
+
+	// read version information
+	n, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return err
+	}
+	if n < 8 {
+		return ErrBrokenFile
+	}
+	// check compatibility
+	if MainVersion != buf8[0] {
+		return ErrVersionMismatch
+	}
+
+	K := buf8[2] // k-mer size
+	offset += 8
+
+	// index of the first mask in current chunk.
+	_, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return err
+	}
+	ChunkIndex := be.Uint64(buf8)
+	offset += 8
+
+	// mask chunk size
+	_, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return err
+	}
+	ChunkSize := be.Uint64(buf8)
+	offset += 8
+
+	// --------------------------------------------------------------------
+	// writer of kv-index file
+
+	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
+	if err != nil {
+		return err
+	}
+	wi := bufio.NewWriter(fhi)
+
+	// 8-byte magic number
+	err = binary.Write(wi, be, MagicIdx)
+	if err != nil {
+		return err
+	}
+
+	// 8-byte meta info
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K})
+	if err != nil {
+		return err
+	}
+
+	// 16-byte the MaskOffset and the chunk size
+	err = binary.Write(wi, be, [2]uint64{ChunkIndex, ChunkSize})
+	if err != nil {
+		return err
+	}
+
+	// --------------------------------------------------------------------
+	// read kv data
+
+	var _nAnchors, idxChunkSize int
+
+	var nKmers int
+	var ctrlByte byte
+	var lastPair bool  // check if this is the last pair
+	var hasKmer2 bool  // check if there's a kmer2
+	var _offset uint64 // offset of kmer
+	var nBytes int
+	var nReaded, nDecoded int
+	var v1, v2 uint64
+	var kmer1, kmer2 uint64
+	var lenVal1, lenVal2 uint64
+	var i, j uint64
+
+	var recordedAnchors, _j int
+
+	for i = 0; i < ChunkSize; i++ { // for chunkSize masks
+		// fmt.Printf("chunk: %d/%d\n", i, ChunkSize)
+
+		_offset = 0
+
+		// 8-byte the number of k-mers
+		nReaded, err = io.ReadFull(r, buf8)
+		if err != nil {
+			return err
+		}
+		if nReaded < 8 {
+			return ErrBrokenFile
+		}
+		nKmers = int(be.Uint64(buf8))
+		offset += 8
+
+		// compute nAnchors for this mask
+		_nAnchors = nAnchors
+		if _nAnchors <= 0 {
+			_nAnchors = int(math.Sqrt(float64(nKmers)))
+		} else if _nAnchors > nKmers {
+			_nAnchors = nKmers >> 1
+		}
+		if _nAnchors == 0 {
+			_nAnchors = 1
+		}
+
+		idxChunkSize = (nKmers / _nAnchors) >> 1 // need to recompute for each data
+		if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
+			idxChunkSize = 1
+		}
+
+		// 8-byte the number of anchors
+		err = binary.Write(wi, be, uint64(_nAnchors))
+		if err != nil {
+			return err
+		}
+
+		_j = 0
+		recordedAnchors = 0
+
+		// fmt.Printf("nKmers: %d, nAnchors: %d, offset: %d\n", nKmers, _nAnchors, offset)
+		for {
+			// ------------------------------------------------------------------------
+
+			// read the control byte
+			_, err = io.ReadFull(r, buf[:1])
+			if err != nil {
+				return err
+			}
+			ctrlByte = buf[0]
+
+			lastPair = ctrlByte&128 > 0 // 1<<7
+			hasKmer2 = ctrlByte&64 == 0 // 1<<6
+
+			ctrlByte &= 63
+
+			// parse the control byte
+			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+			// read encoded bytes
+			nReaded, err = io.ReadFull(r, buf[:nBytes])
+			if err != nil {
+				return err
+			}
+			if nReaded < nBytes {
+				return ErrBrokenFile
+			}
+
+			v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+			if nDecoded == 0 {
+				return ErrBrokenFile
+			}
+
+			kmer1 = v1 + _offset
+			kmer2 = kmer1 + v2
+			_offset = kmer2
+
+			// ------------------------------------------------------------------------
+			// index anchor
+			if idxChunkSize == 1 || _j%idxChunkSize == 0 {
+				if recordedAnchors < _nAnchors {
+					recordedAnchors++
+
+					// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, _j, kmer1, offset)
+					be.PutUint64(buf[:8], kmer1)            // k-mer
+					be.PutUint64(buf[8:16], uint64(offset)) // offset
+					_, err = wi.Write(buf[:16])
+					if err != nil {
+						return err
+					}
+				}
+
+				_j = 0
+			}
+			_j++
+
+			// ------------------ lengths of values -------------------
+
+			offset += 1 + nBytes
+
+			// read the control byte
+			_, err = io.ReadFull(r, buf[:1])
+			if err != nil {
+				return err
+			}
+			ctrlByte = buf[0]
+
+			// parse the control byte
+			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+			// read encoded bytes
+			nReaded, err = io.ReadFull(r, buf[:nBytes])
+			if err != nil {
+				return err
+			}
+			if nReaded < nBytes {
+				return ErrBrokenFile
+			}
+
+			offset += 1 + nBytes
+
+			lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+			if nDecoded == 0 {
+				return ErrBrokenFile
+			}
+
+			// ------------------ values -------------------
+
+			for j = 0; j < lenVal1; j++ {
+				nReaded, err = io.ReadFull(r, buf8)
+				if err != nil {
+					return err
+				}
+				if nReaded < 8 {
+					return ErrBrokenFile
+				}
+
+			}
+
+			offset += int(lenVal1) << 3
+
+			if lastPair && !hasKmer2 {
+				break
+			}
+
+			for j = 0; j < lenVal2; j++ {
+				nReaded, err = io.ReadFull(r, buf8)
+				if err != nil {
+					return err
+				}
+				if nReaded < 8 {
+					return ErrBrokenFile
+				}
+
+			}
+
+			offset += int(lenVal2) << 3
+
+			if lastPair {
+				break
+			}
+		}
+
+		// fmt.Printf("offset: %d\n", offset)
+	}
+
+	// --------------------------------------------------------------------
+	// close reader and writer
+
+	err = wi.Flush()
+	if err != nil {
+		return err
+	}
+	err = fhi.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

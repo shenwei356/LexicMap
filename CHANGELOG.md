@@ -17,6 +17,7 @@
 - New commands:
     - `lexicmap utils gen-masks` for generating masks from the top N largest genomes.
     - `lexicmap utils seed-pos` for extracting seed positions via reference names.
+    - `lexicmap utils reindex-seeds` for recreating indexes of k-mer-value (seeds) data.
 
 ### v0.2.0 - 2024-02-02
 
