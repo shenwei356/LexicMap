@@ -302,6 +302,9 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 		idxChunkSize = 1       // idxChunkSize should be at least be 1
 		nAnchors = nKmers >> 1 // then nkmers = 50
 	}
+	if nAnchors == 0 { // have to check again, this happens for nKmers == 1
+		nAnchors = 1
+	}
 
 	w := wtr.w
 	wi := wtr.wi
@@ -752,6 +755,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 		if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
 			idxChunkSize = 1        // idxChunkSize should be at least be 1
 			_nAnchors = nKmers >> 1 // then nkmers = 50
+		}
+		if _nAnchors == 0 { // have to check again, this happens for nKmers == 1
+			_nAnchors = 1
 		}
 
 		// 8-byte the number of anchors
