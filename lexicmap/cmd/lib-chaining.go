@@ -27,14 +27,16 @@ import (
 
 // ChainingOptions contains all options in chaining.
 type ChainingOptions struct {
-	MaxGap   float64
-	MinScore float64
+	MaxGap      float64
+	MinScore    float64
+	MaxDistance float64
 }
 
 // DefaultChainingOptions is the defalt vaule of ChainingOption.
 var DefaultChainingOptions = ChainingOptions{
-	MaxGap:   5000,
-	MinScore: 40,
+	MaxGap:      5000,
+	MinScore:    40,
+	MaxDistance: 10000,
 }
 
 // Chainer is an object for chaining the lexichash substrings between query and reference sequences.
@@ -132,7 +134,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	var s, m, d, g float64
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
-	// minDistance := ce.options.MinDistance
+	maxDistance := ce.options.MaxDistance
 	for i = 1; i < n; i++ {
 		j0 = i * (i + 1) >> 1
 
@@ -146,9 +148,9 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			a, b = (*subs)[i], (*subs)[j]
 
 			d = distance(a, b)
-			// if d < minDistance { // looks like we can not do this.
-			// 	continue
-			// }
+			if d > maxDistance {
+				continue
+			}
 
 			g = gap(a, b)
 			if g > maxGap {
@@ -172,7 +174,9 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// 	fmt.Printf("%d\t%s\t%d", i, (*subs)[i], maxscoresIdxs[i])
 	// 	for j = 0; j <= i; j++ {
 	// 		k = i*(i+1)/2 + j
-	// 		fmt.Printf("\t%6.2f", scores[k])
+	// 		if scores[k] > 0 {
+	// 			fmt.Printf("\t%d:%6.2f", j, scores[k])
+	// 		}
 	// 	}
 	// 	fmt.Printf("\n")
 	// }
@@ -213,6 +217,14 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		for {
 			j = maxscoresIdxs[i] // previous anchor
 			if visited[j] {      // curent anchor is abandoned
+				if len(*path) > 0 {
+					reverseInts(*path)
+					*paths = append(*paths, path)
+					// fmt.Printf("stop at %d, %s\n", i, (*subs)[i])
+
+					path = poolChain.Get().(*[]int)
+					*path = (*path)[:0]
+				}
 				visited[i] = true // do not check it again
 				break
 			}
@@ -220,19 +232,24 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			*path = append(*path, i) // record the anchor
 			visited[i] = true        // mark as visited
 			if first {
+				// fmt.Printf("start from %d, %s\n", i, (*subs)[i])
 				sumMaxScore += maxscores[i]
 				first = false
 			}
+			// else {
+			// 	fmt.Printf("  add %d, %s\n", i, (*subs)[i])
+			// }
 			if i != j {
 				i = j
 			} else { // the path starts here
 				reverseInts(*path)
 				*paths = append(*paths, path)
+				// fmt.Printf("stop at %d, %s\n", i, (*subs)[i])
 
 				path = poolChain.Get().(*[]int)
 				*path = (*path)[:0]
-				i = n - 1 // re-track from the end
-				first = true
+
+				break
 			}
 		}
 	}

@@ -130,6 +130,8 @@ type SeqComparatorResult struct {
 	QEnd   int
 	TBegin int
 	TEnd   int
+
+	Chains *[]*Chain2Result
 }
 
 var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
@@ -138,6 +140,7 @@ var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
 
 // RecycleSeqComparatorResult recycles a SeqComparatorResult
 func RecycleSeqComparatorResult(r *SeqComparatorResult) {
+	RecycleChaining2Result(r.Chains)
 	poolSeqComparatorResult.Put(r)
 }
 
@@ -218,7 +221,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 
 	chains, nMatchedBases, nAlignedBases, qB, qE, tB, tE := cpr.chainer.Chain(subs)
 	if len(*chains) == 0 {
-		RecycleChainingResult(chains)
+		RecycleChaining2Result(chains)
 		RecycleSubstrPairs(subs)
 		return nil, nil
 	}
@@ -238,6 +241,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	r.AlignedBases = nAlignedBases
 	r.MatchedBases = nMatchedBases
 	r.NumChains = len(*chains)
+
 	r.Identity = float64(nMatchedBases) / float64(nAlignedBases) * 100
 	r.AlignedFraction = float64(nAlignedBases) / float64(cpr.len) * 100
 	if r.AlignedFraction > 100 {
@@ -247,8 +251,9 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	r.QEnd = qE
 	r.TBegin = tB
 	r.TEnd = tE
+	r.Chains = chains
 
-	RecycleChainingResult(chains)
+	// RecycleChaining2Result(chains)
 	RecycleSubstrPairs(subs)
 
 	return r, nil

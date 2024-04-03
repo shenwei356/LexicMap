@@ -52,7 +52,11 @@ type IndexSearchingOptions struct {
 	TopN            int   // keep the topN scores, e.g, 10
 
 	// seeds chaining
-	MaxGap float64 // e.g., 5000
+	MaxGap      float64 // e.g., 5000
+	MaxDistance float64 // e.g., 20k
+
+	// alignment
+	ExtendLength int // the length of extra sequence on the flanking of seeds.
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -80,7 +84,8 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MinSinglePrefix: 20,
 	TopN:            10,
 
-	MaxGap: 5000,
+	MaxGap:      5000,
+	MaxDistance: 10000,
 }
 
 // Index creates a LexicMap index from a path
@@ -311,8 +316,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// other resources
 	co := &ChainingOptions{
-		MaxGap:   opt.MaxGap,
-		MinScore: seedWeight(float64(opt.MinSinglePrefix)),
+		MaxGap:      opt.MaxGap,
+		MinScore:    seedWeight(float64(opt.MinSinglePrefix)),
+		MaxDistance: opt.MaxDistance,
 	}
 	idx.chainingOptions = co
 	idx.poolChainers = &sync.Pool{New: func() interface{} {
@@ -501,12 +507,13 @@ type SearchResult struct {
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
 }
 
+// SimilarityDetail is the similarity detail of one reference sequence
 type SimilarityDetail struct {
-	QBegin int
-	QEnd   int
-	TBegin int
-	TEnd   int
-	RC     bool
+	// QBegin int
+	// QEnd   int
+	// TBegin int
+	// TEnd   int
+	RC bool
 
 	SimilarityScore float64
 	Similarity      *SeqComparatorResult
@@ -851,6 +858,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	minAF := idx.seqCompareOption.MinAlignedFraction
 	minIdent := idx.seqCompareOption.MinIdentity
+	extLen := idx.opt.ExtendLength
 
 	var l, iSeq, posOffset, posOffset1 int
 
@@ -882,38 +890,47 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// ------------------------------------------------------------------------
 			// extract subsequence from the refseq for comparing
 
+			// fmt.Printf("----------------- [ chain %d ] --------------\n", i)
+			// for _i, _c := range *chain {
+			// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
+			// }
+
 			// the first seed pair
 			sub = (*r.Subs)[(*chain)[0]]
 			qs = sub.QBegin
 			ts = sub.TBegin
+			// fmt.Printf("  first: %s\n", sub)
 
 			// the last seed pair
 			sub = (*r.Subs)[(*chain)[len(*chain)-1]]
 			qe = sub.QBegin + sub.Len
 			te = sub.TBegin + sub.Len
+			// fmt.Printf("  last: %s\n", sub)
+			// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qs, qe, ts, te, rc)
 
 			if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
 				rc = sub.QRC != sub.TRC
 			} else { // check the strand according to coordinates of seeds
 				rc = ts > sub.TBegin
 			}
+			// fmt.Printf("  rc: %v\n", rc)
 
 			// estimate the location of target sequence on the reference
 			if rc { // reverse complement
-				tBegin = sub.TBegin - qlen + qe
+				tBegin = sub.TBegin - min(qlen-qe, extLen)
 				if tBegin < 0 {
 					tBegin = 0
 				}
-				tEnd = ts + sub.Len + qs - 1
+				tEnd = ts + sub.Len + min(qs, extLen) - 1
 			} else {
-				tBegin = ts - qs
+				tBegin = ts - min(qs, extLen)
 				if tBegin < 0 {
 					tBegin = 0
 				}
-				tEnd = te + qlen - qe - 1
+				tEnd = te + min(qlen-qe, extLen) - 1
 			}
 
-			// fmt.Printf("chain:%d, %d, subject:%d.%d:%d-%d, rc:%v\n", i+1, *chain, refBatch, refID, tBegin+1, tEnd+1, rc)
+			// fmt.Printf("chain:%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, refBatch, refID, tBegin+1, tEnd+1, rc)
 
 			// extract target sequence for comparison.
 			// Right now, we fetch seq from disk for each seq,
@@ -944,6 +961,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				genome.RecycleGenome(tSeq)
 				continue
 			}
+
 			if cr.AlignedFraction < minAF || cr.Identity < minIdent {
 				RecycleSeqComparatorResult(cr)
 				genome.RecycleGenome(tSeq)
@@ -955,8 +973,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				r.GenomeSize = tSeq.GenomeSize
 			}
 
-			sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-
 			// get the index of target seq according to the position
 			iSeq = 0
 			posOffset = 0
@@ -966,7 +982,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				for j, l = range tSeq.SeqSizes {
 					// now posOffset is length sum of 0..j-1 + j*(k-1)
 					posOffset1 += l // length sum of 0..j
-					if tBegin+1 >= posOffset && tEnd+1 <= posOffset1 {
+					if ts+1 >= posOffset && te+1 <= posOffset1 {
 						iSeq = j
 						break
 					}
@@ -979,16 +995,32 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 			}
 
-			sd.QBegin = cr.TBegin
-			sd.QEnd = cr.TEnd
-			if rc {
-				sd.TBegin = tBegin - posOffset + (len(tSeq.Seq) - cr.QEnd - 1)
-				sd.TEnd = tEnd - posOffset - cr.QBegin
-			} else {
-				sd.TBegin = tBegin - posOffset + cr.QBegin
-				sd.TEnd = tEnd - posOffset - (len(tSeq.Seq) - cr.QEnd - 1)
-			}
+			sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+
+			// sd.QBegin = cr.TBegin
+			// sd.QEnd = cr.TEnd
+			// if rc {
+			// 	sd.TBegin = tBegin - posOffset + (len(tSeq.Seq) - cr.QEnd - 1)
+			// 	sd.TEnd = tEnd - posOffset - cr.QBegin
+			// } else {
+			// 	sd.TBegin = tBegin - posOffset + cr.QBegin
+			// 	sd.TEnd = tEnd - posOffset - (len(tSeq.Seq) - cr.QEnd - 1)
+			// }
 			sd.RC = rc
+			var qb, qe, tb, te int
+			for _, c := range *cr.Chains {
+				qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
+				c.QBegin = tb
+				c.QEnd = te
+				if rc {
+					c.TBegin = tBegin - posOffset + (len(tSeq.Seq) - qe - 1)
+					c.TEnd = tEnd - posOffset - qb
+				} else {
+					c.TBegin = tBegin - posOffset + qb
+					c.TEnd = tEnd - posOffset - (len(tSeq.Seq) - qe - 1)
+				}
+			}
+
 			sd.Chain = (*r.Chains)[i]
 			sd.Similarity = cr
 			sd.SimilarityScore = cr.AlignedFraction * cr.Identity

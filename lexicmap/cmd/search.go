@@ -90,7 +90,9 @@ Attentions:
 		if minSinglePrefix < minPrefix {
 			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be >= that of -m/--min-prefix (%d)", minSinglePrefix, minPrefix))
 		}
-		maxGap := getFlagNonNegativeInt(cmd, "max-gap")
+		maxGap := getFlagPositiveInt(cmd, "max-gap")
+		maxDist := getFlagPositiveInt(cmd, "max-dist")
+		extLen := getFlagNonNegativeInt(cmd, "ext-len")
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
@@ -161,7 +163,9 @@ Attentions:
 			TopN:            topn,
 			InMemorySearch:  inMemorySearch,
 
-			MaxGap: float64(maxGap),
+			MaxGap:       float64(maxGap),
+			MaxDistance:  float64(maxDist),
+			ExtendLength: extLen,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -221,6 +225,7 @@ Attentions:
 			// var subs *[]*index.SubstrPair
 			var sd *SimilarityDetail
 			var cr *SeqComparatorResult
+			var c *Chain2Result
 			var targets int
 
 			results = results[:0]
@@ -247,30 +252,25 @@ Attentions:
 				// subs = r.Subs
 				for _, sd = range *r.SimilarityDetails {
 					cr = sd.Similarity
-					// for _, i = range *sd.Chain {
-					// 	v = (*subs)[i]
 
-					// 	// fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\n",
-					// 	// 	queryID, len(q.seq), targets, idx.IDs[r.IdIdx],
-					// 	// 	c+1, cr.AlignedFraction, cr.Identity, idx.RefSeqInfos[r.IdIdx].Len,
-					// 	// 	v.QBegin+1, v.QBegin+v.Len,
-					// 	// 	v.TBegin+1, v.TBegin+v.Len,
-					// 	// 	v.Len)
-					// }
-					if sd.RC {
-						strand = '-'
-					} else {
-						strand = '+'
+					for _, c = range *cr.Chains {
+
+						if sd.RC {
+							strand = '-'
+						} else {
+							strand = '+'
+						}
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
+							queryID, len(q.seq),
+							c.QBegin+1, c.QEnd+1,
+							targets, r.ID,
+							sd.SeqID, cr.AlignedFraction, cr.Identity,
+							sd.SeqLen,
+							c.TBegin+1, c.TEnd+1, strand,
+							len(*sd.Chain),
+						)
 					}
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
-						queryID, len(q.seq),
-						sd.QBegin+1, sd.QEnd+1,
-						targets, r.ID,
-						sd.SeqID, cr.AlignedFraction, cr.Identity,
-						sd.SeqLen,
-						sd.TBegin+1, sd.TEnd+1, strand,
-						len(*sd.Chain),
-					)
+
 				}
 				outfh.Flush()
 			}
@@ -409,6 +409,10 @@ func init() {
 
 	mapCmd.Flags().IntP("max-gap", "g", 2000,
 		formatFlagUsage(`Max gap in seed chaining.`))
+	mapCmd.Flags().IntP("max-dist", "", 10000,
+		formatFlagUsage(`Max distance in seed chaining.`))
+	mapCmd.Flags().IntP("ext-len", "", 2000,
+		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extract query and target sequences for alignment`))
 
 	mapCmd.Flags().IntP("top-n", "n", 100,
 		formatFlagUsage(`Keep top N matches for a query.`))

@@ -74,49 +74,60 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 
 // RecycleChainingResult reycles the chaining paths.
 // Please remember to call this after using the results.
-func RecycleChaining2Result(chains *[]*[]int) {
+func RecycleChaining2Result(chains *[]*Chain2Result) {
 	for _, chain := range *chains {
-		poolChain.Put(chain)
+		poolChain2.Put(chain)
 	}
-	poolChains.Put(chains)
+	poolChains2.Put(chains)
 }
 
 var poolChains2 = &sync.Pool{New: func() interface{} {
-	tmp := make([]*[]int, 0, 32)
+	tmp := make([]*Chain2Result, 0, 32)
 	return &tmp
 }}
 
 var poolChain2 = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 0, 1024)
-	return &tmp
+	return &Chain2Result{
+		Chain: make([]int, 0, 1024),
+	}
 }}
+
+// Chain2Result represents a result of a chain
+type Chain2Result struct {
+	Chain        []int // Paths.
+	MatchedBases int   // The number of matched bases.
+	AlignedBases int   // The number of aligned bases.
+	QBegin, QEnd int   // Query begin/end position (0-based)
+	TBegin, TEnd int   // Target begin/end position (0-based)
+}
+
+func (r *Chain2Result) Reset() {
+	r.Chain = r.Chain[:0]
+}
 
 // Chain finds the possible chain paths.
 // Please remember to call RecycleChainingResult after using the results.
 // Returned results:
-//  1. Paths.
+//  1. Chain2Results.
 //  2. The number of matched bases.
 //  3. The number of aligned bases.
-//  4. Query begin position (0-based)
-//  5. Query end position (0-based)
-//  6. Target begin position (0-based)
-//  7. Target end position (0-based)
-func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int, int, int, int, int) {
+func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
-		paths := poolChains2.Get().(*[]*[]int)
+		paths := poolChains2.Get().(*[]*Chain2Result)
 		*paths = (*paths)[:0]
 
 		sub := (*subs)[0]
 		if sub.Len >= ce.options.MinScore { // the length of anchor
-			path := poolChain2.Get().(*[]int)
-			*path = (*path)[:0]
+			path := poolChain2.Get().(*Chain2Result)
+			path.Reset()
 
-			*path = append(*path, 0)
+			path.Chain = append(path.Chain, 0)
 
 			*paths = append(*paths, path)
 
+			// TODO: compute qb, qe, tb, te. though it's unnecessary
 			return paths, sub.Len, sub.Len, 0, 0, 0, 0
 		}
 
@@ -218,7 +229,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*[]int, int, int, int, int, i
 
 	// backtrack
 
-	paths := poolChains.Get().(*[]*[]int)
+	paths := poolChains2.Get().(*[]*Chain2Result)
 	*paths = (*paths)[:0]
 
 	// check the highest score, for early quit,
@@ -252,9 +263,9 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	maxscoresIdxs []int,
 	offset int, // offset of this region of subs
 	minScore int, // the threshold
-	paths *[]*[]int, // paths
-	nMatchedBases *int,
-	nAlignedBases *int,
+	paths *[]*Chain2Result, // paths
+	_nMatchedBases *int,
+	_nAlignedBases *int,
 	Mi0 int, // found Mi
 	bounds *[]int, // intervals of previous chains
 ) (
@@ -282,6 +293,9 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	}
 	// fmt.Printf("  Mi: %d, M: %d\n", Mi, M)
 
+	var nMatchedBases int
+	var nAlignedBases int
+
 	i = Mi
 	var j int
 	var qB, qE, tB, tE int // the bound of the chain (0-based)
@@ -292,8 +306,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	var overlapped bool
 	var nb, bi, bj int // index of bounds
 	firstAnchorOfAChain := true
-	path := poolChain.Get().(*[]int)
-	*path = (*path)[:0]
+	path := poolChain2.Get().(*Chain2Result)
+	path.Reset()
 	for {
 		j = maxscoresIdxs[i] - offset // previous seed
 
@@ -330,7 +344,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			// can not continue here, must check if i == j
 		} else {
-			*path = append(*path, i+offset) // record the seed
+			path.Chain = append(path.Chain, i+offset) // record the seed
 
 			// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
 
@@ -342,14 +356,14 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				te = sub.TBegin + sub.Len - 1   // end
 				qb, tb = sub.QBegin, sub.TBegin // in case there's only one anchor
 
-				*nMatchedBases += sub.Len
+				nMatchedBases += sub.Len
 			} else {
 				qb, tb = sub.QBegin, sub.TBegin // begin
 
 				if sub.QBegin+sub.Len-1 >= beginOfNextAnchor {
-					*nMatchedBases += beginOfNextAnchor - sub.QBegin
+					nMatchedBases += beginOfNextAnchor - sub.QBegin
 				} else {
-					*nMatchedBases += sub.Len
+					nMatchedBases += sub.Len
 				}
 			}
 			beginOfNextAnchor = sub.QBegin
@@ -360,10 +374,20 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				break
 			}
 
-			reverseInts(*path)
+			nAlignedBases += qe - qb + 1
+
+			reverseInts(path.Chain)
+			path.AlignedBases = nAlignedBases
+			path.MatchedBases = nMatchedBases
+			path.QBegin, path.QEnd = qb, qe
+			path.TBegin, path.TEnd = tb, te
 			*paths = append(*paths, path)
 
-			*nAlignedBases += qe - qb + 1
+			*_nAlignedBases += nAlignedBases
+			*_nMatchedBases += nMatchedBases
+
+			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+			// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
 
 			firstAnchorOfAChain = true
 			break
@@ -374,13 +398,23 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 	if j < 0 { // the first anchor is not in current region
 		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", len(*path))
-		if len(*path) == 0 {
+		if len(path.Chain) == 0 {
 			poolChain.Put(path)
 		} else {
-			reverseInts(*path)
+			nAlignedBases += qe - qb + 1
+
+			reverseInts(path.Chain)
+			path.AlignedBases = nAlignedBases
+			path.MatchedBases = nMatchedBases
+			path.QBegin, path.QEnd = qb, qe
+			path.TBegin, path.TEnd = tb, te
 			*paths = append(*paths, path)
 
-			*nAlignedBases += qe - qb + 1
+			*_nAlignedBases += nAlignedBases
+			*_nMatchedBases += nMatchedBases
+
+			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+			// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
 		}
 	}
 
@@ -405,8 +439,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			offset+Mi+1,
 			minScore,
 			paths,
-			nMatchedBases,
-			nAlignedBases,
+			_nMatchedBases,
+			_nAlignedBases,
 			-1,
 			bounds,
 		)
@@ -436,8 +470,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			offset,
 			minScore,
 			paths,
-			nMatchedBases,
-			nAlignedBases,
+			_nMatchedBases,
+			_nAlignedBases,
 			-1,
 			bounds,
 		)
