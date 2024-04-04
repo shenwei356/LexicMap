@@ -399,7 +399,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	if j < 0 { // the first anchor is not in current region
 		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", len(*path))
 		if len(path.Chain) == 0 {
-			poolChain.Put(path)
+			poolChain2.Put(path)
 		} else {
 			nAlignedBases += qe - qb + 1
 

@@ -37,8 +37,7 @@ type SeqComparatorOptions struct {
 	Chaining2Options
 
 	// seq similarity
-	MinAlignedFraction float64 // percentage
-	MinIdentity        float64 // percentage
+	MinIdentity float64 // percentage
 }
 
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
@@ -57,8 +56,7 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		Band: 20,
 	},
 
-	MinAlignedFraction: 70,
-	MinIdentity:        70,
+	MinIdentity: 70,
 }
 
 // SeqComparator is for fast and accurate similarity estimation of two sequences,
@@ -123,8 +121,7 @@ type SeqComparatorResult struct {
 	AlignedBases int // The number of aligned bases.
 	NumChains    int // The number of chains
 
-	AlignedFraction float64 // aligned fraction, percentage
-	Identity        float64 // identity (fraction of same bases), percentage
+	PIdentity float64 // identity (fraction of same bases), percentage
 
 	QBegin int
 	QEnd   int
@@ -242,11 +239,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	r.MatchedBases = nMatchedBases
 	r.NumChains = len(*chains)
 
-	r.Identity = float64(nMatchedBases) / float64(nAlignedBases) * 100
-	r.AlignedFraction = float64(nAlignedBases) / float64(cpr.len) * 100
-	if r.AlignedFraction > 100 {
-		r.AlignedFraction = 100
-	}
+	r.PIdentity = float64(nMatchedBases) / float64(nAlignedBases) * 100
 	r.QBegin = qB
 	r.QEnd = qE
 	r.TBegin = tB

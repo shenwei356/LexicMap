@@ -93,6 +93,9 @@ Attentions:
 		maxGap := getFlagPositiveInt(cmd, "max-gap")
 		maxDist := getFlagPositiveInt(cmd, "max-dist")
 		extLen := getFlagNonNegativeInt(cmd, "ext-len")
+		if extLen < 1000 {
+			checkError(fmt.Errorf("the value of flag --ext-len should be >= 1000"))
+		}
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
@@ -163,9 +166,12 @@ Attentions:
 			TopN:            topn,
 			InMemorySearch:  inMemorySearch,
 
-			MaxGap:       float64(maxGap),
-			MaxDistance:  float64(maxDist),
+			MaxGap:      float64(maxGap),
+			MaxDistance: float64(maxDist),
+
 			ExtendLength: extLen,
+
+			MinAlignedFraction: minAF,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -201,7 +207,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tafrac\tident\ttlen\ttstart\ttend\tstrand\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tqcov\tchain\tcmlen\tsmlen\tpident\ttlen\ttstart\ttend\tstr\tseeds\n")
 
 		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -230,6 +236,10 @@ Attentions:
 
 			results = results[:0]
 			for _, r := range *q.result {
+				if r.SimilarityDetails == nil {
+					continue
+				}
+
 				if len(*r.SimilarityDetails) > 0 {
 					results = append(results, r)
 				}
@@ -244,12 +254,13 @@ Attentions:
 			}
 
 			var strand byte
+			var j int
 			for _, r := range results {
 				if r.SimilarityDetails == nil {
 					continue
 				}
 
-				// subs = r.Subs
+				j = 1
 				for _, sd = range *r.SimilarityDetails {
 					cr = sd.Similarity
 
@@ -260,17 +271,17 @@ Attentions:
 						} else {
 							strand = '+'
 						}
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%d\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
 							queryID, len(q.seq),
 							c.QBegin+1, c.QEnd+1,
 							targets, r.ID,
-							sd.SeqID, cr.AlignedFraction, cr.Identity,
+							sd.SeqID, r.AlignedFraction, j, cr.AlignedBases, c.AlignedBases, cr.PIdentity,
 							sd.SeqLen,
 							c.TBegin+1, c.TEnd+1, strand,
 							len(*sd.Chain),
 						)
 					}
-
+					j++
 				}
 				outfh.Flush()
 			}
@@ -313,8 +324,7 @@ Attentions:
 				Band: 20,
 			},
 
-			MinAlignedFraction: minAF,
-			MinIdentity:        minIdent,
+			MinIdentity: minIdent,
 		})
 
 		for _, file := range files {
@@ -412,7 +422,7 @@ func init() {
 	mapCmd.Flags().IntP("max-dist", "", 10000,
 		formatFlagUsage(`Max distance in seed chaining.`))
 	mapCmd.Flags().IntP("ext-len", "", 2000,
-		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extract query and target sequences for alignment`))
+		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extracting query and target sequences for alignment`))
 
 	mapCmd.Flags().IntP("top-n", "n", 100,
 		formatFlagUsage(`Keep top N matches for a query.`))
