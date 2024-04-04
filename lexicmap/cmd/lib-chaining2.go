@@ -123,12 +123,17 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			path := poolChain2.Get().(*Chain2Result)
 			path.Reset()
 
+			qe := sub.QBegin + sub.Len - 1   // end
+			te := sub.TBegin + sub.Len - 1   // end
+			qb, tb := sub.QBegin, sub.TBegin // in case there's only one anchor
+			path.QBegin, path.QEnd = qb, qe
+			path.TBegin, path.TEnd = tb, te
+			path.MatchedBases = sub.Len
+			path.AlignedBases = sub.Len
 			path.Chain = append(path.Chain, 0)
-
 			*paths = append(*paths, path)
 
-			// TODO: compute qb, qe, tb, te. though it's unnecessary
-			return paths, sub.Len, sub.Len, 0, 0, 0, 0
+			return paths, sub.Len, sub.Len, qb, qe, tb, te
 		}
 
 		return paths, 0, 0, 0, 0, 0, 0

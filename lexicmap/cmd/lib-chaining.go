@@ -77,7 +77,7 @@ var poolChains = &sync.Pool{New: func() interface{} {
 }}
 
 var poolChain = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 0, 32)
+	tmp := make([]int, 0, 128)
 	return &tmp
 }}
 

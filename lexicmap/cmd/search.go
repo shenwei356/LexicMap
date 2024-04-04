@@ -99,6 +99,11 @@ Attentions:
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
+		minAlignLen := getFlagPositiveInt(cmd, "min-aligned-len")
+		if minAlignLen < minSinglePrefix {
+			checkError(fmt.Errorf("the value of flag -l/--min-aligned-len (%d) should be >= that of -M/--min-single-prefix (%d)", minAlignLen, minSinglePrefix))
+		}
+
 		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
 		if minAF > 100 {
 			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction (%f) should be in range of [0, 100]", minAF))
@@ -324,7 +329,8 @@ Attentions:
 				Band: 20,
 			},
 
-			MinIdentity: minIdent,
+			MinIdentity:      minIdent,
+			MinAlignedLength: minAlignLen,
 		})
 
 		for _, file := range files {
@@ -431,6 +437,9 @@ func init() {
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
 	// sequence similarity
+
+	mapCmd.Flags().IntP("min-aligned-len", "l", 50,
+		formatFlagUsage(`Minimum aligned length`))
 
 	mapCmd.Flags().Float64P("min-aligned-fraction", "f", 70,
 		formatFlagUsage(`Minimum aligned fraction (in percentage) of the query sequence.`))

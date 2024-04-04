@@ -599,7 +599,7 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 // After using the result, do not forget to call RecycleSearchResult().
 func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// ----------------------------------------------------------------
-	// mask the query sequence
+	// 1) mask the query sequence
 
 	_kmers, _locses, err := idx.lh.Mask(s, nil)
 	if err != nil {
@@ -608,7 +608,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	defer idx.lh.RecycleMaskResult(_kmers, _locses)
 
 	// ----------------------------------------------------------------
-	// matching the captured k-mers in databases
+	// 2) matching the captured k-mers in databases
 
 	// a map for collecting matches for each reference: IdIdx -> result
 	m := poolSearchResultsMap.Get().(*map[int]*SearchResult)
@@ -635,7 +635,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int)
 
-	// 2) collect search results
+	// 2.2) collect search results
 	go func() {
 		var refpos uint64
 
@@ -733,7 +733,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		done <- 1
 	}()
 
-	// 1) search with multiple searchers
+	// 2.1) search with multiple searchers
 
 	var wg sync.WaitGroup
 	var beginM, endM int // range of mask of a chunk
@@ -780,10 +780,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}
 
 	// ----------------------------------------------------------------
-	// chaining matches for all subject sequences
+	// 3) chaining matches for all reference genomes
 
 	minSinglePrefix := int(idx.opt.MinSinglePrefix)
 
+	// preprocess substring matches for each reference genome
 	rs := poolSearchResults.Get().(*[]*SearchResult)
 	*rs = (*rs)[:0]
 
@@ -827,28 +828,28 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		*rs = (*rs)[:topN]
 	}
 
-	// chaining
+	// chaining and alignment
 
 	minChainingScore := idx.chainingOptions.MinScore
 	chainer := idx.poolChainers.Get().(*Chainer)
+
 	j := 0
 	for _, r := range *rs {
 		r.Chains, r.Score = chainer.Chain(r.Subs)
 		if r.Score < minChainingScore {
 			idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 			continue
-		} else {
-			(*rs)[j] = r
-			j++
-
-			// fmt.Printf("genome: %d.%d\n", r.GenomeBatch, r.GenomeIndex)
-			// for _, sub := range *r.Subs {
-			// 	fmt.Printf("  %s\n", *sub)
-			// }
-			// for _, chain := range *r.Chains {
-			// 	fmt.Printf("  chains: %d\n", *chain)
-			// }
 		}
+		(*rs)[j] = r
+		j++
+
+		// fmt.Printf("genome: %d.%d\n", r.GenomeBatch, r.GenomeIndex)
+		// for _, sub := range *r.Subs {
+		// 	fmt.Printf("  %s\n", *sub)
+		// }
+		// for _, chain := range *r.Chains {
+		// 	fmt.Printf("  chains: %d\n", *chain)
+		// }
 	}
 	*rs = (*rs)[:j]
 	idx.poolChainers.Put(chainer)
@@ -865,7 +866,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	var alignedBases int
 	minAF := idx.opt.MinAlignedFraction
-	minIdent := idx.seqCompareOption.MinIdentity
 	extLen := idx.opt.ExtendLength
 
 	var l, iSeq, tPosOffset, tPosOffset1 int
@@ -963,13 +963,12 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// ------------------------------------------------------------------------
 			// comparing the two sequences
 
+			// recycle the previou tree data
+			cpr.RecycleIndex()
 			err = cpr.Index(s[qBegin : qEnd+1]) // index the query sequence
 			if err != nil {
 				return nil, err
 			}
-
-			// recycle the previou tree data
-			cpr.RecycleIndex()
 			cr, err := cpr.Compare(tSeq.Seq)
 			if err != nil {
 				return nil, err
@@ -981,14 +980,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			}
 
 			alignedBases += cr.AlignedBases
-
-			if cr.PIdentity < minIdent {
-				RecycleSeqComparatorResult(cr)
-
-				// recycle target sequence
-				genome.RecycleGenome(tSeq)
-				continue
-			}
 
 			if len(r.ID) == 0 { // record genome information
 				r.ID = append(r.ID, tSeq.ID...)

@@ -37,7 +37,8 @@ type SeqComparatorOptions struct {
 	Chaining2Options
 
 	// seq similarity
-	MinIdentity float64 // percentage
+	MinIdentity      float64 // percentage
+	MinAlignedLength int
 }
 
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
@@ -56,7 +57,8 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		Band: 20,
 	},
 
-	MinIdentity: 70,
+	MinIdentity:      70,
+	MinAlignedLength: 50,
 }
 
 // SeqComparator is for fast and accurate similarity estimation of two sequences,
@@ -226,12 +228,19 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	// var i int
 	// var sub *SubstrPair
 	// for c, chain := range *chains {
-	// 	for _, i = range *chain {
+	// 	for _, i = range chain.Chain {
 	// 		sub = (*subs)[i]
 	// 		fmt.Printf("chain: %d, %s\n", c, sub)
 	// 	}
 	// }
 	// fmt.Printf("%d, (%d/%d)\n", len(s), nMatchedBases, nAlignedBases)
+
+	pIdent := float64(nMatchedBases) / float64(nAlignedBases) * 100
+	if nAlignedBases < cpr.options.MinAlignedLength || pIdent < cpr.options.MinIdentity {
+		// RecycleChaining2Result(chains)
+		RecycleSubstrPairs(subs)
+		return nil, nil
+	}
 
 	// result object
 	r := poolSeqComparatorResult.Get().(*SeqComparatorResult)
@@ -239,7 +248,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	r.MatchedBases = nMatchedBases
 	r.NumChains = len(*chains)
 
-	r.PIdentity = float64(nMatchedBases) / float64(nAlignedBases) * 100
+	r.PIdentity = pIdent
 	r.QBegin = qB
 	r.QEnd = qE
 	r.TBegin = tB
