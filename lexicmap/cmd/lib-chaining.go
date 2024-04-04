@@ -43,7 +43,7 @@ var DefaultChainingOptions = ChainingOptions{
 type Chainer struct {
 	options *ChainingOptions
 
-	scores        []float64 // actually, it's not necessary
+	// scores        []float64 // actually, it's not necessary
 	maxscores     []float64
 	maxscoresIdxs []int
 	visited       []bool
@@ -54,10 +54,10 @@ func NewChainer(options *ChainingOptions) *Chainer {
 	c := &Chainer{
 		options: options,
 
-		scores:        make([]float64, 0, 128),
-		maxscores:     make([]float64, 0, 128),
-		maxscoresIdxs: make([]int, 0, 128),
-		visited:       make([]bool, 0, 128),
+		// scores:        make([]float64, 0, 128),
+		maxscores:     make([]float64, 0, 10240),
+		maxscoresIdxs: make([]int, 0, 10240),
+		visited:       make([]bool, 0, 10240),
 	}
 	return c
 }
@@ -105,30 +105,30 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		return paths, w
 	}
 
-	var i, j, j0, k, mj int
+	var i, j, mj int
 
 	// a list for storing triangular score matrix, the size is n*(n+1)>>1
-	scores := ce.scores[:0]
-	_n := n * (n + 1) >> 1
-	for k = 0; k < _n; k++ {
-		scores = append(scores, 0)
-	}
+	// scores := ce.scores[:0]
+	// _n := n * (n + 1) >> 1
+	// for k = 0; k < _n; k++ {
+	// 	scores = append(scores, 0)
+	// }
 	// the maximum score for each seed, the size is n
 	maxscores := ce.maxscores[:0]
 	// index of previous seed, the size is n
 	maxscoresIdxs := ce.maxscoresIdxs[:0]
-	for i = 0; i < n; i++ {
-		maxscores = append(maxscores, 0)
-		maxscoresIdxs = append(maxscoresIdxs, 0)
-	}
+	// for i = 0; i < n; i++ {
+	// 	maxscores = append(maxscores, 0)
+	// 	maxscoresIdxs = append(maxscoresIdxs, 0)
+	// }
 	// initialize
-	for i, b := range *subs { // j == i, means a path starting from this seed
-		j0 = i * (i + 1) >> 1
-		k = j0 + i
-		scores[k] = seedWeight(float64(b.Len))
-	}
-	maxscores[0] = scores[0]
-	maxscoresIdxs[0] = 0
+	// for i, b := range *subs { // j == i, means a path starting from this seed
+	// 	j0 = i * (i + 1) >> 1
+	// 	k = j0 + i
+	// 	//scores[k] = seedWeight(float64(b.Len))
+	// }
+	maxscores = append(maxscores, seedWeight(float64((*subs)[0].Len)))
+	maxscoresIdxs = append(maxscoresIdxs, 0)
 
 	// compute scores
 	var s, m, d, g float64
@@ -136,16 +136,14 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
 	for i = 1; i < n; i++ {
-		j0 = i * (i + 1) >> 1
+		a = (*subs)[i]
 
 		// just initialize the max score, which comes from the current seed
-		k = j0 + i // starting with seed i
-		m = scores[k]
-		mj = i
+		// m = scores[k]
+		m, mj = seedWeight(float64(a.Len)), i
 
 		for j = 0; j < i; j++ { // try all previous seeds, no bound
-			k = j0 + j
-			a, b = (*subs)[i], (*subs)[j]
+			b = (*subs)[j]
 
 			d = distance(a, b)
 			if d > maxDistance {
@@ -158,15 +156,15 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			}
 
 			s = maxscores[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
-			scores[k] = s
+			// scores[k] = s
 
 			if s >= m { // update the max score
 				m = s
 				mj = j
 			}
 		}
-		maxscores[i] = m // save the max score
-		maxscoresIdxs[i] = mj
+		maxscores = append(maxscores, m) // save the max score
+		maxscoresIdxs = append(maxscoresIdxs, mj)
 	}
 	// print the score matrix
 	// fmt.Printf("i\tiMax\tscores\n")

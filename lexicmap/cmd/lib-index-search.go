@@ -1089,14 +1089,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// <-idx.openFileTokens
 		}
 
-	}
+		// but it's still too late.
 
-	// recycle this comparator
-	idx.poolSeqComparator.Put(cpr)
-
-	// we don't need these data for outputing results.
-	// If we do not do this, they will be in memory until the result is outputte.
-	for _, r := range *rs { // for each matched genome
+		// we don't need these data for outputing results.
+		// If we do not do this, they will be in memory until the result is outputte.
 		// recycle the chain data
 		for _, sub := range *r.Subs {
 			poolSub.Put(sub)
@@ -1112,6 +1108,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			r.Chains = nil
 		}
 	}
+
+	// recycle this comparator
+	idx.poolSeqComparator.Put(cpr)
 
 	return rs, nil
 }
