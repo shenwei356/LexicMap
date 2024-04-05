@@ -31,7 +31,6 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
 )
@@ -359,11 +358,12 @@ func (idx *Index) Close() error {
 
 // SubstrPair represents a pair of found substrings/seeds, it's also called an anchor.
 type SubstrPair struct {
-	QBegin int    // start position of the substring (0-based) in query
-	TBegin int    // start position of the substring (0-based) in reference
-	Len    int    // prefix length
-	Code   uint64 // k-mer, only for debugging
+	QBegin int32 // start position of the substring (0-based) in query
+	TBegin int32 // start position of the substring (0-based) in reference
 
+	// Code   uint64 // k-mer, only for debugging
+
+	Len      uint8 // prefix length
 	Mismatch uint8 // number of mismatches
 
 	TRC bool // is the substring from the reference seq on the negative strand.
@@ -380,7 +380,7 @@ func (s SubstrPair) String() string {
 		s2 = "-"
 	}
 	return fmt.Sprintf("%3d-%3d (%s) vs %3d-%3d (%s), len:%2d, mismatches:%d",
-		s.QBegin+1, s.QBegin+s.Len, s1, s.TBegin+1, s.TBegin+s.Len, s2, s.Len, s.Mismatch)
+		s.QBegin+1, s.QBegin+int32(s.Len), s1, s.TBegin+1, s.TBegin+int32(s.Len), s2, s.Len, s.Mismatch)
 }
 
 var poolSub = &sync.Pool{New: func() interface{} {
@@ -388,7 +388,7 @@ var poolSub = &sync.Pool{New: func() interface{} {
 }}
 
 var poolSubs = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SubstrPair, 0, 1024)
+	tmp := make([]*SubstrPair, 0, 256)
 	return &tmp
 }}
 
@@ -412,7 +412,7 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 		a := (*subs)[i]
 		b := (*subs)[j]
 		if a.QBegin == b.QBegin {
-			return a.QBegin+a.Len >= b.QBegin+b.Len
+			return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
 			// if a.QBegin+a.Len == b.QBegin+b.Len {
 			// 	return a.TBegin <= b.TBegin
 			// }
@@ -422,7 +422,7 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 	})
 
 	var p *SubstrPair
-	var upbound, vQEnd, vTEnd int
+	var upbound, vQEnd, vTEnd int32
 	var j int
 	markers := poolBoolList.Get().(*[]bool)
 	*markers = (*markers)[:0]
@@ -430,9 +430,9 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 		*markers = append(*markers, false)
 	}
 	for i, v := range (*subs)[1:] {
-		vQEnd = v.QBegin + v.Len
-		upbound = vQEnd - k
-		vTEnd = v.TBegin + v.Len
+		vQEnd = int32(v.QBegin) + int32(v.Len)
+		upbound = int32(vQEnd) - int32(k)
+		vTEnd = int32(v.TBegin) + int32(v.Len)
 		j = i
 		for j >= 0 { // have to check previous N seeds
 			p = (*subs)[j]
@@ -441,8 +441,8 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 			}
 
 			// same or nested region
-			if vQEnd <= p.QBegin+p.Len &&
-				v.TBegin >= p.TBegin && vTEnd <= p.TBegin+p.Len {
+			if vQEnd <= p.QBegin+int32(p.Len) &&
+				v.TBegin >= p.TBegin && vTEnd <= p.TBegin+int32(p.Len) {
 				poolSub.Put(v)         // do not forget to recycle the object
 				(*markers)[i+1] = true // because of: range (*subs)[1:]
 				break
@@ -523,8 +523,8 @@ type SimilarityDetail struct {
 
 	SimilarityScore float64
 	Similarity      *SeqComparatorResult
-	Chain           *[]int
-	NSeeds          int
+	// Chain           *[]int
+	NSeeds int
 
 	// sequence details
 	SeqLen int
@@ -645,14 +645,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		var beginQ int
 		var rcQ bool
 
-		var code uint64
+		// var code uint64
 		var kPrefix int
 		var refBatchAndIdx, posT, beginT int
 		var mismatch uint8
 		var rcT bool
 
 		K := idx.k
-		K8 := idx.k8
+		// K8 := idx.k8
 		var locs []int
 		var sr *kv.SearchResult
 		var ok bool
@@ -681,7 +681,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					}
 
 					// matched
-					code = util.KmerPrefix(sr.Kmer, K8, sr.LenPrefix)
+					// code = util.KmerPrefix(sr.Kmer, K8, sr.LenPrefix)
 
 					// multiple locations for each MATCHED k-mer
 					// but most of cases, there's only one.
@@ -698,10 +698,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						}
 
 						_sub2 := poolSub.Get().(*SubstrPair)
-						_sub2.QBegin = beginQ
-						_sub2.TBegin = beginT
-						_sub2.Code = code
-						_sub2.Len = kPrefix
+						_sub2.QBegin = int32(beginQ)
+						_sub2.TBegin = int32(beginT)
+						// _sub2.Code = code
+						_sub2.Len = uint8(kPrefix)
 						_sub2.Mismatch = mismatch
 						_sub2.QRC = rcQ
 						_sub2.TRC = rcT
@@ -783,7 +783,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// ----------------------------------------------------------------
 	// 3) chaining matches for all reference genomes, and alignment
 
-	minSinglePrefix := int(idx.opt.MinSinglePrefix)
+	minSinglePrefix := idx.opt.MinSinglePrefix
 
 	// 3.1) preprocess substring matches for each reference genome
 	rs := poolSearchResults.Get().(*[]*SearchResult)
@@ -916,30 +916,30 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				// the first seed pair
 				sub = (*r.Subs)[(*chain)[0]]
 				// fmt.Printf("  first: %s\n", sub)
-				qb = sub.QBegin
-				tb = sub.TBegin
+				qb = int(sub.QBegin)
+				tb = int(sub.TBegin)
 
 				// the last seed pair
 				sub = (*r.Subs)[(*chain)[len(*chain)-1]]
 				// fmt.Printf("  last: %s\n", sub)
-				qe = sub.QBegin + sub.Len - 1
-				te = sub.TBegin + sub.Len - 1
+				qe = int(sub.QBegin) + int(sub.Len) - 1
+				te = int(sub.TBegin) + int(sub.Len) - 1
 				// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 
 				if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
 					rc = sub.QRC != sub.TRC
 				} else { // check the strand according to coordinates of seeds
-					rc = tb > sub.TBegin
+					rc = tb > int(sub.TBegin)
 				}
 				// fmt.Printf("  rc: %v\n", rc)
 
 				// extend the locations the reference
 				if rc { // reverse complement
-					tBegin = sub.TBegin - min(qlen-qe-1, extLen)
+					tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
 					if tBegin < 0 {
 						tBegin = 0
 					}
-					tEnd = tb + sub.Len - 1 + min(qb, extLen)
+					tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
 				} else {
 					tBegin = tb - min(qb, extLen)
 					if tBegin < 0 {

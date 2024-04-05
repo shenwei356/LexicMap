@@ -188,10 +188,10 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 		for _, sr = range *srs {
 			for _, v = range sr.Values {
 				_sub2 := poolSub.Get().(*SubstrPair)
-				_sub2.QBegin = iter.Index()
-				_sub2.TBegin = int(v)
-				_sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
-				_sub2.Len = int(sr.LenPrefix)
+				_sub2.QBegin = int32(iter.Index())
+				_sub2.TBegin = int32(v)
+				// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
+				_sub2.Len = uint8(sr.LenPrefix)
 				_sub2.TRC = false
 
 				*subs = append(*subs, _sub2)

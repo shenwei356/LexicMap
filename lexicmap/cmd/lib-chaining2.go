@@ -56,7 +56,7 @@ type Chainer2 struct {
 	maxscores     []int
 	maxscoresIdxs []int
 
-	bounds []int // 4 * chains
+	bounds []int32 // 4 * chains
 }
 
 // NewChainer creates a new chainer.
@@ -65,9 +65,9 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 		options: options,
 
 		// scores:        make([]int, 0, 10240),
-		maxscores:     make([]int, 0, 102400),
-		maxscoresIdxs: make([]int, 0, 102400),
-		bounds:        make([]int, 128),
+		maxscores:     make([]int, 0, 51200),
+		maxscoresIdxs: make([]int, 0, 51200),
+		bounds:        make([]int32, 128),
 	}
 	return c
 }
@@ -88,21 +88,23 @@ var poolChains2 = &sync.Pool{New: func() interface{} {
 
 var poolChain2 = &sync.Pool{New: func() interface{} {
 	return &Chain2Result{
-		Chain: make([]int, 0, 1024),
+		// Chain: make([]int, 0, 128),
 	}
 }}
 
 // Chain2Result represents a result of a chain
 type Chain2Result struct {
-	Chain        []int // Paths.
-	MatchedBases int   // The number of matched bases.
-	AlignedBases int   // The number of aligned bases.
-	QBegin, QEnd int   // Query begin/end position (0-based)
-	TBegin, TEnd int   // Target begin/end position (0-based)
+	// Chain        []int // Paths.
+	NChains      int // The number of substrings
+	MatchedBases int // The number of matched bases.
+	AlignedBases int // The number of aligned bases.
+	QBegin, QEnd int // Query begin/end position (0-based)
+	TBegin, TEnd int // Target begin/end position (0-based)
 }
 
 func (r *Chain2Result) Reset() {
-	r.Chain = r.Chain[:0]
+	r.NChains = 0
+	// r.Chain = r.Chain[:0]
 }
 
 // Chain finds the possible chain paths.
@@ -119,21 +121,23 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		*paths = (*paths)[:0]
 
 		sub := (*subs)[0]
-		if sub.Len >= ce.options.MinScore { // the length of anchor
+		slen := int(sub.Len)
+		if slen >= ce.options.MinScore { // the length of anchor
 			path := poolChain2.Get().(*Chain2Result)
 			path.Reset()
 
-			qe := sub.QBegin + sub.Len - 1   // end
-			te := sub.TBegin + sub.Len - 1   // end
-			qb, tb := sub.QBegin, sub.TBegin // in case there's only one anchor
+			qe := int(sub.QBegin) + slen - 1           // end
+			te := int(sub.TBegin) + slen - 1           // end
+			qb, tb := int(sub.QBegin), int(sub.TBegin) // in case there's only one anchor
 			path.QBegin, path.QEnd = qb, qe
 			path.TBegin, path.TEnd = tb, te
-			path.MatchedBases = sub.Len
-			path.AlignedBases = sub.Len
-			path.Chain = append(path.Chain, 0)
+			path.MatchedBases = slen
+			path.AlignedBases = slen
+			// path.Chain = append(path.Chain, 0)
+			path.NChains++
 			*paths = append(*paths, path)
 
-			return paths, sub.Len, sub.Len, qb, qe, tb, te
+			return paths, slen, slen, qb, qe, tb, te
 		}
 
 		return paths, 0, 0, 0, 0, 0, 0
@@ -152,15 +156,13 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	// reused objects
 
 	// the maximum score for each seed, the size is n
-	maxscores := ce.maxscores
-	maxscores = maxscores[:0]
+	ce.maxscores = ce.maxscores[:0]
 	// index of previous seed, the size is n. pointers for backtracking.
-	maxscoresIdxs := ce.maxscoresIdxs
-	maxscoresIdxs = maxscoresIdxs[:0]
+	ce.maxscoresIdxs = ce.maxscoresIdxs[:0]
 
 	// initialize
-	maxscores = append(maxscores, (*subs)[0].Len)
-	maxscoresIdxs = append(maxscoresIdxs, 0)
+	ce.maxscores = append(ce.maxscores, int((*subs)[0].Len))
+	ce.maxscoresIdxs = append(ce.maxscoresIdxs, 0)
 
 	// compute scores
 	var s, m, M, d, g int
@@ -174,7 +176,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		k = band * i   // index of current seed in the score matrix
 
 		// just initialize the max score, which comes from the current seed
-		m, mj = a.Len, i
+		m, mj = int(a.Len), i
 		// scores[k] = m
 
 		for _b = 1; _b <= band; _b++ { // check previous $band seeds
@@ -200,7 +202,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 				continue
 			}
 
-			s = maxscores[j] + b.Len - g // compute the score
+			s = ce.maxscores[j] + int(b.Len) - g // compute the score
 			// scores[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
@@ -209,8 +211,8 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 		}
 
-		maxscores = append(maxscores, m)          // save the max score of the whole
-		maxscoresIdxs = append(maxscoresIdxs, mj) // save where the max score comes from
+		ce.maxscores = append(ce.maxscores, m)          // save the max score of the whole
+		ce.maxscoresIdxs = append(ce.maxscoresIdxs, mj) // save where the max score comes from
 
 		if m > M { // the biggest score in the whole score matrix
 			M, Mi = m, i
@@ -245,19 +247,19 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	var nMatchedBases, nAlignedBases int
 	minScore := ce.options.MinScore
-	bounds := ce.bounds[:0]
+	ce.bounds = ce.bounds[:0]
 
 	_, qB, qE, tB, tE := chainARegion(
 		subs,
-		maxscores,
-		maxscoresIdxs,
+		ce.maxscores,
+		ce.maxscoresIdxs,
 		0,
 		minScore,
 		paths,
 		&nMatchedBases,
 		&nAlignedBases,
 		Mi,
-		&bounds,
+		&ce.bounds,
 	)
 
 	return paths, nMatchedBases, nAlignedBases, qB, qE, tB, tE
@@ -272,7 +274,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	_nMatchedBases *int,
 	_nAlignedBases *int,
 	Mi0 int, // found Mi
-	bounds *[]int, // intervals of previous chains
+	bounds *[]int32, // intervals of previous chains
 ) (
 	int, // score
 	int, // query begin position (0-based)
@@ -305,7 +307,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	var j int
 	var qB, qE, tB, tE int // the bound of the chain (0-based)
 	qB, tB = math.MaxInt, math.MaxInt
-	var qb, qe, tb, te int // the bound (0-based)
+	var qb, qe, tb, te int32 // the bound (0-based)
 	var sub *SubstrPair
 	var beginOfNextAnchor int
 	var overlapped bool
@@ -338,7 +340,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		for bi = 0; bi < nb; bi++ {
 			bj = bi << 2
 			if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
-				(sub.QBegin+sub.Len-1 < (*bounds)[bj] && sub.TBegin+sub.Len-1 < (*bounds)[bj+2])) { // bottom left
+				(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
 				overlapped = true
 				break
 			}
@@ -349,7 +351,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			// can not continue here, must check if i == j
 		} else {
-			path.Chain = append(path.Chain, i+offset) // record the seed
+			// path.Chain = append(path.Chain, i+offset) // record the seed
+			path.NChains++
 
 			// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
 
@@ -357,21 +360,21 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				// fmt.Printf(" record bound beginning with: %s\n", sub)
 				firstAnchorOfAChain = false
 
-				qe = sub.QBegin + sub.Len - 1   // end
-				te = sub.TBegin + sub.Len - 1   // end
-				qb, tb = sub.QBegin, sub.TBegin // in case there's only one anchor
+				qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
+				te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
+				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
 
-				nMatchedBases += sub.Len
+				nMatchedBases += int(sub.Len)
 			} else {
-				qb, tb = sub.QBegin, sub.TBegin // begin
+				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
 
-				if sub.QBegin+sub.Len-1 >= beginOfNextAnchor {
-					nMatchedBases += beginOfNextAnchor - sub.QBegin
+				if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
+					nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
 				} else {
-					nMatchedBases += sub.Len
+					nMatchedBases += int(sub.Len)
 				}
 			}
-			beginOfNextAnchor = sub.QBegin
+			beginOfNextAnchor = int(sub.QBegin)
 		}
 
 		if i == j { // the path starts here
@@ -379,13 +382,13 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				break
 			}
 
-			nAlignedBases += qe - qb + 1
+			nAlignedBases += int(qe) - int(qb) + 1
 
-			reverseInts(path.Chain)
+			// reverseInts(path.Chain)
 			path.AlignedBases = nAlignedBases
 			path.MatchedBases = nMatchedBases
-			path.QBegin, path.QEnd = qb, qe
-			path.TBegin, path.TEnd = tb, te
+			path.QBegin, path.QEnd = int(qb), int(qe)
+			path.TBegin, path.TEnd = int(tb), int(te)
 			*paths = append(*paths, path)
 
 			*_nAlignedBases += nAlignedBases
@@ -403,16 +406,17 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 	if j < 0 { // the first anchor is not in current region
 		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", len(*path))
-		if len(path.Chain) == 0 {
+		// if len(path.Chain) == 0 {
+		if path.NChains == 0 {
 			poolChain2.Put(path)
 		} else {
-			nAlignedBases += qe - qb + 1
+			nAlignedBases += int(qe) - int(qb) + 1
 
-			reverseInts(path.Chain)
+			// reverseInts(path.Chain)
 			path.AlignedBases = nAlignedBases
 			path.MatchedBases = nMatchedBases
-			path.QBegin, path.QEnd = qb, qe
-			path.TBegin, path.TEnd = tb, te
+			path.QBegin, path.QEnd = int(qb), int(qe)
+			path.TBegin, path.TEnd = int(tb), int(te)
 			*paths = append(*paths, path)
 
 			*_nAlignedBases += nAlignedBases
@@ -429,8 +433,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	*bounds = append(*bounds, te)
 
 	// initialize the boundary
-	qB, qE = qb, qe
-	tB, tE = tb, te
+	qB, qE = int(qb), int(qe)
+	tB, tE = int(tb), int(te)
 
 	// fmt.Printf("  i: %d\n", i)
 
@@ -503,15 +507,15 @@ func distance2(a, b *SubstrPair) int {
 	q := a.QBegin - b.QBegin
 	t := a.TBegin - b.TBegin
 	if q > t {
-		return q
+		return int(q)
 	}
-	return t
+	return int(t)
 }
 
 func gap2(a, b *SubstrPair) int {
 	g := a.QBegin - b.QBegin - (a.TBegin - b.TBegin)
 	if g < 0 {
-		return -g
+		return -int(g)
 	}
-	return g
+	return int(g)
 }

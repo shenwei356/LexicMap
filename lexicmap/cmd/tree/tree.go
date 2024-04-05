@@ -88,12 +88,12 @@ func NewTree(k uint8) *Tree {
 
 // RecycleTree recycles the tree object.
 func RecycleTree(t *Tree) {
-	recursiveRecycle(t.root, t.k)
+	recursiveRecycle(t.root)
 	poolTree.Put(t)
 }
 
 // recursiveRecycle recycle all nodes, including leaf nodes.
-func recursiveRecycle(n *node, k uint8) {
+func recursiveRecycle(n *node) {
 	if n.leaf != nil {
 		poolLeafNode.Put(n.leaf)
 	}
@@ -102,7 +102,7 @@ func recursiveRecycle(n *node, k uint8) {
 		if child == nil {
 			continue
 		}
-		recursiveRecycle(child, k)
+		recursiveRecycle(child)
 	}
 
 	poolNode.Put(n)
