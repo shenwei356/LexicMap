@@ -99,22 +99,26 @@ Attentions:
 		topn := getFlagNonNegativeInt(cmd, "top-n")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
-		minAlignLen := getFlagPositiveInt(cmd, "min-aligned-len")
+		minAlignLen := getFlagPositiveInt(cmd, "min-match-len")
 		if minAlignLen < minSinglePrefix {
-			checkError(fmt.Errorf("the value of flag -l/--min-aligned-len (%d) should be >= that of -M/--min-single-prefix (%d)", minAlignLen, minSinglePrefix))
+			checkError(fmt.Errorf("the value of flag -l/--min-match-len (%d) should be >= that of -M/--min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 
-		minAF := getFlagNonNegativeFloat64(cmd, "min-aligned-fraction")
-		if minAF > 100 {
-			checkError(fmt.Errorf("the value of flag -f/min-aligned-fraction (%f) should be in range of [0, 100]", minAF))
-		} else if minAF < 1 {
-			log.Warningf("the value of flag -f/min-aligned-fraction is percentage in a range of [0, 100], you set: %f", minAF)
+		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-in-genome")
+		if minQcovGenome > 100 {
+			checkError(fmt.Errorf("the value of flag -f/min-qcov-in-genome (%f) should be in range of [0, 100]", minQcovGenome))
+		} else if minQcovGenome < 1 {
+			log.Warningf("the value of flag -Q/min-qcov-in-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		}
-		minIdent := getFlagNonNegativeFloat64(cmd, "min-identity")
+		minIdent := getFlagNonNegativeFloat64(cmd, "min-match-identity")
 		if minIdent > 100 {
-			checkError(fmt.Errorf("the value of flag -i/min-identity (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -i/min-match-identity (%f) should be in range of [0, 100]", minIdent))
 		} else if minIdent < 1 {
-			log.Warningf("the value of flag -i/min-identity is percentage in a range of [0, 100], you set: %f", minIdent)
+			log.Warningf("the value of flag -i/min-match-identity is percentage in a range of [0, 100], you set: %f", minIdent)
+		}
+		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-in-hit")
+		if minQcovChain > 100 {
+			checkError(fmt.Errorf("the value of flag -q/min-qcov-in-hit (%f) should be in range of [0, 100]", minIdent))
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -176,7 +180,7 @@ Attentions:
 
 			ExtendLength: extLen,
 
-			MinAlignedFraction: minAF,
+			MinQueryAlignedFractionInAGenome: minQcovGenome,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -212,7 +216,7 @@ Attentions:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tqcov\tchain\tcmlen\tsmlen\tpident\ttlen\ttstart\ttend\tstr\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tqcovGnm\thit\tqcovHit\tcmlen\tsmlen\tpident\ttlen\ttstart\ttend\tstr\tseeds\n")
 
 		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -260,16 +264,16 @@ Attentions:
 
 			var strand byte
 			var j int
-			for _, r := range results {
+			for _, r := range results { // each genome
 				if r.SimilarityDetails == nil {
 					continue
 				}
 
 				j = 1
-				for _, sd = range *r.SimilarityDetails {
+				for _, sd = range *r.SimilarityDetails { // each chain
 					cr = sd.Similarity
 
-					for _, c = range *cr.Chains {
+					for _, c = range *cr.Chains { // each match
 						if c.TBegin < 0 || c.TEnd < 0 { // the extend part belongs to another contig
 							continue
 						}
@@ -279,11 +283,11 @@ Attentions:
 						} else {
 							strand = '+'
 						}
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%d\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%d\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
 							queryID, len(q.seq),
 							c.QBegin+1, c.QEnd+1,
 							targets, r.ID,
-							sd.SeqID, r.AlignedFraction, j, cr.AlignedBases, c.AlignedBases, cr.PIdentity,
+							sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBases, cr.PIdentity,
 							sd.SeqLen,
 							c.TBegin+1, c.TEnd+1, strand,
 							sd.NSeeds,
@@ -332,8 +336,9 @@ Attentions:
 				Band: 20,
 			},
 
-			MinIdentity:      minIdent,
-			MinAlignedLength: minAlignLen,
+			MinIdentity:        minIdent,
+			MinSegmentLength:   minAlignLen,
+			MinAlignedFraction: minQcovChain,
 		})
 
 		for _, file := range files {
@@ -441,14 +446,16 @@ func init() {
 
 	// sequence similarity
 
-	mapCmd.Flags().IntP("min-aligned-len", "l", 50,
+	mapCmd.Flags().IntP("min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length`))
+	mapCmd.Flags().Float64P("min-match-identity", "i", 70,
+		formatFlagUsage(`Minimum base identity (in percentage) between query and matched sequence seqgment.`))
 
-	mapCmd.Flags().Float64P("min-aligned-fraction", "f", 70,
-		formatFlagUsage(`Minimum aligned fraction (in percentage) of the query sequence.`))
+	mapCmd.Flags().Float64P("min-qcov-in-hit", "q", 0,
+		formatFlagUsage(`Minimum query coverage (in percentage) in a hit (>=1 segment/matches).`))
 
-	mapCmd.Flags().Float64P("min-identity", "i", 70,
-		formatFlagUsage(`Minimum identity (in percentage) between query and target sequence.`))
+	mapCmd.Flags().Float64P("min-qcov-in-genome", "Q", 50,
+		formatFlagUsage(`Minimum query coverage (in percentage) in a genome.`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 

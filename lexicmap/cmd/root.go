@@ -59,7 +59,7 @@ func init() {
 
 	// RootCmd.PersistentFlags().BoolP("verbose", "", false, "print verbose information (recommended)")
 
-	RootCmd.PersistentFlags().BoolP("quiet", "q", false,
+	RootCmd.PersistentFlags().BoolP("quiet", "", false,
 		formatFlagUsage("Do not print any verbose information. But you can write them to a file with --log."))
 
 	RootCmd.PersistentFlags().StringP("infile-list", "X", "",

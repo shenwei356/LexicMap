@@ -57,7 +57,7 @@ type IndexSearchingOptions struct {
 	// alignment
 	ExtendLength int // the length of extra sequence on the flanking of seeds.
 	// seq similarity
-	MinAlignedFraction float64 // percentage
+	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -88,8 +88,8 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MaxGap:      5000,
 	MaxDistance: 10000,
 
-	ExtendLength:       2000,
-	MinAlignedFraction: 70,
+	ExtendLength:                     2000,
+	MinQueryAlignedFractionInAGenome: 70,
 }
 
 // Index creates a LexicMap index from a path
@@ -510,7 +510,7 @@ type SearchResult struct {
 
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
-	AlignedFraction   float64
+	AlignedFraction   float64              // aligned coverage
 }
 
 // SimilarityDetail is the similarity detail of one reference sequence
@@ -846,7 +846,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}()
 
 	minChainingScore := idx.chainingOptions.MinScore
-	minAF := idx.opt.MinAlignedFraction
+	minAF := idx.opt.MinQueryAlignedFractionInAGenome
 	extLen := idx.opt.ExtendLength
 
 	for _, r := range *rs {
@@ -975,7 +975,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				if err != nil {
 					checkError(err)
 				}
-				cr, err := cpr.Compare(tSeq.Seq)
+				cr, err := cpr.Compare(tSeq.Seq, qlen)
 				if err != nil {
 					checkError(err)
 				}

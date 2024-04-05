@@ -37,8 +37,9 @@ type SeqComparatorOptions struct {
 	Chaining2Options
 
 	// seq similarity
-	MinIdentity      float64 // percentage
-	MinAlignedLength int
+	MinIdentity        float64 // minimum percentage base identity of a segment
+	MinSegmentLength   int     // minimum length of a segment
+	MinAlignedFraction float64 // minimum query aligned fraction in a chain
 }
 
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
@@ -57,8 +58,9 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		Band: 20,
 	},
 
-	MinIdentity:      70,
-	MinAlignedLength: 50,
+	MinIdentity:        70,
+	MinSegmentLength:   50,
+	MinAlignedFraction: 0,
 }
 
 // SeqComparator is for fast and accurate similarity estimation of two sequences,
@@ -72,7 +74,6 @@ type SeqComparator struct {
 
 	// a prefix tree for matching k-mers
 	tree *rtree.Tree
-	len  int
 }
 
 // NewSeqComparator creates a new SeqComparator with given options.
@@ -112,7 +113,6 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	}
 
 	cpr.tree = t
-	cpr.len = len(s)
 
 	return nil
 }
@@ -122,6 +122,8 @@ type SeqComparatorResult struct {
 	MatchedBases int // The number of matched bases.
 	AlignedBases int // The number of aligned bases.
 	NumChains    int // The number of chains
+
+	AlignedFraction float64 // query (original query) coverage
 
 	PIdentity float64 // identity (fraction of same bases), percentage
 
@@ -146,7 +148,7 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 // Compare matchs k-mers for the query sequence, chains them up,
 // and computes the similarity.
 // Please remember to call RecycleSeqComparatorResult() to recycle the result.
-func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
+func (cpr *SeqComparator) Compare(s []byte, queryLen int) (*SeqComparatorResult, error) {
 	k8 := cpr.options.K
 	k := int(k8)
 	m := cpr.options.MinPrefix
@@ -236,8 +238,14 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	// fmt.Printf("%d, (%d/%d)\n", len(s), nMatchedBases, nAlignedBases)
 
 	pIdent := float64(nMatchedBases) / float64(nAlignedBases) * 100
-	if nAlignedBases < cpr.options.MinAlignedLength || pIdent < cpr.options.MinIdentity {
+	if nAlignedBases < cpr.options.MinSegmentLength || pIdent < cpr.options.MinIdentity {
 		// RecycleChaining2Result(chains)
+		RecycleSubstrPairs(subs)
+		return nil, nil
+	}
+
+	af := float64(nAlignedBases) / float64(queryLen) * 100
+	if af < cpr.options.MinAlignedFraction {
 		RecycleSubstrPairs(subs)
 		return nil, nil
 	}
@@ -247,6 +255,7 @@ func (cpr *SeqComparator) Compare(s []byte) (*SeqComparatorResult, error) {
 	r.AlignedBases = nAlignedBases
 	r.MatchedBases = nMatchedBases
 	r.NumChains = len(*chains)
+	r.AlignedFraction = af
 
 	r.PIdentity = pIdent
 	r.QBegin = qB
