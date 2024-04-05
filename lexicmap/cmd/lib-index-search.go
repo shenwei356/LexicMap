@@ -84,7 +84,7 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MinPrefix:       15,
 	MaxMismatch:     -1,
 	MinSinglePrefix: 20,
-	TopN:            10,
+	TopN:            500,
 
 	MaxGap:      5000,
 	MaxDistance: 10000,
@@ -780,11 +780,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}
 
 	// ----------------------------------------------------------------
-	// 3) chaining matches for all reference genomes
+	// 3) chaining matches for all reference genomes, and alignment
 
 	minSinglePrefix := int(idx.opt.MinSinglePrefix)
 
-	// preprocess substring matches for each reference genome
+	// 3.1) preprocess substring matches for each reference genome
 	rs := poolSearchResults.Get().(*[]*SearchResult)
 	*rs = (*rs)[:0]
 
@@ -815,7 +815,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	poolSearchResultsMap.Put(m)
 
-	// only keep the top N targets
+	// 3.2) only keep the top N targets
 	topN := idx.opt.TopN
 	if topN > 0 && len(*rs) > topN {
 		var r *SearchResult
@@ -828,282 +828,301 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		*rs = (*rs)[:topN]
 	}
 
-	// chaining and alignment
+	// 3.3) chaining abd alignment
+
+	rs2 := poolSearchResults.Get().(*[]*SearchResult)
+	*rs2 = (*rs2)[:0]
+
+	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
+	tokens := make(chan int, idx.opt.NumCPUs)
+
+	go func() {
+		for r := range ch2 {
+			*rs2 = append(*rs2, r)
+		}
+
+		done <- 1
+	}()
 
 	minChainingScore := idx.chainingOptions.MinScore
-	chainer := idx.poolChainers.Get().(*Chainer)
-
-	j := 0
-	for _, r := range *rs {
-		r.Chains, r.Score = chainer.Chain(r.Subs)
-		if r.Score < minChainingScore {
-			idx.RecycleSearchResult(r) // do not forget to recycle unused objects
-			continue
-		}
-		(*rs)[j] = r
-		j++
-
-		// fmt.Printf("genome: %d.%d\n", r.GenomeBatch, r.GenomeIndex)
-		// for _, sub := range *r.Subs {
-		// 	fmt.Printf("  %s\n", *sub)
-		// }
-		// for _, chain := range *r.Chains {
-		// 	fmt.Printf("  chains: %d\n", *chain)
-		// }
-	}
-	*rs = (*rs)[:j]
-	idx.poolChainers.Put(chainer)
-
-	// ----------------------------------------------------------------
-	// sequence similarity
-
-	var sub *SubstrPair
-	qlen := len(s)
-	var i int
-	var chain *[]int
-	var rc bool
-	var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
-
-	var alignedBases int
 	minAF := idx.opt.MinAlignedFraction
 	extLen := idx.opt.ExtendLength
 
-	var l, iSeq, tPosOffset, tPosOffset1 int
+	for _, r := range *rs {
+		tokens <- 1
+		wg.Add(1)
 
-	// check all references
-	var refBatch, refID int
-	var rdr *genome.Reader
-	var fileGenome string
+		go func(r *SearchResult) {
+			// -----------------------------------------------------
+			// chaining
+			chainer := idx.poolChainers.Get().(*Chainer)
+			r.Chains, r.Score = chainer.Chain(r.Subs)
 
-	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+			defer func() {
+				idx.poolChainers.Put(chainer)
+				<-tokens
+				wg.Done()
+			}()
 
-	for _, r := range *rs { // for each matched genome
-		sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
-		*sds = (*sds)[:0]
-
-		refBatch = r.GenomeBatch
-		refID = r.GenomeIndex
-
-		// sequence reader
-		if idx.hasGenomeRdrs {
-			rdr = <-idx.poolGenomeRdrs[refBatch]
-		} else {
-			idx.openFileTokens <- 1 // genome file
-			// idx.openFileTokens <- 1 // genome index file
-			fileGenome = filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
-			rdr, err = genome.NewReader(fileGenome)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read genome data file: %s", err))
+			if r.Score < minChainingScore {
+				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+				return
 			}
-		}
 
-		// check sequences from all chains
-		for i, chain = range *r.Chains {
-			// ------------------------------------------------------------------------
-			// extract subsequence from the refseq for comparing
+			// -----------------------------------------------------
+			// alignment
 
-			// fmt.Printf("----------------- [ chain %d ] --------------\n", i)
-			// for _i, _c := range *chain {
-			// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
-			// }
+			refBatch := r.GenomeBatch
+			refID := r.GenomeIndex
 
-			// the first seed pair
-			sub = (*r.Subs)[(*chain)[0]]
-			// fmt.Printf("  first: %s\n", sub)
-			qb = sub.QBegin
-			tb = sub.TBegin
-
-			// the last seed pair
-			sub = (*r.Subs)[(*chain)[len(*chain)-1]]
-			// fmt.Printf("  last: %s\n", sub)
-			qe = sub.QBegin + sub.Len - 1
-			te = sub.TBegin + sub.Len - 1
-			// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-
-			if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
-				rc = sub.QRC != sub.TRC
-			} else { // check the strand according to coordinates of seeds
-				rc = tb > sub.TBegin
-			}
-			// fmt.Printf("  rc: %v\n", rc)
-
-			// extend the locations the reference
-			if rc { // reverse complement
-				tBegin = sub.TBegin - min(qlen-qe-1, extLen)
-				if tBegin < 0 {
-					tBegin = 0
-				}
-				tEnd = tb + sub.Len - 1 + min(qb, extLen)
+			var rdr *genome.Reader
+			// sequence reader
+			if idx.hasGenomeRdrs {
+				rdr = <-idx.poolGenomeRdrs[refBatch]
 			} else {
-				tBegin = tb - min(qb, extLen)
-				if tBegin < 0 {
-					tBegin = 0
+				idx.openFileTokens <- 1 // genome file
+				// idx.openFileTokens <- 1 // genome index file
+				fileGenome := filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
+				rdr, err = genome.NewReader(fileGenome)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read genome data file: %s", err))
 				}
-				tEnd = te + min(qlen-qe-1, extLen)
 			}
 
-			// extend the locations the query
-			qBegin = qb - min(qb, extLen)
-			qEnd = qe + min(qlen-qe-1, extLen)
+			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 
-			// fmt.Printf("chain:%d, query:%d-%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, rc)
+			var sub *SubstrPair
+			qlen := len(s)
+			var rc bool
+			var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
+			var l, iSeq, tPosOffset, tPosOffset1 int
 
-			// extract target sequence for comparison.
-			// Right now, we fetch seq from disk for each seq,
-			// Later, we'll buffer frequently accessed references for improving speed.
-			tSeq, err := rdr.SubSeq(refID, tBegin, tEnd)
-			if err != nil {
-				return rs, err
-			}
+			var alignedBases int
 
-			if rc { // reverse complement
-				RC(tSeq.Seq)
-			}
+			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
+			*sds = (*sds)[:0]
 
-			// ------------------------------------------------------------------------
-			// comparing the two sequences
+			// check sequences from all chains
+			for i, chain := range *r.Chains {
+				// ------------------------------------------------------------------------
+				// extract subsequence from the refseq for comparing
 
-			// recycle the previou tree data
-			cpr.RecycleIndex()
-			err = cpr.Index(s[qBegin : qEnd+1]) // index the query sequence
-			if err != nil {
-				return nil, err
-			}
-			cr, err := cpr.Compare(tSeq.Seq)
-			if err != nil {
-				return nil, err
-			}
-			if cr == nil {
-				// recycle target sequence
-				genome.RecycleGenome(tSeq)
-				continue
-			}
+				// fmt.Printf("----------------- [ chain %d ] --------------\n", i)
+				// for _i, _c := range *chain {
+				// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
+				// }
 
-			alignedBases += cr.AlignedBases
+				// the first seed pair
+				sub = (*r.Subs)[(*chain)[0]]
+				// fmt.Printf("  first: %s\n", sub)
+				qb = sub.QBegin
+				tb = sub.TBegin
 
-			if len(r.ID) == 0 { // record genome information
-				r.ID = append(r.ID, tSeq.ID...)
-				r.GenomeSize = tSeq.GenomeSize
-			}
+				// the last seed pair
+				sub = (*r.Subs)[(*chain)[len(*chain)-1]]
+				// fmt.Printf("  last: %s\n", sub)
+				qe = sub.QBegin + sub.Len - 1
+				te = sub.TBegin + sub.Len - 1
+				// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 
-			// get the index of target seq according to the position
-			iSeq = 0
-			tPosOffset = 0
-			tPosOffset1 = 0
-			if tSeq.NumSeqs > 1 {
-				iSeq = -1
-				for j, l = range tSeq.SeqSizes {
-					// now posOffset is length sum of 0..j-1 + j*(k-1)
-					tPosOffset1 += l // length sum of 0..j
-					if tb+1 >= tPosOffset && te+1 <= tPosOffset1 {
-						iSeq = j
-						break
+				if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
+					rc = sub.QRC != sub.TRC
+				} else { // check the strand according to coordinates of seeds
+					rc = tb > sub.TBegin
+				}
+				// fmt.Printf("  rc: %v\n", rc)
+
+				// extend the locations the reference
+				if rc { // reverse complement
+					tBegin = sub.TBegin - min(qlen-qe-1, extLen)
+					if tBegin < 0 {
+						tBegin = 0
 					}
-
-					tPosOffset1 += idx.k - 1 // add k-1
-					tPosOffset = tPosOffset1 // record offset
+					tEnd = tb + sub.Len - 1 + min(qb, extLen)
+				} else {
+					tBegin = tb - min(qb, extLen)
+					if tBegin < 0 {
+						tBegin = 0
+					}
+					tEnd = te + min(qlen-qe-1, extLen)
 				}
-				if iSeq < 0 { // this means the aligned sequence crosses two sequences
-					RecycleSeqComparatorResult(cr)
 
+				// extend the locations the query
+				qBegin = qb - min(qb, extLen)
+				qEnd = qe + min(qlen-qe-1, extLen)
+
+				// fmt.Printf("chain:%d, query:%d-%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, rc)
+
+				// extract target sequence for comparison.
+				// Right now, we fetch seq from disk for each seq,
+				// In the future, we might buffer frequently accessed references for improving speed.
+				tSeq, err := rdr.SubSeq(refID, tBegin, tEnd)
+				if err != nil {
+					checkError(err)
+				}
+
+				if rc { // reverse complement
+					RC(tSeq.Seq)
+				}
+
+				// ------------------------------------------------------------------------
+				// comparing the two sequences
+
+				// recycle the previou tree data
+				cpr.RecycleIndex()
+				err = cpr.Index(s[qBegin : qEnd+1]) // index the query sequence
+				if err != nil {
+					checkError(err)
+				}
+				cr, err := cpr.Compare(tSeq.Seq)
+				if err != nil {
+					checkError(err)
+				}
+				if cr == nil {
 					// recycle target sequence
 					genome.RecycleGenome(tSeq)
 					continue
 				}
-			}
 
-			sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+				if len(r.ID) == 0 { // record genome information
+					r.ID = append(r.ID, tSeq.ID...)
+					r.GenomeSize = tSeq.GenomeSize
+				}
 
-			sd.RC = rc
-			for _, c := range *cr.Chains {
-				qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
-				// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-				c.QBegin = qBegin + qb
-				c.QEnd = qBegin + qe
-				if rc {
-					c.TBegin = tBegin - tPosOffset + (len(tSeq.Seq) - te - 1)
-					c.TEnd = tBegin - tPosOffset + (len(tSeq.Seq) - tb - 1)
-					if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-						c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-						c.TEnd = tSeq.SeqSizes[iSeq] - 1
+				// get the index of target seq according to the position
+				iSeq = 0
+				tPosOffset = 0
+				tPosOffset1 = 0
+				var j int
+				if tSeq.NumSeqs > 1 {
+					iSeq = -1
+					for j, l = range tSeq.SeqSizes {
+						// now posOffset is length sum of 0..j-1 + j*(k-1)
+						tPosOffset1 += l // length sum of 0..j
+						if tb+1 >= tPosOffset && te+1 <= tPosOffset1 {
+							iSeq = j
+							break
+						}
+
+						tPosOffset1 += idx.k - 1 // add k-1
+						tPosOffset = tPosOffset1 // record offset
 					}
-				} else {
-					c.TBegin = tBegin - tPosOffset + tb
-					c.TEnd = tBegin - tPosOffset + te
-					if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-						c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-						c.TEnd = tSeq.SeqSizes[iSeq] - 1
+					if iSeq < 0 { // this means the aligned sequence crosses two sequences
+						RecycleSeqComparatorResult(cr)
+
+						// recycle target sequence
+						genome.RecycleGenome(tSeq)
+						continue
 					}
 				}
-				// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+
+				sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+
+				sd.RC = rc
+				for _, c := range *cr.Chains {
+					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
+					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
+					c.QBegin = qBegin + qb
+					c.QEnd = qBegin + qe
+					if rc {
+						c.TBegin = tBegin - tPosOffset + (len(tSeq.Seq) - te - 1)
+						c.TEnd = tBegin - tPosOffset + (len(tSeq.Seq) - tb - 1)
+						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+							c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+							c.TEnd = tSeq.SeqSizes[iSeq] - 1
+						}
+					} else {
+						c.TBegin = tBegin - tPosOffset + tb
+						c.TEnd = tBegin - tPosOffset + te
+						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+							c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+							c.TEnd = tSeq.SeqSizes[iSeq] - 1
+						}
+					}
+					if c.TBegin < 0 || c.TEnd < 0 { // the extend part belongs to another contig
+						cr.NumChains--
+						cr.AlignedBases -= c.AlignedBases
+						cr.MatchedBases -= c.MatchedBases
+					}
+					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+				}
+
+				alignedBases += cr.AlignedBases
+
+				sd.Chain = (*r.Chains)[i]
+				sd.Similarity = cr
+				sd.SimilarityScore = float64(cr.MatchedBases)
+				sd.SeqID = sd.SeqID[:0]
+				sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+				sd.SeqLen = tSeq.SeqSizes[iSeq]
+
+				*sds = append(*sds, sd)
+
+				// recycle target sequence
+				genome.RecycleGenome(tSeq)
 			}
 
-			sd.Chain = (*r.Chains)[i]
-			sd.Similarity = cr
-			sd.SimilarityScore = float64(cr.MatchedBases)
-			sd.SeqID = sd.SeqID[:0]
-			sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-			sd.SeqLen = tSeq.SeqSizes[iSeq]
+			// recycle this comparator
+			idx.poolSeqComparator.Put(cpr)
 
-			*sds = append(*sds, sd)
-
-			// recycle target sequence
-			genome.RecycleGenome(tSeq)
-		}
-
-		// filter
-		r.AlignedFraction = float64(alignedBases) / float64(len(s)) * 100
-		if r.AlignedFraction > 100 {
-			r.AlignedFraction = 100
-		}
-		if r.AlignedFraction < minAF {
-			idx.RecycleSimilarityDetails(sds)
-		} else {
-			// r.AlignResults = ars
-			sort.Slice(*sds, func(i, j int) bool {
-				return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
-			})
-			r.SimilarityDetails = sds
-		}
-
-		// ----------------------------------
-
-		// recycle genome reader
-		if idx.hasGenomeRdrs {
-			idx.poolGenomeRdrs[refBatch] <- rdr
-		} else {
-			err = rdr.Close()
-			if err != nil {
-				checkError(fmt.Errorf("failed to close genome data file: %s", err))
+			// filter
+			r.AlignedFraction = float64(alignedBases) / float64(len(s)) * 100
+			if r.AlignedFraction > 100 {
+				r.AlignedFraction = 100
 			}
-			<-idx.openFileTokens
-			// <-idx.openFileTokens
-		}
-
-		// but it's still too late.
-
-		// we don't need these data for outputing results.
-		// If we do not do this, they will be in memory until the result is outputte.
-		// recycle the chain data
-		for _, sub := range *r.Subs {
-			poolSub.Put(sub)
-		}
-		poolSubs.Put(r.Subs)
-		r.Subs = nil
-
-		if r.Chains != nil {
-			for _, chain := range *r.Chains {
-				poolChain.Put(chain)
+			if r.AlignedFraction < minAF {
+				idx.RecycleSimilarityDetails(sds)
+			} else {
+				// r.AlignResults = ars
+				sort.Slice(*sds, func(i, j int) bool {
+					return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
+				})
+				r.SimilarityDetails = sds
 			}
-			poolChains.Put(r.Chains)
-			r.Chains = nil
-		}
+
+			// ----------------------------------
+
+			// recycle genome reader
+			if idx.hasGenomeRdrs {
+				idx.poolGenomeRdrs[refBatch] <- rdr
+			} else {
+				err = rdr.Close()
+				if err != nil {
+					checkError(fmt.Errorf("failed to close genome data file: %s", err))
+				}
+				<-idx.openFileTokens
+				// <-idx.openFileTokens
+			}
+
+			// but it's still too late.
+
+			// we don't need these data for outputing results.
+			// If we do not do this, they will be in memory until the result is outputte.
+			// recycle the chain data
+			for _, sub := range *r.Subs {
+				poolSub.Put(sub)
+			}
+			poolSubs.Put(r.Subs)
+			r.Subs = nil
+
+			if r.Chains != nil {
+				for _, chain := range *r.Chains {
+					poolChain.Put(chain)
+				}
+				poolChains.Put(r.Chains)
+				r.Chains = nil
+			}
+
+			ch2 <- r
+		}(r)
 	}
 
-	// recycle this comparator
-	idx.poolSeqComparator.Put(cpr)
+	wg.Wait()
+	close(ch2)
+	<-done
+	poolSearchResults.Put(rs)
 
-	return rs, nil
+	return rs2, nil
 }
 
 // RC computes the reverse complement sequence

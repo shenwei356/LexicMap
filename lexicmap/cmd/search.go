@@ -270,6 +270,9 @@ Attentions:
 					cr = sd.Similarity
 
 					for _, c = range *cr.Chains {
+						if c.TBegin < 0 || c.TEnd < 0 { // the extend part belongs to another contig
+							continue
+						}
 
 						if sd.RC {
 							strand = '-'

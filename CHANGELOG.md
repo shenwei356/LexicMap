@@ -13,6 +13,7 @@
     - Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search.
     - Keep indexes of genome data in memory.
     - Better support of long queries.
+    - Parallelize alignment in each query.
     - Change output format.
 - `lexicmap utils kmers`:
     - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
