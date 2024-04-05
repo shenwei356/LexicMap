@@ -447,15 +447,15 @@ func init() {
 	// sequence similarity
 
 	mapCmd.Flags().IntP("min-match-len", "l", 50,
-		formatFlagUsage(`Minimum aligned length`))
+		formatFlagUsage(`Minimum matched sequence segment length`))
 	mapCmd.Flags().Float64P("min-match-identity", "i", 70,
-		formatFlagUsage(`Minimum base identity (in percentage) between query and matched sequence seqgment.`))
+		formatFlagUsage(`Minimum base identity (percentage) between query and matched sequence segment.`))
 
 	mapCmd.Flags().Float64P("min-qcov-in-hit", "q", 0,
-		formatFlagUsage(`Minimum query coverage (in percentage) in a hit (>=1 segment/matches).`))
+		formatFlagUsage(`Minimum query coverage (percentage) in a hit with >=1 segments/matches).`))
 
 	mapCmd.Flags().Float64P("min-qcov-in-genome", "Q", 50,
-		formatFlagUsage(`Minimum query coverage (in percentage) in a genome.`))
+		formatFlagUsage(`Minimum query coverage (percentage) in a genome.`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 

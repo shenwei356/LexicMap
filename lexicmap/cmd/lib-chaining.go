@@ -114,9 +114,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// 	scores = append(scores, 0)
 	// }
 	// the maximum score for each seed, the size is n
-	ce.maxscores = ce.maxscores[:0]
+	maxscores := &ce.maxscores
+	*maxscores = (*maxscores)[:0]
 	// index of previous seed, the size is n
-	ce.maxscoresIdxs = ce.maxscoresIdxs[:0]
+	maxscoresIdxs := &ce.maxscoresIdxs
+	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 	// for i = 0; i < n; i++ {
 	// 	maxscores = append(maxscores, 0)
 	// 	maxscoresIdxs = append(maxscoresIdxs, 0)
@@ -127,8 +129,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// 	k = j0 + i
 	// 	//scores[k] = seedWeight(float64(b.Len))
 	// }
-	ce.maxscores = append(ce.maxscores, seedWeight(float64((*subs)[0].Len)))
-	ce.maxscoresIdxs = append(ce.maxscoresIdxs, 0)
+	*maxscores = append(*maxscores, seedWeight(float64((*subs)[0].Len)))
+	*maxscoresIdxs = append(*maxscoresIdxs, 0)
 
 	// compute scores
 	var s, m, d, g float64
@@ -155,7 +157,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				continue
 			}
 
-			s = ce.maxscores[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
+			s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
 			// scores[k] = s
 
 			if s >= m { // update the max score
@@ -163,8 +165,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				mj = j
 			}
 		}
-		ce.maxscores = append(ce.maxscores, m) // save the max score
-		ce.maxscoresIdxs = append(ce.maxscoresIdxs, mj)
+		*maxscores = append(*maxscores, m) // save the max score
+		*maxscoresIdxs = append(*maxscoresIdxs, mj)
 	}
 	// print the score matrix
 	// fmt.Printf("i\tiMax\tscores\n")
@@ -180,9 +182,10 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// }
 
 	// backtrack
-	ce.visited = ce.visited[:0]
+	visited := &ce.visited
+	*visited = (*visited)[:0]
 	for i = 0; i < n; i++ {
-		ce.visited = append(ce.visited, false)
+		*visited = append(*visited, false)
 	}
 	paths := poolChains.Get().(*[]*[]int)
 	*paths = (*paths)[:0]
@@ -198,8 +201,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	for {
 		// find the next highest score
 		M = 0
-		for i, m = range ce.maxscores {
-			if ce.visited[i] {
+		for i, m = range *maxscores {
+			if (*visited)[i] {
 				continue
 			}
 			if m > M {
@@ -213,8 +216,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		i = Mi
 		first = true
 		for {
-			j = ce.maxscoresIdxs[i] // previous anchor
-			if ce.visited[j] {      // current anchor is abandoned
+			j = (*maxscoresIdxs)[i] // previous anchor
+			if (*visited)[j] {      // current anchor is abandoned
 				if len(*path) > 0 { // but don't forget already added path
 					// reverseInts(*path)
 					// *paths = append(*paths, path)
@@ -224,15 +227,15 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 					// *path = (*path)[:0]
 					*path = (*path)[:0]
 				}
-				ce.visited[i] = true // do not check it again
+				(*visited)[i] = true // do not check it again
 				break
 			}
 
 			*path = append(*path, i) // record the anchor
-			ce.visited[i] = true     // mark as visited
+			(*visited)[i] = true     // mark as visited
 			if first {
 				// fmt.Printf("start from %d, %s\n", i, (*subs)[i])
-				sumMaxScore += ce.maxscores[i]
+				sumMaxScore += (*maxscores)[i]
 				first = false
 			}
 			// else {
