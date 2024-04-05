@@ -43,7 +43,7 @@ Input:
  *1. Sequences of each reference genome should be saved in a separate FASTA/Q file, with the reference
      identifier in the file name.
   2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
-     with the list of input files, the flag -S/--skip-file-check is optional for skipping file checking.
+     with the list of input files.
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
      sub-directories allowed. A regular expression for matching sequencing files is available via the flag
      -r/--file-regexp.
@@ -145,7 +145,7 @@ Important parameters:
 		var err error
 
 		inDir := getFlagString(cmd, "in-dir")
-		skipFileCheck := getFlagBool(cmd, "skip-file-check")
+		// skipFileCheck := getFlagBool(cmd, "skip-file-check")
 
 		outDir = filepath.Clean(outDir)
 
@@ -274,7 +274,7 @@ Important parameters:
 				log.Warningf("  no files matching regular expression: %s", reFileStr)
 			}
 		} else {
-			files = getFileListFromArgsAndFile(cmd, args, !skipFileCheck, "infile-list", !skipFileCheck)
+			files = getFileListFromArgsAndFile(cmd, args, false, "infile-list", false)
 			if opt.Verbose || opt.Log2File {
 				if len(files) == 1 && isStdin(files[0]) {
 					log.Info("  no files given, reading from stdin")
@@ -356,8 +356,8 @@ func init() {
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by header/name, case ignored.`))
 
-	indexCmd.Flags().BoolP("skip-file-check", "S", false,
-		formatFlagUsage(`Skip input file checking when given files or a file list.`))
+	// indexCmd.Flags().BoolP("skip-file-check", "S", false,
+	// 	formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
 	indexCmd.Flags().IntP("max-genome", "g", 20000000,
 		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
