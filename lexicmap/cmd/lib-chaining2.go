@@ -65,9 +65,9 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 		options: options,
 
 		// scores:        make([]int, 0, 10240),
-		maxscores:     make([]int, 0, 10240),
-		maxscoresIdxs: make([]int, 0, 10240),
-		bounds:        make([]int, 32),
+		maxscores:     make([]int, 0, 102400),
+		maxscoresIdxs: make([]int, 0, 102400),
+		bounds:        make([]int, 128),
 	}
 	return c
 }

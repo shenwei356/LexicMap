@@ -524,6 +524,7 @@ type SimilarityDetail struct {
 	SimilarityScore float64
 	Similarity      *SeqComparatorResult
 	Chain           *[]int
+	NSeeds          int
 
 	// sequence details
 	SeqLen int
@@ -1049,7 +1050,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				alignedBases += cr.AlignedBases
 
-				sd.Chain = (*r.Chains)[i]
+				// sd.Chain = (*r.Chains)[i]
+				sd.NSeeds = len(*(*r.Chains)[i])
 				sd.Similarity = cr
 				sd.SimilarityScore = float64(cr.MatchedBases)
 				sd.SeqID = sd.SeqID[:0]

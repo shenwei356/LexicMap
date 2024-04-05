@@ -286,7 +286,7 @@ Attentions:
 							sd.SeqID, r.AlignedFraction, j, cr.AlignedBases, c.AlignedBases, cr.PIdentity,
 							sd.SeqLen,
 							c.TBegin+1, c.TEnd+1, strand,
-							len(*sd.Chain),
+							sd.NSeeds,
 						)
 					}
 					j++
