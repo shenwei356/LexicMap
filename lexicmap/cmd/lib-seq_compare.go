@@ -68,9 +68,11 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 type SeqComparator struct {
 	// options
 	options *SeqComparatorOptions
+
 	// chainer for chaining anchors,
 	// shared variable-length substrings searched by prefix matching.
-	chainer *Chainer2
+	// chainer *Chainer2
+	poolChainers *sync.Pool
 
 	// a prefix tree for matching k-mers
 	tree *rtree.Tree
@@ -81,8 +83,11 @@ type SeqComparator struct {
 func NewSeqComparator(options *SeqComparatorOptions) *SeqComparator {
 	cpr := &SeqComparator{
 		options: options,
-		chainer: NewChainer2(&options.Chaining2Options),
+		poolChainers: &sync.Pool{New: func() interface{} {
+			return NewChainer2(&options.Chaining2Options)
+		}},
 	}
+
 	return cpr
 }
 
@@ -145,10 +150,10 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 	poolSeqComparatorResult.Put(r)
 }
 
-// Compare matchs k-mers for the query sequence, chains them up,
+// Compare matchs k-mers for the query sequence (begin: end), chains them up,
 // and computes the similarity.
 // Please remember to call RecycleSeqComparatorResult() to recycle the result.
-func (cpr *SeqComparator) Compare(s []byte, queryLen int) (*SeqComparatorResult, error) {
+func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*SeqComparatorResult, error) {
 	k8 := cpr.options.K
 	k := int(k8)
 	m := cpr.options.MinPrefix
@@ -189,6 +194,9 @@ func (cpr *SeqComparator) Compare(s []byte, queryLen int) (*SeqComparatorResult,
 		}
 		for _, sr = range *srs {
 			for _, v = range sr.Values {
+				if v+uint32(sr.LenPrefix) < begin || v > end {
+					continue
+				}
 				_sub2 := poolSub.Get().(*SubstrPair)
 				_sub2.QBegin = int32(iter.Index())
 				_sub2.TBegin = int32(v)
@@ -220,7 +228,11 @@ func (cpr *SeqComparator) Compare(s []byte, queryLen int) (*SeqComparatorResult,
 	// --------------------------------------------------------------
 	// chaining paired substrings
 
-	chains, nMatchedBases, nAlignedBases, qB, qE, tB, tE := cpr.chainer.Chain(subs)
+	chainer := cpr.poolChainers.Get().(*Chainer2)
+	chains, nMatchedBases, nAlignedBases, qB, qE, tB, tE := chainer.Chain(subs)
+	defer func() {
+		cpr.poolChainers.Put(chainer)
+	}()
 	if len(*chains) == 0 {
 		RecycleChaining2Result(chains)
 		RecycleSubstrPairs(subs)

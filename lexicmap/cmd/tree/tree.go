@@ -99,10 +99,9 @@ func recursiveRecycle(n *node) {
 	}
 
 	for _, child := range n.children {
-		if child == nil {
-			continue
+		if child != nil {
+			recursiveRecycle(child)
 		}
-		recursiveRecycle(child)
 	}
 
 	poolNode.Put(n)

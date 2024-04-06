@@ -76,7 +76,7 @@ func TestSeqCompare(t *testing.T) {
 		return
 	}
 
-	cr, err := cpr.Compare(s2, len(s2))
+	cr, err := cpr.Compare(0, uint32(len(s2)-1), s2, len(s2))
 	if err != nil {
 		t.Logf("%s", err)
 		return

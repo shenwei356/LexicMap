@@ -359,7 +359,7 @@ func init() {
 	// indexCmd.Flags().BoolP("skip-file-check", "S", false,
 	// 	formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
-	indexCmd.Flags().IntP("max-genome", "g", 20000000,
+	indexCmd.Flags().IntP("max-genome", "g", 15000000,
 		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
 
 	// -----------------------------  output  -----------------------------

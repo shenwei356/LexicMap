@@ -849,6 +849,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	minAF := idx.opt.MinQueryAlignedFractionInAGenome
 	extLen := idx.opt.ExtendLength
 
+	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+	// recycle the previou tree data
+	cpr.RecycleIndex()
+	err = cpr.Index(s) // index the query sequence
+	if err != nil {
+		checkError(err)
+	}
+
 	for _, r := range *rs {
 		tokens <- 1
 		wg.Add(1)
@@ -889,8 +897,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					checkError(fmt.Errorf("failed to read genome data file: %s", err))
 				}
 			}
-
-			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 
 			var sub *SubstrPair
 			qlen := len(s)
@@ -968,14 +974,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				// ------------------------------------------------------------------------
 				// comparing the two sequences
-
-				// recycle the previou tree data
-				cpr.RecycleIndex()
-				err = cpr.Index(s[qBegin : qEnd+1]) // index the query sequence
-				if err != nil {
-					checkError(err)
-				}
-				cr, err := cpr.Compare(tSeq.Seq, qlen)
+				cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
 				if err != nil {
 					checkError(err)
 				}
@@ -1023,8 +1022,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				for _, c := range *cr.Chains {
 					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
 					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-					c.QBegin = qBegin + qb
-					c.QEnd = qBegin + qe
+					c.QBegin = qb
+					c.QEnd = qe
 					if rc {
 						c.TBegin = tBegin - tPosOffset + (len(tSeq.Seq) - te - 1)
 						c.TEnd = tBegin - tPosOffset + (len(tSeq.Seq) - tb - 1)
