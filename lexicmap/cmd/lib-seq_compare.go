@@ -51,7 +51,7 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		// should be relative small
 		MaxGap: 32,
 		// better be larger than MinPrefix
-		MinScore: 20,
+		MinScore: 50,
 		// can not be < k
 		MaxDistance: 50,
 		// can not be two small

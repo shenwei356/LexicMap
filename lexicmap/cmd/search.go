@@ -44,27 +44,35 @@ Attention:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
   2. The positions in output are 1-based.
 
+Alignment relationship:
+
+  Query
+  ├── Subject genome
+      ├── Subject sequence
+          ├── High-Scoring Pair (HSP)
+              ├── HSP fragment
+
 Output format:
   Tab-delimited format with 18 columns:
 
-    1.  query,    Query ID.
-    2.  qlen,     Query length.
-    3.  qstart,   Query start position.
-    4.  qend,     Query end position.
-    5.  refs,     The number of matched reference genomes.
-    6.  ref,      Reference genome ID.
-    7.  seqid,    Target sequence ID.
-    8.  qcovGnm,  Query coverage (percentage): $(aligned bases in the genome)/$qlen.
-    9.  hit,      Nth hit in the genome.
-    10. qcovHit   Query coverage (percentage): $(aligned bases in a hit)/$qlen.
-    11. cmlen,    Matched bases in current hit, a hit might have >=1 segments.
-    12. smlen,    Matched bases in current match/seqgment.
-    13. pident,   Percentage of base identity.
-    14. tlen,     Target sequence length.
-    15. tstart,   Target start position.
-    16. tend,     Target end position.
-    17. str,      Strand of matched sequence.
-    18. seeds,    Number of seeds.
+    1.  query,    Query sequence ID.
+    2.  qlen,     Query sequence length.
+    3.  qstart,   Start of alignment in query sequence.
+    4.  qend,     End of alignment in query sequence.
+    5.  sgnms,    The number of Subject genomes.
+    6.  sgnm,     Subject genome ID.
+    7.  seqid,    Subject sequence ID.
+    8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
+    9.  hsp,      Nth hit in the genome.
+    10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+    11. mlen,     Matched bases in current HSP, a HSP might have >=1 HSP fragments.
+    12. mlenFrag, Matched bases in current HSP fragment.
+    13. pident,   Percentage of identical matches in current HSP fragment.
+    14. slen,     Subject sequence length.
+    15. sstart,   Start of HSP fragment in subject sequence.
+    16. send,     End of HSP fragment in subject sequence.
+    17. sstr,     Subject Strand.
+    18. seeds,    Number of seeds in current HSP.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -126,11 +134,11 @@ Output format:
 			checkError(fmt.Errorf("the value of flag -l/--min-match-len (%d) should be >= that of -M/--min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 
-		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-in-genome")
+		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
 		if minQcovGenome > 100 {
-			checkError(fmt.Errorf("the value of flag -f/min-qcov-in-genome (%f) should be in range of [0, 100]", minQcovGenome))
+			checkError(fmt.Errorf("the value of flag -f/min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
 		} else if minQcovGenome < 1 {
-			log.Warningf("the value of flag -Q/min-qcov-in-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
+			log.Warningf("the value of flag -Q/min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		}
 		minIdent := getFlagNonNegativeFloat64(cmd, "min-match-identity")
 		if minIdent > 100 {
@@ -138,9 +146,9 @@ Output format:
 		} else if minIdent < 1 {
 			log.Warningf("the value of flag -i/min-match-identity is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
-		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-in-hit")
+		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
-			checkError(fmt.Errorf("the value of flag -q/min-qcov-in-hit (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -q/min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -238,7 +246,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\trefs\tref\tseqid\tqcovGnm\thit\tqcovHit\tcmlen\tsmlen\tpident\ttlen\ttstart\ttend\tstr\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\tsgnms\tsgnm\tseqid\tqcovGnm\thsp\tqcovHSP\tmlenHSP\tmlenFrag\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
 
 		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
@@ -351,7 +359,7 @@ Output format:
 				// should be relative small
 				MaxGap: 32,
 				// better be larger than MinPrefix
-				MinScore: minSinglePrefix,
+				MinScore: minAlignLen,
 				// can not be < k
 				MaxDistance: 50,
 				// can not be two small
@@ -469,15 +477,15 @@ func init() {
 	// sequence similarity
 
 	mapCmd.Flags().IntP("min-match-len", "l", 50,
-		formatFlagUsage(`Minimum matched sequence segment length`))
+		formatFlagUsage(`Minimum matched length in a HSP fragment`))
 	mapCmd.Flags().Float64P("min-match-identity", "i", 70,
-		formatFlagUsage(`Minimum base identity (percentage) between query and matched sequence segment.`))
+		formatFlagUsage(`Minimum base identity (percentage) in a HSP fragment.`))
 
-	mapCmd.Flags().Float64P("min-qcov-in-hit", "q", 0,
-		formatFlagUsage(`Minimum query coverage (percentage) in a hit with >=1 segments/matches).`))
+	mapCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,
+		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
-	mapCmd.Flags().Float64P("min-qcov-in-genome", "Q", 50,
-		formatFlagUsage(`Minimum query coverage (percentage) in a genome.`))
+	mapCmd.Flags().Float64P("min-qcov-per-genome", "Q", 50,
+		formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 

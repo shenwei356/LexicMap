@@ -241,14 +241,14 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	paths := poolChains2.Get().(*[]*Chain2Result)
 	*paths = (*paths)[:0]
 
+	minScore := ce.options.MinScore
+
 	// check the highest score, for early quit,
-	// but what's the number?
-	if M < 100 {
+	if M < minScore {
 		return paths, 0, 0, 0, 0, 0, 0
 	}
 
 	var nMatchedBases, nAlignedBases int
-	minScore := ce.options.MinScore
 	ce.bounds = ce.bounds[:0]
 
 	_, qB, qE, tB, tE := chainARegion(

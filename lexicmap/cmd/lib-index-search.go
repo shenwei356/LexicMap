@@ -1063,9 +1063,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				genome.RecycleGenome(tSeq)
 			}
 
-			// recycle this comparator
-			idx.poolSeqComparator.Put(cpr)
-
 			// filter
 			r.AlignedFraction = float64(alignedBases) / float64(len(s)) * 100
 			if r.AlignedFraction > 100 {
@@ -1122,6 +1119,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	close(ch2)
 	<-done
 	poolSearchResults.Put(rs)
+
+	// recycle this comparator
+	idx.poolSeqComparator.Put(cpr)
 
 	return rs2, nil
 }
