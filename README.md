@@ -7,17 +7,17 @@ LexicMap: efficient sequence alignment against millions of microbial genomes​.
 Building an index
 
     # from a directory
-    lexicmap index -I genomes/ -O db.lmi --force
+    lexicmap index -I genomes/ -O db.lmi
 
     # from a file list
-    lexicmap index -X files.txt -O db.lmi --force
+    lexicmap index -X files.txt -O db.lmi
 
 Querying
 
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
         --min-qcov-in-genome 70 --min-qcov-in-hit 50
 
-Sample output (queries are a few Nanopure Q20 reads).
+Sample output (queries are a few Nanopore Q20 reads).
 The column `species` is added by mapping genome ID to taxonomic information
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

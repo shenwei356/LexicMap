@@ -813,6 +813,8 @@ func CreateKVIndex(file string, nAnchors int) error {
 					recordedAnchors++
 
 					// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, _j, kmer1, offset)
+					// fmt.Printf("mask: %d, nkmers: %d, chunkSize: %d, anchor #%d, %s\n",
+					// 	ChunkIndex+i+1, nKmers, idxChunkSize, recordedAnchors, lexichash.MustDecode(kmer1, K))
 					be.PutUint64(buf[:8], kmer1)            // k-mer
 					be.PutUint64(buf[8:16], uint64(offset)) // offset
 					_, err = wi.Write(buf[:16])

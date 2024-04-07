@@ -33,7 +33,8 @@ var RootCmd = &cobra.Command{
 	Use:   "lexicmap",
 	Short: "efficient sequence alignment against millions of microbial genomes",
 	Long: fmt.Sprintf(`
-    Program: LexicMap: efficient sequence alignment against millions of microbial genomes
+   LexicMap: efficient sequence alignment against millions of microbial genomes
+
     Version: v%s
   Documents: https://bioinf.shenwei.me/LexicMap
 Source code: https://github.com/shenwei356/LexicMap
@@ -55,7 +56,7 @@ func init() {
 	defaultThreads := runtime.NumCPU()
 
 	RootCmd.PersistentFlags().IntP("threads", "j", defaultThreads,
-		formatFlagUsage("Number of CPUs cores to use."))
+		formatFlagUsage("Number of CPUs cores to use. By default, it uses all available cores."))
 
 	// RootCmd.PersistentFlags().BoolP("verbose", "", false, "print verbose information (recommended)")
 

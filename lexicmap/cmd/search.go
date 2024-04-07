@@ -40,9 +40,31 @@ var mapCmd = &cobra.Command{
 	Short: "Search sequences against an index",
 	Long: `Search sequences against an index
 
-Attentions:
+Attention:
   1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
   2. The positions in output are 1-based.
+
+Output format:
+  Tab-delimited format with 18 columns:
+
+    1.  query,    Query ID.
+    2.  qlen,     Query length.
+    3.  qstart,   Query start position.
+    4.  qend,     Query end position.
+    5.  refs,     The number of matched reference genomes.
+    6.  ref,      Reference genome ID.
+    7.  seqid,    Target sequence ID.
+    8.  qcovGnm,  Query coverage (percentage): $(aligned bases in the genome)/$qlen.
+    9.  hit,      Nth hit in the genome.
+    10. qcovHit   Query coverage (percentage): $(aligned bases in a hit)/$qlen.
+    11. cmlen,    Matched bases in current hit, a hit might have >=1 segments.
+    12. smlen,    Matched bases in current match/seqgment.
+    13. pident,   Percentage of base identity.
+    14. tlen,     Target sequence length.
+    15. tstart,   Target start position.
+    16. tend,     Target end position.
+    17. str,      Strand of matched sequence.
+    18. seeds,    Number of seeds.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -438,7 +460,7 @@ func init() {
 	mapCmd.Flags().IntP("ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extracting query and target sequences for alignment`))
 
-	mapCmd.Flags().IntP("top-n", "n", 100,
+	mapCmd.Flags().IntP("top-n", "n", 500,
 		formatFlagUsage(`Keep top N matches for a query.`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
