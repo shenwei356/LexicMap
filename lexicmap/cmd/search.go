@@ -25,7 +25,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -248,7 +247,6 @@ Output format:
 
 		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\tsgnms\tsgnm\tseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenFrag\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
 
-		results := make([]*SearchResult, 0, topn)
 		printResult := func(q *Query) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
@@ -271,34 +269,12 @@ Output format:
 			var sd *SimilarityDetail
 			var cr *SeqComparatorResult
 			var c *Chain2Result
-			var targets int
-
-			results = results[:0]
-			for _, r := range *q.result {
-				if r.SimilarityDetails == nil {
-					continue
-				}
-
-				if len(*r.SimilarityDetails) > 0 {
-					results = append(results, r)
-				}
-			}
-			sort.Slice(results, func(i, j int) bool {
-				return (*results[i].SimilarityDetails)[0].SimilarityScore > (*results[j].SimilarityDetails)[0].SimilarityScore
-			})
-			targets = len(results)
-
-			if targets > 0 {
-				matched++
-			}
+			var targets = len(*q.result)
+			matched++
 
 			var strand byte
 			var j int
-			for _, r := range results { // each genome
-				if r.SimilarityDetails == nil {
-					continue
-				}
-
+			for _, r := range *q.result { // each genome
 				j = 1
 				for _, sd = range *r.SimilarityDetails { // each chain
 					cr = sd.Similarity

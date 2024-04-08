@@ -271,7 +271,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	if idx.opt.MaxOpenFiles < info.Chunks+2 {
-		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) +2",
+		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
 			idx.opt.MaxOpenFiles, info.Chunks)
 	}
 
@@ -510,7 +510,7 @@ type SearchResult struct {
 
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
-	AlignedFraction   float64              // aligned coverage
+	AlignedFraction   float64              // query coverage per genome
 }
 
 // SimilarityDetail is the similarity detail of one reference sequence
@@ -632,11 +632,13 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	minPrefix := idx.opt.MinPrefix
 	maxMismatch := idx.opt.MaxMismatch
 
-	// later, we will reuse these two objects
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
-	done := make(chan int)
+	done := make(chan int) // later, we will reuse this
 
-	// 2.2) collect search results
+	// 2.2) collect search results, they will be kept in RAM.
+	// For quries with a lot of hits, the memory would be high.
+	// And it's inevitable currently, but if we do want to decrease the memory usage,
+	// we can write these matches in temporal files.
 	go func() {
 		var refpos uint64
 
@@ -720,6 +722,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							r.Score = 0
 							r.Chains = nil            // important
 							r.SimilarityDetails = nil // important
+							r.AlignedFraction = 0
 
 							(*m)[refBatchAndIdx] = r
 						}
@@ -837,6 +840,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
 	tokens := make(chan int, idx.opt.NumCPUs)
 
+	// collect hit with good alignment
 	go func() {
 		for r := range ch2 {
 			*rs2 = append(*rs2, r)
@@ -939,7 +943,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 				// fmt.Printf("  rc: %v\n", rc)
 
-				// extend the locations the reference
+				// extend the locations in the reference
 				if rc { // reverse complement
 					tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
 					if tBegin < 0 {
@@ -954,7 +958,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					tEnd = te + min(qlen-qe-1, extLen)
 				}
 
-				// extend the locations the query
+				// extend the locations in the query
 				qBegin = qb - min(qb, extLen)
 				qEnd = qe + min(qlen-qe-1, extLen)
 
@@ -1063,20 +1067,51 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				genome.RecycleGenome(tSeq)
 			}
 
+			if len(*sds) == 0 { // no valid alignments
+				poolSimilarityDetails.Put(sds)
+				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+
+				if idx.hasGenomeRdrs {
+					idx.poolGenomeRdrs[refBatch] <- rdr
+				} else {
+					err = rdr.Close()
+					if err != nil {
+						checkError(fmt.Errorf("failed to close genome data file: %s", err))
+					}
+					<-idx.openFileTokens
+					// <-idx.openFileTokens
+				}
+
+				return
+			}
+
 			// filter
 			r.AlignedFraction = float64(alignedBases) / float64(len(s)) * 100
 			if r.AlignedFraction > 100 {
 				r.AlignedFraction = 100
 			}
-			if r.AlignedFraction < minAF {
+			if r.AlignedFraction < minAF { // no valid alignments
 				idx.RecycleSimilarityDetails(sds)
-			} else {
-				// r.AlignResults = ars
-				sort.Slice(*sds, func(i, j int) bool {
-					return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
-				})
-				r.SimilarityDetails = sds
+				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+
+				if idx.hasGenomeRdrs {
+					idx.poolGenomeRdrs[refBatch] <- rdr
+				} else {
+					err = rdr.Close()
+					if err != nil {
+						checkError(fmt.Errorf("failed to close genome data file: %s", err))
+					}
+					<-idx.openFileTokens
+					// <-idx.openFileTokens
+				}
+				return
 			}
+
+			// r.AlignResults = ars
+			sort.Slice(*sds, func(i, j int) bool {
+				return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
+			})
+			r.SimilarityDetails = sds
 
 			// ----------------------------------
 
@@ -1092,10 +1127,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				// <-idx.openFileTokens
 			}
 
-			// but it's still too late.
-
 			// we don't need these data for outputing results.
-			// If we do not do this, they will be in memory until the result is outputte.
+			// If we do not do this, they will be in memory until the result is outputted.
 			// recycle the chain data
 			for _, sub := range *r.Subs {
 				poolSub.Put(sub)
@@ -1122,6 +1155,16 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	// recycle this comparator
 	idx.poolSeqComparator.Put(cpr)
+
+	// sort all hits
+	if len(*rs2) == 0 {
+		poolSearchResults.Put(rs2)
+		return nil, nil
+	}
+
+	sort.Slice(*rs2, func(i, j int) bool {
+		return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
+	})
 
 	return rs2, nil
 }
