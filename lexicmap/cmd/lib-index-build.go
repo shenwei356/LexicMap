@@ -46,7 +46,7 @@ import (
 var be = binary.BigEndian
 
 // MainVersion is use for checking compatibility
-var MainVersion uint8 = 0
+var MainVersion uint8 = 1
 
 // MinorVersion is less important
 var MinorVersion uint8 = 1
@@ -128,6 +128,8 @@ type IndexBuildingOptions struct {
 
 	ReRefName    *regexp.Regexp   // for extracting genome id from the file name
 	ReSeqExclude []*regexp.Regexp // for excluding sequences according to name pattern
+
+	ContigInterval int // the length of N's between contigs
 
 	SaveSeedPositions bool
 }
@@ -553,7 +555,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	// --------------------------------
 	// 1) parsing input genome files & mask & pack sequences
 	k := lh.K
-	nnn := bytes.Repeat([]byte{'N'}, k-1)
+	nnn := bytes.Repeat([]byte{'N'}, opt.ContigInterval)
 	reRefName := opt.ReRefName
 	extractRefName := reRefName != nil
 	filterNames := len(opt.ReSeqExclude) > 0
@@ -766,6 +768,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			Genomes:         len(files),
 			GenomeBatchSize: len(files), // just for this batch
 			GenomeBatches:   1,          // just for this batch
+			ContigInterval:  opt.ContigInterval,
 		}
 		err = writeIndexInfo(filepath.Join(outdir, FileInfo), info)
 		if err != nil {
@@ -844,6 +847,7 @@ type IndexInfo struct {
 	Genomes         int   `toml:"genomes" comment:"Genome data"`
 	GenomeBatchSize int   `toml:"genome-batch-size"`
 	GenomeBatches   int   `toml:"genome-batches"`
+	ContigInterval  int   `toml:"contig-interval"`
 }
 
 // writeIndexInfo writes summary of one index

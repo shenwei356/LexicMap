@@ -188,6 +188,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 		// find the nearest anchor
 
 		if len(index) == 2 {
+			i = 0
 			offset = index[1]
 		} else {
 			last = len(index) - 2
@@ -199,6 +200,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 					middle--
 				}
 				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+					i = 0
 					break
 				}
 				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,

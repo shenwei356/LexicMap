@@ -3,18 +3,19 @@
 ### v0.3.0 - 2024-04-xx
 
 - `lexicmap index`:
-    - Generate masks from the top N biggest genomes instead of randomly generation.
+    - **Generate masks from the top N biggest genomes instead of randomly generation**.
+    - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
 - `lexicmap search`:
+    - **Better support of long queries**.
+    - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
+    - **Parallelize alignment in each query**, so it's faster for a single query.
+    - Change output format.
+    - Add output of query start and end positions.
     - Fix a seed-chaining bug.
     - Fix a target sequence extracting bug.
-    - Add output of query start and end positions.
-    - Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search.
     - Keep indexes of genome data in memory.
-    - Better support of long queries.
-    - Parallelize alignment in each query.
-    - Change output format.
 - `lexicmap utils kmers`:
     - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
 - New commands:

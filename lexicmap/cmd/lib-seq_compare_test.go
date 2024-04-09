@@ -82,7 +82,7 @@ func TestSeqCompare(t *testing.T) {
 		return
 	}
 	if cr != nil {
-		t.Logf("nChains: %d, aligned bases: %d, identity: %.2f\n", cr.NumChains, cr.AlignedBases, cr.PIdentity)
+		t.Logf("aligned bases: %d, identity: %.2f\n", cr.AlignedBases, cr.PIdentity)
 
 		RecycleSeqComparatorResult(cr)
 	}

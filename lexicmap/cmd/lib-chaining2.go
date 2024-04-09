@@ -45,7 +45,7 @@ var DefaultChaining2Options = Chaining2Options{
 }
 
 // Chainer2 is an object for chaining the anchors in two similar sequences.
-// Different from Chainer, Chainer2 find chains with no overlaps.
+// Different from Chainer, Chainer2 finds chains with no overlaps.
 // Anchors/seeds/substrings in Chainer2 is denser than those in Chainer,
 // and the chaining score function is also much simpler, only considering
 // the lengths of anchors and gaps between them.
@@ -72,7 +72,7 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 	return c
 }
 
-// RecycleChainingResult reycles the chaining paths.
+// RecycleChaining2Result reycles the chaining paths.
 // Please remember to call this after using the results.
 func RecycleChaining2Result(chains *[]*Chain2Result) {
 	for _, chain := range *chains {
@@ -94,25 +94,29 @@ var poolChain2 = &sync.Pool{New: func() interface{} {
 
 // Chain2Result represents a result of a chain
 type Chain2Result struct {
-	// Chain        []int // Paths.
-	NChains      int // The number of substrings
+	NAnchors int // The number of substrings
+
 	MatchedBases int // The number of matched bases.
 	AlignedBases int // The number of aligned bases.
 	QBegin, QEnd int // Query begin/end position (0-based)
 	TBegin, TEnd int // Target begin/end position (0-based)
 }
 
+// Reset resets a Chain2Result
 func (r *Chain2Result) Reset() {
-	r.NChains = 0
-	// r.Chain = r.Chain[:0]
+	r.NAnchors = 0
 }
 
 // Chain finds the possible chain paths.
-// Please remember to call RecycleChainingResult after using the results.
+// Please remember to call RecycleChaining2Result after using the results.
 // Returned results:
 //  1. Chain2Results.
 //  2. The number of matched bases.
 //  3. The number of aligned bases.
+//  4. QBegin.
+//  5. QEnd.
+//  6. TBegin.
+//  7. TEnd.
 func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int) {
 	n := len(*subs)
 
@@ -122,7 +126,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 		sub := (*subs)[0]
 		slen := int(sub.Len)
-		if slen >= ce.options.MinScore { // the length of anchor
+		if slen >= ce.options.MinScore { // the length of anchor (max 32)
 			path := poolChain2.Get().(*Chain2Result)
 			path.Reset()
 
@@ -133,8 +137,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			path.TBegin, path.TEnd = tb, te
 			path.MatchedBases = slen
 			path.AlignedBases = slen
-			// path.Chain = append(path.Chain, 0)
-			path.NChains++
+			path.NAnchors++
 			*paths = append(*paths, path)
 
 			return paths, slen, slen, qb, qe, tb, te
@@ -143,14 +146,16 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		return paths, 0, 0, 0, 0, 0, 0
 	}
 
-	var i, _b, j, k int
+	var i, _b, j int
+	// var k int
 	band := ce.options.Band // band size of banded-DP
 
 	// a list for storing score matrix, the size is band * len(seeds pair)
-	// scores := ce.scores[:0]
+	// scores := &ce.scores
+	// *scores = (*scores)[:0]
 	// size := n * (band + 1)
 	// for k = 0; k < size; k++ {
-	// 	scores = append(scores, 0)
+	// 	*scores = append(*scores, 0)
 	// }
 
 	// reused objects
@@ -172,14 +177,14 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
-	// scores[0] = (*subs)[0].Len
+	// (*scores)[0] = (*subs)[0].Len
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor
-		k = band * i   // index of current seed in the score matrix
+		// k = band * i   // index of current seed in the score matrix
 
 		// just initialize the max score, which comes from the current seed
 		m, mj = int(a.Len), i
-		// scores[k] = m
+		// (*scores)[k] = m
 
 		for _b = 1; _b <= band; _b++ { // check previous $band seeds
 			j = i - _b // index of the previous seed
@@ -188,7 +193,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 
 			b = (*subs)[j] // previous seed/anchor
-			k++            // index of previous seed in the score matrix
+			// k++            // index of previous seed in the score matrix
 
 			if b.TBegin > a.TBegin { // filter out messed/crossed anchors
 				continue
@@ -205,7 +210,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 
 			s = (*maxscores)[j] + int(b.Len) - g // compute the score
-			// scores[k] = s                // necessary?
+			// (*scores)[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
 				m = s
@@ -228,7 +233,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	// 	// k = i * band
 	// 	// for _b = 0; _b <= band; _b++ {
 	// 	// 	if i-_b >= 0 {
-	// 	// 		fmt.Printf("\t%3d:%-4d", i-_b, scores[k])
+	// 	// 		fmt.Printf("\t%3d:%-4d", i-_b, (*scores)[k])
 	// 	// 	}
 
 	// 	// 	k++
@@ -238,15 +243,15 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// backtrack
 
-	paths := poolChains2.Get().(*[]*Chain2Result)
-	*paths = (*paths)[:0]
-
 	minScore := ce.options.MinScore
 
 	// check the highest score, for early quit,
 	if M < minScore {
-		return paths, 0, 0, 0, 0, 0, 0
+		return nil, 0, 0, 0, 0, 0, 0
 	}
+
+	paths := poolChains2.Get().(*[]*Chain2Result)
+	*paths = (*paths)[:0]
 
 	var nMatchedBases, nAlignedBases int
 	ce.bounds = ce.bounds[:0]
@@ -354,7 +359,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			// can not continue here, must check if i == j
 		} else {
 			// path.Chain = append(path.Chain, i+offset) // record the seed
-			path.NChains++
+			path.NAnchors++
 
 			// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
 
@@ -409,7 +414,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	if j < 0 { // the first anchor is not in current region
 		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", len(*path))
 		// if len(path.Chain) == 0 {
-		if path.NChains == 0 {
+		if path.NAnchors == 0 {
 			poolChain2.Put(path)
 		} else {
 			nAlignedBases += int(qe) - int(qb) + 1

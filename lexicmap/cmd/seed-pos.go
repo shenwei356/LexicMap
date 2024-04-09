@@ -52,7 +52,7 @@ Attentions:
   0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index.
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
-     concatenated to a single sequence with intervals of (k-1) N's.
+     concatenated to a single sequence with intervals of N's.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

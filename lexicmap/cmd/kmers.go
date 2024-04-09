@@ -46,7 +46,7 @@ Attentions:
   1. Mask index (column mask) is 1-based.
   2. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
-     concatenated to a single sequence with intervals of (k-1) N's.
+     concatenated to a single sequence with intervals of N's.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

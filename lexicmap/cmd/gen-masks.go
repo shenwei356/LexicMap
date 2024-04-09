@@ -175,6 +175,11 @@ How:
 			checkError(fmt.Errorf(`stdin ("-") not supported for the flag --seed-pos`))
 		}
 
+		// contigInterval := getFlagPositiveInt(cmd, "contig-interval")
+		// if contigInterval <= k-1 {
+		// 	checkError(fmt.Errorf("the value of --contig-interval should be >= k-1"))
+		// }
+
 		bopt := &IndexBuildingOptions{
 			// general
 			NumCPUs:      opt.NumCPUs,
@@ -199,6 +204,8 @@ How:
 			// genome
 			ReRefName:    reRefName,
 			ReSeqExclude: reSeqNames,
+
+			ContigInterval: 1000,
 		}
 
 		// ---------------------------------------------------------------
@@ -292,6 +299,9 @@ func init() {
 
 	geneMasksCmd.Flags().IntP("max-genome", "g", 20000000,
 		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
+
+	// geneMasksCmd.Flags().IntP("contig-interval", "", 1000,
+	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome (>=K).`))
 
 	// -----------------------------  output   -----------------------------
 
@@ -585,7 +595,7 @@ func GenerateMasks(files []string, opt *IndexBuildingOptions, outFile string) ([
 	p8 := uint8(lenPrefix)
 	genomeIDs := make([]string, topN)
 
-	nnn := bytes.Repeat([]byte{'N'}, k-1)
+	nnn := bytes.Repeat([]byte{'N'}, opt.ContigInterval)
 	reRefName := opt.ReRefName
 	extractRefName := reRefName != nil
 	_seq := make([]byte, 0, 10<<20)

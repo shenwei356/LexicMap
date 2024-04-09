@@ -117,6 +117,7 @@ type Index struct {
 	poolChainers    *sync.Pool
 
 	// for sequence comparing
+	contigInterval    int // read from info file
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
 
@@ -269,11 +270,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read info file: %s", err)
 	}
+	if info.MainVersion != MainVersion {
+		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
+	}
 
 	if idx.opt.MaxOpenFiles < info.Chunks+2 {
 		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
 			idx.opt.MaxOpenFiles, info.Chunks)
 	}
+
+	idx.contigInterval = info.ContigInterval
 
 	// we can create genome reader pools
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
@@ -307,7 +313,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 					idx.poolGenomeRdrs[i] <- rdr
 
 					idx.openFileTokens <- 1 // genome file
-					// idx.openFileTokens <- 1 // genome index file
+
 					wg.Done()
 					<-tokens
 				}(i)
@@ -832,7 +838,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		*rs = (*rs)[:topN]
 	}
 
-	// 3.3) chaining abd alignment
+	// 3.3) chaining and alignment
 
 	rs2 := poolSearchResults.Get().(*[]*SearchResult)
 	*rs2 = (*rs2)[:0]
@@ -840,7 +846,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
 	tokens := make(chan int, idx.opt.NumCPUs)
 
-	// collect hit with good alignment
+	// collect hits with good alignment
 	go func() {
 		for r := range ch2 {
 			*rs2 = append(*rs2, r)
@@ -848,10 +854,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 		done <- 1
 	}()
-
-	minChainingScore := idx.chainingOptions.MinScore
-	minAF := idx.opt.MinQueryAlignedFractionInAGenome
-	extLen := idx.opt.ExtendLength
 
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	// recycle the previou tree data
@@ -866,6 +868,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		wg.Add(1)
 
 		go func(r *SearchResult) {
+			minChainingScore := idx.chainingOptions.MinScore
+			minAF := idx.opt.MinQueryAlignedFractionInAGenome
+			extLen := idx.opt.ExtendLength
+			contigInterval := idx.contigInterval
+
 			// -----------------------------------------------------
 			// chaining
 			chainer := idx.poolChainers.Get().(*Chainer)
@@ -894,7 +901,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				rdr = <-idx.poolGenomeRdrs[refBatch]
 			} else {
 				idx.openFileTokens <- 1 // genome file
-				// idx.openFileTokens <- 1 // genome index file
 				fileGenome := filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
 				rdr, err = genome.NewReader(fileGenome)
 				if err != nil {
@@ -906,15 +912,22 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			qlen := len(s)
 			var rc bool
 			var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
-			var l, iSeq, tPosOffset, tPosOffset1 int
+			var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
+			var _begin, _end int
 
-			var alignedBases int
+			var alignedBasesGenome int
 
-			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
+			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
 			*sds = (*sds)[:0]
 
+			// fragments of a HSP.
+			// Since HSP fragments in a HSP might comefrom different contigs.
+			// Multiple contigs are concatenated, remember?
+			// So we need to create seperate HPSs for these fragments.
+			var crChains2 *[]*Chain2Result
+
 			// check sequences from all chains
-			for i, chain := range *r.Chains {
+			for i, chain := range *r.Chains { // for each HSP
 				// ------------------------------------------------------------------------
 				// extract subsequence from the refseq for comparing
 
@@ -978,6 +991,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				// ------------------------------------------------------------------------
 				// comparing the two sequences
+
 				cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
 				if err != nil {
 					checkError(err)
@@ -988,82 +1002,181 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					continue
 				}
 
-				if len(r.ID) == 0 { // record genome information
+				if len(r.ID) == 0 { // record genome information, do it once
 					r.ID = append(r.ID, tSeq.ID...)
 					r.GenomeSize = tSeq.GenomeSize
 				}
 
-				// get the index of target seq according to the position
-				iSeq = 0
-				tPosOffset = 0
-				tPosOffset1 = 0
-				var j int
-				if tSeq.NumSeqs > 1 {
-					iSeq = -1
-					for j, l = range tSeq.SeqSizes {
-						// now posOffset is length sum of 0..j-1 + j*(k-1)
-						tPosOffset1 += l // length sum of 0..j
-						if tb+1 >= tPosOffset && te+1 <= tPosOffset1 {
-							iSeq = j
-							break
+				iSeqPre = -1 // the index of previous sequence in this HSP
+
+				crChains2 = poolChains2.Get().(*[]*Chain2Result)
+				*crChains2 = (*crChains2)[:0]
+
+				for _, c := range *cr.Chains { // for each HSP fragment
+					// yes, the query and target are inversed, because we indexed the query once,
+					// and used it for comparing multiple target sequences.
+					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
+					// fmt.Printf("--- HSP: %d, HSP fragment: %d ---\n", i, _i)
+
+					// ------------------------------------------------------------
+					// get the index of target seq according to the position
+
+					iSeq = 0
+					tPosOffsetBegin = 0 // start position of current sequence
+					tPosOffsetEnd = 0   // end pososition of current sequence
+					var j int
+					if tSeq.NumSeqs > 1 { // just for genomes with multiple contigs
+						iSeq = -1
+						// ===========aaaaaaa================================aaaaaaa=======
+						//                   | tPosOffset                   | tPosOffset1
+						//                     tb ---------------te (matched region, substring region)
+
+						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
+						// fmt.Printf("tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
+						for j, l = range tSeq.SeqSizes {
+							// end position of current contig
+							tPosOffsetEnd += l - 1 // length sum of 0..j
+
+							// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
+
+							// minusing K is because the interval A's might be matched.
+							if rc {
+								_begin, _end = tEnd-te+K, tEnd-tb-K
+							} else {
+								_begin, _end = tBegin+tb+K, tBegin+te-K
+							}
+
+							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
+								iSeq = j
+								break
+							}
+
+							tPosOffsetEnd += contigInterval + 1
+							tPosOffsetBegin = tPosOffsetEnd // begin position of the next contig
 						}
 
-						tPosOffset1 += idx.k - 1 // add k-1
-						tPosOffset = tPosOffset1 // record offset
+						// it will not happen now.
+						if iSeq < 0 { // this means the aligned sequence crosses two sequences.
+							// fmt.Printf("invalid fragment: seqid: %s, aligned: %d, %d-%d, rc:%v, %d-%d\n",
+							// 	tSeq.ID, cr.AlignedBases, tBegin, tEnd, rc, _begin, _end)
+
+							poolChain2.Put(c)
+
+							continue
+						}
+
+						if iSeqPre >= 0 && iSeq != iSeqPre { // two HSP fragments belong to different sequences ~~~~~
+							// fmt.Printf("  %d != %d\n", iSeq, iSeqPre)
+
+							// ------------------------------------------------------------
+							// transform the positions
+
+							// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
+							c.QBegin = qb
+							c.QEnd = qe
+							if rc {
+								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+								c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
+								if c.TEnd > tSeq.SeqSizes[iSeqPre]-1 {
+									c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeqPre] - 1)
+									c.TEnd = tSeq.SeqSizes[iSeqPre] - 1
+								}
+							} else {
+								c.TBegin = tBegin - tPosOffsetBegin + tb
+								c.TEnd = tBegin - tPosOffsetBegin + te
+								if c.TEnd > tSeq.SeqSizes[iSeqPre]-1 {
+									c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeqPre] - 1)
+									c.TEnd = tSeq.SeqSizes[iSeqPre] - 1
+								}
+							}
+							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+
+							// ------------------------------------------------------------
+
+							// fmt.Printf("  add previous one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
+
+							// only include valid chains
+							r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+							r2.Update(crChains2, cr.QueryLen)
+
+							sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+							sd.RC = rc
+							// sd.Chain = (*r.Chains)[i]
+							sd.NSeeds = len(*(*r.Chains)[i])
+							sd.Similarity = r2
+							sd.SimilarityScore = float64(r2.MatchedBases)
+							sd.SeqID = sd.SeqID[:0]
+							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeqPre])...)
+							sd.SeqLen = tSeq.SeqSizes[iSeqPre]
+
+							*sds = append(*sds, sd)
+
+							alignedBasesGenome += r2.AlignedBases
+
+							// ----------
+
+							// create anther HSP
+							iSeqPre = -1
+							crChains2 = poolChains2.Get().(*[]*Chain2Result)
+							*crChains2 = (*crChains2)[:0]
+
+							*crChains2 = append(*crChains2, c)
+
+							continue
+						}
 					}
-					if iSeq < 0 { // this means the aligned sequence crosses two sequences
-						RecycleSeqComparatorResult(cr)
+					iSeqPre = iSeq
 
-						// recycle target sequence
-						genome.RecycleGenome(tSeq)
-						continue
-					}
-				}
+					// ------------------------------------------------------------
+					// transform the positions
 
-				sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-
-				sd.RC = rc
-				for _, c := range *cr.Chains {
-					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
 					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 					c.QBegin = qb
 					c.QEnd = qe
 					if rc {
-						c.TBegin = tBegin - tPosOffset + (len(tSeq.Seq) - te - 1)
-						c.TEnd = tBegin - tPosOffset + (len(tSeq.Seq) - tb - 1)
+						c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+						c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
 						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 							c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
 							c.TEnd = tSeq.SeqSizes[iSeq] - 1
 						}
 					} else {
-						c.TBegin = tBegin - tPosOffset + tb
-						c.TEnd = tBegin - tPosOffset + te
+						c.TBegin = tBegin - tPosOffsetBegin + tb
+						c.TEnd = tBegin - tPosOffsetBegin + te
 						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 							c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
 							c.TEnd = tSeq.SeqSizes[iSeq] - 1
 						}
 					}
-					if c.TBegin < 0 || c.TEnd < 0 { // the extend part belongs to another contig
-						cr.NumChains--
-						cr.AlignedBases -= c.AlignedBases
-						cr.MatchedBases -= c.MatchedBases
-					}
 					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+
+					*crChains2 = append(*crChains2, c)
 				}
 
-				alignedBases += cr.AlignedBases
+				// fmt.Printf("  add current one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
 
-				// sd.Chain = (*r.Chains)[i]
-				sd.NSeeds = len(*(*r.Chains)[i])
-				sd.Similarity = cr
-				sd.SimilarityScore = float64(cr.MatchedBases)
-				sd.SeqID = sd.SeqID[:0]
-				sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-				sd.SeqLen = tSeq.SeqSizes[iSeq]
+				if iSeq >= 0 {
+					// only include valid chains
+					r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+					r2.Update(crChains2, cr.QueryLen)
 
-				*sds = append(*sds, sd)
+					sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+					sd.RC = rc
+					sd.NSeeds = len(*(*r.Chains)[i])
+					sd.Similarity = r2
+					sd.SimilarityScore = float64(r2.MatchedBases)
+					sd.SeqID = sd.SeqID[:0]
+					sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+					sd.SeqLen = tSeq.SeqSizes[iSeq]
+
+					*sds = append(*sds, sd)
+
+					alignedBasesGenome += r2.AlignedBases
+				}
 
 				// recycle target sequence
+
+				poolChains2.Put(cr.Chains)
 				genome.RecycleGenome(tSeq)
 			}
 
@@ -1079,14 +1192,13 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						checkError(fmt.Errorf("failed to close genome data file: %s", err))
 					}
 					<-idx.openFileTokens
-					// <-idx.openFileTokens
 				}
 
 				return
 			}
 
 			// filter
-			r.AlignedFraction = float64(alignedBases) / float64(len(s)) * 100
+			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
 			if r.AlignedFraction > 100 {
 				r.AlignedFraction = 100
 			}
@@ -1102,7 +1214,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						checkError(fmt.Errorf("failed to close genome data file: %s", err))
 					}
 					<-idx.openFileTokens
-					// <-idx.openFileTokens
 				}
 				return
 			}
@@ -1124,7 +1235,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					checkError(fmt.Errorf("failed to close genome data file: %s", err))
 				}
 				<-idx.openFileTokens
-				// <-idx.openFileTokens
 			}
 
 			// we don't need these data for outputing results.

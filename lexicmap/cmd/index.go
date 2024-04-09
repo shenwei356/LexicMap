@@ -206,6 +206,11 @@ Important parameters:
 			reSeqNames = append(reSeqNames, re)
 		}
 
+		// contigInterval := getFlagPositiveInt(cmd, "contig-interval")
+		// if contigInterval <= k-1 {
+		// 	checkError(fmt.Errorf("the value of --contig-interval should be >= k-1"))
+		// }
+
 		// ---------------------------------------------------------------
 		// options for building index
 		bopt := &IndexBuildingOptions{
@@ -241,6 +246,8 @@ Important parameters:
 			// genome
 			ReRefName:    reRefName,
 			ReSeqExclude: reSeqNames,
+
+			ContigInterval: 1000,
 
 			SaveSeedPositions: getFlagBool(cmd, "save-seed-pos"),
 		}
@@ -422,6 +429,9 @@ func init() {
 
 	indexCmd.Flags().IntP("batch-size", "b", 10000,
 		formatFlagUsage(`Maximum number of genomes in each batch (maximum value: 131072)`))
+
+	// indexCmd.Flags().IntP("contig-interval", "", 1000,
+	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
 
 	// ----------------------------------------------------------
 
