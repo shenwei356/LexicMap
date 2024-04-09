@@ -6,19 +6,24 @@ LexicMap: efficient sequence alignment against millions of microbial genomes​.
 
 Building an index
 
-    # from a directory
+    # From a directory
     lexicmap index -I genomes/ -O db.lmi
 
-    # from a file list
+    # From a file list
     lexicmap index -X files.txt -O db.lmi
 
 Querying
 
+    # For short queries like genes or long reads.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-in-genome 70 --min-qcov-in-hit 50
+        --min-qcov-per-genome 70 --min-match-identity 70 --min-qcov-per-hsp 70 --top-n 500
+
+    # For longer queries like plasmids
+    lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
+        --min-qcov-per-genome 50 --min-match-identity 70 --min-qcov-per-hsp 0  --top-n 0
+
 
 Sample output (queries are a few Nanopore Q20 reads).
-The column `species` is added by mapping genome ID to taxonomic information
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      query                qlen   qstart   qend   sgnms   sgnm              seqid               qcovGnm   hsp   qcovHSP   alenHSP   alenFrag   pident    slen      sstart    send      sstr   seeds   species
@@ -40,7 +45,7 @@ The column `species` is added by mapping genome ID to taxonomic information
      ERR5396170.1000005   2516   69       205    5       GCF_008692845.1   NZ_VXJW01000004.1   87.599    1     87.599    2204      138        91.742    366711    5426      5563      +      9       Salmonella enterica
      ERR5396170.1000005   2516   306      325    5       GCF_008692845.1   NZ_VXJW01000004.1   87.599    1     87.599    2204      20         91.742    366711    5664      5683      +      9       Salmonella enterica
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+    Note:tThe column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
 
 ## Installation
 

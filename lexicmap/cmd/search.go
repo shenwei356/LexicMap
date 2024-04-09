@@ -445,7 +445,7 @@ func init() {
 		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extracting query and target sequences for alignment`))
 
 	mapCmd.Flags().IntP("top-n", "n", 500,
-		formatFlagUsage(`Keep top N matches for a query.`))
+		formatFlagUsage(`Keep top N matches for a query (0 for all).`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
