@@ -147,6 +147,24 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx := &Index{path: outDir, opt: opt}
 
 	// -----------------------------------------------------
+	// info file
+	fileInfo := filepath.Join(outDir, FileInfo)
+	info, err := readIndexInfo(fileInfo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read info file: %s", err)
+	}
+	if info.MainVersion != MainVersion {
+		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
+	}
+
+	if idx.opt.MaxOpenFiles < info.Chunks+2 {
+		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
+			idx.opt.MaxOpenFiles, info.Chunks)
+	}
+
+	idx.contigInterval = info.ContigInterval
+
+	// -----------------------------------------------------
 	// read masks
 	fileMask := filepath.Join(outDir, FileMasks)
 	if opt.Verbose || opt.Log2File {
@@ -262,24 +280,6 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		close(ch)
 	}
 	<-done
-
-	// -----------------------------------------------------
-	// info file
-	fileInfo := filepath.Join(outDir, FileInfo)
-	info, err := readIndexInfo(fileInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read info file: %s", err)
-	}
-	if info.MainVersion != MainVersion {
-		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
-	}
-
-	if idx.opt.MaxOpenFiles < info.Chunks+2 {
-		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
-			idx.opt.MaxOpenFiles, info.Chunks)
-	}
-
-	idx.contigInterval = info.ContigInterval
 
 	// we can create genome reader pools
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
