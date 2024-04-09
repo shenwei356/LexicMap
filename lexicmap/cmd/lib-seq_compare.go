@@ -80,12 +80,13 @@ type SeqComparator struct {
 
 // NewSeqComparator creates a new SeqComparator with given options.
 // No options checking now.
-func NewSeqComparator(options *SeqComparatorOptions) *SeqComparator {
+func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *SeqComparator {
 	cpr := &SeqComparator{
 		options: options,
-		poolChainers: &sync.Pool{New: func() interface{} {
-			return NewChainer2(&options.Chaining2Options)
-		}},
+		// poolChainers: &sync.Pool{New: func() interface{} {
+		// 	return NewChainer2(&options.Chaining2Options)
+		// }},
+		poolChainers: poolChainers,
 	}
 
 	return cpr
@@ -248,13 +249,13 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	chainer := cpr.poolChainers.Get().(*Chainer2)
 	chains, nMatchedBases, nAlignedBases, _, _, _, _ := chainer.Chain(subs)
+	defer func() {
+		cpr.poolChainers.Put(chainer)
+	}()
 	if chains == nil {
 		RecycleSubstrPairs(subs)
 		return nil, nil
 	}
-	defer func() {
-		cpr.poolChainers.Put(chainer)
-	}()
 
 	// var i int
 	// var sub *SubstrPair

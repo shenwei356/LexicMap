@@ -102,7 +102,7 @@ func (r Genome) String() string {
 var PoolGenome = &sync.Pool{New: func() interface{} {
 	return &Genome{
 		ID:  make([]byte, 0, 128),
-		Seq: make([]byte, 0, 10<<20),
+		Seq: make([]byte, 0, 50<<10),
 
 		GenomeSize: 0,
 		SeqSizes:   make([]int, 0, 128),

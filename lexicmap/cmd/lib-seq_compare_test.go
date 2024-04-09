@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"sync"
 	"testing"
 )
 
@@ -68,7 +69,9 @@ func TestSeqCompare(t *testing.T) {
 
 	// compare
 
-	cpr := NewSeqComparator(&DefaultSeqComparatorOptions)
+	cpr := NewSeqComparator(&DefaultSeqComparatorOptions, &sync.Pool{New: func() interface{} {
+		return NewChainer2(&DefaultChaining2Options)
+	}})
 
 	err := cpr.Index(s1)
 	if err != nil {

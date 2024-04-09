@@ -120,6 +120,7 @@ type Index struct {
 	contigInterval    int // read from info file
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
+	poolChainers2     *sync.Pool
 
 	// genome data reader
 	poolGenomeRdrs []chan *genome.Reader
@@ -129,8 +130,11 @@ type Index struct {
 // SetSeqCompareOptions sets the sequence comparing options
 func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 	idx.seqCompareOption = sco
+	idx.poolChainers2 = &sync.Pool{New: func() interface{} {
+		return NewChainer2(&sco.Chaining2Options)
+	}}
 	idx.poolSeqComparator = &sync.Pool{New: func() interface{} {
-		return NewSeqComparator(sco)
+		return NewSeqComparator(sco, idx.poolChainers2)
 	}}
 }
 
