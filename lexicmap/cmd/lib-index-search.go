@@ -953,7 +953,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				te = int(sub.TBegin) + int(sub.Len) - 1
 				// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 
-				if len(*r.Subs) == 1 { // if there's only one seed, need to check the strand information
+				if len(*chain) == 1 { // if there's only one seed, need to check the strand information
 					rc = sub.QRC != sub.TRC
 				} else { // check the strand according to coordinates of seeds
 					rc = tb > int(sub.TBegin)
