@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sync"
 
@@ -283,8 +284,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	return m, nil
 }
 
-// ReadDataOfAMaskAndCreateNewIndex reads data of a mask,
-// and create a new index with n anchors.
+// ReadDataOfAMaskAsList reads data of a mask
 // Returned: a list of k-mer and value pairs are intermittently saved in a []uint64.
 func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	buf := rdr.buf
@@ -429,6 +429,198 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	}
 
 	return m, nil
+}
+
+// ReadDataOfAMaskAsListAndCreateIndex reads data of a mask,
+// and create a new index with n anchors.
+// Returned: a list of k-mer and value pairs are intermittently saved in a []uint64.
+func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, []uint64, error) {
+	buf := rdr.buf
+	buf8 := rdr.buf8
+	r := rdr.r
+
+	var ctrlByte byte
+	var lastPair bool  // check if this is the last pair
+	var hasKmer2 bool  // check if there's a kmer2
+	var _offset uint64 // offset of kmer
+	var nBytes int
+	var nReaded, nDecoded int
+	var v1, v2 uint64
+	var kmer1, kmer2 uint64
+	var lenVal1, lenVal2 uint64
+	var j uint64
+	var v uint64
+
+	var err error
+
+	// 8-byte the number of k-mers
+	nReaded, err = io.ReadFull(r, buf8)
+	if err != nil {
+		return nil, nil, err
+	}
+	if nReaded < 8 {
+		return nil, nil, ErrBrokenFile
+	}
+	nKmers := int(be.Uint64(buf8))
+
+	// A list of k-mer and value pairs are intermittently saved in a []uint64
+	m := make([]uint64, 0, nKmers<<1)
+	// multiping 2.2 is because that some k-mers would have more than one locations,
+	// it help to reduce slice growing, but it's slightly slower in batch querying, interesting.
+	// m := make([]uint64, 0, int(float64(nKmers)*2.2))
+
+	var _nAnchors, idxChunkSize int
+	var recordedAnchors, _j int
+	var iOffset uint64 // offset of kmer
+
+	// compute nAnchors for this mask
+	_nAnchors = nAnchors
+	if _nAnchors <= 0 {
+		_nAnchors = int(math.Sqrt(float64(nKmers)))
+	}
+	if _nAnchors == 0 {
+		_nAnchors = 1
+	}
+
+	idxChunkSize = (nKmers / _nAnchors) >> 1 // need to recompute for each data
+	if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
+		idxChunkSize = 1        // idxChunkSize should be at least be 1
+		_nAnchors = nKmers >> 1 // then nkmers = 50
+	}
+	if _nAnchors == 0 { // have to check again, this happens for nKmers == 1
+		_nAnchors = 1
+	}
+
+	index := make([]uint64, 0, _nAnchors<<1)
+
+	for {
+		// read the control byte
+		_, err = io.ReadFull(r, buf[:1])
+		if err != nil {
+			return nil, nil, err
+		}
+		ctrlByte = buf[0]
+
+		lastPair = ctrlByte&128 > 0 // 1<<7
+		hasKmer2 = ctrlByte&64 == 0 // 1<<6
+
+		ctrlByte &= 63
+
+		// parse the control byte
+		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+		// read encoded bytes
+		nReaded, err = io.ReadFull(r, buf[:nBytes])
+		if err != nil {
+			return nil, nil, err
+		}
+		if nReaded < nBytes {
+			return nil, nil, ErrBrokenFile
+		}
+
+		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+		if nDecoded == 0 {
+			return nil, nil, ErrBrokenFile
+		}
+
+		kmer1 = v1 + _offset
+		kmer2 = kmer1 + v2
+		_offset = kmer2
+
+		// ------------------------------------------------------------------------
+		// index anchor
+		if idxChunkSize == 1 || _j%idxChunkSize == 0 {
+			if recordedAnchors < _nAnchors {
+				recordedAnchors++
+				// fmt.Printf("[%d] %d, %d, %d, len(m): %d\n", recordedAnchors, _j, kmer1, iOffset, len(m))
+				// record kmer1 and iOffset
+				index = append(index, kmer1)
+				index = append(index, iOffset)
+			}
+
+			_j = 0
+		}
+		_j++
+
+		// fmt.Printf("%s, %s\n", lexichash.MustDecode(kmer1, rdr.K), lexichash.MustDecode(kmer2, rdr.K))
+
+		// ------------------ lengths of values -------------------
+
+		// read the control byte
+		_, err = io.ReadFull(r, buf[:1])
+		if err != nil {
+			return nil, nil, err
+		}
+		ctrlByte = buf[0]
+
+		// parse the control byte
+		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+
+		// read encoded bytes
+		nReaded, err = io.ReadFull(r, buf[:nBytes])
+		if err != nil {
+			return nil, nil, err
+		}
+		if nReaded < nBytes {
+			return nil, nil, ErrBrokenFile
+		}
+
+		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
+		if nDecoded == 0 {
+			return nil, nil, ErrBrokenFile
+		}
+
+		// ------------------ values -------------------
+
+		for j = 0; j < lenVal1; j++ {
+			nReaded, err = io.ReadFull(r, buf8)
+			if err != nil {
+				return nil, nil, err
+			}
+			if nReaded < 8 {
+				return nil, nil, ErrBrokenFile
+			}
+
+			v = be.Uint64(buf8)
+
+			m = append(m, kmer1)
+			m = append(m, v)
+			iOffset += 2
+		}
+
+		if lastPair && !hasKmer2 {
+			break
+		}
+
+		for j = 0; j < lenVal2; j++ {
+			nReaded, err = io.ReadFull(r, buf8)
+			if err != nil {
+				return nil, nil, err
+			}
+			if nReaded < 8 {
+				return nil, nil, ErrBrokenFile
+			}
+
+			v = be.Uint64(buf8)
+
+			m = append(m, kmer2)
+			m = append(m, v)
+			iOffset += 2
+		}
+
+		if lastPair {
+			break
+		}
+	}
+
+	if len(m)>>1 < nKmers {
+		return m, nil, fmt.Errorf("number of k-mers mismatch. expected: >=%d, got: %d", nKmers, len(m)>>1)
+	}
+	// if int(index[len(index)-1]) >= len(m) {
+	// 	fmt.Println(_nAnchors, len(m), len(index), index)
+	// }
+
+	return m, index, nil
 }
 
 // --------------------------------------------------------------------
