@@ -1020,6 +1020,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// yes, the query and target are inversed, because we indexed the query once,
 					// and used it for comparing multiple target sequences.
 					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
+					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
 					// fmt.Printf("--- HSP: %d, HSP fragment: %d ---\n", i, _i)
 
 					// ------------------------------------------------------------
@@ -1032,7 +1033,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					if tSeq.NumSeqs > 1 { // just for genomes with multiple contigs
 						iSeq = -1
 						// ===========aaaaaaa================================aaaaaaa=======
-						//                   | tPosOffset                   | tPosOffset1
+						//                   | tPosOffsetBegin              | tPosOffsetEnd
 						//                     tb ---------------te (matched region, substring region)
 
 						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
@@ -1052,6 +1053,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
 								iSeq = j
+								// fmt.Printf("iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
+								// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
 								break
 							}
 
@@ -1073,7 +1076,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							// fmt.Printf("  %d != %d\n", iSeq, iSeqPre)
 
 							// ------------------------------------------------------------
-							// transform the positions
+							// convert the positions
 
 							// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 							c.QBegin = qb
@@ -1081,16 +1084,20 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							if rc {
 								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
 								c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
-								if c.TEnd > tSeq.SeqSizes[iSeqPre]-1 {
-									c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeqPre] - 1)
-									c.TEnd = tSeq.SeqSizes[iSeqPre] - 1
+								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+									c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+									c.TEnd = tSeq.SeqSizes[iSeq] - 1
 								}
 							} else {
+								// fmt.Printf("tBegin: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d\n",
+								// 	tBegin, tPosOffsetBegin, tPosOffsetEnd)
+								// fmt.Printf("tb: %d, te: %d, tBegin+tb: %d, tBegin+te: %d\n", tb, te, tBegin+tb, tBegin+te)
 								c.TBegin = tBegin - tPosOffsetBegin + tb
 								c.TEnd = tBegin - tPosOffsetBegin + te
-								if c.TEnd > tSeq.SeqSizes[iSeqPre]-1 {
-									c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeqPre] - 1)
-									c.TEnd = tSeq.SeqSizes[iSeqPre] - 1
+								// fmt.Printf("tmp: t: %d-%d, seqlen: %d \n", c.TBegin, c.TEnd, tSeq.SeqSizes[iSeq])
+								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+									c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+									c.TEnd = tSeq.SeqSizes[iSeq] - 1
 								}
 							}
 							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
@@ -1110,8 +1117,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							sd.Similarity = r2
 							sd.SimilarityScore = float64(r2.MatchedBases)
 							sd.SeqID = sd.SeqID[:0]
-							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeqPre])...)
-							sd.SeqLen = tSeq.SeqSizes[iSeqPre]
+							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+							sd.SeqLen = tSeq.SeqSizes[iSeq]
 
 							*sds = append(*sds, sd)
 
@@ -1132,7 +1139,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					iSeqPre = iSeq
 
 					// ------------------------------------------------------------
-					// transform the positions
+					// convert the positions
 
 					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 					c.QBegin = qb
