@@ -200,19 +200,19 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 					middle--
 				}
 				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-					i = 0
+					i = begin
 					break
 				}
 				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
 				// 	index[middle], lexichash.MustDecode(index[middle], k))
-				if leftBound < index[middle] {
+				if leftBound <= index[middle] { // when they are equal, we still need to check
 					// fmt.Printf(" left\n")
 					end = middle // new end
 				} else {
 					// fmt.Printf(" right\n")
 					begin = middle // new start
 				}
-				if begin+2 == end { // next to eacher
+				if begin+2 == end { // next to each other
 					i = begin
 					break
 				}

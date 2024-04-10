@@ -158,14 +158,16 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchR
 				}
 				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
 				// 	data[middle], lexichash.MustDecode(data[middle], k))
-				if leftBound < data[middle] {
+				// we still need to check even if they are equal,
+				// because the k-mer in the middle might be duplicated
+				if leftBound <= data[middle] {
 					// fmt.Printf(" left\n")
 					end = middle // new end
 				} else {
 					// fmt.Printf(" right\n")
 					begin = middle // new start
 				}
-				if begin+2 == end { // next to eacher
+				if begin+2 == end { // next to each other
 					i = begin
 					break
 				}
