@@ -1,0 +1,29 @@
+baseURL = 'https://bioinf.shenwei.me/lexicmap'
+languageCode = 'en-us'
+title = 'LexicMap'
+theme = 'hugo-geekdoc'
+
+defaultContentLanguage = 'en'
+
+pluralizeListTitles = false
+
+# Geekdoc required configuration
+pygmentsUseClasses = true
+pygmentsCodeFences = true
+disablePathToLower = true
+
+# Required if you want to render robots.txt template
+enableRobotsTXT = true
+
+# Needed for mermaid shortcodes
+[markup]
+  [markup.goldmark.renderer]
+    # Needed for mermaid shortcode or when nesting shortcodes (e.g. img within
+    # columns or tabs)
+    unsafe = true
+  [markup.tableOfContents]
+    startLevel = 1
+    endLevel = 3
+
+[taxonomies]
+   tag = "tags"

@@ -1,0 +1,6 @@
+---
+header:
+  - name: GitHub
+    ref: https://github.com/shenwei356/LexicMap
+    icon: gdoc_github
+    external: true

@@ -19,7 +19,9 @@
 */Rplots.pdf
 *.pprof
 
-site
+docs/public
+docs/themes
+.hugo_build.lock
 
 
 lexicmap/binaries/*
