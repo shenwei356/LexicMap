@@ -803,15 +803,23 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	*rs = (*rs)[:0]
 
 	K := idx.k
+	checkMismatch := maxMismatch >= 0 && maxMismatch < K-int(idx.opt.MinPrefix)
 	for _, r := range *m {
 		ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
 
-		// there's no need to chain for a single short seed
-		// TODO: we might give it a chance if the mismatch is low
-		if len(*r.Subs) == 1 && (*r.Subs)[0].Len < minSinglePrefix {
-			// do not forget to recycle filtered result
-			idx.RecycleSearchResult(r)
-			continue
+		// there's no need to chain for a single short seed.
+		// we might give it a chance if the mismatch is low
+		if len(*r.Subs) == 1 {
+			if checkMismatch {
+				if int((*r.Subs)[0].Mismatch) > maxMismatch {
+					idx.RecycleSearchResult(r)
+					continue
+				}
+			} else if (*r.Subs)[0].Len < minSinglePrefix {
+				// do not forget to recycle filtered result
+				idx.RecycleSearchResult(r)
+				continue
+			}
 		}
 
 		for _, sub := range *r.Subs {
