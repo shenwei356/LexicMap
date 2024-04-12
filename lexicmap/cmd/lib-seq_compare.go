@@ -155,7 +155,11 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 
 	r.PIdentity = float64(r.MatchedBases) / float64(r.AlignedBases) * 100
 
-	r.AlignedFraction = float64(r.MatchedBases) / float64(r.QueryLen) * 100
+	af := float64(r.MatchedBases) / float64(r.QueryLen) * 100
+	if af > 100 {
+		af = 100
+	}
+	r.AlignedFraction = af
 }
 
 var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {

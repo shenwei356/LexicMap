@@ -22,13 +22,14 @@ For index building.
 
 For seaching.
 - More CPUs would accelerate searching.
-- The memory occupation depends on the number of hits.
+- The memory occupation mainly depends on the length of queries, the number of hits, band size in backtracking.
 
 ### Why is LexicMap slow for batch searching?
 
-- LexicMap is designed to scale to alignment against a large number of genomes.
+- LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number of genomes.
 
 - `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
 faster search.
     - For example, for ~85,000 GTDB representative genomes, searching on an index built with
-20,000 masks, the memory would be ~75 GB.
+20,000 masks, the memory would be ~100 GB with default parameters.
+    -  {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.

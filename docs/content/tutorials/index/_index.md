@@ -10,6 +10,8 @@ weight: 0
 LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.
 {{< /hint >}}
 
-aa
+### File type
+
+### Sequence organization
 
 ## Output
