@@ -1050,20 +1050,21 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
 						// fmt.Printf("tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
+
+						// minusing K is because the interval A's might be matched.
+						if rc {
+							_begin, _end = tEnd-te+K, tEnd-tb-K
+						} else {
+							_begin, _end = tBegin+tb+K, tBegin+te-K
+						}
+
+						// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
+
 						for j, l = range tSeq.SeqSizes {
 							// end position of current contig
 							tPosOffsetEnd += l - 1 // length sum of 0..j
 
 							// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
-
-							// minusing K is because the interval A's might be matched.
-							if rc {
-								_begin, _end = tEnd-te+K, tEnd-tb-K
-							} else {
-								_begin, _end = tBegin+tb+K, tBegin+te-K
-							}
-
-							// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
 							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
 								iSeq = j

@@ -53,8 +53,9 @@ type Chainer2 struct {
 	options *Chaining2Options
 
 	// scores        []int
-	maxscores     []int
-	maxscoresIdxs []int
+	// maxscores     []int
+	// maxscoresIdxs []int
+	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) ot save ram.
 
 	bounds []int32 // 4 * chains
 }
@@ -65,8 +66,8 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 		options: options,
 
 		// scores:        make([]int, 0, 10240),
-		maxscores:     make([]int, 0, 51200),
-		maxscoresIdxs: make([]int, 0, 51200),
+		// maxscores:     make([]int, 0, 51200),
+		maxscoresIdxs: make([]uint64, 0, 51200),
 		bounds:        make([]int32, 128),
 	}
 	return c
@@ -161,15 +162,16 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	// reused objects
 
 	// the maximum score for each seed, the size is n
-	maxscores := &ce.maxscores
-	*maxscores = (*maxscores)[:0]
+	// maxscores := &ce.maxscores
+	// *maxscores = (*maxscores)[:0]
 	// index of previous seed, the size is n. pointers for backtracking.
 	maxscoresIdxs := &ce.maxscoresIdxs
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 
 	// initialize
-	*maxscores = append(*maxscores, int((*subs)[0].Len))
-	*maxscoresIdxs = append(*maxscoresIdxs, 0)
+	// *maxscores = append(*maxscores, int((*subs)[0].Len))
+	// *maxscoresIdxs = append(*maxscoresIdxs, 0)
+	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 
 	// compute scores
 	var s, m, M, d, g int
@@ -209,7 +211,8 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 				continue
 			}
 
-			s = (*maxscores)[j] + int(b.Len) - g // compute the score
+			// s = (*maxscores)[j] + int(b.Len) - g // compute the score
+			s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
 			// (*scores)[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
@@ -218,8 +221,9 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 		}
 
-		*maxscores = append(*maxscores, m)          // save the max score of the whole
-		*maxscoresIdxs = append(*maxscoresIdxs, mj) // save where the max score comes from
+		// *maxscores = append(*maxscores, m)          // save the max score of the whole
+		// *maxscoresIdxs = append(*maxscoresIdxs, mj) // save where the max score comes from
+		*maxscoresIdxs = append(*maxscoresIdxs, uint64(m)<<32|uint64(mj))
 
 		if m > M { // the biggest score in the whole score matrix
 			M, Mi = m, i
@@ -252,7 +256,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	_, qB, qE, tB, tE := chainARegion(
 		subs,
-		maxscores,
+		// maxscores,
 		maxscoresIdxs,
 		0,
 		minScore,
@@ -267,8 +271,8 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 }
 
 func chainARegion(subs *[]*SubstrPair, // a region of the subs
-	maxscores *[]int, // a region of maxscores
-	maxscoresIdxs *[]int,
+	// maxscores *[]int, // a region of maxscores
+	maxscoresIdxs *[]uint64,
 	offset int, // offset of this region of subs
 	minScore int, // the threshold
 	paths *[]*Chain2Result, // paths
@@ -284,11 +288,14 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	int, // target end position (0-based)
 ) {
 	// fmt.Printf("region: [%d, %d]\n", offset, offset+len(*subs)-1)
+	var _mi uint64
 	var m, M int
 	var i, Mi int
 	if Mi0 < 0 { // Mi is not given
 		// find the next highest score
-		for i, m = range *maxscores {
+		// for i, m = range *maxscores {
+		for i, _mi = range *maxscoresIdxs {
+			m = int(_mi >> 32)
 			if m > M {
 				M, Mi = m, i
 			}
@@ -317,7 +324,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	path := poolChain2.Get().(*Chain2Result)
 	path.Reset()
 	for {
-		j = (*maxscoresIdxs)[i] - offset // previous seed
+		// j = (*maxscoresIdxs)[i] - offset // previous seed
+		j = int((*maxscoresIdxs)[i]&4294967295) - offset // previous seed
 
 		if j < 0 { // the first anchor is not in current region
 			break
@@ -440,13 +448,14 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	// fmt.Printf("  i: %d\n", i)
 
 	// the unchecked region on the right
-	if Mi != len(*maxscores)-1 { // Mi is not the last element
+	// if Mi != len(*maxscores)-1 { // Mi is not the last element
+	if Mi != len(*maxscoresIdxs)-1 { // Mi is not the last element
 		tmp := (*subs)[Mi+1:]
-		tmps := (*maxscores)[Mi+1:]
+		// tmps := (*maxscores)[Mi+1:]
 		tmpsi := (*maxscoresIdxs)[Mi+1:]
 		_score, _qB, _qE, _tB, _tE := chainARegion(
 			&tmp,
-			&tmps,
+			// &tmps,
 			&tmpsi,
 			offset+Mi+1,
 			minScore,
@@ -475,11 +484,11 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	// the unchecked region on the left
 	if i > 0 { // the first anchor is not the first element
 		tmp := (*subs)[:i]
-		tmps := (*maxscores)[:i]
+		// tmps := (*maxscores)[:i]
 		tmpsi := (*maxscoresIdxs)[:i]
 		_score, _qB, _qE, _tB, _tE := chainARegion(
 			&tmp,
-			&tmps,
+			// &tmps,
 			&tmpsi,
 			offset,
 			minScore,
