@@ -40,10 +40,9 @@ var mapCmd = &cobra.Command{
 	Long: `Search sequences against an index
 
 Attention:
-  1. Input format should be (gzipped) FASTA or FASTQ from files or stdin.
-  2. The positions in output are 1-based.
+  1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
 
-Alignment relationship:
+Alignment result relationship:
 
   Query
   ├── Subject genome
@@ -52,7 +51,7 @@ Alignment relationship:
               ├── HSP fragment
 
 Output format:
-  Tab-delimited format with 18 columns:
+  Tab-delimited format with 18 columns. (The positions are 1-based).
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -62,7 +61,7 @@ Output format:
     6.  sgnm,     Subject genome ID.
     7.  seqid,    Subject sequence ID.
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    9.  hsp,      Nth hit in the genome.
+    9.  hsp,      Nth HSP in the genome.
     10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     11. alen,     Aligned length in current HSP, a HSP might have >=1 HSP fragments.
     12. alenFrag, Aligned length in current HSP fragment.
@@ -70,7 +69,7 @@ Output format:
     14. slen,     Subject sequence length.
     15. sstart,   Start of HSP fragment in subject sequence.
     16. send,     End of HSP fragment in subject sequence.
-    17. sstr,     Subject Strand.
+    17. sstr,     Subject strand.
     18. seeds,    Number of seeds in current HSP.
 
 `,
@@ -107,30 +106,36 @@ Output format:
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
 		outFile := getFlagString(cmd, "out-file")
-		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
+		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -m/--min-prefix (%d) should be <= 32", minPrefix))
+			checkError(fmt.Errorf("the value of flag -m/--seed-min-prefix (%d) should be <= 32", minPrefix))
 		}
-		maxMismatch := getFlagInt(cmd, "max-mismatch")
-		minSinglePrefix := getFlagPositiveInt(cmd, "min-single-prefix")
+		maxMismatch := getFlagInt(cmd, "seed-max-mismatch")
+		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
 		if minSinglePrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be <= 32", minSinglePrefix))
+			checkError(fmt.Errorf("the value of flag -M/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
 		}
 		if minSinglePrefix < minPrefix {
-			checkError(fmt.Errorf("the value of flag -M/--min-single-prefix (%d) should be >= that of -m/--min-prefix (%d)", minSinglePrefix, minPrefix))
+			checkError(fmt.Errorf("the value of flag -M/--seed-min-single-prefix (%d) should be >= that of -m/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
 		}
-		maxGap := getFlagPositiveInt(cmd, "max-gap")
-		maxDist := getFlagPositiveInt(cmd, "max-dist")
-		extLen := getFlagNonNegativeInt(cmd, "ext-len")
+		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
+		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
+		extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
 		if extLen < 1000 {
-			checkError(fmt.Errorf("the value of flag --ext-len should be >= 1000"))
+			checkError(fmt.Errorf("the value of flag --align-ext-len should be >= 1000"))
 		}
-		topn := getFlagNonNegativeInt(cmd, "top-n")
+		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
-		minAlignLen := getFlagPositiveInt(cmd, "min-match-len")
+		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < minSinglePrefix {
-			checkError(fmt.Errorf("the value of flag -l/--min-match-len (%d) should be >= that of -M/--min-single-prefix (%d)", minAlignLen, minSinglePrefix))
+			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
+		}
+		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
+		maxAllgnMismatch := getFlagPositiveInt(cmd, "align-max-mismatch")
+		alignBand := getFlagPositiveInt(cmd, "align-band")
+		if alignBand < 32 {
+			checkError(fmt.Errorf("the value of flag --align-band should not be < 32"))
 		}
 
 		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
@@ -139,11 +144,11 @@ Output format:
 		} else if minQcovGenome < 1 {
 			log.Warningf("the value of flag -Q/min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		}
-		minIdent := getFlagNonNegativeFloat64(cmd, "min-match-identity")
+		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
 		if minIdent > 100 {
-			checkError(fmt.Errorf("the value of flag -i/min-match-identity (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -i/align-min-match-pident (%f) should be in range of [0, 100]", minIdent))
 		} else if minIdent < 1 {
-			log.Warningf("the value of flag -i/min-match-identity is percentage in a range of [0, 100], you set: %f", minIdent)
+			log.Warningf("the value of flag -i/align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
@@ -333,13 +338,13 @@ Output format:
 
 			Chaining2Options: Chaining2Options{
 				// should be relative small
-				MaxGap: 32,
+				MaxGap: maxAlignMaxGap,
 				// better be larger than MinPrefix
 				MinScore: minAlignLen,
 				// can not be < k
-				MaxDistance: 50,
+				MaxDistance: maxAllgnMismatch,
 				// can not be two small
-				Band: 20,
+				Band: alignBand,
 			},
 
 			MinIdentity:        minIdent,
@@ -428,33 +433,41 @@ func init() {
 
 	// seed searching
 
-	mapCmd.Flags().IntP("min-prefix", "p", 15,
+	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings (seeds).`))
 
-	mapCmd.Flags().IntP("min-single-prefix", "P", 20,
+	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 20,
 		formatFlagUsage(`Minimum length of shared substrings if there's only one pair.`))
 
-	mapCmd.Flags().IntP("max-mismatch", "m", -1,
+	mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
 		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings.`))
 
-	mapCmd.Flags().IntP("max-gap", "g", 2000,
+	mapCmd.Flags().IntP("seed-max-gap", "", 2000,
 		formatFlagUsage(`Max gap in seed chaining.`))
-	mapCmd.Flags().IntP("max-dist", "", 10000,
-		formatFlagUsage(`Max distance in seed chaining.`))
-	mapCmd.Flags().IntP("ext-len", "", 2000,
-		formatFlagUsage(`Extend length of upstream and downstream of seed region, for extracting query and target sequences for alignment`))
+	mapCmd.Flags().IntP("seed-max-dist", "", 10000,
+		formatFlagUsage(`Max distance between seeds in seed chaining.`))
 
-	mapCmd.Flags().IntP("top-n", "n", 500,
-		formatFlagUsage(`Keep top N matches for a query (0 for all).`))
+	mapCmd.Flags().IntP("top-n-genomes", "n", 500,
+		formatFlagUsage(`Keep top N genome matches for a query (0 for all).`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
 	// sequence similarity
 
-	mapCmd.Flags().IntP("min-match-len", "l", 50,
+	mapCmd.Flags().IntP("align-ext-len", "", 2000,
+		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment`))
+
+	mapCmd.Flags().IntP("align-max-gap", "", 50,
+		formatFlagUsage(`Maximum gap in a HSP fragment`))
+	mapCmd.Flags().IntP("align-max-mismatch", "", 50,
+		formatFlagUsage(`Maximum mismatch in a HSP fragment`))
+	mapCmd.Flags().IntP("align-band", "", 100,
+		formatFlagUsage(`Band size in backtracking the score matrix`))
+	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP fragment`))
-	mapCmd.Flags().Float64P("min-match-identity", "i", 70,
+
+	mapCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP fragment.`))
 
 	mapCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,

@@ -49,13 +49,13 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 
 	Chaining2Options: Chaining2Options{
 		// should be relative small
-		MaxGap: 32,
+		MaxGap: 50,
 		// better be larger than MinPrefix
 		MinScore: 50,
 		// can not be < k
 		MaxDistance: 50,
 		// can not be two small
-		Band: 20,
+		Band: 100,
 	},
 
 	MinIdentity:        70,

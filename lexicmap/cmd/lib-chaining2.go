@@ -37,11 +37,11 @@ type Chaining2Options struct {
 
 // DefaultChaining2Options is the defalt vaule of Chaining2Option.
 var DefaultChaining2Options = Chaining2Options{
-	MaxGap:   32,
-	MinScore: 20,
+	MaxGap:   50,
+	MinScore: 50,
 
 	MaxDistance: 50,
-	Band:        20,
+	Band:        100,
 }
 
 // Chainer2 is an object for chaining the anchors in two similar sequences.
@@ -226,18 +226,12 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		}
 	}
 
+	// fmt.Printf("M: %d, Mi: %d\n", M, Mi)
+
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
 	// for i = 0; i < n; i++ {
-	// 	fmt.Printf("%d\t%s\t%d", i, (*subs)[i], maxscoresIdxs[i])
-	// 	// k = i * band
-	// 	// for _b = 0; _b <= band; _b++ {
-	// 	// 	if i-_b >= 0 {
-	// 	// 		fmt.Printf("\t%3d:%-4d", i-_b, (*scores)[k])
-	// 	// 	}
-
-	// 	// 	k++
-	// 	// }
+	// 	fmt.Printf("%d\t%s\t%d:%d", i, (*subs)[i], (*maxscoresIdxs)[i], (*maxscores)[i])
 	// 	fmt.Printf("\n")
 	// }
 
@@ -412,7 +406,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	}
 
 	if j < 0 { // the first anchor is not in current region
-		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", len(*path))
+		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", path.NAnchors)
 		// if len(path.Chain) == 0 {
 		if path.NAnchors == 0 {
 			poolChain2.Put(path)
