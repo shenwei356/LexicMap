@@ -91,7 +91,7 @@ Important parameters:
                        ► If the number of input files exceeds this number, input files are into multiple
                        batches and indexes are built for all batches. Next, seed files are merged into a
                        big one, while genome data files are kept unchanged and collected.
-                       ► Bigger values increase indexing memory occupation, while improving the search speed.
+                       ► Bigger values increase indexing memory occupation.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

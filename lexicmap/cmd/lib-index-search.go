@@ -987,7 +987,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				qBegin = qb - min(qb, extLen)
 				qEnd = qe + min(qlen-qe-1, extLen)
 
-				// fmt.Printf("chain:%d, query:%d-%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, rc)
+				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, rc)
 
 				// extract target sequence for comparison.
 				// Right now, we fetch seq from disk for each seq,
@@ -995,6 +995,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				tSeq, err := rdr.SubSeq(refID, tBegin, tEnd)
 				if err != nil {
 					checkError(err)
+				}
+				// this happens when the matched sequene is the last one in the gneome
+				if len(tSeq.Seq) < tEnd-tBegin+1 {
+					tEnd -= tEnd - tBegin + 1 - len(tSeq.Seq)
 				}
 
 				if rc { // reverse complement
@@ -1058,6 +1062,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							} else {
 								_begin, _end = tBegin+tb+K, tBegin+te-K
 							}
+
+							// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
 							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
 								iSeq = j
