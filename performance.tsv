@@ -1,0 +1,13 @@
+dataset	genomes	gzip_size	db_size	query	query_len	genome_hits	time	RAM
+GTDB repr	85,205	75 GB	110 GB	a MutL gene	1,956 bp	2	0.9 s	460 MB
+				a 16S rRNA gene	1,542 bp	13,466	4.0 s	765 MB
+				a plasmid	51,466 bp	2	1.1 s	752 MB
+GTDB complete	402,538	578 GB		a MutL gene	1,956 bp			
+				a 16S rRNA gene	1,542 bp			
+				a plasmid	51,466 bp			
+Genbank+RefSeq	2,340,672	3.5 TB	2.9 TB	a MutL gene	1,956 bp	817	10.0 s	2.3 GB
+				a 16S rRNA gene	1,542 bp	1,148,049	5 m 34 s	11.8 GB
+				a plasmid	51,466 bp	19,265	3 m 32 s	15.7 GB
+AllTheBacteria HQ	1,858,610	3.1 TB	2.4 TB	a MutL gene	1,956 bp	404	17.8 s	2.4 GB
+				a 16S rRNA gene	1,542 bp	1,193,874	8 m 52 s	10.6 GB
+				a plasmid	51,466 bp	10,954	3 m 19 s	11.7 GB

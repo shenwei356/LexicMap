@@ -31,9 +31,9 @@ import (
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "lexicmap",
-	Short: "efficient sequence alignment against millions of microbial genomes",
+	Short: "efficient sequence alignment against millions of prokaryotic genomes",
 	Long: fmt.Sprintf(`
-   LexicMap: efficient sequence alignment against millions of microbial genomes
+   LexicMap: efficient sequence alignment against millions of prokaryotic genomes
 
     Version: v%s
   Documents: https://bioinf.shenwei.me/LexicMap
