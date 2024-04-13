@@ -4,28 +4,6 @@ LexicMap is a sequence alignment tool aiming quering gene or plasmid sequences a
 
 It uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm to compute seeds for
 
-## Performance
-
-|dataset          |genomes  |gzip_size|db_size|query          |query_len|genome_hits|time    |RAM    |
-|:----------------|:--------|:--------|:------|:--------------|:--------|:----------|:-------|:------|
-|GTDB repr        |85,205   |75 GB    |110 GB |a MutL gene    |1,956 bp |2          |0.9 s   |460 MB |
-|                 |         |         |       |a 16S rRNA gene|1,542 bp |13,466     |4.0 s   |765 MB |
-|                 |         |         |       |a plasmid      |51,466 bp|2          |1.1 s   |752 MB |
-|GTDB complete    |402,538  |578 GB   |       |a MutL gene    |1,956 bp |           |        |       |
-|                 |         |         |       |a 16S rRNA gene|1,542 bp |           |        |       |
-|                 |         |         |       |a plasmid      |51,466 bp|           |        |       |
-|Genbank+RefSeq   |2,340,672|3.5 TB   |2.9 TB |a MutL gene    |1,956 bp |817        |10.0 s  |2.3 GB |
-|                 |         |         |       |a 16S rRNA gene|1,542 bp |1,148,049  |5 m 34 s|11.8 GB|
-|                 |         |         |       |a plasmid      |51,466 bp|19,265     |3 m 32 s|15.7 GB|
-|AllTheBacteria HQ|1,858,610|3.1 TB   |2.4 TB |a MutL gene    |1,956 bp |404        |17.8 s  |2.4 GB |
-|                 |         |         |       |a 16S rRNA gene|1,542 bp |1,193,874  |8 m 52 s|10.6 GB|
-|                 |         |         |       |a plasmid      |51,466 bp|10,954     |3 m 19 s|11.7 GB|
-
-Notes:
-- All files are stored on a server with HDD disks.
-- Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).
-- Index building parameters: `-k31 -m 40000`. Tenome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
-- Searching parameters: `--top-n-genomes 0 --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0`.
 
 ## Quick start
 
@@ -71,6 +49,33 @@ Sample output (queries are a few Nanopore Q20 reads).
      ERR5396170.1000005   2516   306      325    5       GCF_008692845.1   NZ_VXJW01000004.1   87.599    1     87.599    2204      20         91.742    366711    5664      5683      +      9       Salmonella enterica
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Note: the column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
+
+## Performance
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ dataset               genomes   gzip_size   db_size   query             query_len   genome_hits       time       RAM
+----------------------------------------------------------------------------------------------------------------------
+ GTDB repr              85,205       75 GB    110 GB   a MutL gene        1,956 bp             2      0.9 s    460 MB
+                                                       a 16S rRNA gene    1,542 bp        13,466      4.0 s    765 MB
+                                                       a plasmid         51,466 bp             2      1.1 s    752 MB
+ GTDB complete         402,538      578 GB             a MutL gene        1,956 bp
+                                                       a 16S rRNA gene    1,542 bp
+                                                       a plasmid         51,466 bp
+ Genbank+RefSeq      2,340,672      3.5 TB    2.9 TB   a MutL gene        1,956 bp           817     10.0 s    2.3 GB
+                                                       a 16S rRNA gene    1,542 bp     1,148,049   5 m 34 s   11.8 GB
+                                                       a plasmid         51,466 bp        19,265   3 m 32 s   15.7 GB
+ AllTheBacteria HQ   1,858,610      3.1 TB    2.4 TB   a MutL gene        1,956 bp           404     17.8 s    2.4 GB
+                                                       a 16S rRNA gene    1,542 bp     1,193,874   8 m 52 s   10.6 GB
+                                                       a plasmid         51,466 bp        10,954   3 m 19 s   11.7 GB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Notes:
+- All files are stored on a server with HDD disks.
+- Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).
+- Index building parameters: `-k31 -m 40000`. Tenome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
+- Searching parameters: `--top-n-genomes 0 --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0`.
 
 ## Installation
 
