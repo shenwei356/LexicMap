@@ -6,7 +6,7 @@ weight: 0
 ```plain
 $ lexicmap -h
 
-   LexicMap: efficient sequence alignment against millions of microbial genomes
+   LexicMap: efficient sequence alignment against millions of prokaryotic genomes
 
     Version: v0.3.0
   Documents: https://bioinf.shenwei.me/LexicMap

@@ -3,11 +3,116 @@ title: Introduction
 weight: 10
 ---
 
-LexicMap is a sequence alignment tool against millions of microbial genomes​.
+LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
+
+For example, **querying a 51.5-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only 3 minutes and 32 seconds with 15.7 GB RAM and 48 CPUs, with 19,265 genome hits returned**.
+By contrast, BLASTN is unable to run with the same dataset on common servers because it requires >2000 GB RAM. See [performance](#performance).
+
+LexicMap uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm, which supports variable-length substring matching rather than classical fixed-length k-mers matching, to compute seeds for sequence alignment and uses multiple-level storage for fast and low-memory quering of seeds data. See [algorithm overview](#algorithm-overview).
+
+LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/)).
 
 
-## Function
+## Performance
 
-## Limitation
+{{< tabs "uniqueid" >}}
+{{< tab "GTDB repr" >}}
 
-## Citation
+### Index information
+
+|dataset          |genomes  |gzip_size|db_size|
+|:----------------|--------:|--------:|------:|
+|GTDB representative |**85,205**   |75 GB    |110 GB |
+
+### Query performance
+
+|query          |query_len|genome_hits|time    |RAM    |
+|:--------------|--------:|----------:|-------:|------:|
+|a MutL gene    |1,956 bp |2          |0.9 s   |460 MB |
+|a 16S rRNA gene|1,542 bp |13,466     |4.0 s   |765 MB |
+|a plasmid      |51,466 bp|2          |1.1 s   |752 MB |
+{{< /tab >}}
+
+{{< tab "GTDB complete" >}}
+
+
+### Index information
+
+|dataset          |genomes  |gzip_size|db_size|
+|:----------------|--------:|--------:|------:|
+|GTDB complete    |**402,538**  |578 GB   |507 GB |
+
+### Query performance
+
+|query          |query_len|genome_hits|time    |RAM    |
+|:--------------|--------:|----------:|-------:|------:|
+|a MutL gene    |1,956 bp |268        |3.8 s   |544 MB |
+|a 16S rRNA gene|1,542 bp |169,480    |2 m 14 s|2.9 GB |
+|a plasmid      |51,466 bp|3,649      |56 s    |2.9 GB |
+
+{{< /tab>}}
+
+
+{{< tab "Genbank+RefSeq" >}}
+
+### Index information
+
+|dataset          |genomes  |gzip_size|db_size|
+|:----------------|--------:|--------:|------:|
+|Genbank+RefSeq   |**2,340,672**|3.5 TB   |2.9 TB |
+
+### Query performance
+
+|query          |query_len|genome_hits|time    |RAM    |
+|:--------------|--------:|----------:|-------:|------:|
+|a MutL gene    |1,956 bp |817        |10.0 s  |2.3 GB |
+|a 16S rRNA gene|1,542 bp |1,148,049  |5 m 34 s|11.8 GB|
+|a plasmid      |51,466 bp|19,265     |3 m 32 s|15.7 GB|
+
+{{< /tab>}}
+
+
+{{< tab "AllTheBacteria HQ" >}}
+
+### Index information
+
+|dataset          |genomes  |gzip_size|db_size|
+|:----------------|--------:|--------:|------:|
+|AllTheBacteria HQ|**1,858,610**|3.1 TB   |2.4 TB |
+
+### Query performance
+
+|query          |query_len|genome_hits|time    |RAM    |
+|:--------------|--------:|----------:|-------:|------:|
+|a MutL gene    |1,956 bp |404        |18.7 s  |2.4 GB |
+|a 16S rRNA gene|1,542 bp |1,193,874  |13 m 8 s|9.4 GB |
+|a plasmid      |51,466 bp|10,954     |5 m 25 s|9.7 GB |
+
+{{< /tab>}}
+
+
+{{< /tabs >}}
+
+
+Notes:
+- All files are stored on a server with HDD disks.
+- Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).
+- Index building parameters: `-k31 -m 40000`. Tenome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
+
+## Algorithm overview
+
+<img src="/LexicMap/introduction/overview.svg" alt="LexicMap overview" width="800"/>
+
+
+## Related projects
+
+- High-performance [LexicHash](https://github.com/shenwei356/LexicHash) computation in Go.
+
+## Support
+
+Please [open an issue](https://github.com/shenwei356/LexicMap/issues) to report bugs,
+propose new functions or ask for help.
+
+## License
+
+[MIT License](https://github.com/shenwei356/LexicMap/blob/master/LICENSE)

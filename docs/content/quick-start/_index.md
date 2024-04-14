@@ -3,30 +3,26 @@ title: Quick Start
 weight: 10
 ---
 
-Install Lexicmap
+Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
 
-    conda install -c bioconda lexicmap
-
-Building an index
-
-    # From a directory
+    # From a directory with multiple genome files
     lexicmap index -I genomes/ -O db.lmi
 
-    # From a file list
+    # From a file list with one file per line
     lexicmap index -X files.txt -O db.lmi
 
-Querying
+Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
 
-    # For short queries like genes or long reads.
+    # For short queries like genes or long reads, returning top N hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-per-genome 70 --min-match-identity 70 --min-qcov-per-hsp 70 --top-n 500
+        --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
 
-    # For longer queries like plasmids
+    # For longer queries like plasmids, returning all hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-per-genome 50 --min-match-identity 70 --min-qcov-per-hsp 0  --top-n 0
+        --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 
-Sample output (queries are a few Nanopore Q20 reads).
+Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
 
 ```plain
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -51,3 +47,5 @@ Sample output (queries are a few Nanopore Q20 reads).
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Note: the column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
 ```
+
+Learn more [tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/).

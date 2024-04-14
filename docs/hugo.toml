@@ -1,6 +1,6 @@
-baseURL = 'https://bioinf.shenwei.me/lexicmap'
+baseURL = 'https://bioinf.shenwei.me/LexicMap'
 languageCode = 'en-us'
-title = 'LexicMap'
+title = 'LexicMap: efficient sequence alignment against millions of prokaryotic genomes​'
 theme = 'hugo-geekdoc'
 
 defaultContentLanguage = 'en'
