@@ -33,8 +33,8 @@ import (
 // autocompletionCmd represents the fq2fa command
 var autocompletionCmd = &cobra.Command{
 	Use:   "autocompletion",
-	Short: "Generate shell autocompletion script",
-	Long: `Generate shell autocompletion script
+	Short: "Generate shell autocompletion scripts",
+	Long: `Generate shell autocompletion scripts
 
 Supported shell: bash|zsh|fish|powershell
 

@@ -1,13 +1,18 @@
 ## LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
-LexicMap is a sequence alignment tool aiming quering gene or plasmid sequences against up to millions of prokaryotic genomes.
+LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
 
-It uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm to compute seeds for
+For example, **querying a 51.5-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes only takes 3 minutes and 32 seconds with 15.7 GB RAM and 48 CPUs, with 19,265 genome hits returned**.
+By contrast, BLASTN is unable to run for the same dataset on common servers because it requires >2000 GB RAM. See [performance](#performance).
+
+LexicMap uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm, which supports variable-length substring matching rather than classical fixed-length k-mers matching, to compute seeds for sequence alignment and uses multiple-level storage for fast and low-memory quering of seeds data. See [algorithm overview](#algorithm-overview).
+
+LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/)).
 
 
 ## Quick start
 
-Building an index
+Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
 
     # From a directory
     lexicmap index -I genomes/ -O db.lmi
@@ -15,18 +20,18 @@ Building an index
     # From a file list
     lexicmap index -X files.txt -O db.lmi
 
-Querying
+Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
 
-    # For short queries like genes or long reads.
+    # For short queries like genes or long reads, returning top hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
         --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
 
-    # For longer queries like plasmids
+    # For longer queries like plasmids, returning all hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
         --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 
-Sample output (queries are a few Nanopore Q20 reads).
+Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      query                qlen   qstart   qend   sgnms   sgnm              seqid               qcovGnm   hsp   qcovHSP   alenHSP   alenFrag   pident    slen      sstart    send      sstr   seeds   species
@@ -50,37 +55,24 @@ Sample output (queries are a few Nanopore Q20 reads).
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Note: the column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
 
+Learn more [tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/).
+
 ## Performance
 
-```
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┓
-┃ dataset           ┃   genomes ┃ gzip_size ┃ db_size ┃ query           ┃ query_len ┃ genome_hits ┃     time ┃     RAM ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃ GTDB repr         ┃    85,205 ┃     75 GB ┃  110 GB ┃ a MutL gene     ┃  1,956 bp ┃           2 ┃    0.9 s ┃  460 MB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a 16S rRNA gene ┃  1,542 bp ┃      13,466 ┃    4.0 s ┃  765 MB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a plasmid       ┃ 51,466 bp ┃           2 ┃    1.1 s ┃  752 MB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃ GTDB complete     ┃   402,538 ┃    578 GB ┃  507 GB ┃ a MutL gene     ┃  1,956 bp ┃         268 ┃    3.8 s ┃  544 MB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a 16S rRNA gene ┃  1,542 bp ┃     169,480 ┃ 2 m 14 s ┃  2.9 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a plasmid       ┃ 51,466 bp ┃       3,649 ┃     56 s ┃  2.9 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃ Genbank+RefSeq    ┃ 2,340,672 ┃    3.5 TB ┃  2.9 TB ┃ a MutL gene     ┃  1,956 bp ┃         817 ┃   10.0 s ┃  2.3 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a 16S rRNA gene ┃  1,542 bp ┃   1,148,049 ┃ 5 m 34 s ┃ 11.8 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a plasmid       ┃ 51,466 bp ┃      19,265 ┃ 3 m 32 s ┃ 15.7 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃ AllTheBacteria HQ ┃ 1,858,610 ┃    3.1 TB ┃  2.4 TB ┃ a MutL gene     ┃  1,956 bp ┃         404 ┃   18.7 s ┃  2.4 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a 16S rRNA gene ┃  1,542 bp ┃   1,193,874 ┃ 13 m 8 s ┃  9.4 GB ┃
-┣━━━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━╋━━━━━━━━━━━━━╋━━━━━━━━━━╋━━━━━━━━━┫
-┃                   ┃           ┃           ┃         ┃ a plasmid       ┃ 51,466 bp ┃      10,954 ┃ 5 m 25 s ┃  9.7 GB ┃
-┗━━━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━┻━━━━━━━━━━━┻━━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━━━━┻━━━━━━━━━━━━━┻━━━━━━━━━━┻━━━━━━━━━┛
-```
+|dataset          |genomes  |query          |query_len|genome_hits|time    |RAM    |
+|:----------------|--------:|:--------------|--------:|----------:|-------:|------:|
+|GTDB repr        |85,205   |a MutL gene    |1,956 bp |2          |0.9 s   |460 MB |
+|                 |         |a 16S rRNA gene|1,542 bp |13,466     |4.0 s   |765 MB |
+|                 |         |a plasmid      |51,466 bp|2          |1.1 s   |752 MB |
+|GTDB complete    |402,538  |a MutL gene    |1,956 bp |268        |3.8 s   |544 MB |
+|                 |         |a 16S rRNA gene|1,542 bp |169,480    |2 m 14 s|2.9 GB |
+|                 |         |a plasmid      |51,466 bp|3,649      |56 s    |2.9 GB |
+|Genbank+RefSeq   |2,340,672|a MutL gene    |1,956 bp |817        |10.0 s  |2.3 GB |
+|                 |         |a 16S rRNA gene|1,542 bp |1,148,049  |5 m 34 s|11.8 GB|
+|                 |         |a plasmid      |51,466 bp|19,265     |3 m 32 s|15.7 GB|
+|AllTheBacteria HQ|1,858,610|a MutL gene    |1,956 bp |404        |18.7 s  |2.4 GB |
+|                 |         |a 16S rRNA gene|1,542 bp |1,193,874  |13 m 8 s|9.4 GB |
+|                 |         |a plasmid      |51,466 bp|10,954     |5 m 25 s|9.7 GB |
 
 Notes:
 - All files are stored on a server with HDD disks.
@@ -97,6 +89,10 @@ in [release](https://github.com/shenwei356/lexicmap/releases) page.
 Or install with `conda`:
 
     conda install -c bioconda lexicmap
+
+## Algorithm overview
+
+<img src="overview.svg" alt="LexicMap overview" width="800"/>
 
 ## Related projects
 
