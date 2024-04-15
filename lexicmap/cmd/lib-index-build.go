@@ -424,9 +424,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	}
 
 	// 2.2) write genomes to file
+	var nFiles int // the total number of indexed files
 	go func() {
 
 		for refseq := range genomesW { // each genome
+			nFiles++
+
 			// write the genome to file
 			err = gw.Write(refseq)
 			if err != nil {
@@ -643,8 +646,24 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			if len(refseq.Seq) == 0 {
 				genome.PoolGenome.Put(refseq) // important
-				log.Warningf("skipping %s: no valid sequences", file)
-				log.Info()
+				if opt.Verbose || opt.Log2File {
+					log.Warningf("skipping %s: no valid sequences", file)
+					log.Info()
+				}
+				if opt.Verbose {
+					chDuration <- time.Microsecond // important, or the progress bar will get hung
+				}
+				return
+			}
+
+			if refseq.GenomeSize > opt.MaxGenomeSize {
+				genome.PoolGenome.Put(refseq) // important
+				if opt.Verbose || opt.Log2File {
+					log.Warningf("skipping big genome (%d bp): %s", refseq.GenomeSize, file)
+					if !opt.Log2File {
+						log.Info()
+					}
+				}
 				if opt.Verbose {
 					chDuration <- time.Microsecond // important, or the progress bar will get hung
 				}
@@ -765,9 +784,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			Chunks:     opt.Chunks,
 			Partitions: opt.Partitions,
 
-			Genomes:         len(files),
-			GenomeBatchSize: len(files), // just for this batch
-			GenomeBatches:   1,          // just for this batch
+			Genomes:         nFiles,
+			GenomeBatchSize: nFiles, // just for this batch
+			GenomeBatches:   1,      // just for this batch
 			ContigInterval:  opt.ContigInterval,
 		}
 		err = writeIndexInfo(filepath.Join(outdir, FileInfo), info)

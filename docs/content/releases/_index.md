@@ -5,7 +5,7 @@ weight: 30
 
 
 
-## Latest Version
+## Latest version
 
 ### v0.3.0
 
@@ -39,7 +39,7 @@ weight: 30
 - Please run `lexicmap autocompletion` to update shell autocompletion script !!!
 {{< /hint >}}
 
-## Previous Versions
+## Previous versions
 
 
 ### v0.2.0
