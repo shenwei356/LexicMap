@@ -1,0 +1,33 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# data
+t_*
+t.gz
+t.*
+*.fna.gz
+*.xz
+*.zst
+*.bz2
+
+# lexicmap index
+*.bin
+*.idx
+info.toml
+*.png
+
+name.map
+taxid.map
+masks.txt
+
+ont-*

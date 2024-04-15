@@ -20,9 +20,10 @@ LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (
 
 ### Index information
 
-|dataset          |genomes  |gzip_size|db_size|
-|:----------------|--------:|--------:|------:|
-|GTDB representative |**85,205**   |75 GB    |110 GB |
+|dataset          |genomes  |gzip_size|db_size|indexing_time|indexing_RAM|
+|:----------------|--------:|--------:|------:|------------:|-----------:|
+|GTDB repr        |85,205   |75 GB    |110 GB |1 h 25 m     |49 GB       |
+
 
 ### Query performance
 
@@ -38,9 +39,9 @@ LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (
 
 ### Index information
 
-|dataset          |genomes  |gzip_size|db_size|
-|:----------------|--------:|--------:|------:|
-|GTDB complete    |**402,538**  |578 GB   |507 GB |
+|dataset          |genomes  |gzip_size|db_size|indexing_time|indexing_RAM|
+|:----------------|--------:|--------:|------:|------------:|-----------:|
+|GTDB complete    |402,538  |578 GB   |507 GB |5 h 18 m     |46 GB       |
 
 ### Query performance
 
@@ -57,9 +58,9 @@ LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (
 
 ### Index information
 
-|dataset          |genomes  |gzip_size|db_size|
-|:----------------|--------:|--------:|------:|
-|Genbank+RefSeq   |**2,340,672**|3.5 TB   |2.9 TB |
+|dataset          |genomes  |gzip_size|db_size|indexing_time|indexing_RAM|
+|:----------------|--------:|--------:|------:|------------:|-----------:|
+|Genbank+RefSeq   |2,340,672|3.5 TB   |2.9 TB |31 h 19 m    |-           |
 
 ### Query performance
 
@@ -76,9 +77,9 @@ LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (
 
 ### Index information
 
-|dataset          |genomes  |gzip_size|db_size|
-|:----------------|--------:|--------:|------:|
-|AllTheBacteria HQ|**1,858,610**|3.1 TB   |2.4 TB |
+|dataset          |genomes  |gzip_size|db_size|indexing_time|indexing_RAM|
+|:----------------|--------:|--------:|------:|------------:|-----------:|
+|AllTheBacteria HQ|1,858,610|3.1 TB   |2.4 TB |16 h 24 m    |70 GB       |
 
 ### Query performance
 

@@ -23,28 +23,10 @@ docs/public
 docs/themes
 .hugo_build.lock
 
+demo/demo.lmi
+demo/*.lexicmap.tsv.gz
 
 lexicmap/binaries/*
 lexicmap/lexicmap*
 lexicmap/*.fasta
 lexicmap/indexes
-name.map
-taxid.map
-masks.txt
-
-# data
-t_*
-t.gz
-t.*
-*.fna.gz
-*.xz
-*.zst
-*.bz2
-*.bin
-IDs.txt
-info.txt
-*.2bit*
-*.gz
-*.png
-
-ont-*

@@ -66,7 +66,7 @@ Important parameters:
                        This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -n/--top-n, and -P/--prefix-ext.
   1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
                        ► Bigger values improve the search specificity and do not increase the index size.
-  2. -m/--masks,       ► Number of masks (default: 20000).
+  2. -m/--masks,       ► Number of masks (default: 40000).
                        ► Bigger values improve the search sensitivity and increase the index size.
   3. -n/--top-n,       ► The top N largest genomes for generating mask (default 20).
                        ► Bigger values increase the indexing memory occupation (1.0~1.5 GB per genome for 20k masks).
@@ -387,7 +387,7 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "m", 20000,
+	indexCmd.Flags().IntP("masks", "m", 40000,
 		formatFlagUsage(`Number of masks.`))
 
 	indexCmd.Flags().IntP("rand-seed", "s", 1,

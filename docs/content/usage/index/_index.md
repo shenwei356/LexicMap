@@ -34,7 +34,7 @@ Important parameters:
                        This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -n/--top-n, and -P/--prefix-ext.
   1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
                        ► Bigger values improve the search specificity and do not increase the index size.
-  2. -m/--masks,       ► Number of masks (default: 20000).
+  2. -m/--masks,       ► Number of masks (default: 40000).
                        ► Bigger values improve the search sensitivity and increase the index size.
   3. -n/--top-n,       ► The top N largest genomes for generating mask (default 20).
                        ► Bigger values increase the indexing memory occupation (1.0~1.5 GB per genome for 20k masks).
@@ -78,7 +78,7 @@ Flags:
   -k, --kmer int                  ► Maximum k-mer size. K needs to be <= 32. (default 31)
   -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
                                   -s/--rand-seed, --prefix, -n/--top-n, and -P/--prefix-ext.
-  -m, --masks int                 ► Number of masks. (default 20000)
+  -m, --masks int                 ► Number of masks. (default 40000)
   -g, --max-genome int            ► Maximum genome size. Extremely large genomes (non-isolate
                                   assemblies) will be skipped. (default 15000000)
       --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
