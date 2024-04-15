@@ -1,4 +1,4 @@
-## <img src="logo.svg" width="22"/> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
+## <img src="logo.svg" width="30"/> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
 LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
 
