@@ -27,3 +27,8 @@ enableRobotsTXT = true
 
 [taxonomies]
    tag = "tags"
+
+[params]
+  geekdocToC = 3
+
+  geekdocLogo = "logo.svg"

@@ -1,10 +1,10 @@
 ---
-title: LexicMap
+title:
 geekdocNav: false
 geekdocAlign: center
 geekdocAnchor: false
 ---
-
+# <img src="logo.svg" width="50"/> LexicMap
 <!-- markdownlint-capture -->
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-restore -->
