@@ -57,19 +57,20 @@ Input files can be given via one of the below ways:
 LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
 
 - **CPU:**
-    - No specific requirements.
-    - More is better as LexicMap is a CPU-intensive software.
+    - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
+    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
 - **RAM**
-    - More RAM is prefered. The memory usage in index building mainly depends on:
+    - More RAM (> 50 GB) is preferred. The memory usage in index building is related to:
         - The number of masks (`-m, --masks`, default 40,000).
         - The number of genome.
         - The divergence between genome sequences.
         - The genome batch size  (`-b/--batch-size`, default 10,000).
-    - If the RAM is not big sufficient (< 50 GB). Please:
-        1. Use smaller genome batch size.
-        2.
-
+    - If the RAM is not sufficient (< 50 GB). Please:
+        1. Use a smaller genome batch size. It decreases indexing memory occupation and has little effect on searching performance.
+        2. Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (< 2kb), there's little affection for the alignment results.
 - **Disk**
+    - More (>2 TB) is better. The index size is related to the input genomes and the number of masks. See [some examples](#index-size).
+    - SSD disks are preferred, HDD disks are also fast.
 
 ## Algorithm
 

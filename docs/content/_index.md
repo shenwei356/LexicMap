@@ -10,12 +10,11 @@ geekdocAnchor: false
 <!-- markdownlint-restore -->
 
 [![Latest Version](https://img.shields.io/github/release/shenwei356/LexicMap.svg?style=flat?maxAge=86400)](https://github.com/shenwei356/LexicMap/releases)
-[![Github Releases](https://img.shields.io/github/downloads/shenwei356/LexicMap/latest/total.svg?maxAge=3600)](http://bioinf.shenwei.me/LexicMap/download/)
 [![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
-[![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/download/)
+[![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
 
 
-## LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
+## LexicMap is a sequence alignment tool aiming to efficiently query gene or plasmid sequences against up to millions of prokaryotic genomes.
 
 
 {{< button size="large" relref="quick-start" >}}Quick start{{< /button >}}
@@ -27,6 +26,8 @@ geekdocAnchor: false
 {{< columns >}}
 
 ### Easy to install
+
+Both x86 and ARM CPUs are supported. Just install it by
 
     conda install -c bioconda lexicmap
 
@@ -47,9 +48,10 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
 {{< button size="small" relref="introduction" >}}More details{{< /button >}}
-{{< button size="small" relref="tutorials" >}}Tutorials{{< /button >}}
-{{< button size="small" relref="usage" >}}Usages{{< /button >}}
+{{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
+{{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}
+{{< button size="small" relref="notes/motivation" >}}Notes{{< /button >}}
 
 <--->
 

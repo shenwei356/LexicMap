@@ -102,7 +102,7 @@ Notes:
 
 ## Algorithm overview
 
-<img src="/LexicMap/overview.svg" alt="LexicMap overview" width="800"/>
+<img src="/LexicMap/overview.svg" alt="LexicMap overview" width="900"/>
 
 
 ## Related projects

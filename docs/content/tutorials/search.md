@@ -49,6 +49,19 @@ Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
     3. Filtering aligned segments and the whole HSPs (all alignment segments) based on user options.
        - For these HSPs that accross more than one reference sequences, splitting them into multiple HSPs.
 
+## Hardware requirements
+
+LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
+
+- **CPU:**
+    - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
+    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
+- **RAM**
+    - More RAM (> 50 GB) is preferred. The memory usage in searching is related to:
+    - If the RAM is not sufficient (< 10 GB). Please:
+- **Disk**
+
+
 ## Parameters
 
 {{< tabs "t1" >}}

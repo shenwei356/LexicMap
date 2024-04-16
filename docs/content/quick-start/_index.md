@@ -3,7 +3,11 @@ title: Quick start
 weight: 10
 ---
 
-**Building an index** (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
+**Installing LexicMap** (see [installation](http://bioinf.shenwei.me/LexicMap/installation/)).
+
+    conda install -c bioconda lexicmap
+
+**Building an index** (see the tutorial of [building an index](http://bioinf.shenwei.me/LexicMap/tutorials/index/)).
 
     # From a directory with multiple genome files
     lexicmap index -I genomes/ -O db.lmi
@@ -11,7 +15,7 @@ weight: 10
     # From a file list with one file per line
     lexicmap index -X files.txt -O db.lmi
 
-**Querying** (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
+**Querying** (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tutorials/search/)).
 
     # For short queries like genes or long reads, returning top N hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
@@ -22,7 +26,7 @@ weight: 10
         --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 
-**Sample output** (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
+**Sample output** (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output).
 
 ```plain
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -48,4 +52,4 @@ weight: 10
 Note: the column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
 ```
 
-Learn more [tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/).
+Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
