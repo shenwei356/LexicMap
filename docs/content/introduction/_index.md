@@ -60,7 +60,7 @@ LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (
 
 |dataset          |genomes  |gzip_size|db_size|indexing_time|indexing_RAM|
 |:----------------|--------:|--------:|------:|------------:|-----------:|
-|Genbank+RefSeq   |2,340,672|3.5 TB   |2.9 TB |31 h 19 m    |-           |
+|Genbank+RefSeq   |2,340,672|3.5 TB   |2.9 TB |31 h 19 m    |148 GB      |
 
 ### Query performance
 
@@ -102,7 +102,7 @@ Notes:
 
 ## Algorithm overview
 
-<img src="/LexicMap/img/overview.svg" alt="LexicMap overview" width="800"/>
+<img src="/LexicMap/overview.svg" alt="LexicMap overview" width="800"/>
 
 
 ## Related projects

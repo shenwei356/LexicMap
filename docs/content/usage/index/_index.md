@@ -8,8 +8,8 @@ $ lexicmap index -h
 Generate an index from FASTA/Q sequences
 
 Input:
- *1. Sequences of each reference genome should be saved in a separate FASTA/Q file, with the reference
-     identifier in the file name.
+ *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
+     in the file names.
   2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
      with the list of input files.
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level

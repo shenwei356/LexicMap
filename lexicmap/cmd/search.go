@@ -47,8 +47,8 @@ Alignment result relationship:
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── High-Scoring Pair (HSP)
-              ├── HSP fragment
+          ├── High-Scoring segment Pairs (HSP)
+              ├── HSP segment
 
 Output format:
   Tab-delimited format with 18 columns. (The positions are 1-based).
@@ -63,14 +63,14 @@ Output format:
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     9.  hsp,      Nth HSP in the genome.
     10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    11. alen,     Aligned length in current HSP, a HSP might have >=1 HSP fragments.
-    12. alenFrag, Aligned length in current HSP fragment.
-    13. pident,   Percentage of identical matches in current HSP fragment.
+    11. alen,     Aligned length in the current HSP, a HSP might have >=1 HSP segments.
+    12. alenSeg,  Aligned length in the current HSP segment.
+    13. pident,   Percentage of identical matches in the current HSP segment.
     14. slen,     Subject sequence length.
-    15. sstart,   Start of HSP fragment in subject sequence.
-    16. send,     End of HSP fragment in subject sequence.
+    15. sstart,   Start of HSP segment in subject sequence.
+    16. send,     End of HSP segment in subject sequence.
     17. sstr,     Subject strand.
-    18. seeds,    Number of seeds in current HSP.
+    18. seeds,    Number of seeds in the current HSP.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -250,7 +250,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\tsgnms\tsgnm\tseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenFrag\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\tsgnms\tsgnm\tseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
 
 		printResult := func(q *Query) {
 			total++
@@ -459,16 +459,16 @@ func init() {
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment`))
 
 	mapCmd.Flags().IntP("align-max-gap", "", 50,
-		formatFlagUsage(`Maximum gap in a HSP fragment`))
+		formatFlagUsage(`Maximum gap in a HSP segment`))
 	mapCmd.Flags().IntP("align-max-mismatch", "", 50,
-		formatFlagUsage(`Maximum mismatch in a HSP fragment`))
+		formatFlagUsage(`Maximum mismatch in a HSP segment`))
 	mapCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
-		formatFlagUsage(`Minimum aligned length in a HSP fragment`))
+		formatFlagUsage(`Minimum aligned length in a HSP segment`))
 
 	mapCmd.Flags().Float64P("align-min-match-pident", "i", 70,
-		formatFlagUsage(`Minimum base identity (percentage) in a HSP fragment.`))
+		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
 	mapCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))

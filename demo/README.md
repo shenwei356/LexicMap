@@ -202,8 +202,8 @@ Here we create a `species` column from the genome ID column (`sgnm`) and replace
         | csvtk replace -t -f species -k ass2species.map -p '(.+)' -r '{kv}' \
         | csvtk pretty -t
 
-    query                         qlen   qstart   qend   sgnms   sgnm              seqid           qcovGnm   hsp   qcovHSP   alenHSP   alenFrag   pident   slen      sstart    send      sstr   seeds   species
-    ---------------------------   ----   ------   ----   -----   ---------------   -------------   -------   ---   -------   -------   --------   ------   -------   -------   -------   ----   -----   --------------------
+    query                         qlen   qstart   qend   sgnms   sgnm              seqid           qcovGnm   hsp   qcovHSP   alenHSP   alenSeg    pident   slen      sstart    send      sstr   seeds   species
+    ---------------------------   ----   ------   ----   -----   ---------------   -------------   -------   ---   -------   -------   -------    ------   -------   -------   -------   ----   -----   --------------------
     NC_000913.3:4166659-4168200   1542   1        1542   12      GCF_003697165.2   NZ_CP033092.2   100.000   1     99.287    1542      1542       99.287   4903501   3780640   3782181   -      25      Escherichia coli
     NC_000913.3:4166659-4168200   1542   1        1542   12      GCF_003697165.2   NZ_CP033092.2   100.000   2     99.287    1542      1542       99.287   4903501   4551515   4553056   -      25      Escherichia coli
     NC_000913.3:4166659-4168200   1542   1        1542   12      GCF_003697165.2   NZ_CP033092.2   100.000   3     99.287    1542      1542       99.287   4903501   4591684   4593225   -      25      Escherichia coli

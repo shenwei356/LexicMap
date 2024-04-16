@@ -3,7 +3,7 @@ title: Quick start
 weight: 10
 ---
 
-Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
+**Building an index** (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
 
     # From a directory with multiple genome files
     lexicmap index -I genomes/ -O db.lmi
@@ -11,7 +11,7 @@ Building an index (see the tutorial of [building an index](http://bioinf.shenwei
     # From a file list with one file per line
     lexicmap index -X files.txt -O db.lmi
 
-Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
+**Querying** (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
 
     # For short queries like genes or long reads, returning top N hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
@@ -22,11 +22,11 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tuto
         --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 
-Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
+**Sample output** (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
 
 ```plain
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- query                qlen   qstart   qend   sgnms   sgnm              seqid               qcovGnm   hsp   qcovHSP   alenHSP   alenFrag   pident    slen      sstart    send      sstr   seeds   species
+ query                qlen   qstart   qend   sgnms   sgnm              seqid               qcovGnm   hsp   qcovHSP   alenHSP   alenSeg    pident    slen      sstart    send      sstr   seeds   species
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
  ERR5396170.1000016   740    71       733    1       GCF_013394085.1   NZ_CP040910.1       89.595    1     89.595    663       663        98.492    1887974   13515     14177     +      19      Limosilactobacillus fermentum
  ERR5396170.1000017   516    27       514    1       GCF_013394085.1   NZ_CP040910.1       94.574    1     94.574    488       488        100.000   1887974   293509    293996    +      6       Limosilactobacillus fermentum

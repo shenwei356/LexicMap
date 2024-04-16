@@ -15,8 +15,8 @@ Alignment result relationship:
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── High-Scoring Pair (HSP)
-              ├── HSP fragment
+          ├── High-Scoring segment Pairs (HSP)
+              ├── HSP segment
 
 Output format:
   Tab-delimited format with 18 columns. (The positions are 1-based).
@@ -31,14 +31,14 @@ Output format:
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     9.  hsp,      Nth HSP in the genome.
     10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    11. alen,     Aligned length in current HSP, a HSP might have >=1 HSP fragments.
-    12. alenFrag, Aligned length in current HSP fragment.
-    13. pident,   Percentage of identical matches in current HSP fragment.
+    11. alen,     Aligned length in the current HSP, a HSP might have >=1 HSP segments.
+    12. alenSeg,  Aligned length in the current HSP segment.
+    13. pident,   Percentage of identical matches in the current HSP segment.
     14. slen,     Subject sequence length.
-    15. sstart,   Start of HSP fragment in subject sequence.
-    16. send,     End of HSP fragment in subject sequence.
+    15. sstart,   Start of HSP segment in subject sequence.
+    16. send,     End of HSP segment in subject sequence.
     17. sstr,     Subject strand.
-    18. seeds,    Number of seeds in current HSP.
+    18. seeds,    Number of seeds in the current HSP.
 
 Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
@@ -47,10 +47,10 @@ Flags:
       --align-band int                 ► Band size in backtracking the score matrix (default 100)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
                                        extracting query and target sequences for alignment (default 2000)
-      --align-max-gap int              ► Maximum gap in a HSP fragment (default 50)
-      --align-max-mismatch int         ► Maximum mismatch in a HSP fragment (default 50)
-  -l, --align-min-match-len int        ► Minimum aligned length in a HSP fragment (default 50)
-  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP fragment. (default 70)
+      --align-max-gap int              ► Maximum gap in a HSP segment (default 50)
+      --align-max-mismatch int         ► Maximum mismatch in a HSP segment (default 50)
+  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment (default 50)
+  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.

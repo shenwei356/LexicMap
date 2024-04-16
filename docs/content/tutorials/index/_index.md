@@ -7,11 +7,26 @@ weight: 0
 
 {{< toc format=html >}}
 
+## TL;DR
+
+1. Input files: **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
+2. Run:
+
+        # From a directory with multiple genome files
+        lexicmap index -I genomes/ -O db.lmi
+
+        # From a file list with one file per line
+        lexicmap index -X files.txt -O db.lmi
+
+
 ## Input
 
-LexicMap is designed for small genomes like Archaea, Bacteria, Viruses and plasmids.
+{{< hint type=note >}}
+**Genome size**\
+LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.
+{{< /hint >}}
 
-**Sequences of each reference genome should be saved in a separate FASTA/Q file, with the identifier in the file name**.
+**Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
 
 - **File type**: FASTA/Q files, in plain text or gzip-compressed format.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fa.gz`.
@@ -37,7 +52,28 @@ Input files can be given via one of the below ways:
     - Multiple-level directories are supported.
     - Directory and file symlinks are followed.
 
-## How
+## Hardware requirements
+
+LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
+
+- **CPU:**
+    - No specific requirements.
+    - More is better as LexicMap is a CPU-intensive software.
+- **RAM**
+    - More RAM is prefered. The memory usage in index building mainly depends on:
+        - The number of masks (`-m, --masks`, default 40,000).
+        - The number of genome.
+        - The divergence between genome sequences.
+        - The genome batch size  (`-b/--batch-size`, default 10,000).
+    - If the RAM is not big sufficient (< 50 GB). Please:
+        1. Use smaller genome batch size.
+        2.
+
+- **Disk**
+
+## Algorithm
+
+<img src="/LexicMap/indexing.svg" alt="" width="900"/>
 
 1. **Generating [LexicHash masks](https://doi.org/10.1093/bioinformatics/btad652)**.
 
@@ -74,7 +110,7 @@ Input files can be given via one of the below ways:
         3. Concatenating all sequences, with intervals of 1000-bp N's.
         4. Capureing the most similar k-mer for each mask and saving k-mer and its location(s) and strand information.
         5. Saving the concatenated genome sequence (bit-packed, 2 bits for one base) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.
-    2. Compressing k-mer and the corresponding data (k-mer-data, or seeds data) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
+    2. Compressing k-mer and the corresponding data (k-mer-data, or seeds data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
     3. Writing summary information into `info.toml` file.
 
 3. **Merging indexes of multiple batches**.
@@ -119,10 +155,6 @@ Input files can be given via one of the below ways:
 
 {{< /tabs >}}
 
-{{< hint type=note >}}
-**Genome size**\
-LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.
-{{< /hint >}}
 
 ## Steps
 
@@ -166,23 +198,24 @@ We use a small dataset for demonstration.
     │   └── batch_0000           # genome data of a batch
     │       ├── genomes.bin      # genome data file, containing genome ID, size, sequence lengths, bit-packed sequences
     │       └── genomes.bin.idx  # index of genome data file, for fast subsequence extraction
+    ├── seeds                    # seed data: pairs of k-mer and its location information (genome batch, genome number, location, strand)
+    │   ├── chunk_000.bin        # seed data file
+    │   ├── chunk_000.bin.idx    # index of seed data file, for fast seed searching and data extraction
+    ... ... ...
+    │   ├── chunk_015.bin        # the number of chunks is set by flag `-c/--chunks`, default: #cpus
+    │   └── chunk_015.bin.idx
     ├── genomes.map.bin          # mapping genome ID to batch number of genome number in the batch
     ├── info.toml                # summary of the index
     ├── masks.bin                # mask data
-    └── seeds                    # seed data: pairs of k-mer and its location information (genome batch, genome number, location, strand)
-        ├── chunk_000.bin        # seed data file
-        ├── chunk_000.bin.idx    # index of seed data file, for fast seed searching and data extraction
-        ├── chunk_001.bin
-        ├── chunk_001.bin.idx
-        ...
 
-### File sizes
+### Index size
 
 
 {{< tabs "t2" >}}
 
 {{< tab "Demo data" >}}
 
+    # 15 genomes
     $ dirsize  demo.lmi/
     demo.lmi/: 26.63 MB
       13.39 MB      seeds
@@ -195,6 +228,7 @@ We use a small dataset for demonstration.
 
 {{< tab "GTDB repr" >}}
 
+    # 85,205 genomes
     gtdb_repr.lmi: 109.16 GB
       66.79 GB      genomes
       42.37 GB      seeds
@@ -206,6 +240,7 @@ We use a small dataset for demonstration.
 
 {{< tab "GTDB complete" >}}
 
+    # 402,538 genomes
     gtdb_complete.lmi: 506.57 GB
      362.99 GB      genomes
      143.57 GB      seeds
@@ -218,6 +253,7 @@ We use a small dataset for demonstration.
 
 {{< tab "Genbank+RefSeq" >}}
 
+    # 2,340,672 genomes
     genbank_refseq.lmi: 2.90 TB
        2.17 TB      genomes
      754.04 GB      seeds
@@ -230,6 +266,7 @@ We use a small dataset for demonstration.
 
 {{< tab "AllTheBacteria HQ" >}}
 
+    # 1,858,610 genomes
     2kk-HQ.lmi: 2.32 TB
        1.77 TB      genomes
      563.16 GB      seeds
@@ -241,4 +278,4 @@ We use a small dataset for demonstration.
 
 {{< /tabs >}}
 
-Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others
+Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
