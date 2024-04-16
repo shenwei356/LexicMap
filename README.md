@@ -77,7 +77,7 @@ Learn more [tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [
 Notes:
 - All files are stored on a server with HDD disks.
 - Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).
-- Index building parameters: `-k31 -m 40000`. Tenome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
+- Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
 - Searching parameters: `--top-n-genomes 0 --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0`.
 
 ## Installation

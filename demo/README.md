@@ -65,7 +65,7 @@ Overview
 
 ## Building an index
 
-Here we just use the top 5 biggest genome for computating masks, for saving memory.
+Here we just use the top 5 biggest genomes for computating masks, for saving memory.
 
     $ lexicmap index -I refs/ -O demo.lmi -n 5
     08:36:24.378 [INFO] removing old output directory: demo.lmi

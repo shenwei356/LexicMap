@@ -68,7 +68,7 @@ Important parameters:
                        ► Bigger values improve the search specificity and do not increase the index size.
   2. -m/--masks,       ► Number of masks (default: 40000).
                        ► Bigger values improve the search sensitivity and increase the index size.
-  3. -n/--top-n,       ► The top N largest genomes for generating mask (default 20).
+  3. -n/--top-n,       ► The top N largest genomes for generating masks (default 20).
                        ► Bigger values increase the indexing memory occupation (1.0~1.5 GB per genome for 20k masks).
   4. -P/--prefix-ext,  ► Extension length of prefixes (default 8).
                        ► Bigger values improve the search sensitivity by decreasing the maximum seed distances.

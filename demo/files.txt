@@ -1,0 +1,15 @@
+refs/GCF_000006945.2.fa.gz
+refs/GCF_000017205.1.fa.gz
+refs/GCF_000148585.2.fa.gz
+refs/GCF_000392875.1.fa.gz
+refs/GCF_000742135.1.fa.gz
+refs/GCF_001027105.1.fa.gz
+refs/GCF_001096185.1.fa.gz
+refs/GCF_001457655.1.fa.gz
+refs/GCF_001544255.1.fa.gz
+refs/GCF_002949675.1.fa.gz
+refs/GCF_002950215.1.fa.gz
+refs/GCF_003697165.2.fa.gz
+refs/GCF_006742205.1.fa.gz
+refs/GCF_009759685.1.fa.gz
+refs/GCF_900638025.1.fa.gz
