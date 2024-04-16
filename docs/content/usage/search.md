@@ -63,9 +63,9 @@ Flags:
       --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
   -m, --seed-max-mismatch int          ► Minimum mismatch between non-prefix regions of shared
                                        substrings. (default -1)
-  -p, --seed-min-prefix int            ► Minimum length of shared substrings (seeds). (default 15)
-  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings if there's only one pair.
-                                       (default 20)
+  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
+  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there's only
+                                       one pair. (default 20)
   -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 500)
 
 Global Flags:

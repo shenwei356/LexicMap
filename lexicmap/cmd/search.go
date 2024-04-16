@@ -434,10 +434,10 @@ func init() {
 	// seed searching
 
 	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
-		formatFlagUsage(`Minimum length of shared substrings (seeds).`))
+		formatFlagUsage(`Minimum length of shared substrings (anchors).`))
 
 	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 20,
-		formatFlagUsage(`Minimum length of shared substrings if there's only one pair.`))
+		formatFlagUsage(`Minimum length of shared substrings (anchors) if there's only one pair.`))
 
 	mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
 		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings.`))
