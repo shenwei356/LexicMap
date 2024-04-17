@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Usage on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <link>https://bioinf.shenwei.me/LexicMap/usage/</link>
+    <description>Recent content in Usage on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <atom:link href="https://bioinf.shenwei.me/LexicMap/usage/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>search</title>
+      <link>https://bioinf.shenwei.me/LexicMap/usage/search/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/usage/search/</guid>
+      <description>$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4.</description>
+    </item>
+    <item>
+      <title>lexicmap</title>
+      <link>https://bioinf.shenwei.me/LexicMap/usage/lexicmap/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/usage/lexicmap/</guid>
+      <description>$ lexicmap -h LexicMap: efficient sequence alignment against millions of prokaryotic genomes Version: v0.3.0 Documents: https://bioinf.shenwei.me/LexicMap Source code: https://github.com/shenwei356/LexicMap Usage: lexicmap [command] Available Commands: autocompletion Generate shell autocompletion script index Generate an index from FASTA/Q sequences search Search sequences against an index utils Some utilities version Print version information and check for update Flags: -h, --help help for lexicmap -X, --infile-list string ► File of input files list (one file per line).</description>
+    </item>
+  </channel>
+</rss>

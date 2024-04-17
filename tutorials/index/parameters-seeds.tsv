@@ -1,0 +1,4 @@
+Flag	Value	Function	Comment
+`-c/--chunks`	Maximum: 128, default: #CPUs	Number of seed file chunks	Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.
+`-p/--partitions`	Default: 512	Number of partitions for indexing each seed file	Bigger values bring higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in `lexicmap search`. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.
+`--max-open-files`	Default: 512	Maximum number of open files	It's only used in merging indexes of multiple genome batches.
