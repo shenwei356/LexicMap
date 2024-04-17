@@ -297,7 +297,7 @@ func init() {
 	geneMasksCmd.Flags().BoolP("skip-file-check", "S", false,
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
-	geneMasksCmd.Flags().IntP("max-genome", "g", 20000000,
+	geneMasksCmd.Flags().IntP("max-genome", "g", 15000000,
 		formatFlagUsage(`Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped.`))
 
 	// geneMasksCmd.Flags().IntP("contig-interval", "", 1000,
@@ -319,7 +319,7 @@ func init() {
 	geneMasksCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	geneMasksCmd.Flags().IntP("masks", "m", 20000,
+	geneMasksCmd.Flags().IntP("masks", "m", 40000,
 		formatFlagUsage(`Number of masks.`))
 
 	geneMasksCmd.Flags().IntP("rand-seed", "s", 1,

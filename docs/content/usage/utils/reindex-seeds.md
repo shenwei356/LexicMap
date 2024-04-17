@@ -29,3 +29,13 @@ Global Flags:
 ```
 
 ## Examples
+
+
+    $ lexicmap utils reindex-seeds -d demo.lmi/ -p 1024
+    10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/
+    processed files:  16 / 16 [======================================] ETA: 0s. done
+    10:20:29.166 [INFO] update index information file: demo.lmi/info.toml
+    10:20:29.166 [INFO]   finished updating the index information file: demo.lmi/info.toml
+    10:20:29.166 [INFO]
+    10:20:29.166 [INFO] elapsed time: 15.981266ms
+    10:20:29.166 [INFO]

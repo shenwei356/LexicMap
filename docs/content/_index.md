@@ -47,7 +47,7 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
     # searching
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
-{{< button size="small" relref="introduction" >}}More details{{< /button >}}
+{{< button size="small" relref="introduction" >}}Introduction{{< /button >}}
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
 {{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}
@@ -57,7 +57,7 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
 
 ### Efficient search
 
-Querying a 51.5-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only 3 minutes and 32 seconds with 15.7 GB RAM and 48 CPUs, with 19,265 genome hits returned.
+Querying a **51.5-kb plasmid** in **all <ins>2,340,672</ins> Genbank+Refseq prokaryotic genomes** takes only <ins>**3 minutes and 32 seconds with 15.7 GB RAM**</ins> and 48 CPUs, with <ins>**19,265 genome hits**</ins> returned.
 
 {{< button size="small" relref="introduction/#performance" >}}Performance{{< /button >}}
 

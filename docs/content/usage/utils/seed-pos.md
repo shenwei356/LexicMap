@@ -47,4 +47,88 @@ Global Flags:
 
 ## Examples
 
+1. Adding the flag `--save-seed-pos` in index building.
+
+        $ lexicmap index -I refs/ -O demo.lmi --top-n 3 --save-seed-pos --force
+
+2. Listing seed position of one genome.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv
+
+        $ head -n 10 seed_distance.tsv | csvtk pretty -t
+        ref               pos   strand   distance
+        ---------------   ---   ------   --------
+        GCF_000006945.2   113   +        112
+        GCF_000006945.2   291   -        178
+        GCF_000006945.2   297   -        6
+        GCF_000006945.2   299   -        2
+        GCF_000006945.2   322   +        23
+        GCF_000006945.2   340   +        18
+        GCF_000006945.2   389   +        49
+        GCF_000006945.2   533   -        144
+        GCF_000006945.2   598   -        65
+
+    Check the biggest seed distances.
+
+        $ csvtk freq -t -f distance seed_distance.tsv \
+            | csvtk sort -t -k distance:nr \
+            | head -n 20 \
+            | csvtk pretty -t
+
+        distance   frequency
+        --------   ---------
+        1586       1
+        1434       1
+        1418       1
+        1398       1
+        1282       2
+        1268       1
+        1261       1
+        1233       1
+        1175       1
+        1166       1
+        1158       1
+        1129       1
+        1106       1
+        1079       2
+        1074       1
+        1066       1
+        1060       1
+        1041       1
+        1034       2
+
+    Plot the histogram of distances between seeds.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv  --plot-dir seed_distance
+
+    <img src="/LexicMap/GCF_000006945.2.png" alt="" width="600"/>
+
+3. Listing seed position of all genomes.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz
+
+    Show the number of seed positions in each genome.
+
+        $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
+        ref               frequency
+        ---------------   ---------
+        GCF_002950215.1   43149
+        GCF_002949675.1   42888
+        GCF_001457655.1   42444
+        GCF_006742205.1   42050
+        GCF_900638025.1   41939
+        GCF_001027105.1   41925
+        GCF_000392875.1   41487
+        GCF_009759685.1   41058
+        GCF_000148585.2   41029
+        GCF_000017205.1   41012
+        GCF_000006945.2   41002
+        GCF_003697165.2   40785
+        GCF_000742135.1   40632
+        GCF_001096185.1   40234
+        GCF_001544255.1   40188
+
+    Plot the histograms of distances between seeds for all genomes.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
 

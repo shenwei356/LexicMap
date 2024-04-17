@@ -9,13 +9,19 @@ weight: 10
 
 ## TL;DR
 
-    # For short queries like genes or long reads, returning top N hits.
-    lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
+1. [Build](https://bioinf.shenwei.me/LexicMap/tutorials/index) or download a LexicMap index.
 
-    # For longer queries like plasmids, returning all hits.
-    lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
+1. Run:
+
+    - For short queries like genes or long reads, returning top N hits.
+
+          lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
+              --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
+
+    - For longer queries like plasmids, returning all hits.
+
+          lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
+              --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 ## Input
 
@@ -27,18 +33,34 @@ However, some short queries can also be aligned.
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
 
+
+## Hardware requirements
+
+LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
+
+- **CPU:**
+    - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
+    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
+- **RAM**
+    - More RAM (> 16 GB) is preferred. The memory usage in searching is mainly related to:
+        - The number of matched genomes and sequences.
+        - The length of query sequences.
+- **Disk**
+    - Sufficient space is required to store the index size.
+    - No temporary files are generated during searching.
+
 ## Algorithm
 
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
 
 1. **Masking:**
-   Query sequence is masked by the masks of the index. In other way, each mask captures the most similar k-mer and stores its posistion and strand information.
+   Query sequence is masked by the masks of the index. In other word, each mask captures the most similar k-mer and stores its posistion and strand information.
 1. **Seeding:**
    For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least *p* bases.
     1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
-       For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers from `CATGAA` to `CATGTT`.
-    2. **Finding the nearest offset**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and is read in RAM.
-       The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary searching, i.e., `CATCAC` (blue text in the fingure), and the offset is returned.
+       For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
+    2. **Finding the nearest offset**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
+       The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the fingure), and the offset is returned as the start position in traversing the seed data file.
     3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
 1. **Chaining:**
     1. Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.
@@ -49,20 +71,6 @@ Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
     3. Filtering aligned segments and the whole HSPs (all alignment segments) based on user options.
        - For these HSPs that accross more than one reference sequences, splitting them into multiple HSPs.
 
-## Hardware requirements
-
-LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
-
-- **CPU:**
-    - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
-    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
-- **RAM**
-    - More RAM (> 16 GB) is preferred. The memory usage in searching is related to:
-        - The number of matched genomes and sequences.
-        - The length of query sequences.
-- **Disk**
-    - Sufficient space is required to store the index size.
-    - No temporary files are generated during searching.
 
 ## Parameters
 
@@ -167,7 +175,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     ├── Subject genome                             # A query might have one or more genome hits,
         ├── Subject sequence                       # in different sequences.
             ├── High-Scoring segment Pairs (HSP)   # HSP is a cluster of alignment segments.
-                ├── HSP segment                    # a local alignment with no gaps.
+                ├── HSP segment                    # A local alignment with no gaps.
 
 Here, the defination of HSP is slightly different from that in BLAST.
 
@@ -204,7 +212,7 @@ Tab-delimited format with 18 columns. (The positions are 1-based).
 
 {{< tab "A 16S rRNA gene" >}}
 
-The (part) result shows the 16S rRNA gene has 12 genome hits (column `sgnms`). And in genome `GCF_003697165.2`, it has 6 highly similar matches with query coverage per HSP (column `qcovHSP`) > 99% and percentage of identity (`pident`) > 99%.
+The (part) result shows the 16S rRNA gene has 12 genome hits (column `sgnms`). And in genome `GCF_003697165.2`, it has 7 highly similar matches with query coverage per HSP (column `qcovHSP`) > 99% and percentage of identity (`pident`) > 99%. It makes sense as 16S rRNA genes might have multiple copies in a genome.
 
 ```plain
 query                         qlen   qstart   qend   sgnms   sgnm              seqid           qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident   slen      sstart    send      sstr   seeds

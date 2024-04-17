@@ -1,6 +1,7 @@
 ---
 title: utils
 weight: 40
+geekdocCollapseSection: true
 ---
 
 ```plain
@@ -30,3 +31,5 @@ Global Flags:
   -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
                              (default 16)
 ```
+
+Output (TSV format) are formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).

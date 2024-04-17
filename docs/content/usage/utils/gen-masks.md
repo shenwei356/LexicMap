@@ -32,9 +32,9 @@ Flags:
   -h, --help                      help for gen-masks
   -I, --in-dir string             ► Directory containing FASTA/Q files. Directory symlinks are followed.
   -k, --kmer int                  ► Maximum k-mer size. K needs to be <= 32. (default 31)
-  -m, --masks int                 ► Number of masks. (default 20000)
+  -m, --masks int                 ► Number of masks. (default 40000)
   -g, --max-genome int            ► Maximum genome size. Extremely large genomes (non-isolate
-                                  assemblies) will be skipped. (default 20000000)
+                                  assemblies) will be skipped. (default 15000000)
   -o, --out-file string           ► Out file of generated masks. The ".gz" suffix is not recommended.
                                   ("-" for stdout). (default "-")
   -P, --prefix-ext int            ► Extension length of prefixes, higher values -> smaller maximum
@@ -62,3 +62,19 @@ Global Flags:
 ```
 
 ## Examples
+
+This command only generate masks, the flags are the same as these in `lexicmap index`.
+
+    $ lexicmap utils gen-masks -I refs/ -k 31 --top-n 3 --masks 40000 -o masks.txt
+
+    $ head -n 10 masks.txt
+    AAAAAAACAGGGGCACGACGGTTTATGAGCT
+    AAAAAACCGCCGGCCAGGGAAAGCTCATGCC
+    AAAAAAGCCCCGCGAGACAAAGCGAAAATAG
+    AAAAAATACTGTCTGGCTAGCGTTTCGGGGA
+    AAAAACAACCTTGCTTCGTCGTTCCAGTGCC
+    AAAAACCCATCACTTCTGTGGCCGGTGTATC
+    AAAAACGCAACTGAAGACGCCGACAAACTCT
+    AAAAACTCCATGAAACCCACAATATAAATAG
+    AAAAAGAAACGCTCAATAATTTGTATGGTTT
+    AAAAAGCCGCGCGGTTCAGATGGACGGCATT

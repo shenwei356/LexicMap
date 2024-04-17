@@ -9,14 +9,16 @@ weight: 0
 
 ## TL;DR
 
-1. Input files: **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
+1. Prepare input files:
+    - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
 2. Run:
+    - From a directory with multiple genome files:
 
-        # From a directory with multiple genome files
-        lexicmap index -I genomes/ -O db.lmi
+          lexicmap index -I genomes/ -O db.lmi
 
-        # From a file list with one file per line
-        lexicmap index -X files.txt -O db.lmi
+    - From a file list with one file per line:
+
+          lexicmap index -X files.txt -O db.lmi
 
 
 ## Input
@@ -43,7 +45,7 @@ LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and 
      via the flag `-G/--big-genomes`..
 - **At most 17,179,869,184 genomes are supported**. For more genomes, just build multiple indexes.
 
-Input files can be given via one of the below ways:
+Input files can be given via one of the following ways:
 
 - **Positional arguments**. For a few input files.
 - A **file list** via the flag `-X/--infile-list`  with one file per line.
@@ -60,7 +62,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
     - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
 - **RAM**
-    - More RAM (> 50 GB) is preferred. The memory usage in index building is related to:
+    - More RAM (> 50 GB) is preferred. The memory usage in index building is mainly related to:
         - The number of masks (`-m, --masks`, default 40,000).
         - The number of genome.
         - The divergence between genome sequences.

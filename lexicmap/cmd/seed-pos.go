@@ -365,7 +365,9 @@ Attentions:
 
 		if opt.Verbose {
 			log.Infof("seed positions of %d genomes(s) saved to %s", n, outFile)
-			log.Infof("histograms of %d genomes(s) saved to %s", n, plotDir)
+			if outputPlotDir {
+				log.Infof("histograms of %d genomes(s) saved to %s", n, plotDir)
+			}
 		}
 	},
 }
