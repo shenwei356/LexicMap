@@ -970,17 +970,21 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				// extend the locations in the reference
 				if rc { // reverse complement
-					tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
+					// tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
+					tBegin = int(sub.TBegin) - extLen
 					if tBegin < 0 {
 						tBegin = 0
 					}
-					tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
+					// tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
+					tEnd = tb + int(sub.Len) - 1 + extLen
 				} else {
-					tBegin = tb - min(qb, extLen)
+					// tBegin = tb - min(qb, extLen)
+					tBegin = tb - extLen
 					if tBegin < 0 {
 						tBegin = 0
 					}
-					tEnd = te + min(qlen-qe-1, extLen)
+					// tEnd = te + min(qlen-qe-1, extLen)
+					tEnd = te + extLen
 				}
 
 				// extend the locations in the query
@@ -1098,6 +1102,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							c.QEnd = qe
 							if rc {
 								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+								if c.TBegin < 0 { // position in the interval
+									c.QEnd += c.TBegin
+									c.AlignedBases += c.TBegin
+									c.TBegin = 0
+								}
 								c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
 								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 									c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
@@ -1161,6 +1170,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					c.QEnd = qe
 					if rc {
 						c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+						if c.TBegin < 0 { // position in the interval
+							c.QEnd += c.TBegin
+							c.AlignedBases += c.TBegin
+							c.TBegin = 0
+						}
 						c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
 						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 							c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)

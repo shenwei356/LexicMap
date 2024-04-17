@@ -45,7 +45,6 @@ var DefaultChaining2Options = Chaining2Options{
 }
 
 // Chainer2 is an object for chaining the anchors in two similar sequences.
-// Different from Chainer, Chainer2 finds chains with no overlaps.
 // Anchors/seeds/substrings in Chainer2 is denser than those in Chainer,
 // and the chaining score function is also much simpler, only considering
 // the lengths of anchors and gaps between them.
@@ -234,8 +233,10 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
+	// var _mi uint64
 	// for i = 0; i < n; i++ {
-	// 	fmt.Printf("%d\t%s\t%d:%d", i, (*subs)[i], (*maxscoresIdxs)[i], (*maxscores)[i])
+	// 	_mi = (*maxscoresIdxs)[i]
+	// 	fmt.Printf("%d\t%s\t%d:%d", i, (*subs)[i], _mi&4294967295, _mi>>32)
 	// 	fmt.Printf("\n")
 	// }
 
@@ -318,8 +319,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	var qb, qe, tb, te int32 // the bound (0-based)
 	var sub *SubstrPair
 	var beginOfNextAnchor int
-	var overlapped bool
-	var nb, bi, bj int // index of bounds
+	// var overlapped bool
+	// var nb, bi, bj int // index of bounds
 	firstAnchorOfAChain := true
 	path := poolChain2.Get().(*Chain2Result)
 	path.Reset()
@@ -344,47 +345,47 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		// o-------------------- Ref
 		//
 		sub = (*subs)[i]
-		overlapped = false
-		nb = len(*bounds) >> 2 // len(bounds) / 4
-		for bi = 0; bi < nb; bi++ {
-			bj = bi << 2
-			if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
-				(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
-				overlapped = true
-				break
-			}
-		}
+		// overlapped = false
+		// nb = len(*bounds) >> 2 // len(bounds) / 4
+		// for bi = 0; bi < nb; bi++ {
+		// 	bj = bi << 2
+		// 	if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
+		// 		(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
+		// 		overlapped = true
+		// 		break
+		// 	}
+		// }
 
-		if overlapped {
-			// fmt.Printf("  %d (%s) is overlapped previous chain, j=%d\n", i, *sub, j)
+		// if overlapped {
+		// 	// fmt.Printf("  %d (%s) is overlapped previous chain, j=%d\n", i, *sub, j)
 
-			// can not continue here, must check if i == j
+		// 	// can not continue here, must check if i == j
+		// } else {
+		// path.Chain = append(path.Chain, i+offset) // record the seed
+		path.NAnchors++
+
+		// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
+
+		if firstAnchorOfAChain {
+			// fmt.Printf(" record bound beginning with: %s\n", sub)
+			firstAnchorOfAChain = false
+
+			qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
+			te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
+			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
+
+			nMatchedBases += int(sub.Len)
 		} else {
-			// path.Chain = append(path.Chain, i+offset) // record the seed
-			path.NAnchors++
+			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
 
-			// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
-
-			if firstAnchorOfAChain {
-				// fmt.Printf(" record bound beginning with: %s\n", sub)
-				firstAnchorOfAChain = false
-
-				qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
-				te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
-				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
-
-				nMatchedBases += int(sub.Len)
+			if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
+				nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
 			} else {
-				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
-
-				if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
-					nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
-				} else {
-					nMatchedBases += int(sub.Len)
-				}
+				nMatchedBases += int(sub.Len)
 			}
-			beginOfNextAnchor = int(sub.QBegin)
 		}
+		beginOfNextAnchor = int(sub.QBegin)
+		// }
 
 		if i == j { // the path starts here
 			if firstAnchorOfAChain { // sadly, there's no anchor added.

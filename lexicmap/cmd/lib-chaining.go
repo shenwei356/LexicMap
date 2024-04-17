@@ -218,7 +218,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		for {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			if (*visited)[j] {      // current anchor is abandoned
-				if len(*path) > 0 { // but don't forget already added path
+				if len(*path) > 0 {
+					// // but don't forget already added path
 					// reverseInts(*path)
 					// *paths = append(*paths, path)
 					// // fmt.Printf("stop at %d, %s\n", i, (*subs)[i])
