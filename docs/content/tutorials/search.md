@@ -9,7 +9,7 @@ weight: 10
 
 ## TL;DR
 
-1. [Build](https://bioinf.shenwei.me/LexicMap/tutorials/index) or download a LexicMap index.
+1. [Build](https://bioinf.shenwei.me/LexicMap/tutorials/index/) or download a LexicMap index.
 
 1. Run:
 
