@@ -108,6 +108,7 @@ Global Flags:
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz
 
     Show the number of seed positions in each genome.
+    Frequencies larger than 40000 (the number of masks) means some k-mers can be foud in more than one positions in a genome.
 
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
@@ -131,6 +132,14 @@ Global Flags:
     Plot the histograms of distances between seeds for all genomes.
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
+        processed files:  15 / 15 [======================================] ETA: 0s. done
+        11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
+        11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance
+
+        $ ls seed_distance/
+        GCF_000006945.2.png  GCF_000392875.1.png  GCF_001096185.1.png  GCF_002949675.1.png  GCF_006742205.1.png
+        GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
+        GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
 
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
