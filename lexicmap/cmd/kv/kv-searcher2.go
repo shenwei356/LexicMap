@@ -115,12 +115,18 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchR
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
 	var first bool
+	ttt := (uint64(1) << (k << 1)) - 1
 
 	for iQ, data := range scr.KVdata {
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 		kmer = kmers[iQ]
+
+		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			continue
+		}
+
 		if prefixSearch {
 			suffix2 = (k - p) << 1
 			mask = (1 << suffix2) - 1                  // 1111

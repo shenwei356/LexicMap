@@ -108,11 +108,16 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	// only considering the positive strand
 	var kmer uint64
 	var ok bool
+	ttt := (uint64(1) << (k << 1)) - 1
 
 	for {
 		kmer, ok, _ = iter.NextPositiveKmer()
 		if !ok {
 			break
+		}
+
+		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			continue
 		}
 
 		t.Insert(kmer, uint32(iter.Index()))
@@ -204,10 +209,15 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	//	-----> <====== ----->
 	//	||||||         ||||||
 	//	-----> ======> ----->
+	ttt := (uint64(1) << (k << 1)) - 1
 	for {
 		kmer, ok, _ = iter.NextPositiveKmer()
 		if !ok {
 			break
+		}
+
+		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			continue
 		}
 
 		srs, ok = t.Search(kmer, m)

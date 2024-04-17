@@ -163,12 +163,18 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, e
 	var kmer uint64
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
+	ttt := (uint64(1) << (k << 1)) - 1
 
 	for iQ, index := range scr.Indexes {
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 		kmer = kmers[iQ]
+
+		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			continue
+		}
+
 		if prefixSearch {
 			suffix2 = (k - p) << 1
 			mask = (1 << suffix2) - 1                  // 1111
