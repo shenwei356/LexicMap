@@ -78,3 +78,5 @@ This command only generate masks, the flags are the same as these in `lexicmap i
     AAAAACTCCATGAAACCCACAATATAAATAG
     AAAAAGAAACGCTCAATAATTTGTATGGTTT
     AAAAAGCCGCGCGGTTCAGATGGACGGCATT
+
+The generated masks could be used in `lexicmap index` via the flag `-M/--mask-file`.

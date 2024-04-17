@@ -1,4 +1,4 @@
-## <img src="logo.svg" width="30"/> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
+## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
 LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
 
@@ -7,12 +7,13 @@ By contrast, BLASTN is unable to run with the same dataset on common servers bec
 
 LexicMap uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm, which supports variable-length substring matching rather than classical fixed-length k-mers matching, to compute seeds for sequence alignment and uses multiple-level storage for fast and low-memory quering of seeds data. See [algorithm overview](#algorithm-overview).
 
-LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/)).
+LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
 
+More documents: http://bioinf.shenwei.me/LexicMap.
 
 ## Quick start
 
-Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/lexicmap/tutorials/index/)).
+Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/LexicMap/tutorials/index/)).
 
     # From a directory with multiple genome files
     lexicmap index -I genomes/ -O db.lmi
@@ -20,7 +21,7 @@ Building an index (see the tutorial of [building an index](http://bioinf.shenwei
     # From a file list with one file per line
     lexicmap index -X files.txt -O db.lmi
 
-Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tutorials/search/)).
+Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tutorials/search/)).
 
     # For short queries like genes or long reads, returning top N hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
@@ -31,7 +32,7 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/lexicmap/tuto
         --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
 
 
-Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/lexicmap/tutorials/search/#output).
+Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output).
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      query                qlen   qstart   qend   sgnms   sgnm              seqid               qcovGnm   hsp   qcovHSP   alenHSP   alenSeg    pident    slen      sstart    send      sstr   seeds   species
@@ -55,7 +56,7 @@ Sample output (queries are a few Nanopore Q20 reads). See [output format details
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Note: the column `species` is added by mapping genome ID (column `sgnm`) to taxonomic information.
 
-Learn more [tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/).
+Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
 
 ## Performance
 

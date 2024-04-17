@@ -97,3 +97,8 @@ Flags:
                                   header/name, case ignored.
   -n, --top-n int                 ► Select the top N largest genomes for generating masks. (default 20)
 ```
+
+
+## Examples
+
+See {{< button size="small" relref="tutorials/index" >}}Building an index{{< /button >}}

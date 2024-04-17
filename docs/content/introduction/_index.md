@@ -3,14 +3,14 @@ title: Introduction
 weight: 10
 ---
 
-LexicMap is a sequence alignment tool aiming to query gene or plasmid sequences efficiently against up to millions of prokaryotic genomes.
+LexicMap is a sequence alignment tool aiming to efficiently query gene or plasmid sequences against up to millions of prokaryotic genomes.
 
 For example, **querying a 51.5-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only 3 minutes and 32 seconds with 15.7 GB RAM and 48 CPUs, with 19,265 genome hits returned**.
 By contrast, BLASTN is unable to run with the same dataset on common servers because it requires >2000 GB RAM. See [performance](#performance).
 
 LexicMap uses a modified [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) algorithm, which supports variable-length substring matching rather than classical fixed-length k-mers matching, to compute seeds for sequence alignment and uses multiple-level storage for fast and low-memory quering of seeds data. See [algorithm overview](#algorithm-overview).
 
-LexicMap is easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/)).
+LexicMap is also very easy to [install](http://bioinf.shenwei.me/lexicmap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/lexicmap/tutorials/index/) and [usages](http://bioinf.shenwei.me/lexicmap/usage/lexicmap/)).
 
 
 ## Performance

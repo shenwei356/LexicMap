@@ -46,7 +46,7 @@ $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10
 9       AAAAAGAATAGTGCGCCGTCCTTTACACAGC
 10      AAAAAGCCGGCGAAGAAATGCTTGCATGTTC
 
-$ lexicmap utils masks --quiet -d demo.lmi/ | tail  -n 10
+$ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
 39991   TTTTTCGCCAGAGGATAGGTCTAAGAATAGC
 39992   TTTTTCTAACATCACCGCGGATATTCTATAC
 39993   TTTTTGAAGGCGCGGGCTCAGTGGGCTTTCT

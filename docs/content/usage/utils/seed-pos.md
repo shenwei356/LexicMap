@@ -132,3 +132,5 @@ Global Flags:
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
 
+
+The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).

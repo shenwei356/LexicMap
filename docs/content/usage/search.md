@@ -77,3 +77,8 @@ Global Flags:
   -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
                              (default 16)
 ```
+
+
+## Examples
+
+See {{< button size="small" relref="tutorials/search" >}}Searching{{< /button >}}

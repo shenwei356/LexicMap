@@ -32,4 +32,4 @@ Global Flags:
                              (default 16)
 ```
 
-Output (TSV format) are formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
+The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).

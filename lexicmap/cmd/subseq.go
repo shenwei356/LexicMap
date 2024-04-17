@@ -39,8 +39,8 @@ var subseqCmd = &cobra.Command{
 
 Attention:
   1. The option -s/--seq-id is optional.
-     1) If given, the positions are that in the original sequence.
-     2) If not given, the positions are that in the concatenated sequence.
+     1) If given, the positions are these in the original sequence.
+     2) If not given, the positions are these in the concatenated sequence.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

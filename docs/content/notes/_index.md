@@ -1,4 +1,4 @@
 ---
-title: Some notes
+title: Notes
 weight: 100
 ---
