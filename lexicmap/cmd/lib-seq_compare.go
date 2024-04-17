@@ -116,6 +116,7 @@ func (cpr *SeqComparator) Index(s []byte) error {
 			break
 		}
 
+		// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmer, k))
 		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
 			continue
 		}

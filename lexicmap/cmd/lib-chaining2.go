@@ -27,8 +27,9 @@ import (
 
 // Chaining2Options contains all options in chaining.
 type Chaining2Options struct {
-	MaxGap   int
-	MinScore int // minimum score of a chain
+	MaxGap      int
+	MinScore    int // minimum score of a chain
+	MinAlignLen int
 
 	// only used in Chain2
 	MaxDistance int
@@ -37,8 +38,9 @@ type Chaining2Options struct {
 
 // DefaultChaining2Options is the defalt vaule of Chaining2Option.
 var DefaultChaining2Options = Chaining2Options{
-	MaxGap:   50,
-	MinScore: 50,
+	MaxGap:      50,
+	MinScore:    50,
+	MinAlignLen: 50,
 
 	MaxDistance: 50,
 	Band:        100,
@@ -126,7 +128,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 		sub := (*subs)[0]
 		slen := int(sub.Len)
-		if slen >= ce.options.MinScore { // the length of anchor (max 32)
+		if slen >= ce.options.MinScore && slen >= ce.options.MinAlignLen { // the length of anchor (max 32)
 			path := poolChain2.Get().(*Chain2Result)
 			path.Reset()
 
@@ -243,6 +245,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	// backtrack
 
 	minScore := ce.options.MinScore
+	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,
 	if M < minScore {
@@ -261,6 +264,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		maxscoresIdxs,
 		0,
 		minScore,
+		minAlignLen,
 		paths,
 		&nMatchedBases,
 		&nAlignedBases,
@@ -276,6 +280,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	maxscoresIdxs *[]uint64,
 	offset int, // offset of this region of subs
 	minScore int, // the threshold
+	minAlignLen int,
 	paths *[]*Chain2Result, // paths
 	_nMatchedBases *int,
 	_nAlignedBases *int,
@@ -394,6 +399,11 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			nAlignedBases += int(qe) - int(qb) + 1
 
+			if nAlignedBases < minAlignLen {
+				firstAnchorOfAChain = true
+				break
+			}
+
 			// reverseInts(path.Chain)
 			path.AlignedBases = nAlignedBases
 			path.MatchedBases = nMatchedBases
@@ -422,18 +432,20 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		} else {
 			nAlignedBases += int(qe) - int(qb) + 1
 
-			// reverseInts(path.Chain)
-			path.AlignedBases = nAlignedBases
-			path.MatchedBases = nMatchedBases
-			path.QBegin, path.QEnd = int(qb), int(qe)
-			path.TBegin, path.TEnd = int(tb), int(te)
-			*paths = append(*paths, path)
+			if nAlignedBases >= minAlignLen {
+				// reverseInts(path.Chain)
+				path.AlignedBases = nAlignedBases
+				path.MatchedBases = nMatchedBases
+				path.QBegin, path.QEnd = int(qb), int(qe)
+				path.TBegin, path.TEnd = int(tb), int(te)
+				*paths = append(*paths, path)
 
-			*_nAlignedBases += nAlignedBases
-			*_nMatchedBases += nMatchedBases
+				*_nAlignedBases += nAlignedBases
+				*_nMatchedBases += nMatchedBases
 
-			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-			// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+				// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+				// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+			}
 		}
 	}
 
@@ -460,6 +472,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			&tmpsi,
 			offset+Mi+1,
 			minScore,
+			minAlignLen,
 			paths,
 			_nMatchedBases,
 			_nAlignedBases,
@@ -493,6 +506,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			&tmpsi,
 			offset,
 			minScore,
+			minAlignLen,
 			paths,
 			_nMatchedBases,
 			_nAlignedBases,

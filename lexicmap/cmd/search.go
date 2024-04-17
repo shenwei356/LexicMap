@@ -340,7 +340,8 @@ Output format:
 				// should be relative small
 				MaxGap: maxAlignMaxGap,
 				// better be larger than MinPrefix
-				MinScore: minAlignLen,
+				MinScore:    minAlignLen,
+				MinAlignLen: minAlignLen,
 				// can not be < k
 				MaxDistance: maxAllgnMismatch,
 				// can not be two small
