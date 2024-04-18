@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"sort"
 	"sync"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
@@ -37,9 +38,7 @@ type SeqComparatorOptions struct {
 	Chaining2Options
 
 	// seq similarity
-	MinIdentity        float64 // minimum percentage base identity of a segment
-	MinSegmentLength   int     // minimum length of a segment
-	MinAlignedFraction float64 // minimum query aligned fraction in a chain
+	MinAlignedFraction float64 // minimum query aligned fraction in a HSP
 }
 
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
@@ -58,8 +57,6 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		Band: 100,
 	},
 
-	MinIdentity:        70,
-	MinSegmentLength:   50,
 	MinAlignedFraction: 0,
 }
 
@@ -131,11 +128,9 @@ func (cpr *SeqComparator) Index(s []byte) error {
 
 // SeqComparatorResult contains the details of a seq comparison result.
 type SeqComparatorResult struct {
-	MatchedBases int // The number of matched bases.
 	AlignedBases int // The number of aligned bases.
 
 	AlignedFraction float64 // query (original query) coverage per HSP
-	PIdentity       float64 // identity (fraction of same bases), percentage
 
 	QueryLen int // length of the original query, used to compute/update AlignedFraction
 
@@ -152,21 +147,73 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	r.Chains = chains
 	r.QueryLen = queryLen
 
-	r.MatchedBases = 0
-	r.AlignedBases = 0
+	// alignment regions might have overlap
+
+	regions := poolRegions.Get().(*[]*[2]int)
+	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
-		r.MatchedBases += c.MatchedBases
-		r.AlignedBases += c.AlignedBases
+		region := poolRegion.Get().(*[2]int)
+		region[0], region[1] = c.QBegin, c.QEnd
+		*regions = append(*regions, region)
 	}
+	r.AlignedBases = coverageLen(regions)
+	recycleRegions(regions)
 
-	r.PIdentity = float64(r.MatchedBases) / float64(r.AlignedBases) * 100
-
-	af := float64(r.MatchedBases) / float64(r.QueryLen) * 100
-	if af > 100 {
-		af = 100
-	}
-	r.AlignedFraction = af
+	r.AlignedFraction = float64(r.AlignedBases) / float64(queryLen) * 100
 }
+
+func recycleRegions(regions *[]*[2]int) {
+	for _, r := range *regions {
+		poolRegion.Put(r)
+	}
+	poolRegions.Put(regions)
+}
+
+func coverageLen(regions *[]*[2]int) (r int) {
+	if len(*regions) == 0 {
+		return 0
+	}
+	if len(*regions) == 1 {
+		return (*regions)[0][1] - (*regions)[0][0] + 1
+	}
+
+	// sort by the start locations
+	sort.Slice(*regions, func(i, j int) bool {
+		return (*regions)[i][0] < (*regions)[j][0]
+	})
+
+	var region *[2]int // ccurent region
+	var start, end int // positions of the a merged region
+
+	region = (*regions)[0] // the first region
+	start, end = (*region)[0], (*region)[1]
+
+	for i := 1; i < len(*regions); i++ {
+		region = (*regions)[i]
+		if region[0] > end { // has no overlap with previous merged region
+			r += end - start + 1 // add the length
+
+			start, end = (*region)[0], (*region)[1] // create a new merged region
+			continue
+		}
+		if region[1] <= end { // the current region is in the merged region
+			continue
+		}
+		end = region[1] // merge the current region
+	}
+	r += end - start + 1 // add the length
+
+	return r
+}
+
+var poolRegions = &sync.Pool{New: func() interface{} {
+	tmp := make([]*[2]int, 0, 128)
+	return &tmp
+}}
+
+var poolRegion = &sync.Pool{New: func() interface{} {
+	return &[2]int{}
+}}
 
 var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
 	return &SeqComparatorResult{}
@@ -263,7 +310,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// chaining paired substrings
 
 	chainer := cpr.poolChainers.Get().(*Chainer2)
-	chains, nMatchedBases, nAlignedBases, _, _, _, _ := chainer.Chain(subs)
+	chains, _, nAlignedBases, _, _, _, _ := chainer.Chain(subs)
 	defer func() {
 		cpr.poolChainers.Put(chainer)
 	}()
@@ -282,13 +329,6 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// }
 	// fmt.Printf("%d, (%d/%d)\n", len(s), nMatchedBases, nAlignedBases)
 
-	pIdent := float64(nMatchedBases) / float64(nAlignedBases) * 100
-	if nAlignedBases < cpr.options.MinSegmentLength || pIdent < cpr.options.MinIdentity {
-		RecycleChaining2Result(chains)
-		RecycleSubstrPairs(subs)
-		return nil, nil
-	}
-
 	af := float64(nAlignedBases) / float64(queryLen) * 100
 	if af < cpr.options.MinAlignedFraction {
 		RecycleChaining2Result(chains)
@@ -299,11 +339,10 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// result object
 	r := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 	r.AlignedBases = nAlignedBases
-	r.MatchedBases = nMatchedBases
+	// r.MatchedBases = nMatchedBases
 	r.QueryLen = queryLen
 	r.AlignedFraction = af
 
-	r.PIdentity = pIdent
 	// r.QBegin = qB
 	// r.QEnd = qE
 	// r.TBegin = tB

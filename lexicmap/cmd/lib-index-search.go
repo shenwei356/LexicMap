@@ -927,8 +927,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
 			var _begin, _end int
 
-			var alignedBasesGenome int
-
 			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
 			*sds = (*sds)[:0]
 
@@ -937,6 +935,12 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// Multiple contigs are concatenated, remember?
 			// So we need to create seperate HPSs for these fragments.
 			var crChains2 *[]*Chain2Result
+
+			// for remove duplicated alignments
+			var duplicated bool
+			bounds := poolBounds.Get().(*[]int)
+			*bounds = (*bounds)[:0]
+			var bi, bend int
 
 			// check sequences from all chains
 			for i, chain := range *r.Chains { // for each HSP
@@ -1117,6 +1121,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// 	tBegin, tPosOffsetBegin, tPosOffsetEnd)
 								// fmt.Printf("tb: %d, te: %d, tBegin+tb: %d, tBegin+te: %d\n", tb, te, tBegin+tb, tBegin+te)
 								c.TBegin = tBegin - tPosOffsetBegin + tb
+								if c.TBegin < 0 { // position in the interval
+									c.QBegin -= c.TBegin
+									c.AlignedBases += c.TBegin
+									c.TBegin = 0
+								}
 								c.TEnd = tBegin - tPosOffsetBegin + te
 								// fmt.Printf("tmp: t: %d-%d, seqlen: %d \n", c.TBegin, c.TEnd, tSeq.SeqSizes[iSeq])
 								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
@@ -1130,23 +1139,23 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 							// fmt.Printf("  add previous one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
 
-							// only include valid chains
-							r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-							r2.Update(crChains2, cr.QueryLen)
+							if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
+								// only include valid chains
+								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+								r2.Update(crChains2, cr.QueryLen)
 
-							sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-							sd.RC = rc
-							// sd.Chain = (*r.Chains)[i]
-							sd.NSeeds = len(*(*r.Chains)[i])
-							sd.Similarity = r2
-							sd.SimilarityScore = float64(r2.MatchedBases)
-							sd.SeqID = sd.SeqID[:0]
-							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-							sd.SeqLen = tSeq.SeqSizes[iSeq]
+								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+								sd.RC = rc
+								// sd.Chain = (*r.Chains)[i]
+								sd.NSeeds = len(*(*r.Chains)[i])
+								sd.Similarity = r2
+								sd.SimilarityScore = float64(r2.AlignedBases)
+								sd.SeqID = sd.SeqID[:0]
+								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+								sd.SeqLen = tSeq.SeqSizes[iSeq]
 
-							*sds = append(*sds, sd)
-
-							alignedBasesGenome += r2.AlignedBases
+								*sds = append(*sds, sd)
+							}
 
 							// ----------
 
@@ -1182,6 +1191,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						}
 					} else {
 						c.TBegin = tBegin - tPosOffsetBegin + tb
+						if c.TBegin < 0 { // position in the interval
+							c.QBegin -= c.TBegin
+							c.AlignedBases += c.TBegin
+							c.TBegin = 0
+						}
 						c.TEnd = tBegin - tPosOffsetBegin + te
 						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 							c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
@@ -1190,28 +1204,50 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					}
 					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
 
-					*crChains2 = append(*crChains2, c)
+					// ------------------------------------------------------------
+					// remove duplicated alignments
+
+					bend = len(*bounds) - 4
+					duplicated = false
+					for bi = 0; bi <= bend; bi += 4 {
+						if (*bounds)[bi] == c.QBegin && (*bounds)[bi+1] == c.QEnd &&
+							(*bounds)[bi+2] == c.TBegin && (*bounds)[bi+3] == c.TEnd {
+							duplicated = true
+							break
+						}
+					}
+
+					if duplicated {
+						poolChain2.Put(c)
+					} else {
+						*crChains2 = append(*crChains2, c)
+						*bounds = append(*bounds, c.QBegin)
+						*bounds = append(*bounds, c.QEnd)
+						*bounds = append(*bounds, c.TBegin)
+						*bounds = append(*bounds, c.TEnd)
+					}
 				}
 
 				// fmt.Printf("  add current one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
 
 				if iSeq >= 0 {
-					// only include valid chains
-					r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-					r2.Update(crChains2, cr.QueryLen)
+					if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
 
-					sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-					sd.RC = rc
-					sd.NSeeds = len(*(*r.Chains)[i])
-					sd.Similarity = r2
-					sd.SimilarityScore = float64(r2.MatchedBases)
-					sd.SeqID = sd.SeqID[:0]
-					sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-					sd.SeqLen = tSeq.SeqSizes[iSeq]
+						// only include valid chains
+						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+						r2.Update(crChains2, cr.QueryLen)
 
-					*sds = append(*sds, sd)
+						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+						sd.RC = rc
+						sd.NSeeds = len(*(*r.Chains)[i])
+						sd.Similarity = r2
+						sd.SimilarityScore = float64(r2.AlignedBases)
+						sd.SeqID = sd.SeqID[:0]
+						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+						sd.SeqLen = tSeq.SeqSizes[iSeq]
 
-					alignedBasesGenome += r2.AlignedBases
+						*sds = append(*sds, sd)
+					}
 				}
 
 				// recycle target sequence
@@ -1237,7 +1273,21 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				return
 			}
 
-			// filter
+			// compute aligned bases
+			var alignedBasesGenome int
+			regions := poolRegions.Get().(*[]*[2]int)
+			*regions = (*regions)[:0]
+			for _, sd := range *sds {
+				for _, c := range *sd.Similarity.Chains {
+					region := poolRegion.Get().(*[2]int)
+					region[0], region[1] = c.QBegin, c.QEnd
+					*regions = append(*regions, region)
+				}
+			}
+			alignedBasesGenome = coverageLen(regions)
+			recycleRegions(regions)
+
+			// filter by query coverage per genome
 			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
 			if r.AlignedFraction > 100 {
 				r.AlignedFraction = 100
@@ -1349,6 +1399,11 @@ var rcTable = [256]byte{
 	224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239,
 	240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255,
 }
+
+var poolBounds = &sync.Pool{New: func() interface{} {
+	tmp := make([]int, 128)
+	return &tmp
+}}
 
 func parseKmerValue(v uint64) (int, int, int, int) {
 	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), int(v & 1)

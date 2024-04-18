@@ -30,8 +30,7 @@ type Chaining2Options struct {
 	MaxGap      int
 	MinScore    int // minimum score of a chain
 	MinAlignLen int
-
-	// only used in Chain2
+	MinIdentity float64
 	MaxDistance int
 	Band        int // only check i in range of  i − A < j < i
 }
@@ -265,6 +264,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		0,
 		minScore,
 		minAlignLen,
+		ce.options.MinIdentity,
 		paths,
 		&nMatchedBases,
 		&nAlignedBases,
@@ -281,6 +281,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	offset int, // offset of this region of subs
 	minScore int, // the threshold
 	minAlignLen int,
+	minPident float64,
 	paths *[]*Chain2Result, // paths
 	_nMatchedBases *int,
 	_nAlignedBases *int,
@@ -324,6 +325,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	var qb, qe, tb, te int32 // the bound (0-based)
 	var sub *SubstrPair
 	var beginOfNextAnchor int
+	var pident float64
 	// var overlapped bool
 	// var nb, bi, bj int // index of bounds
 	firstAnchorOfAChain := true
@@ -397,9 +399,15 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				break
 			}
 
-			nAlignedBases += int(qe) - int(qb) + 1
+			nAlignedBases += int(te) - int(tb) + 1
 
 			if nAlignedBases < minAlignLen {
+				firstAnchorOfAChain = true
+				break
+			}
+
+			pident = float64(nMatchedBases) / float64(nAlignedBases) * 100
+			if pident < minPident {
 				firstAnchorOfAChain = true
 				break
 			}
@@ -433,18 +441,21 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			nAlignedBases += int(qe) - int(qb) + 1
 
 			if nAlignedBases >= minAlignLen {
-				// reverseInts(path.Chain)
-				path.AlignedBases = nAlignedBases
-				path.MatchedBases = nMatchedBases
-				path.QBegin, path.QEnd = int(qb), int(qe)
-				path.TBegin, path.TEnd = int(tb), int(te)
-				*paths = append(*paths, path)
+				pident = float64(nMatchedBases) / float64(nAlignedBases) * 100
+				if pident >= minPident {
+					// reverseInts(path.Chain)
+					path.AlignedBases = nAlignedBases
+					path.MatchedBases = nMatchedBases
+					path.QBegin, path.QEnd = int(qb), int(qe)
+					path.TBegin, path.TEnd = int(tb), int(te)
+					*paths = append(*paths, path)
 
-				*_nAlignedBases += nAlignedBases
-				*_nMatchedBases += nMatchedBases
+					*_nAlignedBases += nAlignedBases
+					*_nMatchedBases += nMatchedBases
 
-				// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-				// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+					// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+					// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+				}
 			}
 		}
 	}
@@ -473,6 +484,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			offset+Mi+1,
 			minScore,
 			minAlignLen,
+			minPident,
 			paths,
 			_nMatchedBases,
 			_nAlignedBases,
@@ -507,6 +519,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			offset,
 			minScore,
 			minAlignLen,
+			minPident,
 			paths,
 			_nMatchedBases,
 			_nAlignedBases,

@@ -298,7 +298,7 @@ Output format:
 							queryID, len(q.seq),
 							c.QBegin+1, c.QEnd+1,
 							targets, r.ID,
-							sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBases, cr.PIdentity,
+							sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBases, float64(c.MatchedBases)/float64(c.AlignedBases)*100,
 							sd.SeqLen,
 							c.TBegin+1, c.TEnd+1, strand,
 							sd.NSeeds,
@@ -342,14 +342,13 @@ Output format:
 				// better be larger than MinPrefix
 				MinScore:    minAlignLen,
 				MinAlignLen: minAlignLen,
+				MinIdentity: minIdent,
 				// can not be < k
 				MaxDistance: maxAllgnMismatch,
 				// can not be two small
 				Band: alignBand,
 			},
 
-			MinIdentity:        minIdent,
-			MinSegmentLength:   minAlignLen,
 			MinAlignedFraction: minQcovChain,
 		})
 
