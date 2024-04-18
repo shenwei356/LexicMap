@@ -310,7 +310,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// chaining paired substrings
 
 	chainer := cpr.poolChainers.Get().(*Chainer2)
-	chains, _, nAlignedBases, _, _, _, _ := chainer.Chain(subs)
+	chains, _, nAlignedBasesQ, _, _, _, _, _ := chainer.Chain(subs)
 	defer func() {
 		cpr.poolChainers.Put(chainer)
 	}()
@@ -329,7 +329,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// }
 	// fmt.Printf("%d, (%d/%d)\n", len(s), nMatchedBases, nAlignedBases)
 
-	af := float64(nAlignedBases) / float64(queryLen) * 100
+	af := float64(nAlignedBasesQ) / float64(queryLen) * 100
 	if af < cpr.options.MinAlignedFraction {
 		RecycleChaining2Result(chains)
 		RecycleSubstrPairs(subs)
@@ -338,7 +338,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	// result object
 	r := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-	r.AlignedBases = nAlignedBases
+	r.AlignedBases = nAlignedBasesQ
 	// r.MatchedBases = nMatchedBases
 	r.QueryLen = queryLen
 	r.AlignedFraction = af

@@ -14,7 +14,7 @@ geekdocAnchor: false
 [![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
 
 
-## LexicMap is a sequence alignment tool aiming to efficiently query gene or plasmid sequences against up to millions of prokaryotic genomes.
+LexicMap is a **sequence alignment** tool aiming to efficiently query **gene/plasmid/virus/long-read sequences** against up to **millions** of prokaryotic genomes.
 
 
 {{< button size="large" relref="quick-start" >}}Quick start{{< /button >}}

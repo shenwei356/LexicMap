@@ -57,8 +57,8 @@ Output format:
     2.  qlen,     Query sequence length.
     3.  qstart,   Start of alignment in query sequence.
     4.  qend,     End of alignment in query sequence.
-    5.  sgnms,    The number of Subject genomes.
-    6.  sgnm,     Subject genome ID.
+    5.  hits,     The number of Subject genomes.
+    6.  sgenome,  Subject genome ID.
     7.  seqid,    Subject sequence ID.
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     9.  hsp,      Nth HSP in the genome.
@@ -250,7 +250,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\tsgnms\tsgnm\tseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
+		fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
 
 		printResult := func(q *Query) {
 			total++
@@ -298,7 +298,7 @@ Output format:
 							queryID, len(q.seq),
 							c.QBegin+1, c.QEnd+1,
 							targets, r.ID,
-							sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBases, float64(c.MatchedBases)/float64(c.AlignedBases)*100,
+							sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBasesQ, c.Pident,
 							sd.SeqLen,
 							c.TBegin+1, c.TEnd+1, strand,
 							sd.NSeeds,

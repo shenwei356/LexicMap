@@ -97,10 +97,12 @@ var poolChain2 = &sync.Pool{New: func() interface{} {
 type Chain2Result struct {
 	NAnchors int // The number of substrings
 
-	MatchedBases int // The number of matched bases.
-	AlignedBases int // The number of aligned bases.
-	QBegin, QEnd int // Query begin/end position (0-based)
-	TBegin, TEnd int // Target begin/end position (0-based)
+	MatchedBases  int     // The number of matched bases.
+	AlignedBasesQ int     // The number of aligned bases in Query sequence
+	AlignedBasesT int     // The number of aligned bases in Subject sequence
+	Pident        float64 // percentage of identity
+	QBegin, QEnd  int     // Query begin/end position (0-based)
+	TBegin, TEnd  int     // Target begin/end position (0-based)
 }
 
 // Reset resets a Chain2Result
@@ -118,7 +120,7 @@ func (r *Chain2Result) Reset() {
 //  5. QEnd.
 //  6. TBegin.
 //  7. TEnd.
-func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int) {
+func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
@@ -137,14 +139,15 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			path.QBegin, path.QEnd = qb, qe
 			path.TBegin, path.TEnd = tb, te
 			path.MatchedBases = slen
-			path.AlignedBases = slen
+			path.Pident = 100
+			path.AlignedBasesQ = slen
 			path.NAnchors++
 			*paths = append(*paths, path)
 
-			return paths, slen, slen, qb, qe, tb, te
+			return paths, slen, slen, slen, qb, qe, tb, te
 		}
 
-		return paths, 0, 0, 0, 0, 0, 0
+		return paths, 0, 0, 0, 0, 0, 0, 0
 	}
 
 	var i, _b, j int
@@ -248,13 +251,13 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// check the highest score, for early quit,
 	if M < minScore {
-		return nil, 0, 0, 0, 0, 0, 0
+		return nil, 0, 0, 0, 0, 0, 0, 0
 	}
 
 	paths := poolChains2.Get().(*[]*Chain2Result)
 	*paths = (*paths)[:0]
 
-	var nMatchedBases, nAlignedBases int
+	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
 	ce.bounds = ce.bounds[:0]
 
 	_, qB, qE, tB, tE := chainARegion(
@@ -267,12 +270,13 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		ce.options.MinIdentity,
 		paths,
 		&nMatchedBases,
-		&nAlignedBases,
+		&nAlignedBasesQ,
+		&nAlignedBasesT,
 		Mi,
 		&ce.bounds,
 	)
 
-	return paths, nMatchedBases, nAlignedBases, qB, qE, tB, tE
+	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
 }
 
 func chainARegion(subs *[]*SubstrPair, // a region of the subs
@@ -284,7 +288,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	minPident float64,
 	paths *[]*Chain2Result, // paths
 	_nMatchedBases *int,
-	_nAlignedBases *int,
+	_nAlignedBasesQ *int,
+	_nAlignedBasesT *int,
 	Mi0 int, // found Mi
 	bounds *[]int32, // intervals of previous chains
 ) (
@@ -316,7 +321,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	// fmt.Printf("  Mi: %d, M: %d\n", Mi, M)
 
 	var nMatchedBases int
-	var nAlignedBases int
+	var nAlignedBasesQ, nAlignedBasesT int
 
 	i = Mi
 	var j int
@@ -399,27 +404,35 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				break
 			}
 
-			nAlignedBases += int(te) - int(tb) + 1
+			nAlignedBasesQ += int(te) - int(tb) + 1
 
-			if nAlignedBases < minAlignLen {
+			if nAlignedBasesQ < minAlignLen {
 				firstAnchorOfAChain = true
 				break
 			}
 
-			pident = float64(nMatchedBases) / float64(nAlignedBases) * 100
+			nAlignedBasesT += int(qe) - int(qb) + 1
+
+			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, path.AlignedBasesT)) * 100
 			if pident < minPident {
 				firstAnchorOfAChain = true
 				break
 			}
+			if pident > 100 {
+				pident = 100
+			}
 
 			// reverseInts(path.Chain)
-			path.AlignedBases = nAlignedBases
+			path.AlignedBasesQ = nAlignedBasesQ
+			path.AlignedBasesT = nAlignedBasesT
 			path.MatchedBases = nMatchedBases
+			path.Pident = pident
 			path.QBegin, path.QEnd = int(qb), int(qe)
 			path.TBegin, path.TEnd = int(tb), int(te)
 			*paths = append(*paths, path)
 
-			*_nAlignedBases += nAlignedBases
+			*_nAlignedBasesQ += nAlignedBasesQ
+			*_nAlignedBasesT += nAlignedBasesT
 			*_nMatchedBases += nMatchedBases
 
 			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
@@ -438,19 +451,26 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		if path.NAnchors == 0 {
 			poolChain2.Put(path)
 		} else {
-			nAlignedBases += int(qe) - int(qb) + 1
+			nAlignedBasesQ += int(te) - int(tb) + 1
+			nAlignedBasesT += int(qe) - int(qb) + 1
 
-			if nAlignedBases >= minAlignLen {
-				pident = float64(nMatchedBases) / float64(nAlignedBases) * 100
+			if nAlignedBasesQ >= minAlignLen {
+				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, path.AlignedBasesT)) * 100
 				if pident >= minPident {
+					if pident > 100 {
+						pident = 100
+					}
+
 					// reverseInts(path.Chain)
-					path.AlignedBases = nAlignedBases
+					path.AlignedBasesQ = nAlignedBasesQ
+					path.AlignedBasesT = nAlignedBasesT
 					path.MatchedBases = nMatchedBases
+					path.Pident = pident
 					path.QBegin, path.QEnd = int(qb), int(qe)
 					path.TBegin, path.TEnd = int(tb), int(te)
 					*paths = append(*paths, path)
 
-					*_nAlignedBases += nAlignedBases
+					*_nAlignedBasesQ += nAlignedBasesQ
 					*_nMatchedBases += nMatchedBases
 
 					// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
@@ -487,7 +507,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			minPident,
 			paths,
 			_nMatchedBases,
-			_nAlignedBases,
+			_nAlignedBasesQ,
+			_nAlignedBasesT,
 			-1,
 			bounds,
 		)
@@ -522,7 +543,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			minPident,
 			paths,
 			_nMatchedBases,
-			_nAlignedBases,
+			_nAlignedBasesQ,
+			_nAlignedBasesT,
 			-1,
 			bounds,
 		)

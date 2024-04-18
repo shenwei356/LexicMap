@@ -25,8 +25,8 @@ Output format:
     2.  qlen,     Query sequence length.
     3.  qstart,   Start of alignment in query sequence.
     4.  qend,     End of alignment in query sequence.
-    5.  sgnms,    The number of Subject genomes.
-    6.  sgnm,     Subject genome ID.
+    5.  hits,     The number of Subject genomes.
+    6.  sgenome,  Subject genome ID.
     7.  seqid,    Subject sequence ID.
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     9.  hsp,      Nth HSP in the genome.

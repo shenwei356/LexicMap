@@ -1108,7 +1108,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
 								if c.TBegin < 0 { // position in the interval
 									c.QEnd += c.TBegin
-									c.AlignedBases += c.TBegin
+									c.AlignedBasesQ += c.TBegin
 									c.TBegin = 0
 								}
 								c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
@@ -1123,7 +1123,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								c.TBegin = tBegin - tPosOffsetBegin + tb
 								if c.TBegin < 0 { // position in the interval
 									c.QBegin -= c.TBegin
-									c.AlignedBases += c.TBegin
+									c.AlignedBasesQ += c.TBegin
 									c.TBegin = 0
 								}
 								c.TEnd = tBegin - tPosOffsetBegin + te
@@ -1149,7 +1149,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// sd.Chain = (*r.Chains)[i]
 								sd.NSeeds = len(*(*r.Chains)[i])
 								sd.Similarity = r2
-								sd.SimilarityScore = float64(r2.AlignedBases)
+								sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
 								sd.SeqID = sd.SeqID[:0]
 								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 								sd.SeqLen = tSeq.SeqSizes[iSeq]
@@ -1181,7 +1181,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
 						if c.TBegin < 0 { // position in the interval
 							c.QEnd += c.TBegin
-							c.AlignedBases += c.TBegin
+							c.AlignedBasesQ += c.TBegin
 							c.TBegin = 0
 						}
 						c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
@@ -1193,7 +1193,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						c.TBegin = tBegin - tPosOffsetBegin + tb
 						if c.TBegin < 0 { // position in the interval
 							c.QBegin -= c.TBegin
-							c.AlignedBases += c.TBegin
+							c.AlignedBasesQ += c.TBegin
 							c.TBegin = 0
 						}
 						c.TEnd = tBegin - tPosOffsetBegin + te
@@ -1241,7 +1241,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						sd.RC = rc
 						sd.NSeeds = len(*(*r.Chains)[i])
 						sd.Similarity = r2
-						sd.SimilarityScore = float64(r2.AlignedBases)
+						sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
 						sd.SeqID = sd.SeqID[:0]
 						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 						sd.SeqLen = tSeq.SeqSizes[iSeq]
