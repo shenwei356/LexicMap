@@ -279,8 +279,8 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 				}
 
 				_sub2 := poolSub.Get().(*SubstrPair)
-				_sub2.QBegin = int32(iter.Index())
-				_sub2.TBegin = int32(v)
+				_sub2.QBegin = int32(v)
+				_sub2.TBegin = int32(iter.Index())
 				// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
 				_sub2.Len = uint8(sr.LenPrefix)
 				_sub2.TRC = false

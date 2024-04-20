@@ -235,7 +235,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// fmt.Printf("M: %d, Mi: %d\n", M, Mi)
 
-	// print the score matrix
+	// // print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
 	// var _mi uint64
 	// for i = 0; i < n; i++ {
@@ -413,7 +413,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			nAlignedBasesT += int(qe) - int(qb) + 1
 
-			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, path.AlignedBasesT)) * 100
+			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
 			if pident < minPident {
 				firstAnchorOfAChain = true
 				break
@@ -455,7 +455,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			nAlignedBasesT += int(qe) - int(qb) + 1
 
 			if nAlignedBasesQ >= minAlignLen {
-				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, path.AlignedBasesT)) * 100
+				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
 				if pident >= minPident {
 					if pident > 100 {
 						pident = 100

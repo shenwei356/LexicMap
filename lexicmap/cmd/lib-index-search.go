@@ -943,7 +943,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var bi, bend int
 
 			// check sequences from all chains
-			for i, chain := range *r.Chains { // for each HSP
+			for _, chain := range *r.Chains { // for each HSP
 				// ------------------------------------------------------------------------
 				// extract subsequence from the refseq for comparing
 
@@ -1037,9 +1037,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				*crChains2 = (*crChains2)[:0]
 
 				for _, c := range *cr.Chains { // for each HSP fragment
-					// yes, the query and target are inversed, because we indexed the query once,
-					// and used it for comparing multiple target sequences.
-					qb, qe, tb, te = c.TBegin, c.TEnd, c.QBegin, c.QEnd
+					qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
 					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
 					// fmt.Printf("--- HSP: %d, HSP fragment: %d ---\n", i, _i)
 
@@ -1147,7 +1145,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 								sd.RC = rc
 								// sd.Chain = (*r.Chains)[i]
-								sd.NSeeds = len(*(*r.Chains)[i])
+								sd.NSeeds = len(*chain)
 								sd.Similarity = r2
 								sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
 								sd.SeqID = sd.SeqID[:0]
@@ -1239,7 +1237,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 						sd.RC = rc
-						sd.NSeeds = len(*(*r.Chains)[i])
+						sd.NSeeds = len(*chain)
 						sd.Similarity = r2
 						sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
 						sd.SeqID = sd.SeqID[:0]
