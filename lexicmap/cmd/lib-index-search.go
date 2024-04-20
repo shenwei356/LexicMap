@@ -422,11 +422,11 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 		a := (*subs)[i]
 		b := (*subs)[j]
 		if a.QBegin == b.QBegin {
-			return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
-			// if a.QBegin+a.Len == b.QBegin+b.Len {
-			// 	return a.TBegin <= b.TBegin
-			// }
-			// return a.QBegin+a.Len > b.QBegin+b.Len
+			// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
+			if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
+				return a.TBegin <= b.TBegin
+			}
+			return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
 		}
 		return a.QBegin < b.QBegin
 	})

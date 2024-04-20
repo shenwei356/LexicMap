@@ -169,16 +169,9 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		*maxscoresIdxs = append(*maxscoresIdxs, mj)
 	}
 	// print the score matrix
-	// fmt.Printf("i\tiMax\tscores\n")
+	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
 	// for i = 0; i < n; i++ {
-	// 	fmt.Printf("%d\t%s\t%d", i, (*subs)[i], maxscoresIdxs[i])
-	// 	for j = 0; j <= i; j++ {
-	// 		k = i*(i+1)/2 + j
-	// 		if scores[k] > 0 {
-	// 			fmt.Printf("\t%d:%6.2f", j, scores[k])
-	// 		}
-	// 	}
-	// 	fmt.Printf("\n")
+	// 	fmt.Printf("%d\t%s\t%d:%.3f\n", i, (*subs)[i], (*maxscoresIdxs)[i], (*maxscores)[i])
 	// }
 
 	// backtrack
