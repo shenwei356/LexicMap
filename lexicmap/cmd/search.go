@@ -219,9 +219,6 @@ Output format:
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
-		defer func() {
-			checkError(idx.Close())
-		}()
 
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))
@@ -416,6 +413,7 @@ Output format:
 
 		}
 
+		checkError(idx.Close())
 	},
 }
 
