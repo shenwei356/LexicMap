@@ -404,14 +404,14 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				break
 			}
 
-			nAlignedBasesQ += int(te) - int(tb) + 1
+			nAlignedBasesQ += int(qe) - int(qb) + 1
 
 			if nAlignedBasesQ < minAlignLen {
 				firstAnchorOfAChain = true
 				break
 			}
 
-			nAlignedBasesT += int(qe) - int(qb) + 1
+			nAlignedBasesT += int(te) - int(tb) + 1
 
 			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
 			if pident < minPident {
@@ -451,8 +451,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		if path.NAnchors == 0 {
 			poolChain2.Put(path)
 		} else {
-			nAlignedBasesQ += int(te) - int(tb) + 1
-			nAlignedBasesT += int(qe) - int(qb) + 1
+			nAlignedBasesQ += int(qe) - int(qb) + 1
+			nAlignedBasesT += int(te) - int(tb) + 1
 
 			if nAlignedBasesQ >= minAlignLen {
 				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100

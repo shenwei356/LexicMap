@@ -5,12 +5,14 @@
 - `lexicmap index`:
     - **Generate masks from the top N biggest genomes instead of randomly generation**.
     - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
+    - 2X indexing speed with a faster masking method.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
 - `lexicmap search`:
     - **Better support of long queries**.
     - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
     - **Parallelize alignment in each query**, so it's faster for a single query.
+    - 2-5X searching speed with a faster masking method.
     - Change output format.
     - Add output of query start and end positions.
     - Fix a seed-chaining bug.

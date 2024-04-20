@@ -233,6 +233,17 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	// }
 	// }
 
+	// create a lookup table for faster masking
+	lenPrefix := 1
+	for 1<<(lenPrefix<<1) <= len(lh.Masks) {
+		lenPrefix++
+	}
+	lenPrefix--
+	err = lh.IndexMasks(lenPrefix)
+	if err != nil {
+		checkError(fmt.Errorf("indexing masks: %s", err))
+	}
+
 	// save mask later
 
 	if opt.Verbose || opt.Log2File {
@@ -708,11 +719,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var _kmers *[]uint64
 			var locses *[][]int
 
-			if len(lh.Masks) > 1024 && len(refseq.Seq) > 1048576 {
-				_kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
-			} else {
-				_kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
-			}
+			// if len(lh.Masks) > 1024 && len(refseq.Seq) > 1048576 {
+			// 	_kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
+			// } else {
+			// 	_kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
+			// }
+			_kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, _skipRegions)
 
 			if err != nil {
 				panic(err)
