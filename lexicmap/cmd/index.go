@@ -123,7 +123,6 @@ Important parameters:
 		}
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
-		// lcPrefix := getFlagNonNegativeInt(cmd, "prefix")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
 		maskFile := getFlagString(cmd, "mask-file")
 		chunks := getFlagPositiveInt(cmd, "chunks")
@@ -133,6 +132,13 @@ Important parameters:
 
 		maxGenomeSize := getFlagNonNegativeInt(cmd, "max-genome")
 		fileBigGenomes := getFlagString(cmd, "big-genomes")
+
+		lcPrefix := getFlagNonNegativeInt(cmd, "seed-min-prefix")
+		maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
+		seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
+		if seedInDesertDist > maxDesert/2 {
+			checkError(fmt.Errorf("value of --seed-in-desert-dist should be smaller than 0.5 * --seed-max-desert"))
+		}
 
 		topN := getFlagPositiveInt(cmd, "top-n")
 		prefixExt := getFlagPositiveInt(cmd, "prefix-ext")
@@ -230,7 +236,14 @@ Important parameters:
 			K:        k,
 			Masks:    nMasks,
 			RandSeed: int64(seed),
-			// PrefixForCheckLC: lcPrefix,
+
+			// randomly generating
+			Prefix: lcPrefix,
+
+			// filling sketching deserts
+			DesertMaxLen:           uint32(maxDesert),    // maxi length of sketching deserts
+			DesertExpectedSeedDist: seedInDesertDist,     // expected distance between seeds
+			DesertSeedPosRange:     seedInDesertDist / 2, // the upstream and down stream region for adding a seeds
 
 			// generate masks
 			TopN:      topN,
@@ -398,8 +411,13 @@ func init() {
 
 	// ------  generate masks randomly
 
-	// indexCmd.Flags().IntP("prefix", "", 15,
-	// 	formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
+	indexCmd.Flags().IntP("seed-min-prefix", "", 15,
+		formatFlagUsage(`Minimum length of shared substrings (anchors) in searching.`))
+
+	indexCmd.Flags().IntP("seed-max-desert", "", 900,
+		formatFlagUsage(`Minimum length of sketching desert.`))
+	indexCmd.Flags().IntP("seed-in-desert-dist", "", 200,
+		formatFlagUsage(`Distance of seeds to fill deserts.`))
 
 	// ------  generate mask from the top N biggest genomes
 

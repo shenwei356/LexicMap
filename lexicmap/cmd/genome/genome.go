@@ -88,7 +88,8 @@ type Genome struct {
 	StartTime time.Time
 
 	// seed positions to write to the file
-	Locs *[]uint32
+	Locs       *[]uint32
+	ExtraKmers *[]*[]uint64 // 3*n. (kmer, loc)
 
 	// for making sure both genome and key-value data being written
 	Done chan int

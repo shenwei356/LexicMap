@@ -38,6 +38,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash"
+	"github.com/shenwei356/lexichash/iterator"
 	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
@@ -108,10 +109,15 @@ type IndexBuildingOptions struct {
 	Masks    int   // number of masks
 	RandSeed int64 // random seed
 
-	//   generate mask randomly
-	PrefixForCheckLC int // length of prefix for checking low-complexity
+	// generate mask randomly
+	Prefix int // length of prefix for checking low-complexity and filling deserts
 
-	//   generate mask from the top N biggest genomes
+	// filling sketching deserts
+	DesertMaxLen           uint32 // maxi length of sketching deserts
+	DesertExpectedSeedDist int    // expected distance between seeds
+	DesertSeedPosRange     int    // the upstream and down stream region for adding a seeds
+
+	// generate mask from the top N biggest genomes
 	TopN      int // Select the the top N largest genomes for generating masks
 	PrefixExt int // Extension length of prefixes
 
@@ -142,8 +148,8 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.Masks < 64 {
 		return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
 	}
-	if opt.PrefixForCheckLC > opt.K {
-		return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.PrefixForCheckLC)
+	if opt.Prefix > opt.K {
+		return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.Prefix)
 	}
 
 	if opt.Chunks < 1 || opt.Chunks > 128 {
@@ -205,33 +211,33 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 			return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
 		}
 		opt.K = lh.K
+		// } else {
+		// 	masks, skippedFiles, err := GenerateMasks(infiles, opt, "")
+		// 	checkError(err)
+
+		// 	lh, err = lexichash.NewWithMasks(opt.K, masks)
+		// 	checkError(err)
+
+		// 	if opt.BigGenomeFile != "" {
+		// 		outfh2, err := os.Create(opt.BigGenomeFile)
+		// 		if err != nil {
+		// 			checkError(fmt.Errorf("failed to write file: %s", opt.BigGenomeFile))
+		// 		}
+		// 		for _, file := range skippedFiles {
+		// 			fmt.Fprintf(outfh2, "%s\n", file)
+		// 		}
+		// 		outfh2.Close()
+		// 		if opt.Verbose || opt.Log2File {
+		// 			log.Infof("  finished saving skipped genome files: %s", opt.BigGenomeFile)
+		// 		}
+		// 	}
+		// }
 	} else {
-		masks, skippedFiles, err := GenerateMasks(infiles, opt, "")
-		checkError(err)
-
-		lh, err = lexichash.NewWithMasks(opt.K, masks)
-		checkError(err)
-
-		if opt.BigGenomeFile != "" {
-			outfh2, err := os.Create(opt.BigGenomeFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to write file: %s", opt.BigGenomeFile))
-			}
-			for _, file := range skippedFiles {
-				fmt.Fprintf(outfh2, "%s\n", file)
-			}
-			outfh2.Close()
-			if opt.Verbose || opt.Log2File {
-				log.Infof("  finished saving skipped genome files: %s", opt.BigGenomeFile)
-			}
+		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.Prefix)
+		if err != nil {
+			return err
 		}
 	}
-	// } else {
-	// 	lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.PrefixForCheckLC)
-	// if err != nil {
-	// 	return err
-	// }
-	// }
 
 	// create a lookup table for faster masking
 	lenPrefix := 1
@@ -487,6 +493,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			_kmers := refseq.Kmers
 			loces := refseq.Locses
+			extraKmers := refseq.ExtraKmers
 
 			// refseq id -> this
 			batchIDAndRefID = uint64(batch)<<17 | (refIdx & 131071)
@@ -514,6 +521,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					var value uint64
 					var ok bool
 					var values *[]uint64
+					var knl *[]uint64
+					var j, _end int
 					for i := begin; i < end; i++ {
 						data := (*datas)[i] // the map to save into
 						kmer = (*_kmers)[i] // captured k-mer by the mask
@@ -533,6 +542,24 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 							*values = append(*values, value)
 						}
+
+						// extra k-mers
+						knl = (*extraKmers)[i]
+						if knl == nil {
+							continue
+						}
+						_end = len(*knl) - 2
+						for j = 0; j <= _end; j++ {
+							kmer = (*knl)[j]
+							if values, ok = (*data)[kmer]; !ok {
+								values = &[]uint64{}
+								(*data)[kmer] = values
+							}
+
+							value = batchIDAndRefIDShift | ((*knl)[j+1] & 1073741823)
+							*values = append(*values, value)
+						}
+
 					}
 					wg.Done()
 					<-tokens
@@ -740,23 +767,224 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			refseq.TwoBit = genome.Seq2TwoBit(refseq.Seq)
 
 			// --------------------------------
-			// seed positions
-			if opt.SaveSeedPositions {
-				if refseq.Locs == nil {
-					tmp := make([]uint32, 0, 40<<20)
-					refseq.Locs = &tmp
-				}
-				locs := refseq.Locs
-				*locs = (*locs)[:0]
-
-				var loc int
-				for _, _locs := range *locses {
-					for _, loc = range _locs {
-						*locs = append(*locs, uint32(loc&4294967295))
-					}
-				}
-				sortutil.Uint32s(*locs)
+			// fill sketching deserts
+			if refseq.Locs == nil {
+				tmp := make([]uint32, 0, 40<<10)
+				refseq.Locs = &tmp
 			}
+			locs := refseq.Locs
+			*locs = (*locs)[:0]
+
+			if refseq.ExtraKmers == nil {
+				tmp := make([]*[]uint64, opt.Masks)
+				refseq.ExtraKmers = &tmp
+			}
+			extraKmers := refseq.ExtraKmers
+			for _i, k2l := range *extraKmers {
+				if k2l != nil {
+					poolKmerAndLocs.Put(k2l)
+					(*extraKmers)[_i] = nil
+				}
+			}
+
+			var loc int
+			for _, _locs := range *locses {
+				for _, loc = range _locs {
+					*locs = append(*locs, uint32(loc&4294967295))
+				}
+			}
+			sortutil.Uint32s(*locs)
+
+			var pos2str, pos, pre, d uint32
+			maxDesert := opt.DesertMaxLen
+			seedDist := opt.DesertExpectedSeedDist
+			seedPosR := opt.DesertSeedPosRange
+
+			lenSeq := len(refseq.Seq)
+			var start, end int
+			var iter *iterator.Iterator
+			var p, kmer, kmerRC, kmerPos uint64
+			var ok bool
+			shiftOffset := ((k - opt.Prefix) << 1)
+			var _i, _j, posOfPre, posOfCur, _start, _end int
+
+			// a list of (prefix1, kmer, prefixRC, kmerRC)
+			p2ks := poolPrefix2Kmers.Get().(*[]*[4]uint64)
+			counter := poolPrefxCounter.Get().(*map[uint64]uint32)
+			var p2k *[4]uint64
+			var maskList *[]int
+			var _im int
+			var knl *[]uint64
+			extraLocs := poolInts.Get().(*[]int)
+			*extraLocs = (*extraLocs)[:0]
+
+			pre = 0
+			var iD int
+			for _, pos2str = range *locs {
+				pos = pos2str >> 1
+				d = pos - pre
+
+				if d < maxDesert {
+					pre = pos
+					continue
+				}
+
+				// range of desert region +- 1000 bp
+				start = int(pre) - 1000
+				posOfPre = 1000 // the location of previous seed in the list
+				if start < 0 {
+					posOfPre += start
+					start = 0
+				}
+				end = int(pos) + 1000
+				if end > lenSeq {
+					end = lenSeq
+				}
+
+				iD++
+				// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d\n", iD, pre, pos, d, start, end)
+
+				posOfCur = posOfPre + int(d) // their distance keeps the same
+
+				// count k-mers and their prefixes.
+				iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
+				if err != nil {
+					checkError(err)
+				}
+				*p2ks = (*p2ks)[:0]
+				clear(*counter)
+				for {
+					kmer, kmerRC, ok, _ = iter.NextKmer()
+					if !ok {
+						break
+					}
+
+					p2k = poolPrefix2Kmer.Get().(*[4]uint64)
+
+					p = kmer >> shiftOffset
+					(*p2k)[0] = p
+					(*p2k)[1] = kmer
+					(*counter)[p]++
+
+					p = kmerRC >> shiftOffset
+					(*p2k)[2] = p
+					(*p2k)[3] = kmerRC
+					(*counter)[p]++
+
+					*p2ks = append(*p2ks, p2k)
+				}
+
+				// start from the previous seed
+				_i = posOfPre
+				_j = _i + seedDist
+				for {
+					if _j >= posOfCur {
+						break
+					}
+
+					// fmt.Printf("  check %d\n", _j)
+
+					// upstream scan range: _j-seedPosR, _j
+					_start = _j + 1 // start of downstream scan range
+					_end = _j - seedPosR
+					ok = false
+					for ; _j > _end; _j-- {
+						p2k = (*p2ks)[_j]
+
+						// strand +
+						p, kmer = (*p2k)[0], (*p2k)[1]
+						if kmer != 0 && (*counter)[p] == 1 {
+							kmerPos = uint64(start+_j) << 1
+							ok = true
+							break
+						}
+
+						// strand -
+						p, kmer = (*p2k)[2], (*p2k)[3]
+						if kmer != 0 && (*counter)[p] == 1 {
+							kmerPos = uint64(start+_j)<<1 | 1
+							ok = true
+							break
+						}
+					}
+					if ok {
+						// fmt.Printf("  uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+						maskList = lh.MaskKmer(kmer)
+						for _, _im = range *maskList {
+							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
+							knl = (*extraKmers)[_im]
+							if knl == nil {
+								knl = poolKmerAndLocs.Get().(*[]uint64)
+								*knl = (*knl)[:0]
+								(*extraKmers)[_im] = knl
+							}
+							*knl = append(*knl, kmer)
+							*knl = append(*knl, kmerPos)
+
+							*extraLocs = append(*extraLocs, int(kmerPos))
+						}
+						lh.RecycleMaskKmerResult(maskList)
+						_j += seedDist
+						continue
+					}
+
+					if _start >= posOfCur {
+						break
+					}
+					// downstream scan range: _j+1, _j+seedpoR
+					_end = _start + seedPosR
+					for _j = _start; _j < _end; _j++ {
+						p2k = (*p2ks)[_j]
+
+						// strand +
+						p, kmer = (*p2k)[0], (*p2k)[1]
+						if kmer != 0 && (*counter)[p] == 1 {
+							kmerPos = uint64(start+_j) << 1
+							ok = true
+							break
+						}
+
+						// strand -
+						p, kmer = (*p2k)[2], (*p2k)[3]
+						if kmer != 0 && (*counter)[p] == 1 {
+							kmerPos = uint64(start+_j)<<1 | 1
+							ok = true
+							break
+						}
+					}
+					if ok {
+						// fmt.Printf("  dadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+						maskList = lh.MaskKmer(kmer)
+						for _, _im = range *maskList {
+							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
+							knl = (*extraKmers)[_im]
+							if knl == nil {
+								knl = poolKmerAndLocs.Get().(*[]uint64)
+								*knl = (*knl)[:0]
+								(*extraKmers)[_im] = knl
+							}
+							*knl = append(*knl, kmer)
+							*knl = append(*knl, kmerPos)
+
+							*extraLocs = append(*extraLocs, int(kmerPos))
+						}
+						lh.RecycleMaskKmerResult(maskList)
+						_j += seedDist
+						continue
+					}
+
+					_j += seedDist
+				}
+
+				pre = pos
+			}
+
+			// add extra locs
+			for _, loc = range *extraLocs {
+				*locs = append(*locs, uint32(loc&4294967295))
+			}
+			sortutil.Uint32s(*locs)
+			poolInts.Put(extraLocs)
 
 			genomes <- refseq
 
@@ -1017,7 +1245,27 @@ func readGenomeMapName2Idx(file string) (map[string]uint64, error) {
 	return m, nil
 }
 
-var poolSeedLocs = &sync.Pool{New: func() interface{} {
-	tmp := make([]uint32, 0, 40<<20)
+var poolPrefix2Kmers = &sync.Pool{New: func() interface{} {
+	tmp := make([]*[4]uint64, 0, 1024)
+	return &tmp
+}}
+
+// prefix1, kmer, prefixRC, kmerRC
+var poolPrefix2Kmer = &sync.Pool{New: func() interface{} {
+	return &[4]uint64{}
+}}
+
+var poolPrefxCounter = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]uint32)
+	return &tmp
+}}
+
+var poolKmerAndLocs = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint64, 0, 2)
+	return &tmp
+}}
+
+var poolInts = &sync.Pool{New: func() interface{} {
+	tmp := make([]int, 0, 1024)
 	return &tmp
 }}
