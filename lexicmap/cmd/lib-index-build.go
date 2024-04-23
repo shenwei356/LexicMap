@@ -26,6 +26,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -813,7 +814,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			counter := poolPrefxCounter.Get().(*map[uint64]uint32)
 			var p2k *[4]uint64
 			var maskList *[]int
-			var _im int
+			var _im, _imMostSimilar int
+			var hash, hashMin uint64
 			var knl *[]uint64
 
 			extraLocs := poolInts.Get().(*[]int) // extra positions
@@ -935,19 +937,27 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					if ok {
 						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
 						maskList = lh.MaskKmer(kmer)
-						for _, _im = range *maskList {
-							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-							knl = (*extraKmers)[_im]
-							if knl == nil {
-								knl = poolKmerAndLocs.Get().(*[]uint64)
-								*knl = (*knl)[:0]
-								(*extraKmers)[_im] = knl
-							}
-							*knl = append(*knl, kmer)
-							*knl = append(*knl, kmerPos)
 
-							*extraLocs = append(*extraLocs, int(kmerPos))
+						hashMin = math.MaxUint64
+						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
+							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
+							hash = kmer ^ (*_kmers)[_im]
+							if hash < hashMin {
+								_imMostSimilar = _im
+							}
 						}
+
+						knl = (*extraKmers)[_imMostSimilar]
+						if knl == nil {
+							knl = poolKmerAndLocs.Get().(*[]uint64)
+							*knl = (*knl)[:0]
+							(*extraKmers)[_imMostSimilar] = knl
+						}
+						*knl = append(*knl, kmer)
+						*knl = append(*knl, kmerPos)
+
+						*extraLocs = append(*extraLocs, int(kmerPos))
+
 						lh.RecycleMaskKmerResult(maskList)
 						_j += seedDist
 						continue
@@ -981,21 +991,29 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						}
 					}
 					if ok {
-						// fmt.Printf("  dadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
 						maskList = lh.MaskKmer(kmer)
-						for _, _im = range *maskList {
-							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-							knl = (*extraKmers)[_im]
-							if knl == nil {
-								knl = poolKmerAndLocs.Get().(*[]uint64)
-								*knl = (*knl)[:0]
-								(*extraKmers)[_im] = knl
-							}
-							*knl = append(*knl, kmer)
-							*knl = append(*knl, kmerPos)
 
-							*extraLocs = append(*extraLocs, int(kmerPos))
+						hashMin = math.MaxUint64
+						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
+							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
+							hash = kmer ^ (*_kmers)[_im]
+							if hash < hashMin {
+								_imMostSimilar = _im
+							}
 						}
+
+						knl = (*extraKmers)[_imMostSimilar]
+						if knl == nil {
+							knl = poolKmerAndLocs.Get().(*[]uint64)
+							*knl = (*knl)[:0]
+							(*extraKmers)[_imMostSimilar] = knl
+						}
+						*knl = append(*knl, kmer)
+						*knl = append(*knl, kmerPos)
+
+						*extraLocs = append(*extraLocs, int(kmerPos))
+
 						lh.RecycleMaskKmerResult(maskList)
 						_j += seedDist
 						continue
@@ -1349,5 +1367,3 @@ var poolInts = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 0, 1024)
 	return &tmp
 }}
-
-var cmpFn = func(x, y uint32) int { return int(x - y) }
