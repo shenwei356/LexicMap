@@ -53,6 +53,9 @@ Attentions:
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
+     The positions can be used to extract subsequence with 'lexicmap utils subseq'.
+  2. A distance between seeds (column distance) with a value of "-1" means it's the first seed
+     in that sequence, and the distance can't be computed currently.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -218,11 +221,16 @@ Attentions:
 		var n int
 		go func() {
 			var pos2str, pos, pre uint32
+			var dist int
 			var refname string
-			v := make(plotter.Values, 0, 40<<20)
+			var v plotter.Values
 			var filePlot string
 			var p *plot.Plot
 			threadsFloat := float64(opt.NumCPUs)
+
+			if outputPlotDir {
+				v = make(plotter.Values, 0, 40<<20)
+			}
 
 			for ref2locs := range ch {
 				if len(*ref2locs.Locs) == 0 {
@@ -235,13 +243,21 @@ Attentions:
 				n++
 				pre = 0
 				refname = ref2locs.Ref
-				for _, pos2str = range *ref2locs.Locs {
-					pos = pos2str >> 1
-					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d\n", refname, pos+1, lexichash.Strands[pos2str&1], pos-pre)
-					pre = pos
-				}
 
 				if !outputPlotDir {
+					for _, pos2str = range *ref2locs.Locs {
+						pos = pos2str >> 2
+
+						if pos2str&1 > 0 {
+							dist = -1
+						} else {
+							dist = int(pos - pre)
+						}
+
+						fmt.Fprintf(outfh, "%s\t%d\t%c\t%d\n", refname, pos+1, lexichash.Strands[pos2str&1], dist)
+						pre = pos
+					}
+
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
@@ -255,8 +271,16 @@ Attentions:
 				v = v[:0]
 				pre = 0
 				for _, pos2str = range *ref2locs.Locs {
-					pos = pos2str >> 1
-					v = append(v, float64(pos-pre))
+					pos = pos2str >> 2
+
+					if pos2str&1 > 0 {
+						dist = -1
+					} else {
+						dist = int(pos - pre)
+						v = append(v, float64(dist))
+					}
+
+					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d\n", refname, pos+1, lexichash.Strands[pos2str&1], dist)
 					pre = pos
 				}
 

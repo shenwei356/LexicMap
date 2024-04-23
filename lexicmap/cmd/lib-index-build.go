@@ -760,9 +760,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 			refseq.Kmers = _kmers
 			refseq.Locses = locses
-			if skipRegions != nil {
-				poolSkipRegions.Put(skipRegions)
-			}
 
 			// --------------------------------
 			// bit-packed sequences
@@ -892,7 +889,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					*p2ks = append(*p2ks, p2k)
 				}
 
-				if (*counter)[0] > 5 { // it's in interval region
+				if (*counter)[0] > 50 { // it's in an interval region
 					pre = pos
 					continue
 				}
@@ -1004,7 +1001,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						continue
 					}
 
-					// it might fail to find any candiates in highly-repeat regions
+					// it might fail to find any candiates in highly-repeated regions
+
 					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 					// 	iD, pre, pos, d, start, end, end-start+1)
 
@@ -1014,16 +1012,59 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				pre = pos
 			}
 
-			// add extra locs
-			for _, loc = range *extraLocs {
-				*locs = append(*locs, uint32(loc&4294967295))
-			}
+			if opt.SaveSeedPositions {
+				// add extra locs
+				for _, loc = range *extraLocs {
+					*locs = append(*locs, uint32(loc&4294967295))
+				}
+				sortutil.Uint32s(*locs)
 
-			sortutil.Uint32s(*locs)
+				// add an extra flag so we can skip these seed pairs accrossing interval regions.
+
+				var nRegions int
+				checkRegion := len(refseq.SeqSizes) > 1
+				var _i, _j, _ri, _rs int
+				var _loc uint32
+				if checkRegion {
+					nRegions = len(*skipRegions)
+
+					_ri = 0
+					_rs = (*skipRegions)[_ri][0] // start  of a interval region
+				}
+
+				if !checkRegion {
+					for _i, _loc = range *locs {
+						(*locs)[_i] = _loc << 1
+					}
+				} else {
+					for _i, _loc = range *locs {
+						_j = int(_loc >> 1)
+
+						if checkRegion && _j >= _rs { // this is the first pos after an interval region
+							(*locs)[_i] = _loc<<1 | 1 // add a flag
+
+							// fmt.Printf("the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[_ri][1])
+
+							_ri++
+							if _ri == nRegions { // this is already the last one
+								checkRegion = false
+							} else {
+								_rs = (*skipRegions)[_ri][1]
+							}
+						} else {
+							(*locs)[_i] = _loc << 1
+						}
+					}
+				}
+			}
 
 			poolInts.Put(extraLocs)
 			poolPrefix2Kmers.Put(p2ks)
 			poolPrefxCounter.Put(counter)
+
+			if skipRegions != nil {
+				poolSkipRegions.Put(skipRegions)
+			}
 
 			genomes <- refseq
 
