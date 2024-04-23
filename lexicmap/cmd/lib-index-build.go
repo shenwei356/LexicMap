@@ -110,7 +110,7 @@ type IndexBuildingOptions struct {
 	RandSeed int64 // random seed
 
 	// generate mask randomly
-	Prefix int // length of prefix for checking low-complexity and filling deserts
+	Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
 
 	// filling sketching deserts
 	DesertMaxLen           uint32 // maxi length of sketching deserts
@@ -731,14 +731,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// because lh.Mask accepts a list, while when skipRegions is nil, *skipRegions is illegal.
 			var _skipRegions [][2]int
 			var skipRegions *[][2]int
+			var interval int = opt.ContigInterval
 			if len(refseq.SeqSizes) > 1 {
 				skipRegions = poolSkipRegions.Get().(*[][2]int)
 				*skipRegions = (*skipRegions)[:0]
 				var n int // len of concatenated seqs
 				for i, s := range refseq.SeqSizes {
 					if i > 0 {
-						*skipRegions = append(*skipRegions, [2]int{n, n + k - 1})
-						n += k - 1
+						*skipRegions = append(*skipRegions, [2]int{n, n + interval - 1})
+						n += interval
 					}
 					n += s
 				}
@@ -891,6 +892,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					*p2ks = append(*p2ks, p2k)
 				}
 
+				if (*counter)[0] > 5 { // it's in interval region
+					pre = pos
+					continue
+				}
+
 				// fmt.Printf("  list size： %d\n", len(*p2ks))
 
 				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
@@ -997,6 +1003,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						_j += seedDist
 						continue
 					}
+
+					// it might fail to find any candiates in highly-repeat regions
+					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
+					// 	iD, pre, pos, d, start, end, end-start+1)
 
 					_j += seedDist
 				}
@@ -1298,3 +1308,5 @@ var poolInts = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 0, 1024)
 	return &tmp
 }}
+
+var cmpFn = func(x, y uint32) int { return int(x - y) }

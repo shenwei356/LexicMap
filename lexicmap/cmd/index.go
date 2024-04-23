@@ -133,9 +133,9 @@ Important parameters:
 		maxGenomeSize := getFlagNonNegativeInt(cmd, "max-genome")
 		fileBigGenomes := getFlagString(cmd, "big-genomes")
 
-		lcPrefix := getFlagNonNegativeInt(cmd, "seed-min-prefix")
-		if lcPrefix > 32 || lcPrefix < 5 {
-			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", lcPrefix))
+		minPrefix := getFlagNonNegativeInt(cmd, "seed-min-prefix")
+		if minPrefix > 32 || minPrefix < 5 {
+			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 		maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
 		seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
@@ -241,7 +241,7 @@ Important parameters:
 			RandSeed: int64(seed),
 
 			// randomly generating
-			Prefix: lcPrefix,
+			Prefix: minPrefix,
 
 			// filling sketching deserts
 			DesertMaxLen:           uint32(maxDesert),    // maxi length of sketching deserts
@@ -336,13 +336,16 @@ Important parameters:
 				log.Infof("k-mer size: %d", k)
 				log.Infof("number of masks: %d", nMasks)
 				log.Infof("rand seed: %d", seed)
+				log.Infof("maximum sketching desert length: %d", maxDesert)
+				log.Infof("prefix for checking low-complexity and choosing k-mers to fill sketching deserts: %d", minPrefix)
+				log.Infof("distance of k-mers to fill deserts: %d", seedInDesertDist)
+				log.Infof("")
 				// log.Infof("top N genomes for generating mask: %d", topN)
 				// log.Infof("prefix extension length: %d", prefixExt)
 			}
 			log.Info()
 			log.Infof("seeds data chunks: %d", chunks)
 			log.Infof("seeds data indexing partitions: %d", partitions)
-			log.Info()
 			log.Infof("genome batch size: %d", batchSize)
 			log.Info()
 		}
