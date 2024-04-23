@@ -543,6 +543,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							*values = append(*values, value)
 						}
 
+						// -----------------------------
 						// extra k-mers
 						knl = (*extraKmers)[i]
 						if knl == nil {
@@ -766,21 +767,22 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// bit-packed sequences
 			refseq.TwoBit = genome.Seq2TwoBit(refseq.Seq)
 
-			// --------------------------------
+			// ----------------------------------------------------------------
 			// fill sketching deserts
-			if refseq.Locs == nil {
+
+			if refseq.Locs == nil { // existing positions, will be updated with new k-mers
 				tmp := make([]uint32, 0, 40<<10)
 				refseq.Locs = &tmp
 			}
 			locs := refseq.Locs
 			*locs = (*locs)[:0]
 
-			if refseq.ExtraKmers == nil {
+			if refseq.ExtraKmers == nil { // extra k-mers
 				tmp := make([]*[]uint64, opt.Masks)
 				refseq.ExtraKmers = &tmp
 			}
 			extraKmers := refseq.ExtraKmers
-			for _i, k2l := range *extraKmers {
+			for _i, k2l := range *extraKmers { // reset
 				if k2l != nil {
 					poolKmerAndLocs.Put(k2l)
 					(*extraKmers)[_i] = nil
@@ -788,9 +790,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 
 			var loc int
-			for _, _locs := range *locses {
+			for _, _locs := range *locses { // insert positions
 				for _, loc = range _locs {
-					*locs = append(*locs, uint32(loc&4294967295))
+					*locs = append(*locs, uint32(loc&4294967295)) // only posision | strand flag
 				}
 			}
 			sortutil.Uint32s(*locs)
@@ -806,7 +808,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var p, kmer, kmerRC, kmerPos uint64
 			var ok bool
 			shiftOffset := ((k - opt.Prefix) << 1)
-			var _i, _j, posOfPre, posOfCur, _start, _end int
+			var _j, posOfPre, posOfCur, _start, _end int
 
 			// a list of (prefix1, kmer, prefixRC, kmerRC)
 			p2ks := poolPrefix2Kmers.Get().(*[]*[4]uint64)
@@ -815,7 +817,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var maskList *[]int
 			var _im int
 			var knl *[]uint64
-			extraLocs := poolInts.Get().(*[]int)
+
+			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
 
 			pre = 0
@@ -824,35 +827,49 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				pos = pos2str >> 1
 				d = pos - pre
 
-				if d < maxDesert {
+				if d < maxDesert { // small distance, cool
 					pre = pos
 					continue
 				}
 
-				// range of desert region +- 1000 bp
-				start = int(pre) - 1000
-				posOfPre = 1000 // the location of previous seed in the list
+				// range of desert region +- 1000 bp,
+				// as we don't want other kmers with the same prefix exist around.
+				start = int(pre) - 1000 // start position in the sequence
+				posOfPre = 1000         // the location of previous seed in the list
 				if start < 0 {
 					posOfPre += start
 					start = 0
 				}
-				end = int(pos) + 1000
+				end = int(pos) + 1000 + k // end position in the sequence
 				if end > lenSeq {
 					end = lenSeq
 				}
 
 				iD++
-				// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d\n", iD, pre, pos, d, start, end)
+				// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
+				// 	iD, pre, pos, d, start, end, end-start+1)
 
 				posOfCur = posOfPre + int(d) // their distance keeps the same
+
+				// 0123      start                             end
+				// ----o-----[-o-----o------------------o---o--]----o-------
+				//           0123    posOfPre           posOfCur
 
 				// count k-mers and their prefixes.
 				iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
 				if err != nil {
 					checkError(err)
 				}
+
+				// recycle p2k, and reset p2ks
+				for _, p2k = range *p2ks {
+					poolPrefix2Kmer.Put(p2k)
+				}
 				*p2ks = (*p2ks)[:0]
+
+				// clear counter
 				clear(*counter)
+
 				for {
 					kmer, kmerRC, ok, _ = iter.NextKmer()
 					if !ok {
@@ -874,21 +891,26 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					*p2ks = append(*p2ks, p2k)
 				}
 
+				// fmt.Printf("  list size： %d\n", len(*p2ks))
+
+				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
+
 				// start from the previous seed
-				_i = posOfPre
-				_j = _i + seedDist
+				_j = posOfPre + seedDist
 				for {
 					if _j >= posOfCur {
 						break
 					}
 
-					// fmt.Printf("  check %d\n", _j)
-
 					// upstream scan range: _j-seedPosR, _j
 					_start = _j + 1 // start of downstream scan range
 					_end = _j - seedPosR
+
+					// fmt.Printf("  check %d, <-end: %d, ->start: %d\n", _j, _end, _start)
+
 					ok = false
 					for ; _j > _end; _j-- {
+						// fmt.Printf("    test %d\n", _j)
 						p2k = (*p2ks)[_j]
 
 						// strand +
@@ -908,7 +930,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						}
 					}
 					if ok {
-						// fmt.Printf("  uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
 						maskList = lh.MaskKmer(kmer)
 						for _, _im = range *maskList {
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
@@ -933,6 +955,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					}
 					// downstream scan range: _j+1, _j+seedpoR
 					_end = _start + seedPosR
+					if _end >= posOfCur {
+						_end = posOfCur - 1
+					}
 					for _j = _start; _j < _end; _j++ {
 						p2k = (*p2ks)[_j]
 
@@ -983,8 +1008,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			for _, loc = range *extraLocs {
 				*locs = append(*locs, uint32(loc&4294967295))
 			}
+
 			sortutil.Uint32s(*locs)
+
 			poolInts.Put(extraLocs)
+			poolPrefix2Kmers.Put(p2ks)
+			poolPrefxCounter.Put(counter)
 
 			genomes <- refseq
 
@@ -1261,7 +1290,7 @@ var poolPrefxCounter = &sync.Pool{New: func() interface{} {
 }}
 
 var poolKmerAndLocs = &sync.Pool{New: func() interface{} {
-	tmp := make([]uint64, 0, 2)
+	tmp := make([]uint64, 0, 128)
 	return &tmp
 }}
 

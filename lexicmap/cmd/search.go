@@ -107,16 +107,16 @@ Output format:
 		}
 		outFile := getFlagString(cmd, "out-file")
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
-		if minPrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -m/--seed-min-prefix (%d) should be <= 32", minPrefix))
+		if minPrefix > 32 || minPrefix < 5 {
+			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 		maxMismatch := getFlagInt(cmd, "seed-max-mismatch")
 		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
 		if minSinglePrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -M/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
+			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
 		}
 		if minSinglePrefix < minPrefix {
-			checkError(fmt.Errorf("the value of flag -M/--seed-min-single-prefix (%d) should be >= that of -m/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
+			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
 		}
 		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
 		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
@@ -140,19 +140,19 @@ Output format:
 
 		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
 		if minQcovGenome > 100 {
-			checkError(fmt.Errorf("the value of flag -f/min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
+			checkError(fmt.Errorf("the value of flag -Q/--min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
 		} else if minQcovGenome < 1 {
-			log.Warningf("the value of flag -Q/min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
+			log.Warningf("the value of flag -Q/--min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		}
 		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
 		if minIdent > 100 {
-			checkError(fmt.Errorf("the value of flag -i/align-min-match-pident (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [0, 100]", minIdent))
 		} else if minIdent < 1 {
-			log.Warningf("the value of flag -i/align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
+			log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
-			checkError(fmt.Errorf("the value of flag -q/min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")

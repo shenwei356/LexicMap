@@ -278,7 +278,7 @@ How:
 }
 
 func init() {
-	utilsCmd.AddCommand(geneMasksCmd)
+	// utilsCmd.AddCommand(geneMasksCmd)
 
 	// -----------------------------  input  -----------------------------
 

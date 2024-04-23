@@ -3,7 +3,7 @@
 ### v0.3.0 - 2024-04-xx
 
 - `lexicmap index`:
-    - **Generate masks from the top N biggest genomes instead of randomly generation**.
+    - **Better seed coverage by filling sketching deserts**.
     - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
     - 2X indexing speed with a faster masking method.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
