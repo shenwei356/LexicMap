@@ -16,7 +16,7 @@ weight: 10
     - For short queries like genes or long reads, returning top N hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-              --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
+              --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000
 
     - For longer queries like plasmids, returning all hits.
 
@@ -54,7 +54,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
 
 1. **Masking:**
-   Query sequence is masked by the masks of the index. In other word, each mask captures the most similar k-mer and stores its posistion and strand information.
+   Query sequence is masked by the masks of the index. In other word, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its posistion and strand information.
 1. **Seeding:**
    For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least *p* bases.
     1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.

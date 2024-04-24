@@ -5,22 +5,23 @@ weight: 60
 
 ### Does LexicMap support fungi genomes?
 
-No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.
+Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
+Fungi can be supported with more masks.
 
 ### Does LexicMap support short reads?
 
-No. LexicMap only supports long (>=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
+No. LexicMap only supports long (>=500 bp, >=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences.
 However, some short queries can also be aligned.
 
 ### How's the hardware requirement?
 
-For index building.
+For index building. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
 - More CPUs would accelerate indexing.
 - The memory occupation is linear with
     - The size of the genome batch.
     - The number of LexicHash masks.
 
-For seaching.
+For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 - More CPUs would accelerate searching.
 - The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking.
 

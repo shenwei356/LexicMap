@@ -76,8 +76,8 @@ Important parameters:
  *1. -k/--kmer,             ► K-mer size (maximum: 32, default: 31).
                             ► Bigger values improve the search specificity and do not increase the index size.
  *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
-                            ► Bigger values improve the search sensitivity, increase the index size, and slowdown
-                            search speed.
+                            ► Bigger values improve the search sensitivity, increase the index size, and slow down
+                            the search speed.
   3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
                             ► This value is used to remove masks with a prefix of low-complexity and choose k-mers
                             to fill sketching deserts.
@@ -88,8 +88,8 @@ Important parameters:
                        The maximum number should not exceed the maximum number of open files set by the
                        operating systems.
   2. --partitions,     ► Number of partitions for indexing each seed file (default: 512).
-                       ► Bigger values bring higher memory occupation. 512 is a good value with high searching speed,
-                       Larger or smaller values would decrease the speed in "lexicmap search".
+                       ► Bigger values bring a little higher memory occupation. 512 is a good value with high
+                       searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
                        ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data with
                        another value of this flag.
   3. --max-open-files, ► Maximum number of open files (default: 512).
