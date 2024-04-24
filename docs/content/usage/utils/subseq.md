@@ -30,12 +30,12 @@ Flags:
                           treated as that in the concatenated sequence.
 
 Global Flags:
-  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
-  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
 ```
 

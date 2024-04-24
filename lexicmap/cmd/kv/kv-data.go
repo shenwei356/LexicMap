@@ -120,16 +120,6 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 		return 0, errors.New("k-mer-value data: no data given")
 	}
 
-	// check nAnchors
-	nKmers := math.MaxInt // find the smallest nKmers
-	var _nKmers int
-	for _, m := range data {
-		_nKmers = len(*m)
-		if _nKmers < nKmers {
-			nKmers = _nKmers
-		}
-	}
-
 	wtr, err := NewWriter(k, MaskOffset, len(data), file)
 	if err != nil {
 		return 0, err
@@ -400,6 +390,7 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 		// values
 
 		bufVals.Reset()
+
 		for _, _v = range *preVal {
 			be.PutUint64(buf8, _v)
 			bufVals.Write(buf8)

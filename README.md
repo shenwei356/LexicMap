@@ -25,7 +25,7 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
 
     # For short queries like genes or long reads, returning top N hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-        --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 500
+        --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000
 
     # For longer queries like plasmids, returning all hits.
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \

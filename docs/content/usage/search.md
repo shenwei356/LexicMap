@@ -57,8 +57,7 @@ Flags:
       --max-open-files int             ► Maximum opened files. (default 512)
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome. (default 50)
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
-  -o, --out-file string                ► Out file, supports and recommends a ".gz" suffix ("-" for
-                                       stdout). (default "-")
+  -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
       --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
       --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
   -m, --seed-max-mismatch int          ► Minimum mismatch between non-prefix regions of shared
@@ -66,15 +65,15 @@ Flags:
   -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
   -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there's only
                                        one pair. (default 20)
-  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 500)
+  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 1000)
 
 Global Flags:
-  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
-  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
 ```
 

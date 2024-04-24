@@ -14,6 +14,9 @@ Attentions:
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
+     The positions can be used to extract subsequence with 'lexicmap utils subseq'.
+  2. A distance between seeds (column distance) with a value of "-1" means it's the first seed
+     in that sequence, and the distance can't be computed currently.
 
 Usage:
   lexicmap utils seed-pos [flags]
@@ -36,12 +39,12 @@ Flags:
       --width float        ► Histogram width (unit: inch). (default 6)
 
 Global Flags:
-  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
-  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
 ```
 
@@ -49,24 +52,24 @@ Global Flags:
 
 1. Adding the flag `--save-seed-pos` in index building.
 
-        $ lexicmap index -I refs/ -O demo.lmi --top-n 3 --save-seed-pos --force
+        $ lexicmap index -I refs/ -O demo.lmi --save-seed-pos --force
 
 2. Listing seed position of one genome.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
         $ head -n 10 seed_distance.tsv | csvtk pretty -t
         ref               pos   strand   distance
         ---------------   ---   ------   --------
-        GCF_000006945.2   113   +        112
-        GCF_000006945.2   291   -        178
-        GCF_000006945.2   297   -        6
-        GCF_000006945.2   299   -        2
-        GCF_000006945.2   322   +        23
-        GCF_000006945.2   340   +        18
-        GCF_000006945.2   389   +        49
-        GCF_000006945.2   533   -        144
-        GCF_000006945.2   598   -        65
+        GCF_000017205.1   2     +        1
+        GCF_000017205.1   41    +        39
+        GCF_000017205.1   45    +        4
+        GCF_000017205.1   74    +        29
+        GCF_000017205.1   85    +        11
+        GCF_000017205.1   119   +        34
+        GCF_000017205.1   130   +        11
+        GCF_000017205.1   185   +        55
+        GCF_000017205.1   269   +        84
 
     Check the biggest seed distances.
 
@@ -77,31 +80,33 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        1586       1
-        1434       1
-        1418       1
-        1398       1
-        1282       2
-        1268       1
-        1261       1
-        1233       1
-        1175       1
-        1166       1
-        1158       1
-        1129       1
-        1106       1
-        1079       2
-        1074       1
-        1066       1
-        1060       1
-        1041       1
-        1034       2
+        1234       1
+        899        2
+        898        4
+        897        1
+        896        5
+        895        4
+        894        3
+        893        3
+        892        4
+        891        2
+        890        2
+        889        2
+        888        3
+        887        4
+        886        7
+        885        2
+        884        5
+        883        2
+        881        6
 
     Plot the histogram of distances between seeds.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv  --plot-dir seed_distance
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 
-    <img src="/LexicMap/GCF_000006945.2.png" alt="" width="600"/>
+    In the plot below, there's a peak at 200 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 200 bp by default.
+
+    <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
 
 3. Listing seed position of all genomes.
 
@@ -113,21 +118,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_002950215.1   43149
-        GCF_002949675.1   42888
-        GCF_001457655.1   42444
-        GCF_006742205.1   42050
-        GCF_900638025.1   41939
-        GCF_001027105.1   41925
-        GCF_000392875.1   41487
-        GCF_009759685.1   41058
-        GCF_000148585.2   41029
-        GCF_000017205.1   41012
-        GCF_000006945.2   41002
-        GCF_003697165.2   40785
-        GCF_000742135.1   40632
-        GCF_001096185.1   40234
-        GCF_001544255.1   40188
+        GCF_000017205.1   45708
+        GCF_002950215.1   43617
+        GCF_002949675.1   43411
+        GCF_001457655.1   42112
+        GCF_006742205.1   42103
+        GCF_900638025.1   42008
+        GCF_001027105.1   41856
+        GCF_000742135.1   41414
+        GCF_000392875.1   41392
+        GCF_003697165.2   41189
+        GCF_009759685.1   41137
+        GCF_000006945.2   41108
+        GCF_000148585.2   41075
+        GCF_001096185.1   40239
+        GCF_001544255.1   40159
 
     Plot the histograms of distances between seeds for all genomes.
 

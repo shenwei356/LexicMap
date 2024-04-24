@@ -523,25 +523,28 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					var ok bool
 					var values *[]uint64
 					var knl *[]uint64
-					var j, _end int
+					var _j, _end int
 					for i := begin; i < end; i++ {
 						data := (*datas)[i] // the map to save into
-						kmer = (*_kmers)[i] // captured k-mer by the mask
-						if values, ok = (*data)[kmer]; !ok {
-							values = &[]uint64{}
-							(*data)[kmer] = values
-						}
-						for _, loc = range (*loces)[i] { // position information of the captured k-mer
-							//  batch idx: 17 bits
-							//  ref idx:   17 bits
-							//  pos:       29 bits
-							//  strand:     1 bits
-							// here, the position from Mask() already contains the strand information.
-							// value = uint64(batch)<<47 | ((refIdx & 131071) << 30) |
-							value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
-							// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
 
-							*values = append(*values, value)
+						kmer = (*_kmers)[i]       // captured k-mer by the mask
+						if len((*loces)[i]) > 0 { // locations from from MaskKnownPrefixes might be empty.
+							if values, ok = (*data)[kmer]; !ok {
+								values = &[]uint64{}
+								(*data)[kmer] = values
+							}
+							for _, loc = range (*loces)[i] { // position information of the captured k-mer
+								//  batch idx: 17 bits
+								//  ref idx:   17 bits
+								//  pos:       29 bits
+								//  strand:     1 bits
+								// here, the position from Mask() already contains the strand information.
+								// value = uint64(batch)<<47 | ((refIdx & 131071) << 30) |
+								value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
+								// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
+
+								*values = append(*values, value)
+							}
 						}
 
 						// -----------------------------
@@ -551,14 +554,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							continue
 						}
 						_end = len(*knl) - 2
-						for j = 0; j <= _end; j++ {
-							kmer = (*knl)[j]
+						for _j = 0; _j <= _end; _j++ {
+							kmer = (*knl)[_j]
 							if values, ok = (*data)[kmer]; !ok {
 								values = &[]uint64{}
 								(*data)[kmer] = values
 							}
 
-							value = batchIDAndRefIDShift | ((*knl)[j+1] & 1073741823)
+							value = batchIDAndRefIDShift | ((*knl)[_j+1] & 1073741823)
 							*values = append(*values, value)
 						}
 
@@ -851,6 +854,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 				posOfCur = posOfPre + int(d) // their distance keeps the same
 
+				// .                       desert
+				// .                 -------------------
 				// 0123      start                             end
 				// ----o-----[-o-----o------------------o---o--]----o-------
 				//           0123    posOfPre           posOfCur

@@ -56,7 +56,7 @@ func init() {
 	defaultThreads := runtime.NumCPU()
 
 	RootCmd.PersistentFlags().IntP("threads", "j", defaultThreads,
-		formatFlagUsage("Number of CPUs cores to use. By default, it uses all available cores."))
+		formatFlagUsage("Number of CPU cores to use. By default, it uses all available cores."))
 
 	// RootCmd.PersistentFlags().BoolP("verbose", "", false, "print verbose information (recommended)")
 
@@ -64,7 +64,7 @@ func init() {
 		formatFlagUsage("Do not print any verbose information. But you can write them to a file with --log."))
 
 	RootCmd.PersistentFlags().StringP("infile-list", "X", "",
-		formatFlagUsage("File of input files list (one file per line). If given, they are appended to files from CLI arguments."))
+		formatFlagUsage("File of input file list (one file per line). If given, they are appended to files from CLI arguments."))
 
 	RootCmd.PersistentFlags().StringP("log", "", "", formatFlagUsage("Log file."))
 

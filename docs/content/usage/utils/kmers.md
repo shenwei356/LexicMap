@@ -24,13 +24,13 @@ Flags:
                           (default "-")
 
 Global Flags:
-  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
-  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
-                             (default 16)
+  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
+                             (default 16
 ```
 
 ## Examples
@@ -40,43 +40,43 @@ Global Flags:
         $ lexicmap utils kmers --quiet -d demo.lmi/ | csvtk pretty -t
         mask   kmer                              number   ref               pos       strand
         ----   -------------------------------   ------   ---------------   -------   ------
-        1      AAAAAAACGTAATTGTGTGGGTACAGATTGG   1        GCF_000148585.2   1175190   +
-        1      AAAAAAACGTCAATCAATTTGACCGCACTTT   1        GCF_900638025.1   774645    +
-        1      AAAAAAACGTCACAACAACAAGACAAAGTGA   1        GCF_000392875.1   2565649   -
-        1      AAAAAAACGTCACTTGTCCTTTCCTACCCTT   1        GCF_001457655.1   1711468   +
-        1      AAAAAAACGTCATAAACCGCAACAGCCGCGC   1        GCF_000742135.1   144039    -
-        1      AAAAAAACGTCATAACGAATTTCCGGGCGCG   1        GCF_000006945.2   3120524   -
-        1      AAAAAAACGTCATATCCCAATGGCGATTACT   1        GCF_006742205.1   640624    +
-        1      AAAAAAACGTCATCGCTTGCATTAGAAAGGT   3        GCF_003697165.2   339475    -
-        1      AAAAAAACGTCATCGCTTGCATTAGAAAGGT   3        GCF_002949675.1   2873885   +
-        1      AAAAAAACGTCATCGCTTGCATTAGAAAGGT   3        GCF_002950215.1   2692249   +
-        1      AAAAAAACGTCATGAAAAACGGCGATTGACA   1        GCF_001544255.1   1283395   -
-        1      AAAAAAACGTCCATTCTATCAAATCGTTGTG   1        GCF_009759685.1   970548    -
-        1      AAAAAAACGTCCCAATATTATTGGGACGTTT   1        GCF_001027105.1   2044210   -
-        1      AAAAAAACGTCGGAGCCACATCTGGCTCTTC   1        GCF_000017205.1   2674197   +
-        1      AAAAAAACGTCTAGCCAATGACCCATTCCTG   1        GCF_001096185.1   2127010   +
+        1      AAAACACATGCTTTCACTGACTTGGAATGCA   1        GCF_001457655.1   389653    +
+        1      AAAACACATGGATTGTTAAAAGGTAGTTGGC   1        GCF_900638025.1   2061446   -
+        1      AAAACACATGTAAGCCCCAACCAGGCGGCTT   1        GCF_000742135.1   2569538   -
+        1      AAAACACATGTCTAAAATTATCGGTATTGAC   2        GCF_000148585.2   326139    +
+        1      AAAACACATGTCTAAAATTATCGGTATTGAC   2        GCF_001096185.1   34675     -
+        1      AAAACACATGTGAGGCAGGCGCTCGCCTGTC   1        GCF_001544255.1   938768    -
+        1      AAAACACATGTGCAAATCCATATGTGTTTAG   1        GCF_002950215.1   2793719   +
+        1      AAAACACATGTGTTGTTTAAATCAAATTATG   1        GCF_001027105.1   1413381   +
+        1      AAAACACATGTGTTTAATCACCTTAATTCAA   1        GCF_006742205.1   729899    +
+        1      AAAACACATGTTCACGGCGGCAGGCTGCAAT   1        GCF_003697165.2   1581455   +
+        1      AAAACACATGTTCTCAATACTCGCCTGACGC   1        GCF_000006945.2   1274137   -
+        1      AAAACACATGTTGATCATCATAAATACAGCG   1        GCF_002949675.1   3925773   -
+        1      AAAACACATGTTGATCTATTCTTATAGCTCA   1        GCF_009759685.1   3295037   -
+        1      AAAACACATGTTTCAAACATTTTAGCAAAAC   1        GCF_000392875.1   2491283   -
+        1      AAAACACATGTTTCACACAACTTCACCCAAT   1        GCF_000017205.1   4394137   +
 
 
-1. Specify the maks.
+1. Specify the mask.
 
         $ lexicmap utils kmers --quiet -d demo.lmi/ --mask 12345 | csvtk pretty -t
         mask    kmer                              number   ref               pos       strand
         -----   -------------------------------   ------   ---------------   -------   ------
-        12345   CATGGTGCTTAAAAAAGTAGGGGCAAAGTCC   1        GCF_009759685.1   1468773   +
-        12345   CATGGTGCTTAACCTCGACAAATGTATCGGT   1        GCF_002949675.1   357987    -
-        12345   CATGGTGCTTAACCTCGATAAATGTATCGGC   1        GCF_002950215.1   532721    -
-        12345   CATGGTGCTTAATCGCCGCCTGCGCCGCCAC   1        GCF_000742135.1   3801879   +
-        12345   CATGGTGCTTACGCAGGTCAGCGGGTATGAC   1        GCF_000006945.2   3792773   -
-        12345   CATGGTGCTTACGGTGGATCGCGGTCCATTC   1        GCF_000017205.1   383787    -
-        12345   CATGGTGCTTACTAGTTATGAAATCATCAGT   1        GCF_001457655.1   1887005   -
-        12345   CATGGTGCTTACTTTACGGTTTTGCTGGCCT   1        GCF_003697165.2   1579125   +
-        12345   CATGGTGCTTATGCTACGGGTGATGCATTCT   1        GCF_001096185.1   1060887   -
-        12345   CATGGTGCTTCAACCGAACCAAAATTTTGAA   1        GCF_000392875.1   2836858   +
-        12345   CATGGTGCTTCATAACCAGGTACTAAACGTT   1        GCF_001027105.1   1305877   -
-        12345   CATGGTGCTTCATCAAGTGAAAACTCTTATA   1        GCF_000148585.2   456813    -
-        12345   CATGGTGCTTCGTAACCTGGTACAAGACGTT   1        GCF_006742205.1   1534889   +
-        12345   CATGGTGCTTGAGGATTGATCAACGGCACTG   1        GCF_001544255.1   1428518   +
-        12345   CATGGTGCTTGATCATGGAAAATCACTTGTG   1        GCF_900638025.1   468185    +
+        12345   CATGTTATAGAAGGACGTCGACATCTTGTGG   1        GCF_000017205.1   3140677   +
+        12345   CATGTTATAGAATTACATACATTGTAACATG   1        GCF_006742205.1   704431    -
+        12345   CATGTTATAGCACGCTTAATCGCTTGATCCC   1        GCF_001027105.1   2655846   +
+        12345   CATGTTATAGCATCCTTTTACGTGAAAAGGT   1        GCF_000742135.1   4136093   +
+        12345   CATGTTATAGCCAGCAAATGGAAGCATCGCG   1        GCF_009759685.1   492828    -
+        12345   CATGTTATAGCCATTGATGGTAACTTTGATG   1        GCF_001096185.1   536843    +
+        12345   CATGTTATAGCCTGAAAGGTGCTAAACAACT   1        GCF_000006945.2   4876155   +
+        12345   CATGTTATAGCCTTCTCCAAGACCAATCAAA   1        GCF_000148585.2   1667015   +
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   3        GCF_003697165.2   3996124   +
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   3        GCF_002949675.1   1871326   +
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   3        GCF_002950215.1   2326544   +
+        12345   CATGTTATAGCTAACTGCGACTTGTGGCACA   1        GCF_900638025.1   991007    -
+        12345   CATGTTATAGTAAACAAAAGTAGTGACGAAT   1        GCF_000392875.1   1539455   -
+        12345   CATGTTATAGTCGTGAGGTTCTAAAAAAACT   1        GCF_001544255.1   1091256   -
+        12345   CATGTTATATGAACCTTCAACCTTATTTGAC   1        GCF_001457655.1   1510084   +
 
 
 1. For all masks. The result might be very big, therefore, writing to gzip format is recommended.

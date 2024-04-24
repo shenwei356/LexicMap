@@ -424,7 +424,7 @@ func init() {
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	mapCmd.Flags().StringP("out-file", "o", "-",
-		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
+		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files.`))
@@ -445,7 +445,7 @@ func init() {
 	mapCmd.Flags().IntP("seed-max-dist", "", 10000,
 		formatFlagUsage(`Max distance between seeds in seed chaining.`))
 
-	mapCmd.Flags().IntP("top-n-genomes", "n", 500,
+	mapCmd.Flags().IntP("top-n-genomes", "n", 1000,
 		formatFlagUsage(`Keep top N genome matches for a query (0 for all).`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
