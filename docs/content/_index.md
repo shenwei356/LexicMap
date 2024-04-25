@@ -57,7 +57,7 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
 
 ### Efficient search
 
-Querying a **51.5-kb plasmid** in **all <ins>2,340,672</ins> Genbank+Refseq prokaryotic genomes** takes only <ins>**3 minutes and 32 seconds with 15.7 GB RAM**</ins> and 48 CPUs, with <ins>**19,265 genome hits**</ins> returned.
+Querying a **51.5-kb plasmid** in **all <ins>2,340,672</ins> Genbank+Refseq prokaryotic genomes** takes only <ins>**5 minutes and 2 seconds with 13.7 GB RAM**</ins> and 48 CPUs, with <ins>**17,822 genome hits**</ins> returned.
 
 {{< button size="small" relref="introduction/#performance" >}}Performance{{< /button >}}
 

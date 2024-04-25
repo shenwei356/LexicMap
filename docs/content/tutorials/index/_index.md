@@ -98,14 +98,15 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         4. Capuring the most similar k-mer for each mask and recording the k-mer and its location(s) and strand information.
         5. Filling sketching deserts (genome regions longer than `--seed-max-desert` without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.
+           As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
             1. For a desert region (`start`, `end`), counting frequencies of *P*-mers in the extended region (`start-1000`, `end+1000`), *P*=15 by default.
             2. Starting from `start`, every around `--seed-in-desert-dist` bp, finding a k-mer of which the *P*-prefix is unique with a frequency of 1 (from the previous step).
-               This guarantees the k-mer will be captured by a mask in a query sequence as short as 2 kb.
+               This guarantees the k-mer will be captured by a mask in query sequences similar to the region.
             3. Adding the new k-mer to the mask which has the biggest chance to capture it.
+               So in the search step, the new k-mer will be captured by this mask, and it will match the correst seed (its self) in the seed data of the mask.
                 1. Find candidate masks via a lookup table (mapping mask prefix to mask).
                 1. Choose the mask of which the captured k-mer share the longest prefix as the new k-mer,
                    by compring LexicHash values (new k-mer XOR captured k-mer).
-                   The ensures the mask would capture the new k-mer in the this region.
         6. Saving the concatenated genome sequence (bit-packed, 2 bits for one base) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.
     2. Compressing k-mers and the corresponding data (k-mer-data, or seeds data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
     3. Writing summary information into `info.toml` file.
