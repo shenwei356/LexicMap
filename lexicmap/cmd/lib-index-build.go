@@ -947,6 +947,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
 							hash = kmer ^ (*_kmers)[_im]
+							// hash = kmer ^ lh.Masks[_im] // both are OK
 							if hash < hashMin {
 								_imMostSimilar = _im
 							}
@@ -1003,6 +1004,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
 							hash = kmer ^ (*_kmers)[_im]
+							// hash = kmer ^ lh.Masks[_im] // both are OK
 							if hash < hashMin {
 								_imMostSimilar = _im
 							}
