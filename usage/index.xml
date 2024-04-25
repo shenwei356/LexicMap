@@ -19,7 +19,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/lexicmap/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/lexicmap/</guid>
-      <description>$ lexicmap -h LexicMap: efficient sequence alignment against millions of prokaryotic genomes Version: v0.3.0 Documents: https://bioinf.shenwei.me/LexicMap Source code: https://github.com/shenwei356/LexicMap Usage: lexicmap [command] Available Commands: autocompletion Generate shell autocompletion script index Generate an index from FASTA/Q sequences search Search sequences against an index utils Some utilities version Print version information and check for update Flags: -h, --help help for lexicmap -X, --infile-list string ► File of input files list (one file per line).</description>
+      <description>$ lexicmap -h LexicMap: efficient sequence alignment against millions of prokaryotic genomes Version: v0.3.0 Documents: https://bioinf.shenwei.me/LexicMap Source code: https://github.com/shenwei356/LexicMap Usage: lexicmap [command] Available Commands: autocompletion Generate shell autocompletion scripts index Generate an index from FASTA/Q sequences search Search sequences against an index utils Some utilities version Print version information and check for update Flags: -h, --help help for lexicmap -X, --infile-list string ► File of input file list (one file per line).</description>
     </item>
   </channel>
 </rss>

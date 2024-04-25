@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.123.7">
 
 
-  <meta name="description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with the list of input files. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
+  <meta name="description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
 
     <title>index | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="index"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with the list of input files. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
+  <meta property="og:description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/index/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="index" />
-  <meta name="twitter:description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with the list of input files. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
+  <meta name="twitter:description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "index",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
-      "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with the list of input files. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "823",
+      "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
+      "wordCount" : "959",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1061,50 +1061,6 @@
               
                 <span class="flex">
                   <a
-                    href="/LexicMap/usage/utils/gen-masks/"
-                    class="gdoc-nav__entry"
-                  >
-                    gen-masks
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
                     href="/LexicMap/usage/utils/reindex-seeds/"
                     class="gdoc-nav__entry"
                   >
@@ -1424,55 +1380,57 @@
 </span></span><span class="line"><span class="cl"> *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
 </span></span><span class="line"><span class="cl">     in the file names.
 </span></span><span class="line"><span class="cl">  2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
-</span></span><span class="line"><span class="cl">     with the list of input files.
+</span></span><span class="line"><span class="cl">     with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking.
 </span></span><span class="line"><span class="cl">  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
 </span></span><span class="line"><span class="cl">     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
 </span></span><span class="line"><span class="cl">     -r/--file-regexp.
-</span></span><span class="line"><span class="cl">  4. Some none-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, &gt;150 mb).
+</span></span><span class="line"><span class="cl">  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, &gt;150 mb).
 </span></span><span class="line"><span class="cl">     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
 </span></span><span class="line"><span class="cl">     (-G/--big-genomes).
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  Attention:
-</span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience because the genome identifiers in the index and
-</span></span><span class="line"><span class="cl">       search result would be: the basenames of files with common FASTA/Q file extensions removed, which
-</span></span><span class="line"><span class="cl">       are extracted via the flag -N/--ref-name-regexp.
-</span></span><span class="line"><span class="cl">       ► The extracted genome identifiers better be distinct/unique, which will be shown in search results
+</span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
+</span></span><span class="line"><span class="cl">       identifiers in the index and search result would be: the basenames of files with common FASTA/Q file
+</span></span><span class="line"><span class="cl">       extensions removed, which are extracted via the flag -N/--ref-name-regexp.
+</span></span><span class="line"><span class="cl">       ► The extracted genome identifiers better be distinct, which will be shown in search results
 </span></span><span class="line"><span class="cl">       and are used to extract subsequences in the command &#34;lexicmap utils subseq&#34;.
-</span></span><span class="line"><span class="cl">    2) ► Unwanted sequences like plasmids can be filtered out by the name via regular expressions
-</span></span><span class="line"><span class="cl">       (-B/--seq-name-filter).
+</span></span><span class="line"><span class="cl">    2) ► Unwanted sequences like plasmids can be filtered out by content in FASTA/Q header via regular
+</span></span><span class="line"><span class="cl">       expressions (-B/--seq-name-filter).
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Important parameters:
-</span></span><span class="line"><span class="cl">  --- LexicHash mask generation ---
-</span></span><span class="line"><span class="cl">  0. -M/--mask-file,   ► File with custom masks, which could be generated by &#34;lexicmap utils gen-masks&#34;.
-</span></span><span class="line"><span class="cl">                       This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -n/--top-n, and -P/--prefix-ext.
-</span></span><span class="line"><span class="cl">  1. -k/--kmer,        ► K-mer size (maximum: 32, default: 31).
-</span></span><span class="line"><span class="cl">                       ► Bigger values improve the search specificity and do not increase the index size.
-</span></span><span class="line"><span class="cl">  2. -m/--masks,       ► Number of masks (default: 40000).
-</span></span><span class="line"><span class="cl">                       ► Bigger values improve the search sensitivity and increase the index size.
-</span></span><span class="line"><span class="cl">  3. -n/--top-n,       ► The top N largest genomes for generating mask (default 20).
-</span></span><span class="line"><span class="cl">                       ► Bigger values increase the indexing memory occupation (1.0~1.5 GB per genome for 20k masks).
-</span></span><span class="line"><span class="cl">  4. -P/--prefix-ext,  ► Extension length of prefixes (default 8).
-</span></span><span class="line"><span class="cl">                       ► Bigger values improve the search sensitivity by decreasing the maximum seed distances.
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  --- seeds (k-mer-value data) ---
+</span></span><span class="line"><span class="cl">  --- Genome data (Memory control) ---
+</span></span><span class="line"><span class="cl"> *1. -b/--batch-size,  ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
+</span></span><span class="line"><span class="cl">                       ► If the number of input files exceeds this number, input files are split into multiple
+</span></span><span class="line"><span class="cl">                       batches and indexes are built for all batches. In the end, seed files are merged, while
+</span></span><span class="line"><span class="cl">                       genome data files are kept unchanged and collected.
+</span></span><span class="line"><span class="cl">                       ► Bigger values increase indexing memory occupation.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  --- LexicHash mask generation ---
+</span></span><span class="line"><span class="cl">  0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly
+</span></span><span class="line"><span class="cl">                            generated by &#34;lexicmap utils masks&#34;.
+</span></span><span class="line"><span class="cl">                            This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, et al.
+</span></span><span class="line"><span class="cl"> *1. -k/--kmer,             ► K-mer size (maximum: 32, default: 31).
+</span></span><span class="line"><span class="cl">                            ► Bigger values improve the search specificity and do not increase the index size.
+</span></span><span class="line"><span class="cl"> *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
+</span></span><span class="line"><span class="cl">                            ► Bigger values improve the search sensitivity, increase the index size, and slow down
+</span></span><span class="line"><span class="cl">                            the search speed.
+</span></span><span class="line"><span class="cl">  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
+</span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity and choose k-mers
+</span></span><span class="line"><span class="cl">                            to fill sketching deserts.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  --- Seeds data (k-mer-value data) ---
 </span></span><span class="line"><span class="cl">  1. -c/--chunks,      ► Number of seed file chunks (maximum: 128, default: #CPUs).
 </span></span><span class="line"><span class="cl">                       ► Bigger values accelerate the search speed at the cost of a high disk reading load.
 </span></span><span class="line"><span class="cl">                       The maximum number should not exceed the maximum number of open files set by the
 </span></span><span class="line"><span class="cl">                       operating systems.
-</span></span><span class="line"><span class="cl">  2. -p/--partitions,  ► Number of partitions for indexing each seed file (default: 512).
-</span></span><span class="line"><span class="cl">                       ► Bigger values bring higher memory occupation. 512 is a good value with high searching speed,
-</span></span><span class="line"><span class="cl">                       Larger or smaller values would decrease the speed in &#34;lexicmap search&#34;.
+</span></span><span class="line"><span class="cl">  2. --partitions,     ► Number of partitions for indexing each seed file (default: 512).
+</span></span><span class="line"><span class="cl">                       ► Bigger values bring a little higher memory occupation. 512 is a good value with high
+</span></span><span class="line"><span class="cl">                       searching speed, Larger or smaller values would decrease the speed in &#34;lexicmap search&#34;.
 </span></span><span class="line"><span class="cl">                       ► After indexing, &#34;lexicmap utils reindex-seeds&#34; can be used to reindex the seeds data with
 </span></span><span class="line"><span class="cl">                       another value of this flag.
 </span></span><span class="line"><span class="cl">  3. --max-open-files, ► Maximum number of open files (default: 512).
 </span></span><span class="line"><span class="cl">                       ► It&#39;s only used in merging indexes of multiple genome batches.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  --- genome data ---
-</span></span><span class="line"><span class="cl">  1. -b/--batch-size,  ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
-</span></span><span class="line"><span class="cl">                       ► If the number of input files exceeds this number, input files are into multiple
-</span></span><span class="line"><span class="cl">                       batches and indexes are built for all batches. Next, seed files are merged into a
-</span></span><span class="line"><span class="cl">                       big one, while genome data files are kept unchanged and collected.
-</span></span><span class="line"><span class="cl">                       ► Bigger values increase indexing memory occupation, while improving the search speed.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap index [flags] [-k &lt;k&gt;] [-m &lt;masks&gt;] { -I &lt;seqs dir&gt; | -X &lt;file list&gt;} -O &lt;out dir&gt;
@@ -1487,28 +1445,43 @@
 </span></span><span class="line"><span class="cl">                                  case ignored. (default &#34;\\.(f[aq](st[aq])?|fna)(.gz)?$&#34;)
 </span></span><span class="line"><span class="cl">      --force                     ► Overwrite existing output directory.
 </span></span><span class="line"><span class="cl">  -h, --help                      help for index
-</span></span><span class="line"><span class="cl">  -I, --in-dir string             ► Directory containing FASTA/Q files. Directory symlinks are followed.
+</span></span><span class="line"><span class="cl">  -I, --in-dir string             ► Input directory containing FASTA/Q files. Directory and file
+</span></span><span class="line"><span class="cl">                                  symlinks are followed.
 </span></span><span class="line"><span class="cl">  -k, --kmer int                  ► Maximum k-mer size. K needs to be &lt;= 32. (default 31)
 </span></span><span class="line"><span class="cl">  -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
-</span></span><span class="line"><span class="cl">                                  -s/--rand-seed, --prefix, -n/--top-n, and -P/--prefix-ext.
-</span></span><span class="line"><span class="cl">  -m, --masks int                 ► Number of masks. (default 40000)
-</span></span><span class="line"><span class="cl">  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (non-isolate
-</span></span><span class="line"><span class="cl">                                  assemblies) will be skipped. (default 15000000)
+</span></span><span class="line"><span class="cl">                                  -s/--rand-seed, -p/--seed-min-prefix, et al.
+</span></span><span class="line"><span class="cl">  -m, --masks int                 ► Number of LexicHash masks. (default 40000)
+</span></span><span class="line"><span class="cl">  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
+</span></span><span class="line"><span class="cl">                                  assemblies from Genbank) will be skipped. (default 15000000)
 </span></span><span class="line"><span class="cl">      --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
-</span></span><span class="line"><span class="cl">  -O, --out-dir string            ► Output directory.
-</span></span><span class="line"><span class="cl">  -p, --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
+</span></span><span class="line"><span class="cl">  -O, --out-dir string            ► Output LexicMap index directory.
+</span></span><span class="line"><span class="cl">      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  (default 512)
-</span></span><span class="line"><span class="cl">  -P, --prefix-ext int            ► Extension length of prefixes, higher values -&gt; smaller maximum
-</span></span><span class="line"><span class="cl">                                  seed distances. (default 8)
 </span></span><span class="line"><span class="cl">  -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
 </span></span><span class="line"><span class="cl">  -N, --ref-name-regexp string    ► Regular expression (must contains &#34;(&#34; and &#34;)&#34;) for extracting the
 </span></span><span class="line"><span class="cl">                                  reference name from the filename. (default
 </span></span><span class="line"><span class="cl">                                  &#34;(?i)(.+)\\.(f[aq](st[aq])?|fna)(.gz)?$&#34;)
-</span></span><span class="line"><span class="cl">      --save-seed-pos             ► Save seed positions, which can be inspect with &#34;lexicmap utils
-</span></span><span class="line"><span class="cl">                                  seed-positions&#34;.
+</span></span><span class="line"><span class="cl">      --save-seed-pos             ► Save seed positions, which can be inspected with &#34;lexicmap utils
+</span></span><span class="line"><span class="cl">                                  seed-pos&#34;.
+</span></span><span class="line"><span class="cl">      --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 200)
+</span></span><span class="line"><span class="cl">      --seed-max-desert int       ► Maximum length of sketching deserts. Deserts with seed distance
+</span></span><span class="line"><span class="cl">                                  larger than this value will be filled by choosing k-mers roughly every
+</span></span><span class="line"><span class="cl">                                  --seed-in-desert-dist bases. (default 900)
+</span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
+</span></span><span class="line"><span class="cl">                                  this value is used to remove low-complexity masks and choose k-mers to
+</span></span><span class="line"><span class="cl">                                  fill sketching deserts. (default 15)
 </span></span><span class="line"><span class="cl">  -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
-</span></span><span class="line"><span class="cl">                                  header/name, case ignored.
-</span></span><span class="line"><span class="cl">  -n, --top-n int                 ► Select the top N largest genomes for generating masks. (default 20)
+</span></span><span class="line"><span class="cl">                                  contents in FASTA/Q header/name, case ignored.
+</span></span><span class="line"><span class="cl">  -S, --skip-file-check           ► Skip input file checking when given files or a file list.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
+</span></span><span class="line"><span class="cl">      --log string           ► Log file.
+</span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
+</span></span><span class="line"><span class="cl">                             with --log.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">                             (default 16)
 </span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="examples"
     >
@@ -1954,39 +1927,6 @@
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

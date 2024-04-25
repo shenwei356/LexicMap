@@ -12,10 +12,10 @@
 <meta name="generator" content="Hugo 0.123.7">
 
 
-  <meta name="description" content="Does LexicMap support fungi genomes? No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How&rsquo;s the hardware requirement? For index building.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch. The number of LexicHash masks." />
+  <meta name="description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
+How&rsquo;s the hardware requirement? For index building. See details hardware requirement.
+More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
 
     <title>FAQs | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -41,10 +41,10 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
     content="FAQs"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Does LexicMap support fungi genomes? No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How’s the hardware requirement? For index building.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch. The number of LexicHash masks." />
+  <meta property="og:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
+How’s the hardware requirement? For index building. See details hardware requirement.
+More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/faqs/" />
 
@@ -53,10 +53,10 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="FAQs" />
-  <meta name="twitter:description" content="Does LexicMap support fungi genomes? No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How’s the hardware requirement? For index building.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch. The number of LexicHash masks." />
+  <meta name="twitter:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
+How’s the hardware requirement? For index building. See details hardware requirement.
+More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
 
 
   <script type="application/ld+json">
@@ -67,8 +67,8 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
       "name": "FAQs",
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
-      "description": "Does LexicMap support fungi genomes? No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.\nDoes LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.\nHow’s the hardware requirement? For index building.\nMore CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch. The number of LexicHash masks.",
-      "wordCount" : "174",
+      "description": "Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.\nDoes LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp, \u003e=1kb is prefered) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.\nHow’s the hardware requirement? For index building. See details hardware requirement.\nMore CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch.",
+      "wordCount" : "192",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1070,50 +1070,6 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
               
                 <span class="flex">
                   <a
-                    href="/LexicMap/usage/utils/gen-masks/"
-                    class="gdoc-nav__entry"
-                  >
-                    gen-masks
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
                     href="/LexicMap/usage/utils/reindex-seeds/"
                     class="gdoc-nav__entry"
                   >
@@ -1427,7 +1383,8 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>No. LexicMap only supports smal genomes including prokaryotic, viral, and plasmid genomes.</p>
+<p>Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
+Fungi can be supported with more masks.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="does-lexicmap-support-short-reads"
     >
@@ -1437,7 +1394,7 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
+<p>No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences.
 However, some short queries can also be aligned.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="hows-the-hardware-requirement"
@@ -1448,7 +1405,10 @@ However, some short queries can also be aligned.</p>
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>For index building.</p>
+<p>For index building. See details <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements"
+>hardware requirement</a>.</p>
 <ul>
 <li>More CPUs would accelerate indexing.</li>
 <li>The memory occupation is linear with
@@ -1458,7 +1418,10 @@ However, some short queries can also be aligned.</p>
 </ul>
 </li>
 </ul>
-<p>For seaching.</p>
+<p>For seaching. See details <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements"
+>hardware requirement</a>.</p>
 <ul>
 <li>More CPUs would accelerate searching.</li>
 <li>The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking.</li>
@@ -1913,39 +1876,6 @@ faster search.</p>
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

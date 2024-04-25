@@ -26,21 +26,14 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</guid>
-      <description>Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes.</description>
-    </item>
-    <item>
-      <title>gen-masks</title>
-      <link>https://bioinf.shenwei.me/LexicMap/usage/utils/gen-masks/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/gen-masks/</guid>
-      <description>Usage $ lexicmap utils gen-masks -h Generate masks from the top N largest genomes How: |ATTATAACGCCACGGGGAGCCGCGGGGTTTC One k-bp mask |--------========_______________ | |-------- Prefixes for covering all possible P-bp DNA. | The length is the largest number for 4^P &amp;lt;= #masks | |--------======== Extend prefixes, chosen from the most frequent extended prefixes | of which the prefix-derived k-mers do not overlap masked k-mers. | | _______________ Randomly generated bases Usage: lexicmap utils gen-masks [flags] [-k &amp;lt;k&amp;gt;] [-n &amp;lt;masks&amp;gt;] [-n &amp;lt;top-n&amp;gt;] [-D &amp;lt;seeds.</description>
+      <description>Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. The positions can be used to extract subsequence with &amp;#39;lexicmap utils subseq&amp;#39;. 2. A distance between seeds (column distance) with a value of &amp;#34;-1&amp;#34; means it&amp;#39;s the first seed in that sequence, and the distance can&amp;#39;t be computed currently.</description>
     </item>
     <item>
       <title>reindex-seeds</title>
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/</guid>
-      <description>Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. -p, --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. (default 512) Global Flags: -X, --infile-list string ► File of input files list (one file per line). If given, they are appended to files from CLI arguments.</description>
+      <description>Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. (default 512) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments.</description>
     </item>
     <item>
       <title>masks</title>

@@ -1061,50 +1061,6 @@
               
                 <span class="flex">
                   <a
-                    href="/LexicMap/usage/utils/gen-masks/"
-                    class="gdoc-nav__entry"
-                  >
-                    gen-masks
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
                     href="/LexicMap/usage/utils/reindex-seeds/"
                     class="gdoc-nav__entry"
                   >
@@ -1443,12 +1399,12 @@
 </span></span><span class="line"><span class="cl">  -s, --seed int          ► The seed for generating random masks. (default 1)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
-</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
 </span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
 </span></span><span class="line"><span class="cl">                             with --log.
-</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
 </span></span><span class="line"><span class="cl">                             (default 16)
 </span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="examples"
@@ -1460,28 +1416,28 @@
     </a>
 </div>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10
-</span></span><span class="line"><span class="cl">1       AAAAAAACGTCATCGAACCGTGACTTTCTCC
-</span></span><span class="line"><span class="cl">2       AAAAAACCATTCAACAAGCTGTTCGACCCGG
-</span></span><span class="line"><span class="cl">3       AAAAAAGCCATCGTTGCAAGTACCATTGATC
-</span></span><span class="line"><span class="cl">4       AAAAAATAAGACTCTCGAGCATTTCTCACAA
-</span></span><span class="line"><span class="cl">5       AAAAACACCATCCCCGACTCGTATATGCCTC
-</span></span><span class="line"><span class="cl">6       AAAAACCACGCTGCCTGTCCAGCCATGGCCC
-</span></span><span class="line"><span class="cl">7       AAAAACGCCCCGCCAGGACTAATTCCGATTT
-</span></span><span class="line"><span class="cl">8       AAAAACTAGTGTATGCACAAGACGTACCTTC
-</span></span><span class="line"><span class="cl">9       AAAAAGAATAGTGCGCCGTCCTTTACACAGC
-</span></span><span class="line"><span class="cl">10      AAAAAGCCGGCGAAGAAATGCTTGCATGTTC
+</span></span><span class="line"><span class="cl">1       AAAACACATGTGGCCGTTCCGATAATGATCC
+</span></span><span class="line"><span class="cl">2       AAAACACGCGATCAGGTCGTCCGTCCCAGTG
+</span></span><span class="line"><span class="cl">3       AAAACACTATGGCCTGATTACCCCATCCCGA
+</span></span><span class="line"><span class="cl">4       AAAACAGGACCGTCCTAGGGTCAATGGTTCG
+</span></span><span class="line"><span class="cl">5       AAAACAGTCTTGTATTATGTACTTCACATTC
+</span></span><span class="line"><span class="cl">6       AAAACATTCTTTCAGATCCATGCACGAGCAG
+</span></span><span class="line"><span class="cl">7       AAAACATTGGTCCTATTGGCGTCACTCGATA
+</span></span><span class="line"><span class="cl">8       AAAACCAGCTCTGTAAGCACTAACAACGCTA
+</span></span><span class="line"><span class="cl">9       AAAACCAGTTACTACGGTTTTCCGCAATTGG
+</span></span><span class="line"><span class="cl">10      AAAACCATGTGCGGCCCATAACTGGTGGTAA
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
-</span></span><span class="line"><span class="cl">39991   TTTTTCGCCAGAGGATAGGTCTAAGAATAGC
-</span></span><span class="line"><span class="cl">39992   TTTTTCTAACATCACCGCGGATATTCTATAC
-</span></span><span class="line"><span class="cl">39993   TTTTTGAAGGCGCGGGCTCAGTGGGCTTTCT
-</span></span><span class="line"><span class="cl">39994   TTTTTGCATAATAGTTGTCGGGAGAAGTTTA
-</span></span><span class="line"><span class="cl">39995   TTTTTGGAAGGGGCACGCGGAGGAGCTGCAT
-</span></span><span class="line"><span class="cl">39996   TTTTTGTCCATGAGTCTAACAACTAGCCACC
-</span></span><span class="line"><span class="cl">39997   TTTTTTAAAATGCAAGATCTTATGTACAATT
-</span></span><span class="line"><span class="cl">39998   TTTTTTCCAGTGACCACGATGGGCACTTATA
-</span></span><span class="line"><span class="cl">39999   TTTTTTGCCGGAACCACGCTAGCGCCAGACG
-</span></span><span class="line"><span class="cl">40000   TTTTTTTATTGAAACGACAACCTAACGCGGG
+</span></span><span class="line"><span class="cl">39991   TTTTGGTCTACAGAAAGTGCGTTATAGATTT
+</span></span><span class="line"><span class="cl">39992   TTTTGGTGCTCATACAGTACCGCTGTCTCCA
+</span></span><span class="line"><span class="cl">39993   TTTTGTAGCGCCATACCGGAGTTCACGGGTC
+</span></span><span class="line"><span class="cl">39994   TTTTGTATGGAATACTTTACAGTCATCAGTT
+</span></span><span class="line"><span class="cl">39995   TTTTGTCATACAGGAAGCACGGTCGAACGTT
+</span></span><span class="line"><span class="cl">39996   TTTTGTCATCAGTCGGCACTTAGGGGAACCG
+</span></span><span class="line"><span class="cl">39997   TTTTGTCCACCCTATTGAAGATGGAGTCCCA
+</span></span><span class="line"><span class="cl">39998   TTTTGTGAATAAGAGATCCTGTCGCAGGAAA
+</span></span><span class="line"><span class="cl">39999   TTTTGTGGACGGTAGAACCCCGTGGTCACCA
+</span></span><span class="line"><span class="cl">40000   TTTTGTGTAGCATAAAGGGCTGGCGACCTGT
 </span></span></code></pre></div>
   </article>
 
@@ -1960,39 +1916,6 @@
             
             
           
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
         
 
         

@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4.",
-      "wordCount" : "519",
+      "wordCount" : "517",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1061,50 +1061,6 @@
               
                 <span class="flex">
                   <a
-                    href="/LexicMap/usage/utils/gen-masks/"
-                    class="gdoc-nav__entry"
-                  >
-                    gen-masks
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
                     href="/LexicMap/usage/utils/reindex-seeds/"
                     class="gdoc-nav__entry"
                   >
@@ -1438,8 +1394,8 @@
 </span></span><span class="line"><span class="cl">    2.  qlen,     Query sequence length.
 </span></span><span class="line"><span class="cl">    3.  qstart,   Start of alignment in query sequence.
 </span></span><span class="line"><span class="cl">    4.  qend,     End of alignment in query sequence.
-</span></span><span class="line"><span class="cl">    5.  sgnms,    The number of Subject genomes.
-</span></span><span class="line"><span class="cl">    6.  sgnm,     Subject genome ID.
+</span></span><span class="line"><span class="cl">    5.  hits,     The number of Subject genomes.
+</span></span><span class="line"><span class="cl">    6.  sgenome,  Subject genome ID.
 </span></span><span class="line"><span class="cl">    7.  seqid,    Subject sequence ID.
 </span></span><span class="line"><span class="cl">    8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
 </span></span><span class="line"><span class="cl">    9.  hsp,      Nth HSP in the genome.
@@ -1470,8 +1426,7 @@
 </span></span><span class="line"><span class="cl">      --max-open-files int             ► Maximum opened files. (default 512)
 </span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome. (default 50)
 </span></span><span class="line"><span class="cl">  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
-</span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for
-</span></span><span class="line"><span class="cl">                                       stdout). (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
 </span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
 </span></span><span class="line"><span class="cl">  -m, --seed-max-mismatch int          ► Minimum mismatch between non-prefix regions of shared
@@ -1479,15 +1434,15 @@
 </span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
 </span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there&#39;s only
 </span></span><span class="line"><span class="cl">                                       one pair. (default 20)
-</span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 500)
+</span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 1000)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
-</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
 </span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
 </span></span><span class="line"><span class="cl">                             with --log.
-</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
 </span></span><span class="line"><span class="cl">                             (default 16)
 </span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="examples"
@@ -1934,39 +1889,6 @@
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

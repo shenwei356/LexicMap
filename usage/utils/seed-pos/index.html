@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.123.7">
 
 
-  <meta name="description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes." />
+  <meta name="description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
 
     <title>seed-pos | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="seed-pos"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes." />
+  <meta property="og:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="seed-pos" />
-  <meta name="twitter:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes." />
+  <meta name="twitter:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "seed-pos",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/",
       "headline": "seed-pos",
-      "description": "Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes.",
-      "wordCount" : "605",
+      "description": "Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027. 2. A distance between seeds (column distance) with a value of \u0022-1\u0022 means it\u0027s the first seed in that sequence, and the distance can\u0027t be computed currently.",
+      "wordCount" : "670",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1061,50 +1061,6 @@
               
                 <span class="flex">
                   <a
-                    href="/LexicMap/usage/utils/gen-masks/"
-                    class="gdoc-nav__entry"
-                  >
-                    gen-masks
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
                     href="/LexicMap/usage/utils/reindex-seeds/"
                     class="gdoc-nav__entry"
                   >
@@ -1442,6 +1398,9 @@
 </span></span><span class="line"><span class="cl">  1. Seed/K-mer positions (column pos) are 1-based.
 </span></span><span class="line"><span class="cl">     For reference genomes with multiple sequences, the sequences were
 </span></span><span class="line"><span class="cl">     concatenated to a single sequence with intervals of N&#39;s.
+</span></span><span class="line"><span class="cl">     The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;.
+</span></span><span class="line"><span class="cl">  2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed
+</span></span><span class="line"><span class="cl">     in that sequence, and the distance can&#39;t be computed currently.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils seed-pos [flags]
@@ -1464,12 +1423,12 @@
 </span></span><span class="line"><span class="cl">      --width float        ► Histogram width (unit: inch). (default 6)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
-</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input files list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
 </span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
 </span></span><span class="line"><span class="cl">                             with --log.
-</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPUs cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
 </span></span><span class="line"><span class="cl">                             (default 16)
 </span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="examples"
@@ -1483,25 +1442,25 @@
 <ol>
 <li>
 <p>Adding the flag <code>--save-seed-pos</code> in index building.</p>
-<pre><code> $ lexicmap index -I refs/ -O demo.lmi --top-n 3 --save-seed-pos --force
+<pre><code> $ lexicmap index -I refs/ -O demo.lmi --save-seed-pos --force
 </code></pre>
 </li>
 <li>
 <p>Listing seed position of one genome.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
  $ head -n 10 seed_distance.tsv | csvtk pretty -t
  ref               pos   strand   distance
  ---------------   ---   ------   --------
- GCF_000006945.2   113   +        112
- GCF_000006945.2   291   -        178
- GCF_000006945.2   297   -        6
- GCF_000006945.2   299   -        2
- GCF_000006945.2   322   +        23
- GCF_000006945.2   340   +        18
- GCF_000006945.2   389   +        49
- GCF_000006945.2   533   -        144
- GCF_000006945.2   598   -        65
+ GCF_000017205.1   2     +        1
+ GCF_000017205.1   41    +        39
+ GCF_000017205.1   45    +        4
+ GCF_000017205.1   74    +        29
+ GCF_000017205.1   85    +        11
+ GCF_000017205.1   119   +        34
+ GCF_000017205.1   130   +        11
+ GCF_000017205.1   185   +        55
+ GCF_000017205.1   269   +        84
 </code></pre>
 <p>Check the biggest seed distances.</p>
 <pre><code> $ csvtk freq -t -f distance seed_distance.tsv \
@@ -1511,30 +1470,31 @@
 
  distance   frequency
  --------   ---------
- 1586       1
- 1434       1
- 1418       1
- 1398       1
- 1282       2
- 1268       1
- 1261       1
- 1233       1
- 1175       1
- 1166       1
- 1158       1
- 1129       1
- 1106       1
- 1079       2
- 1074       1
- 1066       1
- 1060       1
- 1041       1
- 1034       2
+ 1234       1
+ 899        2
+ 898        4
+ 897        1
+ 896        5
+ 895        4
+ 894        3
+ 893        3
+ 892        4
+ 891        2
+ 890        2
+ 889        2
+ 888        3
+ 887        4
+ 886        7
+ 885        2
+ 884        5
+ 883        2
+ 881        6
 </code></pre>
 <p>Plot the histogram of distances between seeds.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000006945.2 -o seed_distance.tsv  --plot-dir seed_distance
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 </code></pre>
- <img src="/LexicMap/GCF_000006945.2.png" alt="" width="600"/>
+<p>In the plot below, there&rsquo;s a peak at 200 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 200 bp by default.</p>
+ <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
 </li>
 <li>
 <p>Listing seed position of all genomes.</p>
@@ -1545,21 +1505,21 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
 <pre><code> $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
  ref               frequency
  ---------------   ---------
- GCF_002950215.1   43149
- GCF_002949675.1   42888
- GCF_001457655.1   42444
- GCF_006742205.1   42050
- GCF_900638025.1   41939
- GCF_001027105.1   41925
- GCF_000392875.1   41487
- GCF_009759685.1   41058
- GCF_000148585.2   41029
- GCF_000017205.1   41012
- GCF_000006945.2   41002
- GCF_003697165.2   40785
- GCF_000742135.1   40632
- GCF_001096185.1   40234
- GCF_001544255.1   40188
+ GCF_000017205.1   45708
+ GCF_002950215.1   43617
+ GCF_002949675.1   43411
+ GCF_001457655.1   42112
+ GCF_006742205.1   42103
+ GCF_900638025.1   42008
+ GCF_001027105.1   41856
+ GCF_000742135.1   41414
+ GCF_000392875.1   41392
+ GCF_003697165.2   41189
+ GCF_009759685.1   41137
+ GCF_000006945.2   41108
+ GCF_000148585.2   41075
+ GCF_001096185.1   40239
+ GCF_001544255.1   40159
 </code></pre>
 <p>Plot the histograms of distances between seeds for all genomes.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
@@ -2169,39 +2129,6 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
     
 
   
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
 
         
       
@@ -2339,10 +2266,10 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/utils/gen-masks/"
-      title="gen-masks"
+      href="/LexicMap/usage/utils/reindex-seeds/"
+      title="reindex-seeds"
     >
-      gen-masks
+      reindex-seeds
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   
