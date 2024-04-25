@@ -60,25 +60,38 @@ Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [
 
 ## Performance
 
-|dataset          |genomes  |query          |query_len|genome_hits|time    |RAM    |
-|:----------------|--------:|:--------------|--------:|----------:|-------:|------:|
-|GTDB repr        |85,205   |a MutL gene    |1,956 bp |2          |0.9 s   |460 MB |
-|                 |         |a 16S rRNA gene|1,542 bp |13,466     |4.0 s   |765 MB |
-|                 |         |a plasmid      |51,466 bp|2          |1.1 s   |752 MB |
-|GTDB complete    |402,538  |a MutL gene    |1,956 bp |268        |3.8 s   |544 MB |
-|                 |         |a 16S rRNA gene|1,542 bp |169,480    |2 m 14 s|2.9 GB |
-|                 |         |a plasmid      |51,466 bp|3,649      |56 s    |2.9 GB |
-|Genbank+RefSeq   |2,340,672|a MutL gene    |1,956 bp |817        |10.0 s  |2.3 GB |
-|                 |         |a 16S rRNA gene|1,542 bp |1,148,049  |5 m 34 s|11.8 GB|
-|                 |         |a plasmid      |51,466 bp|19,265     |3 m 32 s|15.7 GB|
-|AllTheBacteria HQ|1,858,610|a MutL gene    |1,956 bp |404        |18.7 s  |2.4 GB |
-|                 |         |a 16S rRNA gene|1,542 bp |1,193,874  |13 m 8 s|9.4 GB |
-|                 |         |a plasmid      |51,466 bp|10,954     |5 m 25 s|9.7 GB |
+Indexing
+
+|dataset          |genomes|gzip_size|db_size|indexing_time|indexing_RAM|
+|:----------------|------:|--------:|------:|------------:|-----------:|
+|GTDB repr        |85,205  |75 GB    |110 GB |1 h 30 m     |38 GB       |
+|GTDB complete    |402,538 |578 GB   |510 GB |3 h 26 m     |35 GB       |
+|Genbank+RefSeq   |2,340,672|3.5 TB   |2.91 TB|16 h 40 m    |79 GB       |
+|AllTheBacteria HQ|1,858,610|3.1 TB   |2.32 TB|10 h 48 m    |43 GB       |
+
+
+Searching
+
+|dataset          |genomes|query          |query_len|genome_hits|time     |RAM    |
+|:----------------|------:|:--------------|--------:|----------:|--------:|------:|
+|GTDB repr        |85,205  |a MutL gene    |1,956 bp |2          |3.2 s    |436 MB |
+|                 |       |a 16S rRNA gene|1,542 bp |4,374      |38.5 s   |747 MB |
+|                 |       |a plasmid      |51,466 bp|0          |13.0 s   |768 MB |
+|GTDB complete    |402,538 |a MutL gene    |1,956 bp |268        |2.8 s    |571 MB |
+|                 |       |a 16S rRNA gene|1,542 bp |107,557    |3 m 38 s |2.6 GB |
+|                 |       |a plasmid      |51,466 bp|3,220      |56.2 s   |3.0 GB |
+|Genbank+RefSeq   |2,340,672|a MutL gene    |1,956 bp |817        |6.0 s    |1.4 GB |
+|                 |       |a 16S rRNA gene|1,542 bp |832,161    |18 m 58 s|8.3 GB |
+|                 |       |a plasmid      |51,466 bp|17,822     |5 m 02 s |13.7 GB|
+|AllTheBacteria HQ|1,858,610|a MutL gene    |1,956 bp |404        |4.7 s    |1.1 GB |
+|                 |       |a 16S rRNA gene|1,542 bp |1,031,705  |17 m 54 s|8.4 GB |
+|                 |       |a plasmid      |51,466 bp|10,897     |4 m 07 s |10.8 GB|
+
 
 Notes:
-- All files are stored on a server with HDD disks.
+- All files are stored on a server with HDD disks. No files are cached in memory.
 - Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).
-- Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 131072` for others.
+- Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 50000` for others.
 - Searching parameters: `--top-n-genomes 0 --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0`.
 
 ## Installation
