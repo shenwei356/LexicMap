@@ -12,14 +12,16 @@ weight: 30
 [v0.3.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0) - 2024-04-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0)
 
 - `lexicmap index`:
-    - **Generate masks from the top N biggest genomes instead of randomly generation**.
+    - **Better seed coverage by filling sketching deserts**.
     - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
+    - Optionally save seed positions which can be outputed by `lexicmap utils seed-pos`.
 - `lexicmap search`:
     - **Better support of long queries**.
     - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
     - **Parallelize alignment in each query**, so it's faster for a single query.
+    - 2-5X searching speed with a faster masking method.
     - Change output format.
     - Add output of query start and end positions.
     - Fix a seed-chaining bug.
