@@ -12,6 +12,7 @@ Usage:
   lexicmap utils [command]
 
 Available Commands:
+  genomes       View genome IDs in the index
   kmers         View k-mers captured by the masks
   masks         View masks of the index or generate new masks randomly
   reindex-seeds Recreate indexes of k-mer-value (seeds) data

@@ -33,6 +33,7 @@ weight: 30
     - `lexicmap utils gen-masks` for generating masks from the top N largest genomes.
     - `lexicmap utils seed-pos` for extracting seed positions via reference names.
     - `lexicmap utils reindex-seeds` for recreating indexes of k-mer-value (seeds) data.
+    - `lexicmap utils genomes` for list genomes IDs in the index.
 
 
 {{< hint type=note >}}

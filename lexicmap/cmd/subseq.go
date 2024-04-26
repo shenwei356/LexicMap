@@ -171,7 +171,7 @@ func init() {
 		formatFlagUsage(`Sequence ID. If the value is empty, the positions in the region are treated as that in the concatenated sequence.`))
 
 	subseqCmd.Flags().StringP("out-file", "o", "-",
-		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
+		formatFlagUsage(`Out file, supports the ".gz" suffix ("-" for stdout).`))
 
 	subseqCmd.Flags().StringP("region", "r", "",
 		formatFlagUsage(`Region of the subsequence (1-based).`))
