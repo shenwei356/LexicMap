@@ -193,7 +193,7 @@ Tab-delimited format with 18 columns. (The positions are 1-based).
     4.  qend,     End of alignment in query sequence.
     5.  hits,     The number of Subject genomes.
     6.  sgenome,  Subject genome ID.
-    7.  seqid,    Subject sequence ID.
+    7.  sseqid,   Subject sequence ID.
     8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     9.  hsp,      Nth HSP in the genome.
     10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
