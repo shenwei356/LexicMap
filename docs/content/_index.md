@@ -14,7 +14,8 @@ geekdocAnchor: false
 [![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
 
 
-LexicMap is a **sequence alignment** tool aiming to efficiently query **gene/plasmid/virus/long-read sequences** against up to **millions** of prokaryotic genomes.
+
+LexicMap is a **nucleotide sequence pseudo-alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences** against up to **millions** of **prokaryotic genomes**.
 
 
 {{< button size="large" relref="quick-start" >}}Quick start{{< /button >}}
@@ -57,7 +58,8 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
 
 ### Efficient search
 
-Querying a **51.5-kb plasmid** in **all <ins>2,340,672</ins> Genbank+Refseq prokaryotic genomes** takes only <ins>**5 minutes and 2 seconds with 13.7 GB RAM**</ins> and 48 CPUs, with <ins>**17,822 genome hits**</ins> returned.
+Querying a 52.8-kb plasmid with **LexicMap** in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only **4 minutes and 8 seconds with 15 GB RAM** and 48 CPUs, with 494,860 genome hits returned.
+In contrast, **Blastn** is unable to run with the same dataset on common servers because it requires >2000 GB RAM.
 
 {{< button size="small" relref="introduction/#performance" >}}Performance{{< /button >}}
 

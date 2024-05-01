@@ -16,12 +16,12 @@ weight: 10
     - For short queries like genes or long reads, returning top N hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-              --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000
+               --min-match-pident 50 --min-qcov-per-genome 70 --min-qcov-per-hsp 70 --top-n-genomes 1000
 
     - For longer queries like plasmids, returning all hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-              --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
+              --min-match-pident 50 --min-qcov-per-genome 0  --min-qcov-per-hsp 0  --top-n-genomes 0
 
 ## Input
 
@@ -80,10 +80,11 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< tab "General" >}}
 
-|Flag                       |Value                 |Function                                              |Comment                                                                |
-|:--------------------------|:---------------------|:-----------------------------------------------------|:----------------------------------------------------------------------|
-|**`-w/--load-whole-seeds`**|                      |Load the whole seed data into memory for faster search|Use this if the index is not big and many queries are needed to search.|
-|**`-n/--top-n-genomes`**   |Default 500, 0 for all|Keep top N genome matches for a query                 |                                                                       |
+|Flag                       |Value               |Function                                              |Comment                                                                |
+|:--------------------------|:-------------------|:-----------------------------------------------------|:----------------------------------------------------------------------|
+|**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search|Use this if the index is not big and many queries are needed to search.|
+|**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query                 |                                                                       |
+|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.         |                                                                       |
 
 {{< /tab>}}
 
@@ -103,10 +104,10 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 |Flag                             |Value       |Function                                                                                                          |Comment|
 |:--------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------|:------|
-|**`-Q/--min-qcov-per-genome`**   |Default 50  |Minimum query coverage (percentage) per genome.                                                                   |       |
+|**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                   |       |
 |**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                      |       |
 |**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                          |       |
-|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
+|**`-i/--align-min-match-pident`**|Default 50  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
 |`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                       |       |
 |`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.|       |
 |`--align-max-gap`                |Default 50  |Maximum gap in a HSP segment.                                                                                     |       |
@@ -124,16 +125,16 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 - For short queries like genes or long reads, returning top N hits.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
+          --min-match-pident 50 \
           --min-qcov-per-genome 70 \
-          --min-match-pident 70 \
           --min-qcov-per-hsp 70 \
-          --top-n-genomes 500
+          --top-n-genomes 1000
 
 - For longer queries like plasmids, returning all hits.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-          --min-qcov-per-genome 50 \
-          --min-match-pident 70 \
+          --min-match-pident 50 \
+          --min-qcov-per-genome 0  \
           --min-qcov-per-hsp 0 \
           --top-n-genomes 0
 
@@ -166,6 +167,18 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< /expand >}}
 
+- Extracting similar sequences for a query gene.
+
+      # search matches with query cover >= 90%
+      lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
+
+      # extract matched sequences as FASTA format
+      sed 1d results.tsv | awk '{print ">"$5":"$13"-"$14":"$15"\n"$19;}' > results.fasta
+
+      seqkit head -n 1 results.fasta | head -n 3
+      >NZ_JALSCK010000007.1:39224-40522:-
+      TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+      ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 
 ## Output
 
@@ -175,7 +188,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     ├── Subject genome                             # A query might have one or more genome hits,
         ├── Subject sequence                       # in different sequences.
             ├── High-Scoring segment Pairs (HSP)   # HSP is a cluster of alignment segments.
-                ├── HSP segment                    # A local alignment with no gaps.
+                ├── HSP segment (not outputted)
 
 Here, the defination of HSP is slightly different from that in BLAST.
 
@@ -185,47 +198,66 @@ Here, the defination of HSP is slightly different from that in BLAST.
 
 ### Output format
 
-Tab-delimited format with 18 columns. (The positions are 1-based).
+Tab-delimited format with 17+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
-    3.  qstart,   Start of alignment in query sequence.
-    4.  qend,     End of alignment in query sequence.
-    5.  hits,     The number of Subject genomes.
-    6.  sgenome,  Subject genome ID.
-    7.  sseqid,   Subject sequence ID.
-    8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    9.  hsp,      Nth HSP in the genome.
-    10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    11. alen,     Aligned length in the current HSP, a HSP might have >=1 HSP segments.
-    12. alenSeg,  Aligned length in the current HSP segment.
-    13. pident,   Percentage of identical matches in the current HSP segment.
-    14. slen,     Subject sequence length.
-    15. sstart,   Start of HSP segment in subject sequence.
-    16. send,     End of HSP segment in subject sequence.
-    17. sstr,     Subject strand.
-    18. seeds,    Number of seeds in the current HSP.
+    3.  hits,     Number of Subject genomes.
+    4.  sgenome,  Subject genome ID.
+    5.  sseqid,   Subject sequence ID.
+    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
+    7.  hsp,      Nth HSP in the genome.
+    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+    9.  alenHSP,  Aligned length in the current HSP.
+    10. pident,   Percentage of identical matches in the current HSP.
+    11. qstart,   Start of alignment in query sequence.
+    12. qend,     End of alignment in query sequence.
+    13. sstart,   Start of alignment in subject sequence.
+    14. send,     End of alignment in subject sequence.
+    15. sstr,     Subject strand.
+    16. slen,     Subject sequence length.
+    17. seeds,    Number of seeds in the current HSP.
+    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 
 ### Examples
 
 {{< tabs "t2" >}}
 
-{{< tab "A 16S rRNA gene" >}}
-
-The (part) result shows the 16S rRNA gene has 8 genome hits (column `sgenome`). And in genome `GCF_003697165.2`, it has 7 highly similar matches with query coverage per HSP (column `qcovHSP`) of 100% and percentage of identity (`pident`) > 99%. It makes sense as 16S rRNA genes might have multiple copies in a genome.
+{{< tab "A single-copy gene (SecY)" >}}
 
 ```plain
-query                         qlen   qstart   qend   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident   slen      sstart    send      sstr   seeds
----------------------------   ----   ------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ------   -------   -------   -------   ----   -----
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   1     100.000   1542      1542      99.287   4903501   4844587   4846128   -      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   2     100.000   1542      1542      99.287   4903501   4591684   4593225   -      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   3     100.000   1542      1542      99.287   4903501   4551515   4553056   -      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   4     100.000   1542      1542      99.287   4903501   3780640   3782181   -      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   5     100.000   1542      1542      99.287   4903501   458559    460100    +      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   6     100.000   1542      1542      99.287   4903501   1285123   1286664   +      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   7     100.000   1542      1542      99.092   4903501   4726193   4727734   -      26
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_002950215.1   NZ_CP026788.1   100.000   1     100.000   1542      1542      99.027   4659463   3216505   3218046   +      25
-NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_002950215.1   NZ_CP026788.1   100.000   2     100.000   1542      1542      98.962   4659463   3396068   3397609   +      26
+query                                      qlen   hits   sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    qstart   qend   sstart   send     sstr   slen     seeds
+----------------------------------------   ----   ----   ---------------   --------------------   -------   ---   -------   -------   -------   ------   ----   ------   ------   ----   ------   -----
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_000763355.1   NZ_JPTY01000036.1      100.000   1     100.000   1299      100.000   1        1299   39247    40545    -      136653   19
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_002944655.1   NZ_PTUM01000018.1      100.000   1     100.000   1299      100.000   1        1299   51657    52955    +      62674    24
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_009735285.1   NZ_WMFU01000011.1      100.000   1     100.000   1299      100.000   1        1299   63314    64612    +      103681   28
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_024339425.1   NZ_JAAOEK010000012.1   100.000   1     100.000   1299      100.000   1        1299   38854    40152    -      84246    27
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_021122725.1   NZ_JADMEX010000011.1   100.000   1     100.000   1299      100.000   1        1299   38881    40179    -      84306    26
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_014325545.1   NZ_JAAIGO010000013.1   100.000   1     100.000   1299      100.000   1        1299   38880    40178    -      84305    27
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_024160695.1   NZ_JAMYXD010000005.1   100.000   1     100.000   1299      100.000   1        1299   39412    40710    -      257638   18
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_902164315.1   NZ_CABHCQ010000007.1   100.000   1     100.000   1299      100.000   1        1299   132860   134158   +      173437   22
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_003319505.1   NZ_KZ845864.1          100.000   1     100.000   1299      100.000   1        1299   231655   232953   +      271872   22
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3588   GCF_902160975.1   NZ_CABGPX010000010.1   100.000   1     100.000   1299      100.000   1        1299   39275    40573    -      96796    20
+```
+{{< /tab>}}
+
+{{< tab "A 16S rRNA gene" >}}
+
+
+```plain
+query                         qlen   hits     sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    qstart   qend   sstart    send      sstr   slen      seeds
+---------------------------   ----   ------   ---------------   --------------------   -------   ---   -------   -------   -------   ------   ----   -------   -------   ----   -------   -----
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   1     100.000   1542      100.000   1        1542   354260    355801    +      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   2     100.000   1542      100.000   1        1542   1053203   1054744   +      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   3     100.000   1542      100.000   1        1542   3596202   3597743   -      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   4     100.000   1542      100.000   1        1542   4398994   4400535   -      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   5     100.000   1542      100.000   1        1542   4440484   4442025   -      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   6     100.000   1542      100.000   1        1542   4571610   4573151   -      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCF_016774415.1   NZ_CP068706.1          100.000   7     100.000   1542      100.000   1        1542   4665333   4666874   -      4682670   24
+NC_000913.3:4166659-4168200   1542   294285   GCA_003203355.1   BGNE01000097.1         100.000   1     100.000   1542      100.000   1        1542   30        1571      +      1585      25
+NC_000913.3:4166659-4168200   1542   294285   GCF_015644465.1   NZ_JADOBZ010000093.1   100.000   1     100.000   1542      100.000   1        1542   15        1556      -      1702      32
+NC_000913.3:4166659-4168200   1542   294285   GCF_015644465.1   NZ_JADOBZ010000115.1   100.000   2     7.328     113       100.000   1430     1542   1         113       +      617       1
 ```
 
 
@@ -233,46 +265,30 @@ NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_002950215.1   NZ
 
 {{< tab "A plasmid" >}}
 
-This plasmid has 17,716 genome hits in the index (2.34 millions prokaryotic genome from Genbank and RefSeq).
 
 ```plain
-query     qlen    qstart   qend    hits    sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident    slen      sstart    send      sstr   seeds
--------   -----   ------   -----   -----   ---------------   --------------------   -------   ---   -------   -------   -------   -------   -------   -------   -------   ----   -----
-plasmid   51466   1        50164   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   1     100.000   51466     50164     100.000   51479     1303      51479     +      487
-plasmid   51466   50165    51466   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      487
-plasmid   51466   18302    18401   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   2     0.194     100       100       100.000   51479     25698     25797     -      2
-plasmid   51466   34042    34125   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   3     0.163     84        84        89.286    51479     45852     45935     +      1
-plasmid   51466   1        50164   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   1     100.000   51466     50164     100.000   51479     1303      51479     +      487
-plasmid   51466   50165    51466   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      487
-plasmid   51466   18302    18401   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   2     0.194     100       100       100.000   51479     25698     25797     -      2
-plasmid   51466   34042    34125   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   3     0.163     84        84        89.286    51479     45852     45935     +      1
-plasmid   51466   1        50164   17716   GCA_030863645.1   CP114982.1             100.000   1     100.000   51466     50164     99.994    51479     1303      51479     +      530
-plasmid   51466   50165    51466   17716   GCA_030863645.1   CP114982.1             100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      530
-plasmid   51466   27858    29180   17716   GCA_030863645.1   CP114979.1             100.000   2     2.571     1323      1323      100.000   4731337   1893701   1895023   -      12
-plasmid   51466   43101    43921   17716   GCA_030863645.1   CP114980.1             100.000   3     1.595     821       821       100.000   165063    42818     43638     -      5
-plasmid   51466   43100    43920   17716   GCA_030863645.1   CP114980.1             100.000   4     1.595     821       821       100.000   165063    50985     51805     -      5
-plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114981.1             100.000   5     1.593     820       820       100.000   82723     55698     56517     +      5
-plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   6     1.593     820       820       100.000   165063    153475    154294    -      5
-plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   7     1.593     820       820       100.000   165063    160027    160846    -      5
-plasmid   51466   43101    43452   17716   GCA_030863645.1   CP114980.1             100.000   7     1.593     820       352       99.716    165063    158276    158627    -      5
-plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   8     1.593     820       820       100.000   165063    145617    146436    +      5
-plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   9     1.593     820       820       99.878    165063    157808    158627    -      4
-plasmid   51466   43555    43920   17716   GCA_030863645.1   CP114980.1             100.000   9     1.593     820       366       100.000   165063    160027    160392    -      4
-plasmid   51466   29790    30607   17716   GCA_030863645.1   CP114980.1             100.000   10    1.589     818       818       98.778    165063    42819     43639     -      5
-plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   11    1.589     818       818       98.778    165063    50984     51804     -      5
-plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   12    1.589     818       818       98.778    165063    145617    146437    +      5
-plasmid   51466   29790    30607   17716   GCA_030863645.1   CP114981.1             100.000   13    1.589     818       818       98.778    82723     55697     56517     +      5
-plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   14    1.589     818       818       98.778    165063    160026    160846    -      5
-plasmid   51466   29791    30142   17716   GCA_030863645.1   CP114980.1             100.000   14    1.589     818       352       99.148    165063    158276    158627    -      5
-plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   15    1.589     818       818       98.778    165063    153474    154294    -      5
-plasmid   51466   29791    30609   17716   GCA_030863645.1   CP114980.1             100.000   16    1.591     819       819       98.657    165063    157806    158627    -      4
-plasmid   51466   30242    30608   17716   GCA_030863645.1   CP114980.1             100.000   16    1.591     819       367       100.000   165063    160026    160392    -      4
-plasmid   51466   29791    30607   17716   GCA_030863645.1   CP114982.1             100.000   17    1.587     817       817       98.776    51479     44415     45234     +      5
-plasmid   51466   29791    30607   17716   GCA_030863645.1   CP114980.1             100.000   18    1.587     817       817       98.776    165063    31910     32729     +      5
-plasmid   51466   18302    18401   17716   GCA_030863645.1   CP114982.1             100.000   19    0.194     100       100       100.000   51479     25698     25797     -      2
-plasmid   51466   44536    44622   17716   GCA_030863645.1   CP114981.1             100.000   20    0.169     87        87        87.356    82723     49696     49782     +      1
-plasmid   51466   34042    34125   17716   GCA_030863645.1   CP114982.1             100.000   21    0.163     84        84        89.286    51479     45852     45935     +      1
-plasmid   51466   34042    34125   17716   GCA_030863645.1   CP114981.1             100.000   22    0.163     84        84        86.905    82723     49698     49781     +      1
+query        qlen    hits    sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    qstart   qend    sstart    send      sstr   slen      seeds
+----------   -----   -----   ---------------   -------------   -------   ---   -------   -------   -------   ------   -----   -------   -------   ----   -------   -----
+CP115019.1   52830   58930   GCF_022759845.1   NZ_CP086533.1   97.473    1     97.473    51495     99.998    1        52830   1         51479     +      51479     553
+CP115019.1   52830   58930   GCF_022759845.1   NZ_CP086533.1   97.473    2     1.552     820       100.000   9049     9868    23092     23911     +      51479     8
+CP115019.1   52830   58930   GCF_022759845.1   NZ_CP086535.1   97.473    3     1.687     891       75.196    51686    52779   26583     27675     -      34058     1
+CP115019.1   52830   58930   GCF_022759845.1   NZ_CP086534.1   97.473    4     0.502     265       100.000   19788    20052   29842     30106     +      47185     2
+CP115019.1   52830   58930   GCF_022759845.1   NZ_CP086533.1   97.473    5     0.159     84        89.286    8348     8431    19574     19657     +      51479     3
+CP115019.1   52830   58930   GCF_022759905.1   NZ_CP086545.1   97.473    1     97.473    51495     99.998    1        52830   1         51479     +      51479     553
+CP115019.1   52830   58930   GCF_022759905.1   NZ_CP086545.1   97.473    2     1.552     820       100.000   9049     9868    23092     23911     +      51479     8
+CP115019.1   52830   58930   GCF_022759905.1   NZ_CP086547.1   97.473    3     1.687     891       75.196    51686    52779   3843      4935      +      34058     1
+CP115019.1   52830   58930   GCF_022759905.1   NZ_CP086546.1   97.473    4     0.502     265       100.000   19788    20052   29842     30106     +      47185     2
+CP115019.1   52830   58930   GCF_022759905.1   NZ_CP086545.1   97.473    5     0.159     84        89.286    8348     8431    19574     19657     +      51479     3
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058621.1   97.473    1     97.473    51495     99.998    1        52830   1         51480     +      51480     504
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058618.1   97.473    2     2.497     1319      100.000   25153    26471   3019498   3020816   -      4718403   13
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    3     1.554     821       100.000   9049     9869    14895     15715     -      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    4     1.554     821       100.000   9049     9869    20250     21070     -      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    5     1.554     821       100.000   23721    24541   9689      10509     +      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    6     1.554     821       100.000   23721    24541   14896     15716     -      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    7     1.554     821       100.000   23721    24541   20251     21071     -      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058620.1   97.473    8     1.552     820       100.000   9049     9868    9690      10509     +      67321     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058621.1   97.473    9     1.552     820       100.000   9049     9868    21166     21985     +      51480     5
+CP115019.1   52830   58930   GCF_014826015.1   NZ_CP058622.1   97.473    10    1.552     820       100.000   23722    24541   3424      4243      +      9135      5
 ```
 
 {{< /tab>}}
@@ -283,25 +299,22 @@ plasmid   51466   34042    34125   17716   GCA_030863645.1   CP114981.1         
 Queries are a few Nanopore Q20 reads from a mock metagenomic community.
 
 ```plain
-query                qlen   qstart   qend   hits   sgenome           sseqid              qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident    slen      sstart    send      sstr   seeds
-------------------   ----   ------   ----   ----   ---------------   -----------------   -------   ---   -------   -------   -------   -------   -------   -------   -------   ----   -----
-ERR5396170.1000017   516    27       514    1      GCF_013394085.1   NZ_CP040910.1       94.574    1     94.574    488       488       100.000   1887974   293509    293996    +      3
-ERR5396170.1000047   960    24       812    1      GCF_001027105.1   NZ_CP011526.1       90.521    1     90.521    869       789       89.480    2755072   2204718   2205520   -      6
-ERR5396170.1000047   960    881      960    1      GCF_001027105.1   NZ_CP011526.1       90.521    1     90.521    869       80        100.000   2755072   2204568   2204647   -      6
-ERR5396170.1000016   740    71       733    1      GCF_013394085.1   NZ_CP040910.1       89.595    1     89.595    663       663       98.492    1887974   13515     14177     +      12
-ERR5396170.1000000   698    53       650    1      GCF_001457615.1   NZ_LN831024.1       85.673    1     85.673    598       598       97.324    6316979   4452083   4452685   +      4
-ERR5396170.1000005   2516   38       2510   5      GCF_000006945.2   NC_003197.2         98.291    1     98.291    2473      2473      99.151    4857450   3198806   3201283   +      15
-ERR5396170.1000005   2516   38       2497   5      GCF_008692785.1   NZ_VXJV01000001.1   97.774    1     97.774    2460      2460      96.098    797633    423400    425865    +      14
-ERR5396170.1000005   2516   40       2510   5      GCA_900478215.1   LS483478.1          98.211    1     98.211    2471      2471      95.548    4624613   785866    788342    -      13
-ERR5396170.1000005   2516   1350     2497   5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      1148      95.557    366711    6705      7855      +      12
-ERR5396170.1000005   2516   634      1309   5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      676       89.053    366711    5991      6664      +      12
-ERR5396170.1000005   2516   387      608    5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      222       85.135    366711    5745      5965      +      12
-ERR5396170.1000005   2516   69       205    5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      137       83.212    366711    5426      5563      +      12
-ERR5396170.1000005   2516   1830     2263   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      434       97.696    4460105   2898281   2898717   +      7
-ERR5396170.1000005   2516   2307     2497   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      191       76.963    4460105   2898761   2898951   +      7
-ERR5396170.1000005   2516   415      938    5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      524       86.641    4460105   2896865   2897391   +      7
-ERR5396170.1000005   2516   1113     1807   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      695       71.511    4460105   2897564   2898258   +      7
-ERR5396170.1000005   2516   961      1088   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      128       85.156    4460105   2897414   2897541   +      7
+    query                qlen   hits   sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    qstart   qend   sstart    send      sstr   slen      seeds
+    ------------------   ----   ----   ---------------   --------------------   -------   ---   -------   -------   -------   ------   ----   -------   -------   ----   -------   -----
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    1     96.231    766       97.389    31       796    1138938   1139706   +      1887974   24
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    2     95.226    758       96.834    39       796    1280352   1282817   +      1887974   21
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    3     95.226    758       97.493    39       796    32646     33406     +      1887974   24
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    4     95.226    758       97.493    39       796    134468    135228    -      1887974   24
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    5     95.226    758       97.361    39       796    1768935   1769695   +      1887974   24
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    6     95.226    758       97.230    39       796    242012    242772    -      1887974   24
+    ERR5396170.1000006   796    4      GCF_013394085.1   NZ_CP040910.1          96.231    7     95.226    758       96.834    39       796    154380    155137    -      1887974   23
+    ERR5396170.1000006   796    4      GCF_003344625.1   NZ_QPKJ02000188.1      81.910    1     81.910    652       99.540    66       717    1         653       -      826       21
+    ERR5396170.1000006   796    4      GCF_009663775.1   NZ_RDBR01000008.1      91.332    1     91.332    727       86.657    39       796    21391     22151     -      52610     7
+    ERR5396170.1000006   796    4      GCF_001591685.1   NZ_BCVJ01000102.1      87.940    1     87.940    700       88.429    66       796    434       1165      +      1933      4
+    ERR5396170.1000017   516    1      GCF_013394085.1   NZ_CP040910.1          94.574    1     94.574    488       100.000   27       514    293509    293996    +      1887974   11
+    ERR5396170.1000012   848    1      GCF_013394085.1   NZ_CP040910.1          95.165    1     95.165    807       93.804    22       828    190329    191136    -      1887974   21
+    ERR5396170.1000052   330    1      GCF_013394085.1   NZ_CP040910.1          90.000    1     90.000    297       100.000   27       323    1161955   1162251   -      1887974   3
+    ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1          85.673    1     85.673    598       97.157    53       650    4452083   4452685   +      6316979   10
 ```
 
 {{< /tab>}}

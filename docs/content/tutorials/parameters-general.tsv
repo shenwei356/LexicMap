@@ -1,3 +1,4 @@
 Flag	Value	Function	Comment
 **`-w/--load-whole-seeds`**		Load the whole seed data into memory for faster search	Use this if the index is not big and many queries are needed to search.
-**`-n/--top-n-genomes`**	Default 1000, 0 for all	Keep top N genome matches for a query
+**`-n/--top-n-genomes`**	Default 0, 0 for all	Keep top N genome matches for a query	
+**`-a/--all`**		Output more columns, e.g., matched sequences.	

@@ -49,7 +49,7 @@ Alignment result relationship:
   ├── Subject genome
       ├── Subject sequence
           ├── High-Scoring segment Pairs (HSP)
-             ├── HSP segment (not outputted)
+              ├── HSP segment (not outputted)
 
 Output format:
   Tab-delimited format with 17+ columns, with 1-based positions.
@@ -463,7 +463,7 @@ func init() {
 		formatFlagUsage(`Maximum opened files.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
-		formatFlagUsage(`Output more columns, e.g., matched sequences`))
+		formatFlagUsage(`Output more columns, e.g., matched sequences.`))
 
 	// seed searching
 
@@ -490,16 +490,16 @@ func init() {
 	// sequence similarity
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
-		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment`))
+		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))
 
 	mapCmd.Flags().IntP("align-max-gap", "", 50,
-		formatFlagUsage(`Maximum gap in a HSP segment`))
+		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	mapCmd.Flags().IntP("align-max-mismatch", "", 50,
-		formatFlagUsage(`Maximum mismatch in a HSP segment`))
+		formatFlagUsage(`Maximum mismatch in a HSP segment.`))
 	mapCmd.Flags().IntP("align-band", "", 100,
-		formatFlagUsage(`Band size in backtracking the score matrix`))
+		formatFlagUsage(`Band size in backtracking the score matrix.`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
-		formatFlagUsage(`Minimum aligned length in a HSP segment`))
+		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
 	mapCmd.Flags().Float64P("align-min-match-pident", "i", 50,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))

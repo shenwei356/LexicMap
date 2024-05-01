@@ -9,6 +9,7 @@ Search sequences against an index
 
 Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
+  2. We use a k-mer-based pseudoalignment algorithm.
 
 Alignment result relationship:
 
@@ -16,46 +17,48 @@ Alignment result relationship:
   ├── Subject genome
       ├── Subject sequence
           ├── High-Scoring segment Pairs (HSP)
-              ├── HSP segment
+              ├── HSP segment (not outputted)
 
 Output format:
-  Tab-delimited format with 18 columns. (The positions are 1-based).
+  Tab-delimited format with 17+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
-    3.  qstart,   Start of alignment in query sequence.
-    4.  qend,     End of alignment in query sequence.
-    5.  hits,     The number of Subject genomes.
-    6.  sgenome,  Subject genome ID.
-    7.  sseqid,   Subject sequence ID.
-    8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    9.  hsp,      Nth HSP in the genome.
-    10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    11. alen,     Aligned length in the current HSP, a HSP might have >=1 HSP segments.
-    12. alenSeg,  Aligned length in the current HSP segment.
-    13. pident,   Percentage of identical matches in the current HSP segment.
-    14. slen,     Subject sequence length.
-    15. sstart,   Start of HSP segment in subject sequence.
-    16. send,     End of HSP segment in subject sequence.
-    17. sstr,     Subject strand.
-    18. seeds,    Number of seeds in the current HSP.
+    3.  hits,     Number of Subject genomes.
+    4.  sgenome,  Subject genome ID.
+    5.  sseqid,   Subject sequence ID.
+    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
+    7.  hsp,      Nth HSP in the genome.
+    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+    9.  alenHSP,  Aligned length in the current HSP.
+    10. pident,   Percentage of identical matches in the current HSP.
+    11. qstart,   Start of alignment in query sequence.
+    12. qend,     End of alignment in query sequence.
+    13. sstart,   Start of alignment in subject sequence.
+    14. send,     End of alignment in subject sequence.
+    15. sstr,     Subject strand.
+    16. slen,     Subject sequence length.
+    17. seeds,    Number of seeds in the current HSP.
+    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 
 Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
 
 Flags:
-      --align-band int                 ► Band size in backtracking the score matrix (default 100)
+      --align-band int                 ► Band size in backtracking the score matrix. (default 100)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-                                       extracting query and target sequences for alignment (default 2000)
-      --align-max-gap int              ► Maximum gap in a HSP segment (default 50)
-      --align-max-mismatch int         ► Maximum mismatch in a HSP segment (default 50)
-  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment (default 50)
-  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
+                                       extracting query and target sequences for alignment. (default 2000)
+      --align-max-gap int              ► Maximum gap in a HSP segment. (default 50)
+      --align-max-mismatch int         ► Maximum mismatch in a HSP segment. (default 50)
+  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
+  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 50)
+  -a, --all                            ► Output more columns, e.g., matched sequences.
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
       --max-open-files int             ► Maximum opened files. (default 512)
-  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome. (default 50)
+  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
       --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
@@ -65,7 +68,7 @@ Flags:
   -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
   -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there's only
                                        one pair. (default 20)
-  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 1000)
+  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all).
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

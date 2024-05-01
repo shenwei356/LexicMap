@@ -94,8 +94,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     1. For each genome file in a genome batch.
         1. Optionally discarding sequences via regular expression (`-B/--seq-name-filter`).
         2. Skipping genomes bigger than the value of `-g/--max-genome`.
-        3. Concatenating all sequences, with intervals of 1000-bp N's ().
-        4. Capuring the most similar k-mer for each mask and recording the k-mer and its location(s) and strand information.
+        3. Concatenating all sequences, with intervals of 1000-bp N's.
+        4. Capturing the most similar k-mer for each mask and recording the k-mer and its location(s) and strand information.
         5. Filling sketching deserts (genome regions longer than `--seed-max-desert` without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.
            As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
@@ -104,7 +104,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
                This guarantees the k-mer will be captured by a mask in query sequences similar to the region.
             3. Adding the new k-mer to the mask which has the biggest chance to capture it.
                So in the search step, the new k-mer will be captured by this mask, and it will match the correst seed (its self) in the seed data of the mask.
-                1. Find candidate masks via a lookup table (mapping mask prefix to mask).
+                1. Find candidate masks via a lookup table (mapping mask prefixes to masks).
                 1. Choose the mask of which the captured k-mer share the longest prefix as the new k-mer,
                    by compring LexicHash values (new k-mer XOR captured k-mer).
         6. Saving the concatenated genome sequence (bit-packed, 2 bits for one base) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.

@@ -1,17 +1,18 @@
 # Changelog
 
-### v0.3.0 - 2024-04-xx
+### v0.3.0 - 2024-05-xx
 
 - `lexicmap index`:
     - **Better seed coverage by filling sketching deserts**.
     - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
-    - Optionally save seed positions which can be outputed by `lexicmap utils seed-pos`.
+    - Optionally save seed positions which can be outputted by `lexicmap utils seed-pos`.
 - `lexicmap search`:
     - **Better support of long queries**.
     - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
     - **Parallelize alignment in each query**, so it's faster for a single query.
+    - **Optional outputing matched query and subject sequences**.
     - 2-5X searching speed with a faster masking method.
     - Change output format.
     - Add output of query start and end positions.
