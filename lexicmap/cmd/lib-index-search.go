@@ -58,6 +58,9 @@ type IndexSearchingOptions struct {
 	ExtendLength int // the length of extra sequence on the flanking of seeds.
 	// seq similarity
 	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
+
+	// Output
+	OutputSeq bool
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -897,6 +900,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			minAF := idx.opt.MinQueryAlignedFractionInAGenome
 			extLen := idx.opt.ExtendLength
 			contigInterval := idx.contigInterval
+			outSeq := idx.opt.OutputSeq
 
 			// -----------------------------------------------------
 			// chaining
@@ -938,6 +942,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var rc bool
 			var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
 			var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
+			var tPosOffsetBeginPre int
 			var _begin, _end int
 
 			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
@@ -1045,6 +1050,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 
 				iSeqPre = -1 // the index of previous sequence in this HSP
+				tPosOffsetBeginPre = -1
 
 				crChains2 = poolChains2.Get().(*[]*Chain2Result)
 				*crChains2 = (*crChains2)[:0]
@@ -1154,6 +1160,19 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// only include valid chains
 								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 								r2.Update(crChains2, cr.QueryLen)
+								if outSeq {
+									if r2.TSeq == nil {
+										r2.TSeq = make([]byte, 0, 1024)
+									} else {
+										r2.TSeq = r2.TSeq[:0]
+									}
+
+									if rc {
+										r2.TSeq = append(r2.TSeq, tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre:tEnd-r2.TBegin-tPosOffsetBeginPre+1]...)
+									} else {
+										r2.TSeq = append(r2.TSeq, tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin:tPosOffsetBeginPre+r2.TEnd-tBegin+1]...)
+									}
+								}
 
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 								sd.RC = rc
@@ -1172,6 +1191,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 							// create anther HSP
 							iSeqPre = -1
+							tPosOffsetBeginPre = -1
 							crChains2 = poolChains2.Get().(*[]*Chain2Result)
 							*crChains2 = (*crChains2)[:0]
 
@@ -1181,6 +1201,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						}
 					}
 					iSeqPre = iSeq
+					tPosOffsetBeginPre = tPosOffsetBegin
 
 					// ------------------------------------------------------------
 					// convert the positions
@@ -1247,6 +1268,19 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						// only include valid chains
 						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 						r2.Update(crChains2, cr.QueryLen)
+						if outSeq {
+							if r2.TSeq == nil {
+								r2.TSeq = make([]byte, 0, 1024)
+							} else {
+								r2.TSeq = r2.TSeq[:0]
+							}
+
+							if rc {
+								r2.TSeq = append(r2.TSeq, tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin:tEnd-r2.TBegin-tPosOffsetBegin+1]...)
+							} else {
+								r2.TSeq = append(r2.TSeq, tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin:tPosOffsetBegin+r2.TEnd-tBegin+1]...)
+							}
+						}
 
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 						sd.RC = rc

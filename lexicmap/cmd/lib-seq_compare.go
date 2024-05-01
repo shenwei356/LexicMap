@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"math"
 	"sort"
 	"sync"
 
@@ -39,6 +40,8 @@ type SeqComparatorOptions struct {
 
 	// seq similarity
 	MinAlignedFraction float64 // minimum query aligned fraction in a HSP
+
+	MinIdentity float64
 }
 
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
@@ -132,12 +135,17 @@ type SeqComparatorResult struct {
 
 	AlignedFraction float64 // query (original query) coverage per HSP
 
+	MatchedBases int
+	PIdent       float64
+
 	QueryLen int // length of the original query, used to compute/update AlignedFraction
 
-	// QBegin int
-	// QEnd   int
-	// TBegin int
-	// TEnd   int
+	QBegin int
+	QEnd   int
+	TBegin int
+	TEnd   int
+
+	TSeq []byte // target seq
 
 	Chains *[]*Chain2Result
 }
@@ -149,17 +157,39 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 
 	// alignment regions might have overlap
 
+	r.QBegin, r.TBegin = math.MaxInt, math.MaxInt
+	r.QEnd, r.TEnd = -1, -1
+	r.MatchedBases = 0
+
 	regions := poolRegions.Get().(*[]*[2]int)
 	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
 		region := poolRegion.Get().(*[2]int)
 		region[0], region[1] = c.QBegin, c.QEnd
 		*regions = append(*regions, region)
+
+		if c.QBegin < r.QBegin {
+			r.QBegin = c.QBegin
+		}
+		if c.TBegin < r.TBegin {
+			r.TBegin = c.TBegin
+		}
+		if c.QEnd > r.QEnd {
+			r.QEnd = c.QEnd
+		}
+		if c.TEnd > r.TEnd {
+			r.TEnd = c.TEnd
+		}
+		r.MatchedBases += c.MatchedBases
 	}
 	r.AlignedBases = coverageLen(regions)
 	recycleRegions(regions)
 
 	r.AlignedFraction = float64(r.AlignedBases) / float64(queryLen) * 100
+	r.PIdent = float64(r.MatchedBases) / float64(r.AlignedBases) * 100
+	if r.PIdent > 100 {
+		r.PIdent = 100
+	}
 }
 
 func recycleRegions(regions *[]*[2]int) {
