@@ -1,19 +1,30 @@
 ## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
+[![Latest Version](https://img.shields.io/github/release/shenwei356/LexicMap.svg?style=flat?maxAge=86400)](https://github.com/shenwei356/LexicMap/releases)
+[![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
+[![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
+
 LexicMap is a nucleotide sequence pseudo-alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
 
-**Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds, or they fall back on k-mer indexing, without information of where matches occur in the genome.
+**Motivation**:
+Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
+However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.
+Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds,
+or they fall back on k-mer indexing, without information of where matches occur in the genome.
 
-**Results**: In LexicMap, a [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds.
+**Results**:
+In LexicMap, a [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method
+[LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds.
 A multi-level index enables fast and low-memory variable-length seed matching and pseudo-alignment on a single server
 at the scale of millions of genomes (See [algorithm overview](#algorithm-overview)),
-successfully indexing and searching both RefSeq+GenBank, and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (2.3 and 1.9 million genomes respectively).
+successfully indexing and searching both RefSeq+GenBank,
+and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (2.3 and 1.9 million genomes respectively).
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
 
 For example, **querying a 52.8-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only 4 minutes and 8 seconds with 15 GB RAM and 48 CPUs, with 494,860 genome hits returned**.
 In contrast, BLASTN is unable to run with the same dataset on common servers because it requires >2000 GB RAM. See [performance](#performance).
 
-LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (a binary file with no dependencies) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
+**LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/)** (a binary file with no dependencies) **and use** ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
 
 More documents: http://bioinf.shenwei.me/LexicMap.
 
