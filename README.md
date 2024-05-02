@@ -113,7 +113,7 @@ GTDB complete (402,538 genomes):
 |a plasmid      |52,830 bp|LexicMap|58,930     |40 s     |3.2 GB|
 |               |         |Blastn  |69,311     |37 m 42 s|365 GB|
 
-AllTheBacteria HQ (2,340,672 genomes):
+AllTheBacteria HQ (1,858,610 genomes):
 
 |query          |query_len|tool           |genome_hits|time     |RAM    |
 |:--------------|--------:|:--------------|----------:|--------:|------:|
@@ -127,7 +127,7 @@ AllTheBacteria HQ (2,340,672 genomes):
 |               |         |Phylign_local  |1,007      |2 h 50 m |20.6 GB|
 |               |         |Phylign_cluster|1,007      |32 m 23 s|/      |
 
-Genbank+RefSeq (1,858,610 genomes):
+Genbank+RefSeq (2,340,672 genomes):
 
 |query          |query_len|tool    |genome_hits|time    |RAM    |
 |:--------------|--------:|:-------|----------:|-------:|------:|
