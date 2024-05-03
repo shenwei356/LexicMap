@@ -9,7 +9,7 @@ weight: 30
 
 ### v0.3.0
 
-[v0.3.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0) - 2024-04-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0)
+[v0.3.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0) - 2024-05-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0)
 
 - `lexicmap index`:
     - **Better seed coverage by filling sketching deserts**.

@@ -118,14 +118,14 @@ AllTheBacteria HQ (1,858,610 genomes):
 |query          |query_len|tool           |genome_hits|time     |RAM    |
 |:--------------|--------:|:--------------|----------:|--------:|------:|
 |a marker gene  |1,299 bp |LexicMap       |10,837     |11.3 s   |1.1 GB |
-|               |         |Phylign_local  |7,937      |1 h 44 m |27.1 GB|
-|               |         |Phylign_cluster|7,937      |32 m 52 s|/      |
+|               |         |Phylign_local  |7,937      |29 m 13 s|78.5 GB|
+|               |         |Phylign_cluster|7,937      |32 m 26 s|/      |
 |a 16S rRNA gene|1,542 bp |LexicMap       |1,853,846  |12 m 31 s|9.7 GB |
-|               |         |Phylign_local  |1,032,948  |8 h 06 m |28.1 GB|
-|               |         |Phylign_cluster|1,032,948  |84 m 30 s|/      |
+|               |         |Phylign_local  |1,032,948  |1 h 58 m |73.3 GB|
+|               |         |Phylign_cluster|1,032,948  |83 m 36 s|/      |
 |a plasmid      |52,830 bp|LexicMap       |427,112    |4 m 13 s |12.9 GB|
-|               |         |Phylign_local  |1,007      |2 h 50 m |20.6 GB|
-|               |         |Phylign_cluster|1,007      |32 m 23 s|/      |
+|               |         |Phylign_local  |46,822     |38 m 55 s|76.6 GB|
+|               |         |Phylign_cluster|46,822     |36 m 30s |/      |
 
 Genbank+RefSeq (2,340,672 genomes):
 
@@ -142,7 +142,7 @@ Notes:
 - Main searching parameters:
     - LexicMap v0.3.0: `--threads 48 --top-n-genomes 0 --min-qcov-per-genome 0 --min-qcov-per-hsp 0 --min-match-pident 50`.
     - Blastn v2.15.0+: `-num_threads 48 -max_target_seqs 10000000`.
-    - Phylign (AllTheBacteria fork 9fc65e6): `cobs_kmer_thres: 0.33, nb_best_hits: 5000000, max_ram_gb: 100`; For cluster: maxinum number of slurm jobs is 100.
+    - Phylign (AllTheBacteria fork 9fc65e6): `threads: 48, cobs_kmer_thres: 0.33, nb_best_hits: 5000000, max_ram_gb: 100`; For cluster: maximum number of slurm jobs is `100`.
 
 ## Installation
 
