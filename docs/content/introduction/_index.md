@@ -10,7 +10,7 @@ LexicMap is a nucleotide sequence pseudo-alignment tool for efficiently querying
 
 **Results**: In LexicMap, a [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds.
 A multi-level index enables fast and low-memory variable-length seed matching and pseudo-alignment on a single server
-at the scale of millions of genomes (See [algorithm overview](#algorithm-overview)),
+at the scale of millions of genomes (see [algorithm overview](#algorithm-overview)),
 successfully indexing and searching both RefSeq+GenBank, and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (2.3 and 1.9 million genomes respectively).
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
 
@@ -41,6 +41,14 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
     lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
         --min-match-pident 60 --min-qcov-per-genome 0  --min-qcov-per-hsp 0  --top-n-genomes 0
 
+    # Extracting similar sequences for a query gene.
+      # search matches with query cover >= 90%
+      lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --all -o results.tsv \
+          --min-qcov-per-hsp 90
+
+      # extract matched sequences as FASTA format
+      sed 1d results.tsv | awk '{print ">"$5":"$13"-"$14":"$15"\n"$19;}' > results.fasta
+
 
 Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output).
 
@@ -65,7 +73,7 @@ ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1          85.6
 Note: the column `species` is added by mapping genome ID (column `sgenome`) to taxonomic information.
 ```
 
-Matched query and subject sequences can be outputted as extra two columns via the flag `-a/-all`.
+Matched query and subject sequences can be outputted as extra two columns via the flag `-a/--all`.
 
 Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
 

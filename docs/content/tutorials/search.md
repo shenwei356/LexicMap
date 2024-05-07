@@ -54,12 +54,12 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
 
 1. **Masking:**
-   Query sequence is masked by the masks of the index. In other word, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its posistion and strand information.
+   Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.
 1. **Seeding:**
    For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least *p* bases.
     1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
        For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
-    2. **Finding the nearest offset**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
+    2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
        The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the fingure), and the offset is returned as the start position in traversing the seed data file.
     3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
 1. **Chaining:**

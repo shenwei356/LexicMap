@@ -18,7 +18,8 @@ geekdocAnchor: false
 LexicMap is a **nucleotide sequence pseudo-alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences** against up to **millions** of **prokaryotic genomes**.
 
 
-{{< button size="large" relref="quick-start" >}}Quick start{{< /button >}}
+{{< button size="medium" relref="introduction" >}}Introduction{{< /button >}}
+{{< button size="medium" relref="quick-start" >}}Quick start{{< /button >}}
 
 
 
@@ -32,7 +33,7 @@ Both x86 and ARM CPUs are supported. Just install it by
 
     conda install -c bioconda lexicmap
 
-Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files for popular patforms.
+Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files for popular platforms.
 
 
 {{< button size="small" relref="installation" >}}Installation{{< /button >}}
@@ -48,7 +49,6 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
     # searching
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
-{{< button size="small" relref="introduction" >}}Introduction{{< /button >}}
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
 {{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}

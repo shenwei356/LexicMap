@@ -27,7 +27,7 @@ For seaching. See details [hardware requirement](https://bioinf.shenwei.me/Lexic
 
 ### Why is LexicMap slow for batch searching?
 
-- LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number of genomes.
+- LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 16 million) of genomes.
 
 - `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
 faster search.
