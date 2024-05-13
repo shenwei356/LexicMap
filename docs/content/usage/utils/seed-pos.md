@@ -17,26 +17,33 @@ Attentions:
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
   2. A distance between seeds (column distance) with a value of "-1" means it's the first seed
      in that sequence, and the distance can't be computed currently.
+  3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+     E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 
 Usage:
   lexicmap utils seed-pos [flags]
 
 Flags:
-  -a, --all-refs           ► Output for all reference genomes. This would take a long time for an
-                           index with a lot of genomes.
-  -b, --bins int           ► Number of bins in histograms. (default 100)
-      --color-index int    ► Color index (1-7). (default 1)
-      --force              ► Overwrite existing output directory.
-      --height float       ► Histogram height (unit: inch). (default 4)
-  -h, --help               help for seed-pos
-  -d, --index string       ► Index directory created by "lexicmap index".
-  -o, --out-file string    ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
-                           (default "-")
-  -O, --plot-dir string    ► Output directory for histograms of seed distances.
-      --plot-ext string    ► Histogram plot file extention. (default ".png")
-  -t, --plot-title         ► Plot genome ID as the title.
-  -n, --ref-name strings   ► Reference name(s).
-      --width float        ► Histogram width (unit: inch). (default 6)
+  -a, --all-refs             ► Output for all reference genomes. This would take a long time for an
+                             index with a lot of genomes.
+  -b, --bins int             ► Number of bins in histograms. (default 100)
+      --color-index int      ► Color index (1-7). (default 1)
+      --force                ► Overwrite existing output directory.
+      --height float         ► Histogram height (unit: inch). (default 4)
+  -h, --help                 help for seed-pos
+  -d, --index string         ► Index directory created by "lexicmap index".
+      --max-open-files int   ► Maximum opened files, used for extracting sequences. (default 512)
+  -D, --min-dist int         ► Only output records with seed distance >= this value.
+  -o, --out-file string      ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
+                             (default "-")
+  -O, --plot-dir string      ► Output directory for histograms of seed distances.
+      --plot-ext string      ► Histogram plot file extention. (default ".png")
+  -t, --plot-title           ► Plot genome ID as the title.
+  -n, --ref-name strings     ► Reference name(s).
+  -v, --verbose              ► Show more columns including position of the previous seed and sequence
+                             between the two seeds. Warning: it's slow to extract the sequences,
+                             recommend set -D 1000 or higher values to filter results
+      --width float          ► Histogram width (unit: inch). (default 6)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -71,6 +78,13 @@ Global Flags:
         GCF_000017205.1   185   +        55
         GCF_000017205.1   269   +        84
 
+    Or only list records with seed distance longer than a threshold.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 1000 | csvtk pretty -t
+        ref               pos       strand   distance
+        ---------------   -------   ------   --------
+        GCF_000017205.1   5430137   +        1234
+
     Check the biggest seed distances.
 
         $ csvtk freq -t -f distance seed_distance.tsv \
@@ -100,6 +114,7 @@ Global Flags:
         883        2
         881        6
 
+
     Plot the histogram of distances between seeds.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
@@ -107,6 +122,26 @@ Global Flags:
     In the plot below, there's a peak at 200 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 200 bp by default.
 
     <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
+
+2. More columns including sequences between two seeds.
+
+        $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
+            | head -n4 | csvtk pretty -t -W 50 --clip
+        13:30:44.434 [INFO] creating genome reader pools, each batch with 16 readers...
+        ref               pos   strand   distance   pre_pos   seq
+        ---------------   ---   ------   --------   -------   ---------------------------------------
+        GCF_000017205.1   2     +        1          0         T
+        GCF_000017205.1   41    +        39         1         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
+        GCF_000017205.1   45    +        4          40        TCAA
+
+    Or only list records with seed distance longer than a threshold.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 1000 \
+            | csvtk pretty -t -W 50 --clip
+        ref               pos       strand   distance   pre_pos   seq
+        ---------------   -------   ------   --------   -------   --------------------------------------------------
+        GCF_000017205.1   5430137   +        1234       5428902   ATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTGC...
+
 
 3. Listing seed position of all genomes.
 

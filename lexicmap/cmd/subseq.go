@@ -41,6 +41,8 @@ Attention:
   1. The option -s/--seq-id is optional.
      1) If given, the positions are these in the original sequence.
      2) If not given, the positions are these in the concatenated sequence.
+  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+     E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

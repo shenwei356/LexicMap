@@ -360,6 +360,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 // Close closes the searcher.
 func (idx *Index) Close() error {
 	var _err error
+
+	// seed data
 	if idx.opt.InMemorySearch {
 		for _, scr := range idx.InMemorySearchers {
 			err := scr.Close()
@@ -374,6 +376,25 @@ func (idx *Index) Close() error {
 				_err = err
 			}
 		}
+	}
+
+	// genome reader
+	if idx.hasGenomeRdrs {
+		var wg sync.WaitGroup
+		for _, pool := range idx.poolGenomeRdrs {
+			wg.Add(1)
+			go func(pool chan *genome.Reader) {
+				close(pool)
+				for rdr := range pool {
+					err := rdr.Close()
+					if err != nil {
+						_err = err
+					}
+				}
+				wg.Done()
+			}(pool)
+		}
+		wg.Wait()
 	}
 	return _err
 }

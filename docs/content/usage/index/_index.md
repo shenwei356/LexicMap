@@ -27,6 +27,26 @@ Input:
        and are used to extract subsequences in the command "lexicmap utils subseq".
     2) ► Unwanted sequences like plasmids can be filtered out by content in FASTA/Q header via regular
        expressions (-B/--seq-name-filter).
+    3) All degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
+        code  bases    saved
+        A     A        A
+        C     C        C
+        G     G        G
+        T/U   T        T
+
+        M     A/C      A
+        R     A/G      A
+        W     A/T      A
+        S     C/G      C
+        Y     C/T      C
+        K     G/T      G
+
+        V     A/C/G    A
+        H     A/C/T    A
+        D     A/G/T    A
+        B     C/G/T    C
+
+        N     A/C/G/T  A
 
 Important parameters:
 
