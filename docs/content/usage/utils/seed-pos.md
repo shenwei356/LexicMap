@@ -20,6 +20,12 @@ Attentions:
   3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 
+Extra columns:
+  Using -v/--verbose will output more columns:
+     pre_pos,  the position of the previous seed.
+     len_aaa,  length of consecutive A's.
+     seq,      sequence between the previous and current seed.
+
 Usage:
   lexicmap utils seed-pos [flags]
 
@@ -127,20 +133,19 @@ Global Flags:
 
         $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
             | head -n4 | csvtk pretty -t -W 50 --clip
-        13:30:44.434 [INFO] creating genome reader pools, each batch with 16 readers...
-        ref               pos   strand   distance   pre_pos   seq
-        ---------------   ---   ------   --------   -------   ---------------------------------------
-        GCF_000017205.1   2     +        1          0         T
-        GCF_000017205.1   41    +        39         1         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
-        GCF_000017205.1   45    +        4          40        TCAA
+        ref               pos   strand   distance   pre_pos   len_aaa   seq
+        ---------------   ---   ------   --------   -------   -------   ---------------------------------------
+        GCF_000017205.1   2     +        1          0         0         T
+        GCF_000017205.1   41    +        39         1         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
+        GCF_000017205.1   45    +        4          40        1         TCAA
 
     Or only list records with seed distance longer than a threshold.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 1000 \
             | csvtk pretty -t -W 50 --clip
-        ref               pos       strand   distance   pre_pos   seq
-        ---------------   -------   ------   --------   -------   --------------------------------------------------
-        GCF_000017205.1   5430137   +        1234       5428902   ATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTGC...
+        ref               pos       strand   distance   pre_pos   len_aaa   seq
+        ---------------   -------   ------   --------   -------   -------   --------------------------------------------------
+        GCF_000017205.1   5430137   +        1234       5428902   4         ATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTGC.
 
 
 3. Listing seed position of all genomes.

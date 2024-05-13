@@ -59,6 +59,12 @@ Attentions:
      in that sequence, and the distance can't be computed currently.
   3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
+	
+Extra columns:
+  Using -v/--verbose will output more columns:
+     pre_pos,  the position of the previous seed.
+     len_aaa,  length of consecutive A's.
+     seq,      sequence between the previous and current seed.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -241,7 +247,7 @@ Attentions:
 
 		fmt.Fprintf(outfh, "ref\tpos\tstrand\tdistance")
 		if moreColumns {
-			fmt.Fprintf(outfh, "\tpre_pos\tseq")
+			fmt.Fprintf(outfh, "\tpre_pos\tlen_aaa\tseq")
 		}
 		fmt.Fprintln(outfh)
 
@@ -345,14 +351,14 @@ Attentions:
 
 						if moreColumns {
 							if dist <= 0 {
-								fmt.Fprintf(outfh, "\t%d\t", pre+1)
+								fmt.Fprintf(outfh, "\t%d\t0\t", pre+1)
 							} else {
 								tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
 								if err != nil {
 									checkError(fmt.Errorf("failed to read subsequence: %s", err))
 								}
 
-								fmt.Fprintf(outfh, "\t%d\t%s", pre, tSeq.Seq)
+								fmt.Fprintf(outfh, "\t%d\t%d\t%s", pre, lengthAAs(tSeq.Seq), tSeq.Seq)
 
 								genome.RecycleGenome(tSeq)
 							}
@@ -415,7 +421,7 @@ Attentions:
 								checkError(fmt.Errorf("failed to read subsequence: %s", err))
 							}
 
-							fmt.Fprintf(outfh, "\t%d\t%s", pre, tSeq.Seq)
+							fmt.Fprintf(outfh, "\t%d\t%d\t%s", pre, lengthAAs(tSeq.Seq), tSeq.Seq)
 
 							genome.RecycleGenome(tSeq)
 						}
@@ -647,4 +653,17 @@ func init() {
 func getPercentile(percentile float64, vals []float64) (p float64) {
 	p = stat.Quantile(percentile, stat.Empirical, vals, nil)
 	return
+}
+
+func lengthAAs(s []byte) int {
+	var p, b byte
+	var n int
+	for _, b = range s {
+		if b == 'A' && b == p {
+			n++
+		}
+
+		p = b
+	}
+	return n
 }
