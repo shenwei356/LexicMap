@@ -159,45 +159,46 @@ Extra columns:
 			}
 
 			// we can create genome reader pools
-			n := (maxOpenFiles - info.Chunks) / info.GenomeBatches
-			if n < 2 {
-			} else {
-				n >>= 1
-				if n > opt.NumCPUs {
-					n = opt.NumCPUs
-				}
-				if opt.Verbose || opt.Log2File {
-					log.Infof("creating genome reader pools, each batch with %d readers...", n)
-				}
-				poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
-				for i := 0; i < info.GenomeBatches; i++ {
-					poolGenomeRdrs[i] = make(chan *genome.Reader, n)
-				}
-
-				// parallelize it
-				var wg sync.WaitGroup
-				tokens := make(chan int, opt.NumCPUs)
-				for i := 0; i < info.GenomeBatches; i++ {
-					for j := 0; j < n; j++ {
-						tokens <- 1
-						wg.Add(1)
-						go func(i int) {
-							fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
-							rdr, err := genome.NewReader(fileGenomes)
-							if err != nil {
-								checkError(fmt.Errorf("failed to create genome reader: %s", err))
-							}
-							poolGenomeRdrs[i] <- rdr
-
-							wg.Done()
-							<-tokens
-						}(i)
-					}
-				}
-				wg.Wait()
-
-				hasGenomeRdrs = true
+			// n := (maxOpenFiles - info.Chunks) / info.GenomeBatches
+			// if n < 2 {
+			// } else {
+			// 	n >>= 1
+			// 	if n > opt.NumCPUs {
+			// 		n = opt.NumCPUs
+			// 	}
+			n := 1
+			if opt.Verbose || opt.Log2File {
+				log.Infof("creating genome reader pools, each batch with %d readers...", n)
 			}
+			poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
+			for i := 0; i < info.GenomeBatches; i++ {
+				poolGenomeRdrs[i] = make(chan *genome.Reader, n)
+			}
+
+			// parallelize it
+			var wg sync.WaitGroup
+			tokens := make(chan int, opt.NumCPUs)
+			for i := 0; i < info.GenomeBatches; i++ {
+				for j := 0; j < n; j++ {
+					tokens <- 1
+					wg.Add(1)
+					go func(i int) {
+						fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
+						rdr, err := genome.NewReader(fileGenomes)
+						if err != nil {
+							checkError(fmt.Errorf("failed to create genome reader: %s", err))
+						}
+						poolGenomeRdrs[i] <- rdr
+
+						wg.Done()
+						<-tokens
+					}(i)
+				}
+			}
+			wg.Wait()
+
+			hasGenomeRdrs = true
+			// }
 		}
 
 		// ---------------------------------------------------------------
