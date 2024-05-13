@@ -25,6 +25,7 @@ docs/themes
 
 demo/demo.lmi
 demo/*.lexicmap.tsv.gz
+demo/seed_distance.tsv
 demo/seed_distance
 demo/seed-pos.tsv.gz
 demo/t.txt

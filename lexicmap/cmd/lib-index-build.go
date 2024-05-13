@@ -37,6 +37,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/lexichash/iterator"
@@ -600,7 +601,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 	// --------------------------------
 	// 1) parsing input genome files & mask & pack sequences
-	k := lh.K
 	nnn := bytes.Repeat([]byte{'N'}, opt.ContigInterval)
 	reRefName := opt.ReRefName
 	extractRefName := reRefName != nil
@@ -619,6 +619,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				<-tokens
 			}()
 			startTime := time.Now()
+
+			k := lh.K
+			k8 := uint8(lh.K)
 
 			// --------------------------------
 			// read sequence
@@ -821,6 +824,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var hash, hashMin uint64
 			var knl *[]uint64
 
+			var lenPrefixSuffix uint8 = 1
+			ttt := uint64((1 << (lenPrefixSuffix << 1)) - 1)
+
 			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
 
@@ -831,6 +837,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				d = pos - pre
 
 				if d < maxDesert { // small distance, cool
+					pre = pos
+					continue
+				}
+
+				// there's a really big gap in it, it might be the interver between contigs or a assembly gap
+				if float64(lengthAAs(refseq.Seq[pre:pos]))/float64(d) >= 0.7 {
 					pre = pos
 					continue
 				}
@@ -896,11 +908,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					*p2ks = append(*p2ks, p2k)
 				}
 
-				if (*counter)[0] > 50 { // it's in an interval region
-					pre = pos
-					continue
-				}
-
 				// fmt.Printf("  list size： %d\n", len(*p2ks))
 
 				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
@@ -920,12 +927,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 					ok = false
 					for ; _j > _end; _j-- {
-						// fmt.Printf("    test %d\n", _j)
+						// fmt.Printf("    test u %d\n", _j)
 						p2k = (*p2ks)[_j]
 
 						// strand +
 						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == 1 {
+						if kmer != 0 && (*counter)[p] == 1 &&
+							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j) << 1
 							ok = true
 							break
@@ -933,7 +941,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// strand -
 						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == 1 {
+						if kmer != 0 && (*counter)[p] == 1 &&
+							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j)<<1 | 1
 							ok = true
 							break
@@ -978,11 +987,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						_end = posOfCur - 1
 					}
 					for _j = _start; _j < _end; _j++ {
+						// fmt.Printf("    test d %d\n", _j)
 						p2k = (*p2ks)[_j]
 
-						// strand +
 						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == 1 {
+						if kmer != 0 && (*counter)[p] == 1 &&
+							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j) << 1
 							ok = true
 							break
@@ -990,7 +1000,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// strand -
 						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == 1 {
+						if kmer != 0 && (*counter)[p] == 1 &&
+							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j)<<1 | 1
 							ok = true
 							break
@@ -1001,10 +1012,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						maskList = lh.MaskKmer(kmer)
 
 						hashMin = math.MaxUint64
-						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
+						for _, _im = range *maskList {
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-							hash = kmer ^ (*_kmers)[_im]
-							// hash = kmer ^ lh.Masks[_im] // both are OK
+
+							// both are OK
+							hash = kmer ^ (*_kmers)[_im] // find the mask which capture the most similar k-mer with current one
+							// hash = kmer ^ lh.Masks[_im] // find the mask which will capture current one
 							if hash < hashMin {
 								_imMostSimilar = _im
 							}
@@ -1153,7 +1166,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	nMasks := opt.Masks
 	chunkSize := (nMasks + chunks - 1) / opt.Chunks
 	var j, begin, end int
-
+	k8 := uint8(lh.K)
 	tokens = make(chan int, 1)   // hope it reduces memory
 	for j = 0; j < chunks; j++ { // each chunk
 		begin = j * chunkSize
@@ -1176,7 +1189,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVData(uint8(k), begin, (*datas)[begin:end], file, opt.Partitions)
+			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, opt.Partitions)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}

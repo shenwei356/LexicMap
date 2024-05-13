@@ -75,21 +75,21 @@ Global Flags:
         ref               pos   strand   distance
         ---------------   ---   ------   --------
         GCF_000017205.1   2     +        1
-        GCF_000017205.1   41    +        39
+        GCF_000017205.1   41    -        39
         GCF_000017205.1   45    +        4
-        GCF_000017205.1   74    +        29
-        GCF_000017205.1   85    +        11
-        GCF_000017205.1   119   +        34
-        GCF_000017205.1   130   +        11
+        GCF_000017205.1   74    -        29
+        GCF_000017205.1   85    -        11
+        GCF_000017205.1   119   -        34
+        GCF_000017205.1   130   -        11
         GCF_000017205.1   185   +        55
-        GCF_000017205.1   269   +        84
+        GCF_000017205.1   269   -        84
 
     Or only list records with seed distance longer than a threshold.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 1000 | csvtk pretty -t
         ref               pos       strand   distance
         ---------------   -------   ------   --------
-        GCF_000017205.1   5430137   +        1234
+        GCF_000017205.1   5430137   -        1235
 
     Check the biggest seed distances.
 
@@ -100,7 +100,7 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        1234       1
+        1235       1
         899        2
         898        4
         897        1
@@ -136,7 +136,7 @@ Global Flags:
         ref               pos   strand   distance   pre_pos   len_aaa   seq
         ---------------   ---   ------   --------   -------   -------   ---------------------------------------
         GCF_000017205.1   2     +        1          0         0         T
-        GCF_000017205.1   41    +        39         1         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
+        GCF_000017205.1   41    -        39         1         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
         GCF_000017205.1   45    +        4          40        1         TCAA
 
     Or only list records with seed distance longer than a threshold.
@@ -145,7 +145,7 @@ Global Flags:
             | csvtk pretty -t -W 50 --clip
         ref               pos       strand   distance   pre_pos   len_aaa   seq
         ---------------   -------   ------   --------   -------   -------   --------------------------------------------------
-        GCF_000017205.1   5430137   +        1234       5428902   4         ATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTGC.
+        GCF_000017205.1   5430137   -        1235       5428901   4         CATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTG...
 
 
 3. Listing seed position of all genomes.
@@ -158,21 +158,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   45708
+        GCF_000017205.1   45711
         GCF_002950215.1   43617
-        GCF_002949675.1   43411
+        GCF_002949675.1   43415
         GCF_001457655.1   42112
-        GCF_006742205.1   42103
+        GCF_006742205.1   42102
         GCF_900638025.1   42008
-        GCF_001027105.1   41856
-        GCF_000742135.1   41414
-        GCF_000392875.1   41392
+        GCF_001027105.1   41855
+        GCF_000742135.1   41415
+        GCF_000392875.1   41391
         GCF_003697165.2   41189
-        GCF_009759685.1   41137
-        GCF_000006945.2   41108
+        GCF_009759685.1   41138
+        GCF_000006945.2   41110
         GCF_000148585.2   41075
-        GCF_001096185.1   40239
-        GCF_001544255.1   40159
+        GCF_001096185.1   40226
+        GCF_001544255.1   40153
 
     Plot the histograms of distances between seeds for all genomes.
 

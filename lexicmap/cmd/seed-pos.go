@@ -348,7 +348,7 @@ Extra columns:
 							continue
 						}
 
-						fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str&1], dist)
+						fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str>>1&1], dist)
 
 						if moreColumns {
 							if dist <= 0 {
@@ -411,7 +411,7 @@ Extra columns:
 
 					v = append(v, float64(dist))
 
-					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str&1], dist)
+					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str>>1&1], dist)
 
 					if moreColumns {
 						if dist <= 0 {

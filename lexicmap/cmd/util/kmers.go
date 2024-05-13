@@ -72,6 +72,19 @@ func MustKmerHasPrefix(code uint64, prefix uint64, k1, k2 uint8) bool {
 	return code>>((k1-k2)<<1) == prefix
 }
 
+// KmerHasSuffix checks if a k-mer has a suffix.
+func KmerHasSuffix(code uint64, suffix uint64, k1, k2 uint8) bool {
+	if k1 < k2 {
+		return false
+	}
+	return code&((1<<(k2<<1))-1) == suffix
+}
+
+// MustKmerHasSuffix checks if a k-mer has a suffix, by assuming k1>=k2.
+func MustKmerHasSuffix(code uint64, suffix uint64, k1, k2 uint8) bool {
+	return code&((1<<(k2<<1))-1) == suffix
+}
+
 // SharingPrefixKmersMismatch counts the number of mismatch between two k-mers
 // sharing with a p-bp prefix.
 func SharingPrefixKmersMismatch(code1, code2 uint64, k, p uint8) (n uint8) {
