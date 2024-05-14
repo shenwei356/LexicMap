@@ -46,6 +46,7 @@ type Chainer struct {
 	// scores        []float64 // actually, it's not necessary
 	maxscores     []float64
 	maxscoresIdxs []int
+	directions    []float64
 	visited       []bool
 }
 
@@ -57,6 +58,7 @@ func NewChainer(options *ChainingOptions) *Chainer {
 		// scores:        make([]float64, 0, 128),
 		maxscores:     make([]float64, 0, 10240),
 		maxscoresIdxs: make([]int, 0, 10240),
+		directions:    make([]float64, 0, 10240),
 		visited:       make([]bool, 0, 10240),
 	}
 	return c
@@ -119,6 +121,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// index of previous seed, the size is n
 	maxscoresIdxs := &ce.maxscoresIdxs
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
+	directions := &ce.directions
+	*directions = (*directions)[:0]
 	// for i = 0; i < n; i++ {
 	// 	maxscores = append(maxscores, 0)
 	// 	maxscoresIdxs = append(maxscoresIdxs, 0)
@@ -131,21 +135,29 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// }
 	*maxscores = append(*maxscores, seedWeight(float64((*subs)[0].Len)))
 	*maxscoresIdxs = append(*maxscoresIdxs, 0)
+	*directions = append(*directions, 1)
 
 	// compute scores
 	var s, m, d, g float64
+	var dir, mdir float64
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
+	var _first bool
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
 		// just initialize the max score, which comes from the current seed
 		// m = scores[k]
-		m, mj = seedWeight(float64(a.Len)), i
+		m, mj, mdir = seedWeight(float64(a.Len)), i, 1
 
+		_first = true
 		for j = 0; j < i; j++ { // try all previous seeds, no bound
 			b = (*subs)[j]
+
+			if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
+				continue
+			}
 
 			d = distance(a, b)
 			if d > maxDistance {
@@ -157,21 +169,30 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				continue
 			}
 
-			s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
-			// scores[k] = s
+			// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
+
+			dir = direction(a, b)
+			if _first {
+				s = (*maxscores)[j] + seedWeight(float64(b.Len)) - gapScore(g)
+				_first = false
+			} else {
+				s = (*maxscores)[j] + seedWeight(float64(b.Len))*(*directions)[j]*dir - gapScore(g)
+			}
 
 			if s >= m { // update the max score
 				m = s
 				mj = j
+				mdir = dir
 			}
 		}
 		*maxscores = append(*maxscores, m) // save the max score
 		*maxscoresIdxs = append(*maxscoresIdxs, mj)
+		*directions = append(*directions, mdir)
 	}
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
 	// for i = 0; i < n; i++ {
-	// 	fmt.Printf("%d\t%s\t%d:%.3f\n", i, (*subs)[i], (*maxscoresIdxs)[i], (*maxscores)[i])
+	// 	fmt.Printf("%d\t%s\t%d:%.0f:%.3f\n", i, (*subs)[i], (*maxscoresIdxs)[i], (*directions)[i], (*maxscores)[i])
 	// }
 
 	// backtrack
@@ -263,6 +284,13 @@ func distance(a, b *SubstrPair) float64 {
 
 func distanceScore(d float64) float64 {
 	return 0.01 * d
+}
+
+func direction(a, b *SubstrPair) float64 {
+	if a.TBegin >= b.TBegin {
+		return 1
+	}
+	return -1
 }
 
 func gap(a, b *SubstrPair) float64 {

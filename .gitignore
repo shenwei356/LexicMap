@@ -13,6 +13,8 @@
 
 
 *.directory
+.Rhistory
+
 *ssshtest
 *.nextflow.log*
 *.brename_detail.txt

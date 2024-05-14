@@ -18,6 +18,7 @@ weight: 30
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
     - Optionally save seed positions which can be outputted by `lexicmap utils seed-pos`.
 - `lexicmap search`:
+    - **Improved seed-chaining algorithm**.
     - **Better support of long queries**.
     - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
     - **Parallelize alignment in each query**, so it's faster for a single query.
@@ -25,7 +26,6 @@ weight: 30
     - 2-5X searching speed with a faster masking method.
     - Change output format.
     - Add output of query start and end positions.
-    - Fix a seed-chaining bug.
     - Fix a target sequence extracting bug.
     - Keep indexes of genome data in memory.
 - `lexicmap utils kmers`:
