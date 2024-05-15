@@ -82,7 +82,7 @@ Extra columns:
 
 		refnames := getFlagStringSlice(cmd, "ref-name")
 		if !allGenomes && len(refnames) == 0 {
-			checkError(fmt.Errorf("flag -n/--ref-name needed"))
+			checkError(fmt.Errorf("flag -n/--ref-name needed, or use -a/--all-refs for all ref genomes"))
 		}
 
 		outFile := getFlagString(cmd, "out-file")

@@ -89,7 +89,7 @@ Usage:
 Flags:
   -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
                                   (default 10000)
-  -G, --big-genomes string        ► Out file of skipped files with genomes >= -G/--max-genome
+  -G, --big-genomes string        ► Out file of skipped files with genomes >= -g/--max-genome
   -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
                                   (default 16)
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
