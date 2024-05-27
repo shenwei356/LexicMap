@@ -131,6 +131,8 @@ Output format:
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
+		onlyPseudoAlign := getFlagBool(cmd, "pseudo-align")
+
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < minSinglePrefix {
 			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
@@ -219,6 +221,8 @@ Output format:
 			ExtendLength: extLen,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
+
+			MoreAccurateAlignment: !onlyPseudoAlign,
 
 			OutputSeq: moreColumns,
 		}
@@ -488,6 +492,8 @@ func init() {
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
 	// sequence similarity
+	mapCmd.Flags().BoolP("pseudo-align", "", false,
+		formatFlagUsage(`Only perform pseudo alignment`))
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))

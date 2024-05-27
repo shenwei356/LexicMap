@@ -6,7 +6,9 @@ weight: 60
 ### Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-Fungi can be supported with more masks.
+Fungi can be supported.
+
+For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
 
 ### Does LexicMap support short reads?
 

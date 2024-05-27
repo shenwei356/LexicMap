@@ -33,6 +33,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
+	"github.com/shenwei356/wfa"
 )
 
 // IndexSearchingOptions contains all options for searching
@@ -58,6 +59,9 @@ type IndexSearchingOptions struct {
 	ExtendLength int // the length of extra sequence on the flanking of seeds.
 	// seq similarity
 	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
+
+	// WFA alignment
+	MoreAccurateAlignment bool
 
 	// Output
 	OutputSeq bool
@@ -922,6 +926,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			extLen := idx.opt.ExtendLength
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
+			accurateAlign := idx.opt.MoreAccurateAlignment
+			wfaOption := &wfa.Options{GlobalAlignment: true}
 
 			// -----------------------------------------------------
 			// chaining
@@ -1181,6 +1187,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// only include valid chains
 								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 								r2.Update(crChains2, cr.QueryLen)
+
+								var t []byte
 								if outSeq {
 									if r2.TSeq == nil {
 										r2.TSeq = make([]byte, 0, 1024)
@@ -1189,10 +1197,36 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									}
 
 									if rc {
-										r2.TSeq = append(r2.TSeq, tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre:tEnd-r2.TBegin-tPosOffsetBeginPre+1]...)
+										t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre : tEnd-r2.TBegin-tPosOffsetBeginPre+1]
 									} else {
-										r2.TSeq = append(r2.TSeq, tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin:tPosOffsetBeginPre+r2.TEnd-tBegin+1]...)
+										t = tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin : tPosOffsetBeginPre+r2.TEnd-tBegin+1]
 									}
+									r2.TSeq = append(r2.TSeq, t...)
+								}
+
+								if accurateAlign {
+									algn := wfa.New(wfa.DefaultPenalties, wfaOption)
+									algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+									if !outSeq {
+										if rc {
+											t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre : tEnd-r2.TBegin-tPosOffsetBeginPre+1]
+										} else {
+											t = tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin : tPosOffsetBeginPre+r2.TEnd-tBegin+1]
+										}
+									}
+									var cigar *wfa.CIGAR
+									cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
+
+									if err != nil {
+										checkError(fmt.Errorf("fail to align sequence"))
+									}
+									r2.AlignedBases = int(cigar.AlignLen)
+									r2.MatchedBases = int(cigar.Matches)
+									r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
+									r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
+
+									wfa.RecycleCIGAR(cigar)
+									wfa.RecycleAligner(algn)
 								}
 
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
@@ -1285,10 +1319,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				if iSeq >= 0 {
 					if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
-
 						// only include valid chains
 						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 						r2.Update(crChains2, cr.QueryLen)
+
+						var t []byte
 						if outSeq {
 							if r2.TSeq == nil {
 								r2.TSeq = make([]byte, 0, 1024)
@@ -1297,10 +1332,36 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							}
 
 							if rc {
-								r2.TSeq = append(r2.TSeq, tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin:tEnd-r2.TBegin-tPosOffsetBegin+1]...)
+								t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin : tEnd-r2.TBegin-tPosOffsetBegin+1]
 							} else {
-								r2.TSeq = append(r2.TSeq, tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin:tPosOffsetBegin+r2.TEnd-tBegin+1]...)
+								t = tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin : tPosOffsetBegin+r2.TEnd-tBegin+1]
 							}
+							r2.TSeq = append(r2.TSeq, t...)
+						}
+
+						if accurateAlign {
+							algn := wfa.New(wfa.DefaultPenalties, wfaOption)
+							algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+							if !outSeq {
+								if rc {
+									t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin : tEnd-r2.TBegin-tPosOffsetBegin+1]
+								} else {
+									t = tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin : tPosOffsetBegin+r2.TEnd-tBegin+1]
+								}
+							}
+							var cigar *wfa.CIGAR
+							cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
+
+							if err != nil {
+								checkError(fmt.Errorf("fail to align sequence"))
+							}
+							r2.AlignedBases = int(cigar.AlignLen)
+							r2.MatchedBases = int(cigar.Matches)
+							r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
+							r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
+
+							wfa.RecycleCIGAR(cigar)
+							wfa.RecycleAligner(algn)
 						}
 
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
