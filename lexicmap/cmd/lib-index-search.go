@@ -927,7 +927,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
 			accurateAlign := idx.opt.MoreAccurateAlignment
-			wfaOption := &wfa.Options{GlobalAlignment: true}
+			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
 			// -----------------------------------------------------
 			// chaining
@@ -1205,8 +1206,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								}
 
 								if accurateAlign {
-									algn := wfa.New(wfa.DefaultPenalties, wfaOption)
-									algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 									if !outSeq {
 										if rc {
 											t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre : tEnd-r2.TBegin-tPosOffsetBeginPre+1]
@@ -1214,7 +1213,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 											t = tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin : tPosOffsetBeginPre+r2.TEnd-tBegin+1]
 										}
 									}
-									var cigar *wfa.CIGAR
+									var cigar *wfa.AlignmentResult
 									cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
 
 									if err != nil {
@@ -1225,8 +1224,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
 									r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
-									wfa.RecycleCIGAR(cigar)
-									wfa.RecycleAligner(algn)
+									wfa.RecycleAlignmentResult(cigar)
 								}
 
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
@@ -1340,8 +1338,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						}
 
 						if accurateAlign {
-							algn := wfa.New(wfa.DefaultPenalties, wfaOption)
-							algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 							if !outSeq {
 								if rc {
 									t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin : tEnd-r2.TBegin-tPosOffsetBegin+1]
@@ -1349,7 +1345,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									t = tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin : tPosOffsetBegin+r2.TEnd-tBegin+1]
 								}
 							}
-							var cigar *wfa.CIGAR
+							var cigar *wfa.AlignmentResult
 							cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
 
 							if err != nil {
@@ -1360,8 +1356,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
 							r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
-							wfa.RecycleCIGAR(cigar)
-							wfa.RecycleAligner(algn)
+							wfa.RecycleAlignmentResult(cigar)
 						}
 
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
@@ -1470,6 +1465,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				poolChains.Put(r.Chains)
 				r.Chains = nil
 			}
+
+			wfa.RecycleAligner(algn)
 
 			ch2 <- r
 		}(r)

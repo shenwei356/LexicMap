@@ -1,8 +1,11 @@
 module github.com/shenwei356/LexicMap
 
-go 1.21
+go 1.22
+
+toolchain go1.22.3
 
 replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
+
 replace github.com/shenwei356/wfa => /home/shenwei/go/src/github.com/shenwei356/wfa/
 
 require (
