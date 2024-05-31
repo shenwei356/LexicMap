@@ -3,6 +3,8 @@
 
 ### v0.4.0 - 2024-06-xx
 
+- `lexicmap index`:
+    - fix bug in indexing small genomes.
 - `lexicmap search`:
     - Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa).
 

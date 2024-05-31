@@ -118,6 +118,10 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchR
 	ttt := (uint64(1) << (k << 1)) - 1
 
 	for iQ, data := range scr.KVdata {
+		if len(data) == 0 { // this hapens when no captured k-mer for a mask
+			continue
+		}
+
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.

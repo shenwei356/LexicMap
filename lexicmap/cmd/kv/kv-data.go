@@ -116,9 +116,12 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
-	if len(*data[0]) == 0 {
-		return 0, errors.New("k-mer-value data: no data given")
-	}
+
+	// some masks might do not capture any k-mers from a short genome
+
+	// if len(*data[0]) == 0 {
+	// 	return 0, errors.New("k-mer-value data: no data given")
+	// }
 
 	wtr, err := NewWriter(k, MaskOffset, len(data), file)
 	if err != nil {
@@ -309,10 +312,18 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 	}
 	wtr.N += 8
 
+	if nKmers == 0 { // this hapens when no captured k-mer for a mask
+		nAnchors = 0
+	}
+
 	// 8-byte the number of anchors
 	err = binary.Write(wi, be, uint64(nAnchors))
 	if err != nil {
 		return err
+	}
+
+	if nKmers == 0 { // this hapens when no captured k-mer for a mask
+		return nil
 	}
 
 	keys := poolUint64s.Get().(*[]uint64)
@@ -568,6 +579,11 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 		}
 		nAnchors = int(be.Uint64(buf))
 
+		if nAnchors == 0 { // this hapens when no captured k-mer for a mask
+			data[i] = make([]uint64, 0)
+			continue
+		}
+
 		index := make([]uint64, 0, nAnchors<<1)
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf)
@@ -751,10 +767,18 @@ func CreateKVIndex(file string, nAnchors int) error {
 			_nAnchors = 1
 		}
 
+		if nKmers == 0 { // this hapens when no captured k-mer for a mask
+			_nAnchors = 0
+		}
+
 		// 8-byte the number of anchors
 		err = binary.Write(wi, be, uint64(_nAnchors))
 		if err != nil {
 			return err
+		}
+
+		if nKmers == 0 { // this hapens when no captured k-mer for a mask
+			continue
 		}
 
 		_j = 0
