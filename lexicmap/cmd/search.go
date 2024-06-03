@@ -507,6 +507,8 @@ func init() {
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
+	// general filtering thresholds
+
 	mapCmd.Flags().Float64P("align-min-match-pident", "i", 50,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 

@@ -164,6 +164,7 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	regions := poolRegions.Get().(*[]*[2]int)
 	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
+		// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 		region := poolRegion.Get().(*[2]int)
 		region[0], region[1] = c.QBegin, c.QEnd
 		*regions = append(*regions, region)
@@ -199,6 +200,7 @@ func recycleRegions(regions *[]*[2]int) {
 	poolRegions.Put(regions)
 }
 
+// coverageLen computes the total covered bases for a list of regions which might have overlaps.
 func coverageLen(regions *[]*[2]int) (r int) {
 	if len(*regions) == 0 {
 		return 0

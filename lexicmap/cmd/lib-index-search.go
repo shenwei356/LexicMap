@@ -977,7 +977,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			*sds = (*sds)[:0]
 
 			// fragments of a HSP.
-			// Since HSP fragments in a HSP might comefrom different contigs.
+			// Since HSP fragments in a HSP might come from different contigs.
 			// Multiple contigs are concatenated, remember?
 			// So we need to create seperate HPSs for these fragments.
 			var crChains2 *[]*Chain2Result
@@ -1060,7 +1060,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 
 				// ------------------------------------------------------------------------
-				// comparing the two sequences
+				// comparing the two sequences with pseudo-alignment
 
 				cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
 				if err != nil {

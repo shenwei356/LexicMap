@@ -55,9 +55,9 @@ type Chainer2 struct {
 	// scores        []int
 	// maxscores     []int
 	// maxscoresIdxs []int
-	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) ot save ram.
+	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
 
-	bounds []int32 // 4 * chains
+	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
 }
 
 // NewChainer creates a new chainer.
@@ -68,7 +68,7 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 		// scores:        make([]int, 0, 10240),
 		// maxscores:     make([]int, 0, 51200),
 		maxscoresIdxs: make([]uint64, 0, 51200),
-		bounds:        make([]int32, 128),
+		// bounds:        make([]int32, 128),
 	}
 	return c
 }
@@ -101,8 +101,9 @@ type Chain2Result struct {
 	AlignedBasesQ int     // The number of aligned bases in Query sequence
 	AlignedBasesT int     // The number of aligned bases in Subject sequence
 	Pident        float64 // percentage of identity
-	QBegin, QEnd  int     // Query begin/end position (0-based)
-	TBegin, TEnd  int     // Target begin/end position (0-based)
+
+	QBegin, QEnd int // Query begin/end position (0-based)
+	TBegin, TEnd int // Target begin/end position (0-based)
 }
 
 // Reset resets a Chain2Result
@@ -177,18 +178,18 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 
 	// compute scores
-	var s, m, M, d, g int
+	var s, m, M, d, g float64
 	var mj, Mi int
 	var a, b *SubstrPair
-	maxGap := ce.options.MaxGap
-	maxDistance := ce.options.MaxDistance
+	maxGap := float64(ce.options.MaxGap)
+	maxDistance := float64(ce.options.MaxDistance)
 	// (*scores)[0] = (*subs)[0].Len
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor
 		// k = band * i   // index of current seed in the score matrix
 
 		// just initialize the max score, which comes from the current seed
-		m, mj = int(a.Len), i
+		m, mj = float64(a.Len), i
 		// (*scores)[k] = m
 
 		for _b = 1; _b <= band; _b++ { // check previous $band seeds
@@ -215,7 +216,8 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 
 			// s = (*maxscores)[j] + int(b.Len) - g // compute the score
-			s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
+			// s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
+			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - gapScore2(g) // compute the score
 			// (*scores)[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
@@ -246,7 +248,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// backtrack
 
-	minScore := ce.options.MinScore
+	minScore := float64(ce.options.MinScore)
 	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,
@@ -258,7 +260,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	*paths = (*paths)[:0]
 
 	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
-	ce.bounds = ce.bounds[:0]
+	// ce.bounds = ce.bounds[:0]
 
 	_, qB, qE, tB, tE := chainARegion(
 		subs,
@@ -273,7 +275,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		&nAlignedBasesQ,
 		&nAlignedBasesT,
 		Mi,
-		&ce.bounds,
+		nil, // &ce.bounds,
 	)
 
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
@@ -283,7 +285,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	// maxscores *[]int, // a region of maxscores
 	maxscoresIdxs *[]uint64,
 	offset int, // offset of this region of subs
-	minScore int, // the threshold
+	minScore float64, // the threshold
 	minAlignLen int,
 	minPident float64,
 	paths *[]*Chain2Result, // paths
@@ -293,7 +295,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	Mi0 int, // found Mi
 	bounds *[]int32, // intervals of previous chains
 ) (
-	int, // score
+	float64, // score
 	int, // query begin position (0-based)
 	int, // query end position (0-based)
 	int, // target begin position (0-based)
@@ -301,13 +303,13 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 ) {
 	// fmt.Printf("region: [%d, %d]\n", offset, offset+len(*subs)-1)
 	var _mi uint64
-	var m, M int
+	var m, M float64
 	var i, Mi int
 	if Mi0 < 0 { // Mi is not given
 		// find the next highest score
 		// for i, m = range *maxscores {
 		for i, _mi = range *maxscoresIdxs {
-			m = int(_mi >> 32)
+			m = float64(_mi >> 32)
 			if m > M {
 				M, Mi = m, i
 			}
@@ -480,10 +482,10 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		}
 	}
 
-	*bounds = append(*bounds, qb)
-	*bounds = append(*bounds, qe)
-	*bounds = append(*bounds, tb)
-	*bounds = append(*bounds, te)
+	// *bounds = append(*bounds, qb)
+	// *bounds = append(*bounds, qe)
+	// *bounds = append(*bounds, tb)
+	// *bounds = append(*bounds, te)
 
 	// initialize the boundary
 	qB, qE = int(qb), int(qe)
@@ -567,19 +569,17 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	return M, qB, qE, tB, tE
 }
 
-func distance2(a, b *SubstrPair) int {
-	q := a.QBegin - b.QBegin
-	t := a.TBegin - b.TBegin
-	if q > t {
-		return int(q)
-	}
-	return int(t)
+func distance2(a, b *SubstrPair) float64 {
+	return math.Max(math.Abs(float64(a.QBegin-b.QBegin)), math.Abs(float64(a.TBegin-b.TBegin)))
 }
 
-func gap2(a, b *SubstrPair) int {
-	g := a.QBegin - b.QBegin - (a.TBegin - b.TBegin)
-	if g < 0 {
-		return -int(g)
+func gap2(a, b *SubstrPair) float64 {
+	return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin)))
+}
+
+func gapScore2(gap float64) float64 {
+	if gap == 0 {
+		return 0
 	}
-	return int(g)
+	return 0.1 * gap
 }
