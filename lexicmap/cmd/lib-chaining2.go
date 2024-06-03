@@ -57,7 +57,7 @@ type Chainer2 struct {
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
 
-	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
+	bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
 }
 
 // NewChainer creates a new chainer.
@@ -68,7 +68,7 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 		// scores:        make([]int, 0, 10240),
 		// maxscores:     make([]int, 0, 51200),
 		maxscoresIdxs: make([]uint64, 0, 51200),
-		// bounds:        make([]int32, 128),
+		bounds:        make([]int32, 128),
 	}
 	return c
 }
@@ -260,7 +260,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	*paths = (*paths)[:0]
 
 	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
-	// ce.bounds = ce.bounds[:0]
+	ce.bounds = ce.bounds[:0]
 
 	_, qB, qE, tB, tE := chainARegion(
 		subs,
@@ -275,7 +275,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		&nAlignedBasesQ,
 		&nAlignedBasesT,
 		Mi,
-		nil, // &ce.bounds,
+		&ce.bounds,
 	)
 
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
@@ -333,8 +333,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	var sub *SubstrPair
 	var beginOfNextAnchor int
 	var pident float64
-	// var overlapped bool
-	// var nb, bi, bj int // index of bounds
+	var overlapped bool
+	var nb, bi, bj int // index of bounds
 	firstAnchorOfAChain := true
 	path := poolChain2.Get().(*Chain2Result)
 	path.Reset()
@@ -359,47 +359,47 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		// o-------------------- Ref
 		//
 		sub = (*subs)[i]
-		// overlapped = false
-		// nb = len(*bounds) >> 2 // len(bounds) / 4
-		// for bi = 0; bi < nb; bi++ {
-		// 	bj = bi << 2
-		// 	if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
-		// 		(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
-		// 		overlapped = true
-		// 		break
-		// 	}
-		// }
-
-		// if overlapped {
-		// 	// fmt.Printf("  %d (%s) is overlapped previous chain, j=%d\n", i, *sub, j)
-
-		// 	// can not continue here, must check if i == j
-		// } else {
-		// path.Chain = append(path.Chain, i+offset) // record the seed
-		path.NAnchors++
-
-		// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
-
-		if firstAnchorOfAChain {
-			// fmt.Printf(" record bound beginning with: %s\n", sub)
-			firstAnchorOfAChain = false
-
-			qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
-			te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
-			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
-
-			nMatchedBases += int(sub.Len)
-		} else {
-			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
-
-			if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
-				nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
-			} else {
-				nMatchedBases += int(sub.Len)
+		overlapped = false
+		nb = len(*bounds) >> 2 // len(bounds) / 4
+		for bi = 0; bi < nb; bi++ {
+			bj = bi << 2
+			if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
+				(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
+				overlapped = true
+				break
 			}
 		}
-		beginOfNextAnchor = int(sub.QBegin)
-		// }
+
+		if overlapped {
+			// fmt.Printf("  %d (%s) is overlapped previous chain, j=%d\n", i, *sub, j)
+
+			// can not continue here, must check if i == j
+		} else {
+			// path.Chain = append(path.Chain, i+offset) // record the seed
+			path.NAnchors++
+
+			// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
+
+			if firstAnchorOfAChain {
+				// fmt.Printf(" record bound beginning with: %s\n", sub)
+				firstAnchorOfAChain = false
+
+				qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
+				te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
+				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
+
+				nMatchedBases += int(sub.Len)
+			} else {
+				qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
+
+				if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
+					nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
+				} else {
+					nMatchedBases += int(sub.Len)
+				}
+			}
+			beginOfNextAnchor = int(sub.QBegin)
+		}
 
 		if i == j { // the path starts here
 			if firstAnchorOfAChain { // sadly, there's no anchor added.
@@ -438,7 +438,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			*_nMatchedBases += nMatchedBases
 
 			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-			// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+			// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
 
 			firstAnchorOfAChain = true
 			break
@@ -473,19 +473,20 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 					*paths = append(*paths, path)
 
 					*_nAlignedBasesQ += nAlignedBasesQ
+					*_nAlignedBasesT += nAlignedBasesT
 					*_nMatchedBases += nMatchedBases
 
 					// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-					// 	len(*paths), qb, qe, tb, te, nAlignedBases, nMatchedBases)
+					// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
 				}
 			}
 		}
 	}
 
-	// *bounds = append(*bounds, qb)
-	// *bounds = append(*bounds, qe)
-	// *bounds = append(*bounds, tb)
-	// *bounds = append(*bounds, te)
+	*bounds = append(*bounds, qb)
+	*bounds = append(*bounds, qe)
+	*bounds = append(*bounds, tb)
+	*bounds = append(*bounds, te)
 
 	// initialize the boundary
 	qB, qE = int(qb), int(qe)

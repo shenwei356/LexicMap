@@ -164,7 +164,7 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	regions := poolRegions.Get().(*[]*[2]int)
 	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
-		// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 		region := poolRegion.Get().(*[2]int)
 		region[0], region[1] = c.QBegin, c.QEnd
 		*regions = append(*regions, region)
@@ -351,16 +351,6 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 		return nil, nil
 	}
 
-	// var i int
-	// var sub *SubstrPair
-	// for c, chain := range *chains {
-	// 	for _, i = range chain.Chain {
-	// 		sub = (*subs)[i]
-	// 		fmt.Printf("chain: %d, %s\n", c, sub)
-	// 	}
-	// }
-	// fmt.Printf("%d, (%d/%d)\n", len(s), nMatchedBases, nAlignedBases)
-
 	af := float64(nAlignedBasesQ) / float64(queryLen) * 100
 	if af < cpr.options.MinAlignedFraction {
 		RecycleChaining2Result(chains)
@@ -374,6 +364,15 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// r.MatchedBases = nMatchedBases
 	r.QueryLen = queryLen
 	r.AlignedFraction = af
+
+	sort.Slice(*chains, func(i, j int) bool {
+		return (*chains)[i].QBegin <= (*chains)[j].QBegin
+	})
+
+	// fmt.Println("chain2:")
+	// for c, chain := range *chains {
+	// 	fmt.Printf("  chain2: %d, [%d, %d] vs [%d, %d]\n", c, chain.QBegin, chain.QEnd, chain.TBegin, chain.TEnd)
+	// }
 
 	// r.QBegin = qB
 	// r.QEnd = qE

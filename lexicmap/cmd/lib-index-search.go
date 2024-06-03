@@ -927,8 +927,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
 			accurateAlign := idx.opt.MoreAccurateAlignment
-			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
-			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
 			// -----------------------------------------------------
 			// chaining
@@ -948,6 +946,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			// -----------------------------------------------------
 			// alignment
+
+			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
 			refBatch := r.GenomeBatch
 			refID := r.GenomeIndex
@@ -1041,7 +1042,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				qBegin = qb - min(qb, extLen)
 				qEnd = qe + min(qlen-qe-1, extLen)
 
-				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d, rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, rc)
+				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc)
 
 				// extract target sequence for comparison.
 				// Right now, we fetch seq from disk for each seq,
@@ -1085,6 +1086,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				for _, c := range *cr.Chains { // for each HSP fragment
 					qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
+					// fmt.Printf("\n--------------------------------------------\n")
 					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
 					// fmt.Printf("--- HSP: %d, HSP fragment: %d ---\n", i, _i)
 
@@ -1102,6 +1104,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						//                     tb ---------------te (matched region, substring region)
 
 						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
+						// fmt.Printf("qb: %d, qe: %d\n", qb, qe)
 						// fmt.Printf("tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
 
 						// minusing K is because the interval A's might be matched.
@@ -1110,6 +1113,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						} else {
 							_begin, _end = tBegin+tb+K, tBegin+te-K
 						}
+
+						// if _begin >= _end {
+						// 	if rc {
+						// 		_begin, _end = tEnd-te, tEnd-tb
+						// 	} else {
+						// 		_begin, _end = tBegin+tb, tBegin+te
+						// 	}
+						// }
 
 						// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
@@ -1222,6 +1233,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									r2.AlignedBases = int(cigar.AlignLen)
 									r2.MatchedBases = int(cigar.Matches)
 									r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
+									// if r2.AlignedFraction > 100 {
+									// 	r2.AlignedFraction = 100
+									// }
 									r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
 									wfa.RecycleAlignmentResult(cigar)
@@ -1354,6 +1368,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							r2.AlignedBases = int(cigar.AlignLen)
 							r2.MatchedBases = int(cigar.Matches)
 							r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
+							// if r2.AlignedFraction > 100 {
+							// 	r2.AlignedFraction = 100
+							// }
 							r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
 							wfa.RecycleAlignmentResult(cigar)
@@ -1395,7 +1412,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				return
 			}
 
-			// compute aligned bases
+			wfa.RecycleAligner(algn)
+
+			// compute aligned bases per genome
 			var alignedBasesGenome int
 			regions := poolRegions.Get().(*[]*[2]int)
 			*regions = (*regions)[:0]
@@ -1465,8 +1484,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				poolChains.Put(r.Chains)
 				r.Chains = nil
 			}
-
-			wfa.RecycleAligner(algn)
 
 			ch2 <- r
 		}(r)
