@@ -107,6 +107,8 @@ type Chain2Result struct {
 	QBegin, QEnd int // Query begin/end position (0-based)
 	TBegin, TEnd int // Target begin/end position (0-based)
 
+	tPosOffsetBegin int // start position of the sequence in the concatenated genome
+
 	TSeq []byte // target seq
 }
 

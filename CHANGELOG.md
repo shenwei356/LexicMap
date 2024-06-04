@@ -4,10 +4,11 @@
 ### v0.4.0 - 2024-06-xx
 
 - `lexicmap index`:
-    - fix bug in indexing small genomes.
+    - Fix a bug in indexing small genomes.
 - `lexicmap search`:
+    - Fix alignment against genomes with many short contigs.
     - Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa).
-    - Outformat: remove column `seeds`, cluster alignments of each target sequence.
+    - Out format: remove column `seeds`, cluster alignments of each target sequence.
 
 ### v0.3.0 - 2024-05-14
 

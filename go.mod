@@ -25,6 +25,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.7.2
+	github.com/zeebo/wyhash v0.0.1
 	gonum.org/v1/gonum v0.14.0
 	gonum.org/v1/plot v0.14.0
 )

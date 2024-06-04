@@ -35,6 +35,7 @@ import (
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/shenwei356/wfa"
+	"github.com/zeebo/wyhash"
 )
 
 // IndexSearchingOptions contains all options for searching
@@ -1032,7 +1033,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var rc bool
 			var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
 			var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
-			var tPosOffsetBeginPre int
 			var _begin, _end int
 
 			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
@@ -1046,16 +1046,16 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			// for remove duplicated alignments
 			var duplicated bool
-			bounds := poolBounds.Get().(*[]int)
-			*bounds = (*bounds)[:0]
-			var bi, bend int
+			hashes := poolHashes.Get().(*map[uint64]interface{})
+			clear(*hashes)
+			var hash uint64
 
 			// check sequences from all chains
-			for _, chain := range *r.Chains { // for each HSP
+			for _, chain := range *r.Chains { // for each lexichash chain
 				// ------------------------------------------------------------------------
 				// extract subsequence from the refseq for comparing
 
-				// fmt.Printf("----------------- [ chain %d ] --------------\n", i)
+				// fmt.Printf("\n----------------- [ lexichash chain %d ] --------------\n", i+1)
 				// for _i, _c := range *chain {
 				// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
 				// }
@@ -1140,16 +1140,15 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 
 				iSeqPre = -1 // the index of previous sequence in this HSP
-				tPosOffsetBeginPre = -1
 
 				crChains2 = poolChains2.Get().(*[]*Chain2Result)
 				*crChains2 = (*crChains2)[:0]
 
-				for _, c := range *cr.Chains { // for each HSP fragment
+				for _, c := range *cr.Chains { // for each pseudo alignment chain
 					qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
 					// fmt.Printf("\n--------------------------------------------\n")
+					// fmt.Printf("--- lexichash chain: %d, pseudo alignment chain: %d ---\n", i+1, _i+1)
 					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
-					// fmt.Printf("--- HSP: %d, HSP fragment: %d ---\n", i, _i)
 
 					// ------------------------------------------------------------
 					// get the index of target seq according to the position
@@ -1165,8 +1164,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						//                     tb ---------------te (matched region, substring region)
 
 						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
-						// fmt.Printf("qb: %d, qe: %d\n", qb, qe)
-						// fmt.Printf("tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
+						// fmt.Printf("  qb: %d, qe: %d\n", qb, qe)
+						// fmt.Printf("  tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
 
 						// minusing K is because the interval A's might be matched.
 						if rc {
@@ -1175,13 +1174,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							_begin, _end = tBegin+tb+K, tBegin+te-K
 						}
 
-						// if _begin >= _end {
-						// 	if rc {
-						// 		_begin, _end = tEnd-te, tEnd-tb
-						// 	} else {
-						// 		_begin, _end = tBegin+tb, tBegin+te
-						// 	}
-						// }
+						if _begin >= _end { // sequences shorter than 2*k
+							// fmt.Printf("  _begin (%d) >= _end (%d)\n", _begin, _end)
+							if rc {
+								_begin, _end = tEnd-te, tEnd-tb
+							} else {
+								_begin, _end = tBegin+tb, tBegin+te
+							}
+						}
 
 						// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
@@ -1193,7 +1193,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
 								iSeq = j
-								// fmt.Printf("iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
+								// fmt.Printf("    iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
 								// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
 								break
 							}
@@ -1204,7 +1204,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 						// it will not happen now.
 						if iSeq < 0 { // this means the aligned sequence crosses two sequences.
-							// fmt.Printf("invalid fragment: seqid: %s, aligned: %d, %d-%d, rc:%v, %d-%d\n",
+							// fmt.Printf("  invalid fragment: seqid: %s, aligned: %d, %d-%d, rc:%v, %d-%d\n",
 							// 	tSeq.ID, cr.AlignedBases, tBegin, tEnd, rc, _begin, _end)
 
 							poolChain2.Put(c)
@@ -1221,6 +1221,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 							c.QBegin = qb
 							c.QEnd = qe
+							// alignments might belong to different seqs, so we have to store it for later use
+							c.tPosOffsetBegin = tPosOffsetBegin
 							if rc {
 								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
 								if c.TBegin < 0 { // position in the interval
@@ -1273,9 +1275,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 										}
 
 										if rc {
-											_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBeginPre : tEnd-c.TBegin-tPosOffsetBeginPre+1]
+											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 										} else {
-											_tseq = tSeq.Seq[tPosOffsetBeginPre+c.TBegin-tBegin : tPosOffsetBeginPre+c.TEnd-tBegin+1]
+											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 										}
 										c.TSeq = append(c.TSeq, _tseq...)
 									}
@@ -1283,9 +1285,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									if accurateAlign {
 										if !outSeq {
 											if rc {
-												_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBeginPre : tEnd-c.TBegin-tPosOffsetBeginPre+1]
+												_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 											} else {
-												_tseq = tSeq.Seq[tPosOffsetBeginPre+c.TBegin-tBegin : tPosOffsetBeginPre+c.TEnd-tBegin+1]
+												_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 											}
 										}
 										cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
@@ -1321,17 +1323,25 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 							// create anther HSP
 							iSeqPre = -1
-							tPosOffsetBeginPre = -1
 							crChains2 = poolChains2.Get().(*[]*Chain2Result)
 							*crChains2 = (*crChains2)[:0]
 
-							*crChains2 = append(*crChains2, c)
+							// ------------------------------------------------------------
+							// remove duplicated alignments
+
+							hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
+							if _, duplicated = (*hashes)[hash]; duplicated {
+								// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+								poolChain2.Put(c)
+							} else {
+								*crChains2 = append(*crChains2, c)
+								(*hashes)[hash] = struct{}{}
+							}
 
 							continue
 						}
 					}
 					iSeqPre = iSeq
-					tPosOffsetBeginPre = tPosOffsetBegin
 
 					// ------------------------------------------------------------
 					// convert the positions
@@ -1339,14 +1349,18 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 					c.QBegin = qb
 					c.QEnd = qe
+					// alignments might belong to different seqs, so we have to store it for later use
+					c.tPosOffsetBegin = tPosOffsetBegin
 					if rc {
 						c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+						// fmt.Printf("c.TBegin: %d\n", c.TBegin)
 						if c.TBegin < 0 { // position in the interval
 							c.QEnd += c.TBegin
 							c.AlignedBasesQ += c.TBegin
 							c.TBegin = 0
 						}
 						c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
+						// fmt.Printf("c.TEnd: %d\n", c.TEnd)
 						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
 							c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
 							c.TEnd = tSeq.SeqSizes[iSeq] - 1
@@ -1369,24 +1383,13 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// ------------------------------------------------------------
 					// remove duplicated alignments
 
-					bend = len(*bounds) - 4
-					duplicated = false
-					for bi = 0; bi <= bend; bi += 4 {
-						if (*bounds)[bi] == c.QBegin && (*bounds)[bi+1] == c.QEnd &&
-							(*bounds)[bi+2] == c.TBegin && (*bounds)[bi+3] == c.TEnd {
-							duplicated = true
-							break
-						}
-					}
-
-					if duplicated {
+					hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
+					if _, duplicated = (*hashes)[hash]; duplicated {
+						// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
 						poolChain2.Put(c)
 					} else {
 						*crChains2 = append(*crChains2, c)
-						*bounds = append(*bounds, c.QBegin)
-						*bounds = append(*bounds, c.QEnd)
-						*bounds = append(*bounds, c.TBegin)
-						*bounds = append(*bounds, c.TEnd)
+						(*hashes)[hash] = struct{}{}
 					}
 				}
 
@@ -1402,6 +1405,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						})
 
 						for _, c := range *r2.Chains {
+							// fmt.Printf("c: [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 							if outSeq {
 								if c.TSeq == nil {
 									c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
@@ -1411,9 +1415,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 								if rc {
 									// Attention, it's different from previous code
-									_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBegin : tEnd-c.TBegin-tPosOffsetBegin+1]
+									_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 								} else {
-									_tseq = tSeq.Seq[tPosOffsetBegin+c.TBegin-tBegin : tPosOffsetBegin+c.TEnd-tBegin+1]
+									_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 								}
 								c.TSeq = append(c.TSeq, _tseq...)
 							}
@@ -1421,10 +1425,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							if accurateAlign {
 								if !outSeq {
 									if rc {
+										// fmt.Printf("tEnd: %d, c.Tend: %d, tPosOffsetBegin: %d,  c.TBegin: %d\n", tEnd, c.TEnd, tPosOffsetBegin, c.TBegin)
 										// Attention, it's different from previous code
-										_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBegin : tEnd-c.TBegin-tPosOffsetBegin+1]
+										_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 									} else {
-										_tseq = tSeq.Seq[tPosOffsetBegin+c.TBegin-tBegin : tPosOffsetBegin+c.TEnd-tBegin+1]
+										_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 									}
 								}
 								cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
@@ -1481,6 +1486,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			wfa.RecycleAligner(algn)
 
+			// deduplicate alignments again, cause multiple lexichash chain might produce identical alignments.
+			// for _, sd := range *sds {
+
+			// }
+
 			// compute aligned bases per genome
 			var alignedBasesGenome int
 			regions := poolRegions.Get().(*[]*[2]int)
@@ -1501,6 +1511,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				r.AlignedFraction = 100
 			}
 			if r.AlignedFraction < minAF { // no valid alignments
+				poolHashes.Put(hashes)
+
 				idx.RecycleSimilarityDetails(sds)
 				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 
@@ -1515,6 +1527,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 				return
 			}
+
+			poolHashes.Put(hashes)
 
 			// sort target genomes according to their best alignment
 			// r.AlignResults = ars
@@ -1580,9 +1594,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	//        result in a sequence   SimilarityDetai
 	//            alignments         Chain2Result
 	//
-	for _, r := range *rs2 {
-		r.SortBySeqID()
-	}
+	// for _, r := range *rs2 {
+	// 	r.SortBySeqID()
+	// }
 
 	return rs2, nil
 }
@@ -1620,6 +1634,11 @@ var rcTable = [256]byte{
 
 var poolBounds = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 128)
+	return &tmp
+}}
+
+var poolHashes = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]interface{}, 128)
 	return &tmp
 }}
 
