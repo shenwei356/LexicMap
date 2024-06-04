@@ -7,6 +7,7 @@
     - fix bug in indexing small genomes.
 - `lexicmap search`:
     - Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa).
+    - Outformat: remove column `seeds`, cluster alignments of each target sequence.
 
 ### v0.3.0 - 2024-05-14
 

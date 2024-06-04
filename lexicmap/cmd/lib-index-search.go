@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -546,7 +547,7 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-// SearchResult stores a search result for the given query sequence.
+// SearchResult stores a search result in a genome for the given query sequence.
 type SearchResult struct {
 	GenomeBatch int
 	GenomeIndex int
@@ -561,6 +562,61 @@ type SearchResult struct {
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
 	AlignedFraction   float64              // query coverage per genome
+}
+
+func (sr *SearchResult) SortBySeqID() {
+	if len(*sr.SimilarityDetails) <= 1 {
+		return
+	}
+
+	sds0 := sr.SimilarityDetails
+
+	sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
+	*sds = (*sds)[:0]
+
+	// first one
+	*sds = append(*sds, (*sds0)[0])
+	seqid := (*sds0)[0].SeqID
+	(*sds0)[0] = nil
+
+	i := 1
+	var nextSeqId []byte
+	var sds1 []*SimilarityDetail
+	var first bool
+	var j, nextI int
+	var sd *SimilarityDetail
+	n := len(*sds0)
+	for {
+		sds1 = (*sds0)[i:]
+		first = true
+		for j, sd = range sds1 {
+			if sd == nil {
+				continue
+			}
+
+			if bytes.Equal(sd.SeqID, seqid) { // has the same seqid
+				*sds = append(*sds, sd)
+				(*sds0)[i+j] = nil
+			} else if first { // record another seqid
+				first = false
+				nextSeqId = sd.SeqID
+				nextI = i + j
+			}
+		}
+		if first { // no other seqids
+			break
+		}
+
+		*sds = append(*sds, (*sds0)[nextI])
+		(*sds0)[nextI] = nil
+		seqid = nextSeqId
+		i = nextI + 1
+		if i >= n { // it's alreadly the last one
+			break
+		}
+	}
+	poolSimilarityDetails.Put(sr.SimilarityDetails)
+	sr.SimilarityDetails = sds
 }
 
 // SimilarityDetail is the similarity detail of one reference sequence
@@ -950,6 +1006,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
+			var _tseq []byte
+			var cigar *wfa.AlignmentResult
+
+			// -----------------------------------------------------
+
 			refBatch := r.GenomeBatch
 			refID := r.GenomeIndex
 
@@ -1198,47 +1259,49 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
 								// only include valid chains
 								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-								r2.Update(crChains2, cr.QueryLen)
+								r2.Update2(crChains2, cr.QueryLen)
+								sort.Slice(*r2.Chains, func(i, j int) bool {
+									return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+								})
 
-								var t []byte
-								if outSeq {
-									if r2.TSeq == nil {
-										r2.TSeq = make([]byte, 0, 1024)
-									} else {
-										r2.TSeq = r2.TSeq[:0]
-									}
-
-									if rc {
-										t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre : tEnd-r2.TBegin-tPosOffsetBeginPre+1]
-									} else {
-										t = tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin : tPosOffsetBeginPre+r2.TEnd-tBegin+1]
-									}
-									r2.TSeq = append(r2.TSeq, t...)
-								}
-
-								if accurateAlign {
-									if !outSeq {
-										if rc {
-											t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBeginPre : tEnd-r2.TBegin-tPosOffsetBeginPre+1]
+								for _, c := range *r2.Chains {
+									if outSeq {
+										if c.TSeq == nil {
+											c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
 										} else {
-											t = tSeq.Seq[tPosOffsetBeginPre+r2.TBegin-tBegin : tPosOffsetBeginPre+r2.TEnd-tBegin+1]
+											c.TSeq = c.TSeq[:0]
 										}
-									}
-									var cigar *wfa.AlignmentResult
-									cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
 
-									if err != nil {
-										checkError(fmt.Errorf("fail to align sequence"))
+										if rc {
+											_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBeginPre : tEnd-c.TBegin-tPosOffsetBeginPre+1]
+										} else {
+											_tseq = tSeq.Seq[tPosOffsetBeginPre+c.TBegin-tBegin : tPosOffsetBeginPre+c.TEnd-tBegin+1]
+										}
+										c.TSeq = append(c.TSeq, _tseq...)
 									}
-									r2.AlignedBases = int(cigar.AlignLen)
-									r2.MatchedBases = int(cigar.Matches)
-									r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
-									// if r2.AlignedFraction > 100 {
-									// 	r2.AlignedFraction = 100
-									// }
-									r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
-									wfa.RecycleAlignmentResult(cigar)
+									if accurateAlign {
+										if !outSeq {
+											if rc {
+												_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBeginPre : tEnd-c.TBegin-tPosOffsetBeginPre+1]
+											} else {
+												_tseq = tSeq.Seq[tPosOffsetBeginPre+c.TBegin-tBegin : tPosOffsetBeginPre+c.TEnd-tBegin+1]
+											}
+										}
+										cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
+										if err != nil {
+											checkError(fmt.Errorf("fail to align sequence"))
+										}
+										c.AlignedBasesQ = int(cigar.AlignLen)
+										c.MatchedBases = int(cigar.Matches)
+										c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+										if c.AlignedFraction > 100 {
+											c.AlignedFraction = 100
+										}
+										c.PIdent = float64(c.MatchedBases) / float64(c.AlignedBasesQ) * 100
+
+										wfa.RecycleAlignmentResult(cigar)
+									}
 								}
 
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
@@ -1246,7 +1309,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// sd.Chain = (*r.Chains)[i]
 								sd.NSeeds = len(*chain)
 								sd.Similarity = r2
-								sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
+								sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].PIdent
 								sd.SeqID = sd.SeqID[:0]
 								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 								sd.SeqLen = tSeq.SeqSizes[iSeq]
@@ -1333,54 +1396,58 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
 						// only include valid chains
 						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-						r2.Update(crChains2, cr.QueryLen)
+						r2.Update2(crChains2, cr.QueryLen)
+						sort.Slice(*r2.Chains, func(i, j int) bool {
+							return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+						})
 
-						var t []byte
-						if outSeq {
-							if r2.TSeq == nil {
-								r2.TSeq = make([]byte, 0, 1024)
-							} else {
-								r2.TSeq = r2.TSeq[:0]
-							}
-
-							if rc {
-								t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin : tEnd-r2.TBegin-tPosOffsetBegin+1]
-							} else {
-								t = tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin : tPosOffsetBegin+r2.TEnd-tBegin+1]
-							}
-							r2.TSeq = append(r2.TSeq, t...)
-						}
-
-						if accurateAlign {
-							if !outSeq {
-								if rc {
-									t = tSeq.Seq[tEnd-r2.TEnd-tPosOffsetBegin : tEnd-r2.TBegin-tPosOffsetBegin+1]
+						for _, c := range *r2.Chains {
+							if outSeq {
+								if c.TSeq == nil {
+									c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
 								} else {
-									t = tSeq.Seq[tPosOffsetBegin+r2.TBegin-tBegin : tPosOffsetBegin+r2.TEnd-tBegin+1]
+									c.TSeq = c.TSeq[:0]
 								}
-							}
-							var cigar *wfa.AlignmentResult
-							cigar, err = algn.Align(s[r2.QBegin:r2.QEnd+1], t)
 
-							if err != nil {
-								checkError(fmt.Errorf("fail to align sequence"))
+								if rc {
+									// Attention, it's different from previous code
+									_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBegin : tEnd-c.TBegin-tPosOffsetBegin+1]
+								} else {
+									_tseq = tSeq.Seq[tPosOffsetBegin+c.TBegin-tBegin : tPosOffsetBegin+c.TEnd-tBegin+1]
+								}
+								c.TSeq = append(c.TSeq, _tseq...)
 							}
-							r2.AlignedBases = int(cigar.AlignLen)
-							r2.MatchedBases = int(cigar.Matches)
-							r2.AlignedFraction = float64(r2.AlignedBases) / float64(cr.QueryLen) * 100
-							// if r2.AlignedFraction > 100 {
-							// 	r2.AlignedFraction = 100
-							// }
-							r2.PIdent = float64(r2.MatchedBases) / float64(r2.AlignedBases) * 100
 
-							wfa.RecycleAlignmentResult(cigar)
+							if accurateAlign {
+								if !outSeq {
+									if rc {
+										// Attention, it's different from previous code
+										_tseq = tSeq.Seq[tEnd-c.TEnd-tPosOffsetBegin : tEnd-c.TBegin-tPosOffsetBegin+1]
+									} else {
+										_tseq = tSeq.Seq[tPosOffsetBegin+c.TBegin-tBegin : tPosOffsetBegin+c.TEnd-tBegin+1]
+									}
+								}
+								cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
+								if err != nil {
+									checkError(fmt.Errorf("fail to align sequence"))
+								}
+								c.AlignedBasesQ = int(cigar.AlignLen)
+								c.MatchedBases = int(cigar.Matches)
+								c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+								if c.AlignedFraction > 100 {
+									c.AlignedFraction = 100
+								}
+								c.PIdent = float64(c.MatchedBases) / float64(c.AlignedBasesQ) * 100
+
+								wfa.RecycleAlignmentResult(cigar)
+							}
 						}
 
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 						sd.RC = rc
 						sd.NSeeds = len(*chain)
 						sd.Similarity = r2
-						sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].Pident
+						sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].PIdent
 						sd.SeqID = sd.SeqID[:0]
 						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 						sd.SeqLen = tSeq.SeqSizes[iSeq]
@@ -1449,13 +1516,12 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				return
 			}
 
+			// sort target genomes according to their best alignment
 			// r.AlignResults = ars
 			sort.Slice(*sds, func(i, j int) bool {
 				return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
 			})
 			r.SimilarityDetails = sds
-
-			// ----------------------------------
 
 			// recycle genome reader
 			if idx.hasGenomeRdrs {
@@ -1506,6 +1572,17 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	sort.Slice(*rs2, func(i, j int) bool {
 		return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
 	})
+
+	// ----------------------------------
+	// In each target genome, sort alignments by target seq first
+	// query
+	//    result in a genome         SearchResult
+	//        result in a sequence   SimilarityDetai
+	//            alignments         Chain2Result
+	//
+	for _, r := range *rs2 {
+		r.SortBySeqID()
+	}
 
 	return rs2, nil
 }

@@ -151,6 +151,7 @@ type SeqComparatorResult struct {
 }
 
 // Update updates the data with new chains.
+// However it does not considerate gaps.
 func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	r.Chains = chains
 	r.QueryLen = queryLen
@@ -192,6 +193,43 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 		r.PIdent = 100
 	}
 }
+
+// Update2 only compute the aligned fraction for all chains
+func (r *SeqComparatorResult) Update2(chains *[]*Chain2Result, queryLen int) {
+	r.Chains = chains
+	r.QueryLen = queryLen
+
+	// alignment regions might have overlap
+
+	r.QBegin, r.TBegin = math.MaxInt, math.MaxInt
+	r.QEnd, r.TEnd = -1, -1
+	r.MatchedBases = 0
+
+	regions := poolRegions.Get().(*[]*[2]int)
+	*regions = (*regions)[:0]
+	for _, c := range *r.Chains {
+		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+
+		c.AlignedFraction = float64(c.AlignedBasesQ) / float64(queryLen) * 100
+
+		region := poolRegion.Get().(*[2]int)
+		region[0], region[1] = c.QBegin, c.QEnd
+		*regions = append(*regions, region)
+
+		r.MatchedBases += c.MatchedBases
+	}
+
+	r.AlignedBases = coverageLen(regions)
+	recycleRegions(regions)
+
+	r.AlignedFraction = float64(r.AlignedBases) / float64(queryLen) * 100
+	r.PIdent = float64(r.MatchedBases) / float64(r.AlignedBases) * 100
+	if r.PIdent > 100 {
+		r.PIdent = 100
+	}
+}
+
+// -----------------------------------------------------------------------------
 
 func recycleRegions(regions *[]*[2]int) {
 	for _, r := range *regions {
@@ -365,6 +403,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	r.QueryLen = queryLen
 	r.AlignedFraction = af
 
+	// very important
 	sort.Slice(*chains, func(i, j int) bool {
 		return (*chains)[i].QBegin <= (*chains)[j].QBegin
 	})

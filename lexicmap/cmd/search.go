@@ -52,7 +52,7 @@ Alignment result relationship:
               ├── HSP segment (not outputted)
 
 Output format:
-  Tab-delimited format with 17+ columns, with 1-based positions.
+  Tab-delimited format with 16+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -70,9 +70,8 @@ Output format:
     14. send,     End of alignment in subject sequence.
     15. sstr,     Subject strand.
     16. slen,     Subject sequence length.
-    17. seeds,    Number of seeds in the current HSP.
-    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+    17. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+    18. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -138,7 +137,7 @@ Output format:
 			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
-		maxAllgnMismatch := getFlagPositiveInt(cmd, "align-max-mismatch")
+		maxAllgnMismatch := getFlagPositiveInt(cmd, "align-max-kmer-dist")
 		alignBand := getFlagPositiveInt(cmd, "align-band")
 		if alignBand < 32 {
 			checkError(fmt.Errorf("the value of flag --align-band should not be < 32"))
@@ -258,7 +257,7 @@ Output format:
 		var speed float64 // k reads/second
 
 		// fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
-		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tqstart\tqend\tsstart\tsend\tsstr\tslen\tseeds")
+		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tqstart\tqend\tsstart\tsend\tsstr\tslen")
 		if moreColumns {
 			fmt.Fprintf(outfh, "\tqseq\tsseq")
 		}
@@ -285,7 +284,7 @@ Output format:
 			// var subs *[]*index.SubstrPair
 			var sd *SimilarityDetail
 			var cr *SeqComparatorResult
-			// var c *Chain2Result
+			var c *Chain2Result
 			var targets = len(*q.result)
 			matched++
 
@@ -296,48 +295,35 @@ Output format:
 				for _, sd = range *r.SimilarityDetails { // each chain
 					cr = sd.Similarity
 
-					// for _, c = range *cr.Chains { // each match
-					// 	// if c.TBegin < 0 || c.TEnd < 0 { // the extend part belongs to another contig
-					// 	// 	continue
-					// 	// }
-
-					// 	if sd.RC {
-					// 		strand = '-'
-					// 	} else {
-					// 		strand = '+'
-					// 	}
-					// 	fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%d\t%.3f\t%d\t%d\t%d\t%c\t%d\n",
-					// 		queryID, len(q.seq),
-					// 		c.QBegin+1, c.QEnd+1,
-					// 		targets, r.ID,
-					// 		sd.SeqID, r.AlignedFraction, j, cr.AlignedFraction, cr.AlignedBases, c.AlignedBasesQ, c.Pident,
-					// 		sd.SeqLen,
-					// 		c.TBegin+1, c.TEnd+1, strand,
-					// 		sd.NSeeds,
-					// 	)
-					// }
-
 					if sd.RC {
 						strand = '-'
 					} else {
 						strand = '+'
 					}
 
-					fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%c\t%d\t%d",
-						queryID, len(q.seq),
-						targets, r.ID, sd.SeqID, r.AlignedFraction,
-						j, cr.AlignedFraction, cr.AlignedBases, cr.PIdent,
-						cr.QBegin+1, cr.QEnd+1,
-						cr.TBegin+1, cr.TEnd+1,
-						strand, sd.SeqLen, sd.NSeeds,
-					)
-					if moreColumns {
-						fmt.Fprintf(outfh, "\t%s\t%s", q.seq[cr.QBegin:cr.QEnd+1], cr.TSeq)
+					for _, c = range *cr.Chains { // each match
+						if sd.RC {
+							strand = '-'
+						} else {
+							strand = '+'
+						}
+
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%c\t%d",
+							queryID, len(q.seq),
+							targets, r.ID, sd.SeqID, r.AlignedFraction,
+							j, c.AlignedFraction, c.AlignedBasesQ, c.PIdent,
+							c.QBegin+1, c.QEnd+1,
+							c.TBegin+1, c.TEnd+1,
+							strand, sd.SeqLen,
+						)
+						if moreColumns {
+							fmt.Fprintf(outfh, "\t%s\t%s", q.seq[c.QBegin:c.QEnd+1], c.TSeq)
+						}
+
+						fmt.Fprintln(outfh)
+
+						j++
 					}
-
-					fmt.Fprintln(outfh)
-
-					j++
 				}
 				outfh.Flush()
 			}
@@ -500,8 +486,8 @@ func init() {
 
 	mapCmd.Flags().IntP("align-max-gap", "", 50,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
-	mapCmd.Flags().IntP("align-max-mismatch", "", 50,
-		formatFlagUsage(`Maximum mismatch in a HSP segment.`))
+	mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
+		formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
 	mapCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix.`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
