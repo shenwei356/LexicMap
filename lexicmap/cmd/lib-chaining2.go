@@ -223,7 +223,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 			// s = (*maxscores)[j] + int(b.Len) - g // compute the score
 			// s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
-			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - gapScore2(g) // compute the score
+			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - g // compute the score
 			// (*scores)[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor

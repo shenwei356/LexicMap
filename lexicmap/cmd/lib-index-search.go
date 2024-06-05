@@ -1294,7 +1294,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 										if err != nil {
 											checkError(fmt.Errorf("fail to align sequence"))
 										}
-										c.AlignedBasesQ = int(cigar.AlignLen)
+										c.AlignedBasesQ = c.QEnd - c.QBegin + 1
 										c.MatchedBases = int(cigar.Matches)
 										c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
 										if c.AlignedFraction > 100 {
@@ -1436,7 +1436,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
-								c.AlignedBasesQ = int(cigar.AlignLen)
+								c.AlignedBasesQ = c.QEnd - c.QBegin + 1
 								c.MatchedBases = int(cigar.Matches)
 								c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
 								if c.AlignedFraction > 100 {

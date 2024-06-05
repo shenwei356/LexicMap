@@ -146,15 +146,17 @@ Output format:
 		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
 		if minQcovGenome > 100 {
 			checkError(fmt.Errorf("the value of flag -Q/--min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
-		} else if minQcovGenome < 1 {
-			log.Warningf("the value of flag -Q/--min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		}
+		// } else if minQcovGenome < 1 {
+		// 	log.Warningf("the value of flag -Q/--min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
+		// }
 		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
 		if minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [0, 100]", minIdent))
-		} else if minIdent < 1 {
-			log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
 		}
+		// } else if minIdent < 1 {
+		// 	log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
+		// }
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
 			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
@@ -477,14 +479,14 @@ func init() {
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
-	// sequence similarity
+	// pseudo alignment
 	mapCmd.Flags().BoolP("pseudo-align", "", false,
 		formatFlagUsage(`Only perform pseudo alignment`))
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))
 
-	mapCmd.Flags().IntP("align-max-gap", "", 50,
+	mapCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
 		formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
