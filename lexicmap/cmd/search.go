@@ -41,18 +41,16 @@ var mapCmd = &cobra.Command{
 
 Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
-  2. We use a k-mer-based pseudoalignment algorithm.
 
 Alignment result relationship:
 
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── High-Scoring segment Pairs (HSP)
-              ├── HSP segment (not outputted)
+          ├── High-Scoring segment Pair (HSP)
 
 Output format:
-  Tab-delimited format with 16+ columns, with 1-based positions.
+  Tab-delimited format with 17+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -64,14 +62,15 @@ Output format:
     8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     9.  alenHSP,  Aligned length in the current HSP.
     10. pident,   Percentage of identical matches in the current HSP.
-    11. qstart,   Start of alignment in query sequence.
-    12. qend,     End of alignment in query sequence.
-    13. sstart,   Start of alignment in subject sequence.
-    14. send,     End of alignment in subject sequence.
-    15. sstr,     Subject strand.
-    16. slen,     Subject sequence length.
-    17. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-    18. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+    11. gaps,     Gaps in the current HSP.
+    12. qstart,   Start of alignment in query sequence.
+    13. qend,     End of alignment in query sequence.
+    14. sstart,   Start of alignment in subject sequence.
+    15. send,     End of alignment in subject sequence.
+    16. sstr,     Subject strand.
+    17. slen,     Subject sequence length.
+    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -259,7 +258,7 @@ Output format:
 		var speed float64 // k reads/second
 
 		// fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
-		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tqstart\tqend\tsstart\tsend\tsstr\tslen")
+		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen")
 		if moreColumns {
 			fmt.Fprintf(outfh, "\tqseq\tsseq")
 		}
@@ -304,16 +303,20 @@ Output format:
 					}
 
 					for _, c = range *cr.Chains { // each match
+						if c == nil {
+							continue
+						}
+
 						if sd.RC {
 							strand = '-'
 						} else {
 							strand = '+'
 						}
 
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%c\t%d",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d",
 							queryID, len(q.seq),
 							targets, r.ID, sd.SeqID, r.AlignedFraction,
-							j, c.AlignedFraction, c.AlignedBasesQ, c.PIdent,
+							j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
 							c.QBegin+1, c.QEnd+1,
 							c.TBegin+1, c.TEnd+1,
 							strand, sd.SeqLen,

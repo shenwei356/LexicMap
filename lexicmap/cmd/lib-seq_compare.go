@@ -390,11 +390,11 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	}
 
 	af := float64(nAlignedBasesQ) / float64(queryLen) * 100
-	if af < cpr.options.MinAlignedFraction {
-		RecycleChaining2Result(chains)
-		RecycleSubstrPairs(subs)
-		return nil, nil
-	}
+	// if af < cpr.options.MinAlignedFraction {
+	// 	RecycleChaining2Result(chains)
+	// 	RecycleSubstrPairs(subs)
+	// 	return nil, nil
+	// }
 
 	// result object
 	r := poolSeqComparatorResult.Get().(*SeqComparatorResult)

@@ -979,7 +979,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 		go func(r *SearchResult) {
 			minChainingScore := idx.chainingOptions.MinScore
-			minAF := idx.opt.MinQueryAlignedFractionInAGenome
+			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
+			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
 			extLen := idx.opt.ExtendLength
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
@@ -1266,7 +1267,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
 								})
 
-								for _, c := range *r2.Chains {
+								hasResult := false
+								j := 0
+								for i, c := range *r2.Chains {
 									if outSeq {
 										if c.TSeq == nil {
 											c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
@@ -1295,28 +1298,46 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 											checkError(fmt.Errorf("fail to align sequence"))
 										}
 										c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+										c.AlignedLength = int(cigar.AlignLen)
 										c.MatchedBases = int(cigar.Matches)
+										c.Gaps = int(cigar.Gaps)
 										c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
 										if c.AlignedFraction > 100 {
 											c.AlignedFraction = 100
 										}
-										c.PIdent = float64(c.MatchedBases) / float64(c.AlignedBasesQ) * 100
+										c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
 										wfa.RecycleAlignmentResult(cigar)
+									} else {
+										c.AlignedLength = c.AlignedBasesQ
+										c.Gaps = -1
 									}
+
+									if c.AlignedFraction < minQcovHSP {
+										poolChain2.Put(c)
+										(*r2.Chains)[i] = nil
+										continue
+									}
+
+									if !hasResult {
+										j = i
+									}
+									hasResult = true
 								}
 
-								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-								sd.RC = rc
-								// sd.Chain = (*r.Chains)[i]
-								sd.NSeeds = len(*chain)
-								sd.Similarity = r2
-								sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].PIdent
-								sd.SeqID = sd.SeqID[:0]
-								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-								sd.SeqLen = tSeq.SeqSizes[iSeq]
+								if hasResult {
+									sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+									sd.RC = rc
+									// sd.Chain = (*r.Chains)[i]
+									sd.NSeeds = len(*chain)
+									sd.Similarity = r2
+									sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
+									sd.SeqID = sd.SeqID[:0]
+									sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+									sd.SeqLen = tSeq.SeqSizes[iSeq]
 
-								*sds = append(*sds, sd)
+									*sds = append(*sds, sd)
+								}
 							}
 
 							// ----------
@@ -1404,7 +1425,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
 						})
 
-						for _, c := range *r2.Chains {
+						hasResult := false
+						j := 0
+						for i, c := range *r2.Chains {
 							// fmt.Printf("c: [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 							if outSeq {
 								if c.TSeq == nil {
@@ -1437,27 +1460,45 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
 								c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+								c.AlignedLength = int(cigar.AlignLen)
 								c.MatchedBases = int(cigar.Matches)
+								c.Gaps = int(cigar.Gaps)
 								c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
 								if c.AlignedFraction > 100 {
 									c.AlignedFraction = 100
 								}
-								c.PIdent = float64(c.MatchedBases) / float64(c.AlignedBasesQ) * 100
+								c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
 								wfa.RecycleAlignmentResult(cigar)
+							} else {
+								c.AlignedLength = c.AlignedBasesQ
+								c.Gaps = -1
 							}
+
+							if c.AlignedFraction < minQcovHSP {
+								poolChain2.Put(c)
+								(*r2.Chains)[i] = nil
+								continue
+							}
+
+							if !hasResult {
+								j = i
+							}
+							hasResult = true
 						}
 
-						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-						sd.RC = rc
-						sd.NSeeds = len(*chain)
-						sd.Similarity = r2
-						sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[0].PIdent
-						sd.SeqID = sd.SeqID[:0]
-						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-						sd.SeqLen = tSeq.SeqSizes[iSeq]
+						if hasResult {
+							sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+							sd.RC = rc
+							sd.NSeeds = len(*chain)
+							sd.Similarity = r2
+							sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
+							sd.SeqID = sd.SeqID[:0]
+							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+							sd.SeqLen = tSeq.SeqSizes[iSeq]
 
-						*sds = append(*sds, sd)
+							*sds = append(*sds, sd)
+						}
 					}
 				}
 
@@ -1486,20 +1527,17 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			wfa.RecycleAligner(algn)
 
-			// deduplicate alignments again, cause multiple lexichash chain might produce identical alignments.
-			// for _, sd := range *sds {
-
-			// }
-
 			// compute aligned bases per genome
 			var alignedBasesGenome int
 			regions := poolRegions.Get().(*[]*[2]int)
 			*regions = (*regions)[:0]
 			for _, sd := range *sds {
 				for _, c := range *sd.Similarity.Chains {
-					region := poolRegion.Get().(*[2]int)
-					region[0], region[1] = c.QBegin, c.QEnd
-					*regions = append(*regions, region)
+					if c != nil {
+						region := poolRegion.Get().(*[2]int)
+						region[0], region[1] = c.QBegin, c.QEnd
+						*regions = append(*regions, region)
+					}
 				}
 			}
 			alignedBasesGenome = coverageLen(regions)
@@ -1510,7 +1548,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			if r.AlignedFraction > 100 {
 				r.AlignedFraction = 100
 			}
-			if r.AlignedFraction < minAF { // no valid alignments
+			if r.AlignedFraction < minQcovGnm { // no valid alignments
 				poolHashes.Put(hashes)
 
 				idx.RecycleSimilarityDetails(sds)

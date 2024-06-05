@@ -77,7 +77,9 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 // Please remember to call this after using the results.
 func RecycleChaining2Result(chains *[]*Chain2Result) {
 	for _, chain := range *chains {
-		poolChain2.Put(chain)
+		if chain != nil {
+			poolChain2.Put(chain)
+		}
 	}
 	poolChains2.Put(chains)
 }
@@ -103,6 +105,8 @@ type Chain2Result struct {
 	AlignedBasesQ int     // The number of aligned bases in Query sequence
 	AlignedBasesT int     // The number of aligned bases in Subject sequence
 	PIdent        float64 // percentage of identity
+	AlignedLength int     // Aligned length, might be longer than AlignedBasesQ or AlignedBasesT
+	Gaps          int     // The number of gaps
 
 	QBegin, QEnd int // Query begin/end position (0-based)
 	TBegin, TEnd int // Target begin/end position (0-based)

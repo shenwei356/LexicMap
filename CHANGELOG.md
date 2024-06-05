@@ -8,7 +8,10 @@
 - `lexicmap search`:
     - Fix alignment against genomes with many short contigs.
     - Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa).
-    - Out format: remove column `seeds`, cluster alignments of each target sequence.
+    - Out format:
+        - Cluster alignments of each target sequence.
+        - Remove the column `seeds`.
+        - Add a column `gaps`.
 
 ### v0.3.0 - 2024-05-14
 
