@@ -11,6 +11,7 @@ weight: 0
 
 1. Prepare input files:
     - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
+      E.g., GCF_000006945.2.fna.gz
 2. Run:
     - From a directory with multiple genome files:
 
@@ -43,9 +44,9 @@ LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and 
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
-- **At most 17,179,869,184 (1<<34) genomes are supported**. For more genomes, just build multiple indexes.
+- **At most 17,179,869,184 (2<sup>34</sup>) genomes are supported**. For more genomes, just build multiple indexes.
 
-Input files can be given via one of the following ways:
+**Input files can be given via one of the following ways:**
 
 - **Positional arguments**. For a few input files.
 - A **file list** via the flag `-X/--infile-list`  with one file per line.
@@ -148,11 +149,12 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< tab "Seeds (k-mer-value) data" >}}
 
-|Flag              |Value                       |Function                                        |Comment                                                                                                                                                                                                                                                                                                 |
-|:-----------------|:---------------------------|:-----------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|`-c/--chunks`     |Maximum: 128, default: #CPUs|Number of seed file chunks                      |Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.                                                                                                                  |
-|`-p/--partitions` |Default: 512                |Number of partitions for indexing each seed file|Bigger values bring a little higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in `lexicmap search`. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.  |
-|`--max-open-files`|Default: 512                |Maximum number of open files                    |It's only used in merging indexes of multiple genome batches.                                                                                                                                                                                                                                           |
+|Flag                   |Value                       |Function                                        |Comment                                                                                                                                                                                                                                                                                                                                                                                  |
+|:----------------------|:---------------------------|:-----------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`--seed-max-desert`**|Default: 900                |Maximum length of distances between seeds       |The default value of 900 guarantees queries >900 bp would match at least one seed. ► Smaller values improve the search sensitivity and slightly increase the index size. ►Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every `--seed-in-desert-dist` (200 by default) bases.    |
+|`-c/--chunks`          |Maximum: 128, default: #CPUs|Number of seed file chunks                      |Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.                                                                                                                                                                                                   |
+|`-p/--partitions`      |Default: 512                |Number of partitions for indexing each seed file|Bigger values bring a little higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in `lexicmap search`. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.                                                                                   |
+|`--max-open-files`     |Default: 512                |Maximum number of open files                    |It's only used in merging indexes of multiple genome batches.                                                                                                                                                                                                                                                                                                                            |
 
 {{< /tab>}}
 
@@ -193,8 +195,9 @@ We use a small dataset for demonstration.
 
 {{< expand "Click to show the log of a demo run." "..." >}}
 
+    # here we set a small --batch-size 5
     $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-    20:24:16.138 [INFO] LexicMap v0.3.0
+    20:24:16.138 [INFO] LexicMap v0.4.0
     20:24:16.138 [INFO]   https://github.com/shenwei356/LexicMap
     20:24:16.138 [INFO]
     20:24:16.138 [INFO] checking input files ...

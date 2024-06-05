@@ -981,6 +981,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			minChainingScore := idx.chainingOptions.MinScore
 			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
 			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+			minPIdent := idx.seqCompareOption.MinIdentity
 			extLen := idx.opt.ExtendLength
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
@@ -1313,7 +1314,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 										c.Gaps = -1
 									}
 
-									if c.AlignedFraction < minQcovHSP {
+									if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
 										poolChain2.Put(c)
 										(*r2.Chains)[i] = nil
 										continue
@@ -1475,7 +1476,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								c.Gaps = -1
 							}
 
-							if c.AlignedFraction < minQcovHSP {
+							if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
 								poolChain2.Put(c)
 								(*r2.Chains)[i] = nil
 								continue

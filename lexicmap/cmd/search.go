@@ -54,7 +54,7 @@ Output format:
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
-    3.  hits,     Number of Subject genomes.
+    3.  hits,     Number of subject genomes.
     4.  sgenome,  Subject genome ID.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
@@ -166,7 +166,7 @@ Output format:
 		// ---------------------------------------------------------------
 
 		if outputLog {
-			log.Infof("LexicProf v%s", VERSION)
+			log.Infof("LexicMap v%s", VERSION)
 			log.Info("  https://github.com/shenwei356/LexicMap")
 			log.Info()
 		}
@@ -469,7 +469,7 @@ func init() {
 		formatFlagUsage(`Minimum length of shared substrings (anchors) if there's only one pair.`))
 
 	mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
-		formatFlagUsage(`Minimum mismatch between non-prefix regions of shared substrings.`))
+		formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
 
 	mapCmd.Flags().IntP("seed-max-gap", "", 2000,
 		formatFlagUsage(`Max gap in seed chaining.`))
@@ -477,7 +477,7 @@ func init() {
 		formatFlagUsage(`Max distance between seeds in seed chaining.`))
 
 	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
-		formatFlagUsage(`Keep top N genome matches for a query (0 for all).`))
+		formatFlagUsage(`Keep top N genome matches for a query (0 for all) in chaining phase.`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
@@ -494,7 +494,7 @@ func init() {
 	mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
 		formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
 	mapCmd.Flags().IntP("align-band", "", 100,
-		formatFlagUsage(`Band size in backtracking the score matrix.`))
+		formatFlagUsage(`Band size in backtracking the score matrix (pseduo alignment phase).`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 

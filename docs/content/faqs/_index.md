@@ -6,7 +6,7 @@ weight: 60
 ### Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-Fungi can be supported.
+Fungi can also be supported.
 
 For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
 
@@ -19,13 +19,29 @@ However, some short queries can also be aligned.
 
 For index building. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
 - More CPUs would accelerate indexing.
-- The memory occupation is linear with
+- The memory occupation is linear with:
     - The size of the genome batch.
     - The number of LexicHash masks.
 
 For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 - More CPUs would accelerate searching.
-- The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking.
+- The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking, and the distance between query and target sequences.
+
+### Can I extract the matched sequences?
+
+Yes, `lexicmap search` has a flag
+
+```
+  -a, --all                            ► Output more columns, e.g., matched sequences.
+```
+
+to ouput aligned query and subject sequences.
+
+```
+18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+```
+
 
 ### Why is LexicMap slow for batch searching?
 

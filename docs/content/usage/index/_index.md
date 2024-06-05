@@ -51,11 +51,11 @@ Input:
 Important parameters:
 
   --- Genome data (Memory control) ---
- *1. -b/--batch-size,  ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
-                       ► If the number of input files exceeds this number, input files are split into multiple
-                       batches and indexes are built for all batches. In the end, seed files are merged, while
-                       genome data files are kept unchanged and collected.
-                       ► Bigger values increase indexing memory occupation.
+ *1. -b/--batch-size,       ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
+                            ► If the number of input files exceeds this number, input files are split into multiple
+                            batches and indexes are built for all batches. In the end, seed files are merged, while
+                            genome data files are kept unchanged and collected.
+                            ► Bigger values increase indexing memory occupation.
 
   --- LexicHash mask generation ---
   0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly
@@ -71,17 +71,23 @@ Important parameters:
                             to fill sketching deserts.
 
   --- Seeds data (k-mer-value data) ---
-  1. -c/--chunks,      ► Number of seed file chunks (maximum: 128, default: #CPUs).
-                       ► Bigger values accelerate the search speed at the cost of a high disk reading load.
-                       The maximum number should not exceed the maximum number of open files set by the
-                       operating systems.
-  2. --partitions,     ► Number of partitions for indexing each seed file (default: 512).
-                       ► Bigger values bring a little higher memory occupation. 512 is a good value with high
-                       searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
-                       ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data with
-                       another value of this flag.
-  3. --max-open-files, ► Maximum number of open files (default: 512).
-                       ► It's only used in merging indexes of multiple genome batches.
+ *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 900).
+                            The default value of 900 guarantees queries >900 bp would match at least one seed.
+                            ► Smaller values improve the search sensitivity and slightly increase the index size.
+                            Large regions with no seeds are called sketching deserts. Deserts with seed distance
+                            larger than this value will be filled by choosing k-mers roughly every
+                            --seed-in-desert-dist (200 by default) bases.
+  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
+                            ► Bigger values accelerate the search speed at the cost of a high disk reading load.
+                            The maximum number should not exceed the maximum number of open files set by the
+                            operating systems.
+  3. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
+                            ► Bigger values bring a little higher memory occupation. 512 is a good value with high
+                            searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
+                            ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
+                            with another value of this flag.
+  4. --max-open-files,      ► Maximum number of open files (default: 512).
+                            ► It's only used in merging indexes of multiple genome batches.
 
 Usage:
   lexicmap index [flags] [-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>

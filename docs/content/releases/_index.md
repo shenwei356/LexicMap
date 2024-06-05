@@ -7,6 +7,16 @@ weight: 30
 
 ## Latest version
 
+### v0.4.0
+
+{{< hint type=note >}}
+
+- Please run `lexicmap version` to check update !!!
+- Please run `lexicmap autocompletion` to update shell autocompletion script !!!
+{{< /hint >}}
+
+## Previous versions
+
 ### v0.3.0
 
 [v0.3.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0) - 2024-05-14 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0)
@@ -35,16 +45,6 @@ weight: 30
     - `lexicmap utils seed-pos` for extracting seed positions via reference names.
     - `lexicmap utils reindex-seeds` for recreating indexes of k-mer-value (seeds) data.
     - `lexicmap utils genomes` for list genomes IDs in the index.
-
-
-{{< hint type=note >}}
-
-- Please run `lexicmap version` to check update !!!
-- Please run `lexicmap autocompletion` to update shell autocompletion script !!!
-{{< /hint >}}
-
-## Previous versions
-
 
 ### v0.2.0
 

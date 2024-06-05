@@ -6,8 +6,8 @@
 - `lexicmap index`:
     - Fix a bug in indexing small genomes.
 - `lexicmap search`:
+    - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
     - Fix alignment against genomes with many short contigs.
-    - Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa).
     - Out format:
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
