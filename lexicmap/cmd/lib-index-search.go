@@ -1633,9 +1633,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	//        result in a sequence   SimilarityDetai
 	//            alignments         Chain2Result
 	//
-	// for _, r := range *rs2 {
-	// 	r.SortBySeqID()
-	// }
+	for _, r := range *rs2 {
+		r.SortBySeqID()
+	}
 
 	return rs2, nil
 }
