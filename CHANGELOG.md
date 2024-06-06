@@ -4,8 +4,8 @@
 ### v0.4.0 - 2024-06-xx
 
 - `lexicmap index`:
+    - **Better sketching desert filling for highly-repetitive regions**.
     - Fix a bug in indexing small genomes.
-    - **Better sketching desert filling**.
 - `lexicmap search`:
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
     - Fix alignment against genomes with many short contigs.

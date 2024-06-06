@@ -223,7 +223,7 @@ We use a small dataset for demonstration.
     20:24:16.138 [INFO] number of masks: 40000
     20:24:16.138 [INFO] rand seed: 1
     20:24:16.138 [INFO] maximum sketching desert length: 900
-    20:24:16.138 [INFO] prefix length for checking low-complexity and choosing k-mers to fill sketching deserts: 15
+    20:24:16.138 [INFO] prefix length for checking low-complexity in mask generation: 15
     20:24:16.138 [INFO] distance of k-mers to fill deserts: 200
     20:24:16.139 [INFO]
     20:24:16.139 [INFO]
