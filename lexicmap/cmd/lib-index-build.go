@@ -830,6 +830,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
 
+			var freq0, freq uint32
+			freq0 = 1
+
 			pre = 0
 			var iD int
 			for _, pos2str = range *locs {
@@ -908,6 +911,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					*p2ks = append(*p2ks, p2k)
 				}
 
+				// first, we will find k-mer with a uniq prefix,
+				// but for some region with short-repeative sequence, it might fail to find uniq prefix.
+				// so we increase the frequency
+				freq = freq0
+
+			TRYAGAIN:
 				// fmt.Printf("  list size： %d\n", len(*p2ks))
 
 				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
@@ -932,7 +941,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// strand +
 						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == 1 &&
+						if kmer != 0 && (*counter)[p] == freq &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j) << 1
 							ok = true
@@ -941,7 +950,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// strand -
 						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == 1 &&
+						if kmer != 0 && (*counter)[p] == freq &&
 							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j)<<1 | 1
 							ok = true
@@ -993,7 +1002,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						p2k = (*p2ks)[_j]
 
 						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == 1 &&
+						if kmer != 0 && (*counter)[p] == freq &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j) << 1
 							ok = true
@@ -1002,7 +1011,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// strand -
 						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == 1 &&
+						if kmer != 0 && (*counter)[p] == freq &&
 							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							kmerPos = uint64(start+_j)<<1 | 1
 							ok = true
@@ -1043,7 +1052,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						continue
 					}
 
-					// it might fail to find any candiates in highly-repeated regions
+					if freq == 1 {
+						freq = 2
+
+						goto TRYAGAIN
+					}
 
 					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 					// 	iD, pre, pos, d, start, end, end-start+1)

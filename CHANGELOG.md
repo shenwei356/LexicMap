@@ -5,7 +5,7 @@
 
 - `lexicmap index`:
     - Fix a bug in indexing small genomes.
-    - Better sketching desert filling.
+    - **Better sketching desert filling**.
 - `lexicmap search`:
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
     - Fix alignment against genomes with many short contigs.

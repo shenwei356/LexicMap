@@ -86,21 +86,21 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 1000 | csvtk pretty -t
+        $ $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
+        15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
         ref               pos       strand   distance
         ---------------   -------   ------   --------
-        GCF_000017205.1   5430137   -        1235
+        GCF_000017205.1   30713     -        850
 
     Check the biggest seed distances.
 
         $ csvtk freq -t -f distance seed_distance.tsv \
             | csvtk sort -t -k distance:nr \
-            | head -n 20 \
+            | head -n 10 \
             | csvtk pretty -t
 
         distance   frequency
         --------   ---------
-        1235       1
         899        2
         898        4
         897        1
@@ -110,15 +110,6 @@ Global Flags:
         893        3
         892        4
         891        2
-        890        2
-        889        2
-        888        3
-        887        4
-        886        7
-        885        2
-        884        5
-        883        2
-        881        6
 
 
     Plot the histogram of distances between seeds.
@@ -141,11 +132,12 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 1000 \
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 890 \
+            | head -n 2 \
             | csvtk pretty -t -W 50 --clip
-        ref               pos       strand   distance   pre_pos   len_aaa   seq
-        ---------------   -------   ------   --------   -------   -------   --------------------------------------------------
-        GCF_000017205.1   5430137   -        1235       5428901   4         CATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTG...
+        ref               pos      strand   distance   pre_pos   len_aaa   seq
+        ---------------   ------   ------   --------   -------   -------   --------------------------------------------------
+        GCF_000017205.1   152018   -        892        151125    21        CGCGGCCCAGCCATGCCTACTGGGACCTCTCGCCGGGGATCGATTTC...
 
 
 3. Listing seed position of all genomes.
@@ -158,21 +150,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   45711
+        GCF_000017205.1   45737
         GCF_002950215.1   43617
-        GCF_002949675.1   43415
+        GCF_002949675.1   43469
         GCF_001457655.1   42112
         GCF_006742205.1   42102
         GCF_900638025.1   42008
         GCF_001027105.1   41855
-        GCF_000742135.1   41415
+        GCF_000742135.1   41419
         GCF_000392875.1   41391
-        GCF_003697165.2   41189
-        GCF_009759685.1   41138
-        GCF_000006945.2   41110
+        GCF_003697165.2   41194
+        GCF_009759685.1   41137
+        GCF_000006945.2   41114
         GCF_000148585.2   41075
-        GCF_001096185.1   40226
-        GCF_001544255.1   40153
+        GCF_001096185.1   40233
+        GCF_001544255.1   40165
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -186,5 +178,45 @@ Global Flags:
         GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
         GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
 
+    Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N's). In LexicMap, the N's are converted to A's.
+
+
+    ```text
+    $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 80
+    ref               pos       strand   distance   pre_pos   len_aaa   seq
+    ---------------   -------   ------   --------   -------   -------   --------------------------------------------------------------------------------
+    GCF_000392875.1   503031    +        1161       501869    1116      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGGTGTCAT
+    GCF_000392875.1   2640078   +        1344       2638733   1150      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGCTCCTTTTTATTTTCCCCACTATTTTTCAAT
+                                                                        GTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
+                                                                        TGCGGTGTAATCTTTTTCTTGGTGTTCTTTTTGTTCCTGAATTAATTTTTCTAACGCTTCTTTC
+```
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
