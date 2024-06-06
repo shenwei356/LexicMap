@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. Run: From a directory with multiple genome files:
+  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db.lmi Input Genome size" />
+lexicmap index -X files.txt -O db." />
 
     <title>Building an index | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +40,9 @@ lexicmap index -X files.txt -O db.lmi Input Genome size" />
     content="Building an index"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. Run: From a directory with multiple genome files:
+  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db.lmi Input Genome size" />
+lexicmap index -X files.txt -O db." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -51,9 +51,9 @@ lexicmap index -X files.txt -O db.lmi Input Genome size" />
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Building an index" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. Run: From a directory with multiple genome files:
+  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db.lmi Input Genome size" />
+lexicmap index -X files.txt -O db." />
 
 
   <script type="application/ld+json">
@@ -64,8 +64,8 @@ lexicmap index -X files.txt -O db.lmi Input Genome size" />
       "name": "Building an index",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.txt -O db.lmi Input Genome size",
-      "wordCount" : "2148",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.txt -O db.",
+      "wordCount" : "2270",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -979,6 +979,42 @@ lexicmap index -X files.txt -O db.lmi Input Genome size" />
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1418,7 +1454,8 @@ lexicmap index -X files.txt -O db.lmi Input Genome size" />
 <ol>
 <li>Prepare input files:
 <ul>
-<li><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.</li>
+<li><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.
+E.g., GCF_000006945.2.fna.gz</li>
 </ul>
 </li>
 <li>Run:
@@ -1483,13 +1520,14 @@ The flag <code>-g/--max-genome</code> (default 15 Mb) is used to skip these inpu
 via the flag <code>-G/--big-genomes</code>.</li>
 </ul>
 </li>
-<li><strong>At most 17,179,869,184 genomes are supported</strong>. For more genomes, just build multiple indexes.</li>
+<li><strong>At most 17,179,869,184 (2<sup>34</sup>) genomes are supported</strong>. For more genomes, just build multiple indexes.</li>
 </ul>
-<p>Input files can be given via one of the following ways:</p>
+<p><strong>Input files can be given via one of the following ways:</strong></p>
 <ul>
 <li><strong>Positional arguments</strong>. For a few input files.</li>
 <li>A <strong>file list</strong> via the flag <code>-X/--infile-list</code>  with one file per line.
-It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it to <code>lexicmap index</code>.</li>
+It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it to <code>lexicmap index</code>.
+The flag <code>-S/--skip-file-check</code> is optional for skiping input file checking if you believe these files do exist.</li>
 <li>A <strong>directory</strong> containing input files via the flag <code>-I/--in-dir</code>.
 <ul>
 <li>Multiple-level directories are supported.</li>
@@ -1518,10 +1556,10 @@ It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it t
 <ul>
 <li>More RAM (&gt; 50 GB) is preferred. The memory usage in index building is mainly related to:
 <ul>
-<li>The number of masks (<code>-m, --masks</code>, default 40,000).</li>
-<li>The number of genome.</li>
+<li>The number of masks (<code>-m/--masks</code>, default 40,000).</li>
+<li>The number of genomes.</li>
 <li>The divergence between genome sequences.</li>
-<li>The genome batch size  (<code>-b/--batch-size</code>, default 10,000).</li>
+<li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 10,000). This is the main parameter to adjust memory usage.</li>
 </ul>
 </li>
 <li>If the RAM is not sufficient (&lt; 50 GB). Please:
@@ -1582,26 +1620,26 @@ It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it t
 <ol>
 <li>Optionally discarding sequences via regular expression (<code>-B/--seq-name-filter</code>).</li>
 <li>Skipping genomes bigger than the value of <code>-g/--max-genome</code>.</li>
-<li>Concatenating all sequences, with intervals of 1000-bp N&rsquo;s ().</li>
-<li>Capuring the most similar k-mer for each mask and recording the k-mer and its location(s) and strand information.</li>
+<li>Concatenating all sequences, with intervals of 1000-bp N&rsquo;s.</li>
+<li>Capturing the most similar k-mer for each mask and recording the k-mer and its location(s) and strand information. Base N is treated as A.</li>
 <li>Filling sketching deserts (genome regions longer than <code>--seed-max-desert</code> without any captured k-mers/seeds).
 In a sketching desert, not a single k-mer is captured because there&rsquo;s another k-mer in another place which shares a longer prefix with the mask.
 As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
 <ol>
 <li>For a desert region (<code>start</code>, <code>end</code>), counting frequencies of <em>P</em>-mers in the extended region (<code>start-1000</code>, <code>end+1000</code>), <em>P</em>=15 by default.</li>
-<li>Starting from <code>start</code>, every around <code>--seed-in-desert-dist</code> bp, finding a k-mer of which the <em>P</em>-prefix is unique with a frequency of 1 (from the previous step).
+<li>Starting from <code>start</code>, every around <code>--seed-in-desert-dist</code> (default 200) bp, finding a k-mer of which the <em>P</em>-prefix is distinct with a frequency of 1 (from the previous step).
 This guarantees the k-mer will be captured by a mask in query sequences similar to the region.</li>
 <li>Adding the new k-mer to the mask which has the biggest chance to capture it.
-So in the search step, the new k-mer will be captured by this mask, and it will match the correst seed (its self) in the seed data of the mask.
+So in the search step, the new k-mer will be captured by this mask, and it will match the correst seed (itsself) in the seed data of the mask.
 <ol>
-<li>Find candidate masks via a lookup table (mapping mask prefix to mask).</li>
+<li>Find candidate masks via a lookup table (mapping mask prefixes to masks).</li>
 <li>Choose the mask of which the captured k-mer share the longest prefix as the new k-mer,
 by compring LexicHash values (new k-mer XOR captured k-mer).</li>
 </ol>
 </li>
 </ol>
 </li>
-<li>Saving the concatenated genome sequence (bit-packed, 2 bits for one base) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.</li>
+<li>Saving the concatenated genome sequence (bit-packed, 2 bits for one base, N is treated as A) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.</li>
 </ol>
 </li>
 <li>Compressing k-mers and the corresponding data (k-mer-data, or seeds data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.</li>
@@ -1615,7 +1653,7 @@ by compring LexicHash values (new k-mer XOR captured k-mer).</li>
 merging them and writting to a new file.</li>
 <li>For genome data files, just moving them.</li>
 <li>Concatenating <code>genomes.map.bin</code>, which maps each genome ID to its batch ID and index in the batch.</li>
-<li>Update index summary file.</li>
+<li>Update the index summary file.</li>
 </ol>
 </li>
 </ol>
@@ -1735,6 +1773,12 @@ merging them and writting to a new file.</li>
 </thead>
 <tbody>
 <tr>
+<td style="text-align:left"><strong><code>--seed-max-desert</code></strong></td>
+<td style="text-align:left">Default: 900</td>
+<td style="text-align:left">Maximum length of distances between seeds</td>
+<td style="text-align:left">The default value of 900 guarantees queries &gt;900 bp would match at least one seed. ► Smaller values improve the search sensitivity and slightly increase the index size. ►Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every <code>--seed-in-desert-dist</code> (200 by default) bases.</td>
+</tr>
+<tr>
 <td style="text-align:left"><code>-c/--chunks</code></td>
 <td style="text-align:left">Maximum: 128, default: #CPUs</td>
 <td style="text-align:left">Number of seed file chunks</td>
@@ -1802,14 +1846,15 @@ merging them and writting to a new file.</li>
 </ol>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="304e3f93-3">
+  <label class="gdoc-expand__head flex justify-between" for="4aa51d0a-3">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="304e3f93-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="4aa51d0a-3" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
-    <pre><code>$ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-20:24:16.138 [INFO] LexicMap v0.3.0
+    <pre><code># here we set a small --batch-size 5
+$ lexicmap index -I refs/ -O demo.lmi --batch-size 5
+20:24:16.138 [INFO] LexicMap v0.4.0
 20:24:16.138 [INFO]   https://github.com/shenwei356/LexicMap
 20:24:16.138 [INFO]
 20:24:16.138 [INFO] checking input files ...
@@ -1829,7 +1874,7 @@ merging them and writting to a new file.</li>
 20:24:16.138 [INFO] number of masks: 40000
 20:24:16.138 [INFO] rand seed: 1
 20:24:16.138 [INFO] maximum sketching desert length: 900
-20:24:16.138 [INFO] prefix for checking low-complexity and choosing k-mers to fill sketching deserts: 15
+20:24:16.138 [INFO] prefix length for checking low-complexity and choosing k-mers to fill sketching deserts: 15
 20:24:16.138 [INFO] distance of k-mers to fill deserts: 200
 20:24:16.139 [INFO]
 20:24:16.139 [INFO]
@@ -2035,7 +2080,13 @@ genbank_refseq.lmi: 2.90 TB
     </div>
 </div>
 
-<p>Index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</p>
+<ul>
+<li>Directory/file sizes are counted with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/dirsize"
+>https://github.com/shenwei356/dirsize</a>.</li>
+<li>Index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</li>
+</ul>
 <p><strong>What&rsquo;s next:</strong> 
 
 
@@ -2545,6 +2596,30 @@ genbank_refseq.lmi: 2.90 TB
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

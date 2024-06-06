@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
 
@@ -330,18 +330,29 @@
   alt="Cross-platform"
   
 /></a></p>
-<p>LexicMap is a <strong>sequence alignment</strong> tool aiming to efficiently query <strong>gene/plasmid/virus/long-read sequences</strong> against up to <strong>millions</strong> of prokaryotic genomes.</p>
+<p>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying <strong>gene, plasmid, viral, or long-read sequences</strong> against up to <strong>millions</strong> of <strong>prokaryotic genomes</strong>.</p>
+<p>
+
+
+<span class="gdoc-button gdoc-button--regular">
+  <a
+    class="gdoc-button__link" href="/LexicMap/introduction/"
+  >
+    Introduction
+  </a>
+</span>
 
 
 
-<span class="gdoc-button gdoc-button--large">
+
+<span class="gdoc-button gdoc-button--regular">
   <a
     class="gdoc-button__link" href="/LexicMap/quick-start/"
   >
     Quick start
   </a>
 </span>
-
+</p>
 <div class="gdoc-page__anchorwrap">
     <h2 id="feature-overview"
     >
@@ -365,7 +376,7 @@
 <p>Or <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/lexicmap/releases"
->download</a> the binary files for popular patforms.</p>
+>download</a> the binary files for popular platforms.</p>
 <span class="gdoc-button gdoc-button--regular">
   <a
     class="gdoc-button__link" href="/LexicMap/installation/"
@@ -394,13 +405,6 @@ lexicmap index -I genomes/ -O db.lmi
 # searching
 lexicmap search -d db.lmi q.fasta -o r.tsv
 </code></pre>
-<span class="gdoc-button gdoc-button--regular">
-  <a
-    class="gdoc-button__link" href="/LexicMap/introduction/"
-  >
-    Introduction
-  </a>
-</span>
 <span class="gdoc-button gdoc-button--regular">
   <a
     class="gdoc-button__link" href="/LexicMap/tutorials/index/"
@@ -437,7 +441,8 @@ lexicmap search -d db.lmi q.fasta -o r.tsv
         Efficient search
     </h3>
 </div>
-<p>Querying a <strong>51.5-kb plasmid</strong> in <strong>all <ins>2,340,672</ins> Genbank+Refseq prokaryotic genomes</strong> takes only <ins><strong>5 minutes and 2 seconds with 13.7 GB RAM</strong></ins> and 48 CPUs, with <ins><strong>17,822 genome hits</strong></ins> returned.</p>
+<p>Querying a 52.8-kb plasmid with <strong>LexicMap</strong> in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only <strong>4 minutes and 8 seconds with 15 GB RAM</strong> and 48 CPUs, with 494,860 genome hits returned.
+In contrast, <strong>Blastn</strong> is unable to run with the same dataset on common servers because it requires &gt;2000 GB RAM.</p>
 <span class="gdoc-button gdoc-button--regular">
   <a
     class="gdoc-button__link" href="/LexicMap/introduction/#performance"
@@ -937,6 +942,30 @@ lexicmap search -d db.lmi q.fasta -o r.tsv
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

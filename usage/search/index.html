@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4." />
+  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
 
     <title>search | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="search"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4." />
+  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/search/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="search" />
-  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4." />
+  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "search",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
-      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pairs (HSP) ├── HSP segment Output format: Tab-delimited format with 18 columns. (The positions are 1-based). 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. qstart, Start of alignment in query sequence. 4.",
-      "wordCount" : "517",
+      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID.",
+      "wordCount" : "531",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -973,6 +973,42 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1384,57 +1420,62 @@
 </span></span><span class="line"><span class="cl">  Query
 </span></span><span class="line"><span class="cl">  ├── Subject genome
 </span></span><span class="line"><span class="cl">      ├── Subject sequence
-</span></span><span class="line"><span class="cl">          ├── High-Scoring segment Pairs (HSP)
-</span></span><span class="line"><span class="cl">              ├── HSP segment
+</span></span><span class="line"><span class="cl">          ├── High-Scoring segment Pair (HSP)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Output format:
-</span></span><span class="line"><span class="cl">  Tab-delimited format with 18 columns. (The positions are 1-based).
+</span></span><span class="line"><span class="cl">  Tab-delimited format with 17+ columns, with 1-based positions.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">    1.  query,    Query sequence ID.
 </span></span><span class="line"><span class="cl">    2.  qlen,     Query sequence length.
-</span></span><span class="line"><span class="cl">    3.  qstart,   Start of alignment in query sequence.
-</span></span><span class="line"><span class="cl">    4.  qend,     End of alignment in query sequence.
-</span></span><span class="line"><span class="cl">    5.  hits,     The number of Subject genomes.
-</span></span><span class="line"><span class="cl">    6.  sgenome,  Subject genome ID.
-</span></span><span class="line"><span class="cl">    7.  seqid,    Subject sequence ID.
-</span></span><span class="line"><span class="cl">    8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-</span></span><span class="line"><span class="cl">    9.  hsp,      Nth HSP in the genome.
-</span></span><span class="line"><span class="cl">    10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-</span></span><span class="line"><span class="cl">    11. alen,     Aligned length in the current HSP, a HSP might have &gt;=1 HSP segments.
-</span></span><span class="line"><span class="cl">    12. alenSeg,  Aligned length in the current HSP segment.
-</span></span><span class="line"><span class="cl">    13. pident,   Percentage of identical matches in the current HSP segment.
-</span></span><span class="line"><span class="cl">    14. slen,     Subject sequence length.
-</span></span><span class="line"><span class="cl">    15. sstart,   Start of HSP segment in subject sequence.
-</span></span><span class="line"><span class="cl">    16. send,     End of HSP segment in subject sequence.
-</span></span><span class="line"><span class="cl">    17. sstr,     Subject strand.
-</span></span><span class="line"><span class="cl">    18. seeds,    Number of seeds in the current HSP.
+</span></span><span class="line"><span class="cl">    3.  hits,     Number of subject genomes.
+</span></span><span class="line"><span class="cl">    4.  sgenome,  Subject genome ID.
+</span></span><span class="line"><span class="cl">    5.  sseqid,   Subject sequence ID.
+</span></span><span class="line"><span class="cl">    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
+</span></span><span class="line"><span class="cl">    7.  hsp,      Nth HSP in the genome.
+</span></span><span class="line"><span class="cl">    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+</span></span><span class="line"><span class="cl">    9.  alenHSP,  Aligned length in the current HSP.
+</span></span><span class="line"><span class="cl">    10. pident,   Percentage of identical matches in the current HSP.
+</span></span><span class="line"><span class="cl">    11. gaps,     Gaps in the current HSP.
+</span></span><span class="line"><span class="cl">    12. qstart,   Start of alignment in query sequence.
+</span></span><span class="line"><span class="cl">    13. qend,     End of alignment in query sequence.
+</span></span><span class="line"><span class="cl">    14. sstart,   Start of alignment in subject sequence.
+</span></span><span class="line"><span class="cl">    15. send,     End of alignment in subject sequence.
+</span></span><span class="line"><span class="cl">    16. sstr,     Subject strand.
+</span></span><span class="line"><span class="cl">    17. slen,     Subject sequence length.
+</span></span><span class="line"><span class="cl">    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+</span></span><span class="line"><span class="cl">    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap search [flags] -d &lt;index path&gt; [query.fasta.gz ...] [-o query.tsv.gz]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
-</span></span><span class="line"><span class="cl">      --align-band int                 ► Band size in backtracking the score matrix (default 100)
+</span></span><span class="line"><span class="cl">      --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
+</span></span><span class="line"><span class="cl">                                       phase). (default 100)
 </span></span><span class="line"><span class="cl">      --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-</span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment (default 2000)
-</span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment (default 50)
-</span></span><span class="line"><span class="cl">      --align-max-mismatch int         ► Maximum mismatch in a HSP segment (default 50)
-</span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment (default 50)
-</span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
+</span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment. (default 2000)
+</span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
+</span></span><span class="line"><span class="cl">      --align-max-kmer-dist int        ► Maximum distance of (&gt;=11bp) k-mers in a HSP segment.
+</span></span><span class="line"><span class="cl">                                       (default 100)
+</span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
+</span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 50)
+</span></span><span class="line"><span class="cl">  -a, --all                            ► Output more columns, e.g., matched sequences.
 </span></span><span class="line"><span class="cl">  -h, --help                           help for search
 </span></span><span class="line"><span class="cl">  -d, --index string                   ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
 </span></span><span class="line"><span class="cl">      --max-open-files int             ► Maximum opened files. (default 512)
-</span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome. (default 50)
+</span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
 </span></span><span class="line"><span class="cl">  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
 </span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment
 </span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
 </span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
-</span></span><span class="line"><span class="cl">  -m, --seed-max-mismatch int          ► Minimum mismatch between non-prefix regions of shared
+</span></span><span class="line"><span class="cl">  -m, --seed-max-mismatch int          ► Maximum mismatch between non-prefix regions of shared
 </span></span><span class="line"><span class="cl">                                       substrings. (default -1)
 </span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
 </span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there&#39;s only
 </span></span><span class="line"><span class="cl">                                       one pair. (default 20)
-</span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all). (default 1000)
+</span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
+</span></span><span class="line"><span class="cl">                                       phase.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -1962,6 +2003,30 @@
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

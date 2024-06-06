@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. Usage: lexicmap utils subseq [flags] Flags: -h, --help help for subseq -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -w, --line-width int ► Line width of sequence (0 for no wrap)." />
+  <meta name="description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes." />
 
     <title>subseq | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="subseq"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. Usage: lexicmap utils subseq [flags] Flags: -h, --help help for subseq -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -w, --line-width int ► Line width of sequence (0 for no wrap)." />
+  <meta property="og:description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="subseq" />
-  <meta name="twitter:description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. Usage: lexicmap utils subseq [flags] Flags: -h, --help help for subseq -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -w, --line-width int ► Line width of sequence (0 for no wrap)." />
+  <meta name="twitter:description" content="Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "subseq",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/",
       "headline": "subseq",
-      "description": "Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s\/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. Usage: lexicmap utils subseq [flags] Flags: -h, --help help for subseq -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -w, --line-width int ► Line width of sequence (0 for no wrap).",
-      "wordCount" : "336",
+      "description": "Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s\/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A\u0027s in output might be N\u0027s in the genomes.",
+      "wordCount" : "365",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -973,6 +973,42 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry is-active"
                   >
@@ -1397,6 +1433,8 @@
 </span></span><span class="line"><span class="cl">  1. The option -s/--seq-id is optional.
 </span></span><span class="line"><span class="cl">     1) If given, the positions are these in the original sequence.
 </span></span><span class="line"><span class="cl">     2) If not given, the positions are these in the concatenated sequence.
+</span></span><span class="line"><span class="cl">  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+</span></span><span class="line"><span class="cl">     E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils subseq [flags]
@@ -1405,7 +1443,7 @@
 </span></span><span class="line"><span class="cl">  -h, --help              help for subseq
 </span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -w, --line-width int    ► Line width of sequence (0 for no wrap). (default 60)
-</span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
+</span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                          (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">  -n, --ref-name string   ► Reference name.
 </span></span><span class="line"><span class="cl">  -r, --region string     ► Region of the subsequence (1-based).
@@ -2002,6 +2040,30 @@
         
 
         
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
           
           
         
@@ -2212,11 +2274,11 @@
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/utils/kmers/"
-      title="kmers"
+      href="/LexicMap/usage/utils/genomes/"
+      title="genomes"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      kmers
+      genomes
     </a>
   
 </span>

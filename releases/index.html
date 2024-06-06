@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="Latest version v0.3.0 v0.3.0 - 2024-04-xx lexicmap index: Generate masks from the top N biggest genomes instead of randomly generation. Use longer (1000bp N&rsquo;s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions. lexicmap search: Better support of long queries. Add a new flag -w/--load-whole-seeds for loading the whole seed data into memory for faster search." />
+  <meta name="description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N&rsquo;s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Latest version v0.3.0 v0.3.0 - 2024-04-xx lexicmap index: Generate masks from the top N biggest genomes instead of randomly generation. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions. lexicmap search: Better support of long queries. Add a new flag -w/--load-whole-seeds for loading the whole seed data into memory for faster search." />
+  <meta property="og:description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content="Latest version v0.3.0 v0.3.0 - 2024-04-xx lexicmap index: Generate masks from the top N biggest genomes instead of randomly generation. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions. lexicmap search: Better support of long queries. Add a new flag -w/--load-whole-seeds for loading the whole seed data into memory for faster search." />
+  <meta name="twitter:description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": "Latest version v0.3.0 v0.3.0 - 2024-04-xx lexicmap index: Generate masks from the top N biggest genomes instead of randomly generation. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions. lexicmap search: Better support of long queries. Add a new flag -w\/--load-whole-seeds for loading the whole seed data into memory for faster search.",
-      "wordCount" : "259",
+      "description": "Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions.",
+      "wordCount" : "291",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -973,6 +973,42 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1375,59 +1411,14 @@
     </a>
 </div>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="v030"
+    <h3 id="v040"
     >
-        v0.3.0
+        v0.4.0
     </h3>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v030" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.3.0" aria-label="Anchor to: v0.3.0" href="#v030">
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v040" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.4.0" aria-label="Anchor to: v0.4.0" href="#v040">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p><a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0"
->v0.3.0</a> - 2024-04-xx <a
-  class="gdoc-markdown__link--raw"
-  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0"
-><img
-  src="https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg"
-  alt="Github Releases (by Release)"
-  
-/></a></p>
-<ul>
-<li><code>lexicmap index</code>:
-<ul>
-<li><strong>Generate masks from the top N biggest genomes instead of randomly generation</strong>.</li>
-<li><strong>Use longer (1000bp N&rsquo;s, previous: k-1) intervals between contigs</strong>.</li>
-<li>Fix a concurrency bug between genome data writing and k-mer-value data collecting.</li>
-<li>Change the format of k-mer-value index file, and fix the computation of index partitions.</li>
-</ul>
-</li>
-<li><code>lexicmap search</code>:
-<ul>
-<li><strong>Better support of long queries</strong>.</li>
-<li><strong>Add a new flag <code>-w/--load-whole-seeds</code> for loading the whole seed data into memory for faster search</strong>.</li>
-<li><strong>Parallelize alignment in each query</strong>, so it&rsquo;s faster for a single query.</li>
-<li>Change output format.</li>
-<li>Add output of query start and end positions.</li>
-<li>Fix a seed-chaining bug.</li>
-<li>Fix a target sequence extracting bug.</li>
-<li>Keep indexes of genome data in memory.</li>
-</ul>
-</li>
-<li><code>lexicmap utils kmers</code>:
-<ul>
-<li>Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.</li>
-</ul>
-</li>
-<li>New commands:
-<ul>
-<li><code>lexicmap utils gen-masks</code> for generating masks from the top N largest genomes.</li>
-<li><code>lexicmap utils seed-pos</code> for extracting seed positions via reference names.</li>
-<li><code>lexicmap utils reindex-seeds</code> for recreating indexes of k-mer-value (seeds) data.</li>
-</ul>
-</li>
-</ul>
 
 
 
@@ -1451,6 +1442,64 @@
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="v030"
+    >
+        v0.3.0
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v030" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.3.0" aria-label="Anchor to: v0.3.0" href="#v030">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0"
+>v0.3.0</a> - 2024-05-14 <a
+  class="gdoc-markdown__link--raw"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.3.0"
+><img
+  src="https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.3.0/total.svg"
+  alt="Github Releases (by Release)"
+  
+/></a></p>
+<ul>
+<li><code>lexicmap index</code>:
+<ul>
+<li><strong>Better seed coverage by filling sketching deserts</strong>.</li>
+<li><strong>Use longer (1000bp N&rsquo;s, previous: k-1) intervals between contigs</strong>.</li>
+<li>Fix a concurrency bug between genome data writing and k-mer-value data collecting.</li>
+<li>Change the format of k-mer-value index file, and fix the computation of index partitions.</li>
+<li>Optionally save seed positions which can be outputted by <code>lexicmap utils seed-pos</code>.</li>
+</ul>
+</li>
+<li><code>lexicmap search</code>:
+<ul>
+<li><strong>Improved seed-chaining algorithm</strong>.</li>
+<li><strong>Better support of long queries</strong>.</li>
+<li><strong>Add a new flag <code>-w/--load-whole-seeds</code> for loading the whole seed data into memory for faster search</strong>.</li>
+<li><strong>Parallelize alignment in each query</strong>, so it&rsquo;s faster for a single query.</li>
+<li><strong>Optional outputing matched query and subject sequences</strong>.</li>
+<li>2-5X searching speed with a faster masking method.</li>
+<li>Change output format.</li>
+<li>Add output of query start and end positions.</li>
+<li>Fix a target sequence extracting bug.</li>
+<li>Keep indexes of genome data in memory.</li>
+</ul>
+</li>
+<li><code>lexicmap utils kmers</code>:
+<ul>
+<li>Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.</li>
+</ul>
+</li>
+<li>New commands:
+<ul>
+<li><code>lexicmap utils gen-masks</code> for generating masks from the top N largest genomes.</li>
+<li><code>lexicmap utils seed-pos</code> for extracting seed positions via reference names.</li>
+<li><code>lexicmap utils reindex-seeds</code> for recreating indexes of k-mer-value (seeds) data.</li>
+<li><code>lexicmap utils genomes</code> for list genomes IDs in the index.</li>
+</ul>
+</li>
+</ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v020"
     >
@@ -2001,6 +2050,30 @@
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

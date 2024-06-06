@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg
-   width="818"
-   height="239"
+   width="824"
+   height="237"
    overflow="hidden"
    version="1.1"
    id="svg59"
@@ -23,8 +23,8 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="1.0617188"
-     inkscape:cx="476.11479"
-     inkscape:cy="310.34584"
+     inkscape:cx="477.99853"
+     inkscape:cy="308.4621"
      inkscape:window-width="2560"
      inkscape:window-height="1366"
      inkscape:window-x="0"
@@ -33,7 +33,7 @@
      inkscape:current-layer="g59" />
   <g
      id="g59"
-     transform="translate(-164,-50)">
+     transform="translate(-162,-52)">
     <rect
        x="0"
        y="0"
@@ -42,10 +42,10 @@
        fill="#ffffff"
        id="rect1" />
     <rect
-       x="164"
-       y="50"
-       width="818"
-       height="239"
+       x="162"
+       y="52"
+       width="824"
+       height="237"
        fill="#ffffff"
        id="rect2" />
     <path
@@ -198,13 +198,13 @@
        font-weight="400"
        font-size="14px"
        transform="translate(381.128,109)"
-       id="text18">Build an index</text>
+       id="text18">Build an</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(402.294,122)"
-       id="text19">in RAM</text>
+       transform="translate(435.794,109)"
+       id="text19">index</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
@@ -455,20 +455,20 @@
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(756.953,164)"
+       transform="translate(758.287,164)"
        id="text46">chunk</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
-       transform="translate(792.287,164)"
-       id="text47">C</text>
+       transform="translate(793.62,164)"
+       id="text47">c</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="24px"
-       transform="translate(166.597,75)"
+       transform="translate(166.48,86)"
        id="text48">Indexing</text>
     <path
        d="m 748.5,281.947 c 61.987,5.239 61.987,-5.239 123.967,-5.239 V 249.476 H 748.5 Z m 10.213,-32.471 v -3.531 h 123.12 v 27.404 c -4.68,0 -9.366,0.19 -9.366,0.19 v -24.063 z m 9.6,-3.531 V 242.5 H 892.5 v 27.318 c -5.333,0 -10.667,0.143 -10.667,0.143 v -24.016 z"
@@ -521,7 +521,7 @@
        transform="translate(807.02,241)"
        id="text54">···</text>
     <path
-       d="m 894.5,189.5 c 2.762,0 5,0.373 5,0.833 v 42.334 c 0,0.46 2.239,0.833 5,0.833 -2.761,0 -5,0.373 -5,0.833 v 42.334 c 0,0.46 -2.239,0.833 -5,0.833"
+       d="m 902.5,189.5 c 2.762,0 5,0.373 5,0.833 v 42.334 c 0,0.46 2.239,0.833 5,0.833 -2.761,0 -5,0.373 -5,0.833 v 42.334 c 0,0.46 -2.239,0.833 -5,0.833"
        stroke="#000000"
        stroke-width="1.33333"
        stroke-miterlimit="8"
@@ -532,31 +532,31 @@
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(906.812,229)"
+       transform="translate(914.95,229)"
        id="text55">Bit</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(923.146,229)"
+       transform="translate(931.283,229)"
        id="text56">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(927.812,229)"
+       transform="translate(935.95,229)"
        id="text57">packed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(914.566,242)"
+       transform="translate(922.703,242)"
        id="text58">genome</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
-       transform="translate(915.399,256)"
+       transform="translate(923.536,256)"
        id="text59">batches</text>
   </g>
 </svg>

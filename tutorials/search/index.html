@@ -9,14 +9,14 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
   <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query." />
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
 
     <title>Searching | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -45,8 +45,8 @@ lexicmap search -d db.lmi query.fasta -o query." />
   <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query." />
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/search/" />
 
@@ -58,8 +58,8 @@ lexicmap search -d db.lmi query.fasta -o query." />
   <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query." />
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
+lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
 
 
   <script type="application/ld+json">
@@ -70,8 +70,8 @@ lexicmap search -d db.lmi query.fasta -o query." />
       "name": "Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.",
-      "wordCount" : "2439",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
+      "wordCount" : "2272",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -985,6 +985,42 @@ lexicmap search -d db.lmi query.fasta -o query." />
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1435,13 +1471,13 @@ lexicmap search -d db.lmi query.fasta -o query." />
 <li>
 <p>For short queries like genes or long reads, returning top N hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-genome 70 --min-match-pident 70 --min-qcov-per-hsp 70 --top-n-genomes 1000
+     --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000
 </code></pre>
 </li>
 <li>
 <p>For longer queries like plasmids, returning all hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-genome 50 --min-match-pident 70 --min-qcov-per-hsp 0  --top-n-genomes 0
+    --min-qcov-per-hsp 0   --min-qcov-per-genome 0  --top-n-genomes 0
 </code></pre>
 </li>
 </ul>
@@ -1515,13 +1551,13 @@ However, some short queries can also be aligned.</div>
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
 <ol>
 <li><strong>Masking:</strong>
-Query sequence is masked by the masks of the index. In other word, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its posistion and strand information.</li>
+Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.</li>
 <li><strong>Seeding:</strong>
 For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least <em>p</em> bases.
 <ol>
 <li><strong>Setting the search range</strong>: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
 For example, for a query <code>CATGCT</code> requiring matching at least 4-bp prefix is equal to extract k-mers ranging from <code>CATGAA</code>, <code>CATGAC</code>, <code>CATGAG</code>, &hellip;,  to <code>CATGTT</code>.</li>
-<li><strong>Finding the nearest offset</strong>: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
+<li><strong>Finding the nearest smaller k-mer</strong>: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
 The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is found by binary search, i.e., <code>CATCAC</code> (blue text in the fingure), and the offset is returned as the start position in traversing the seed data file.</li>
 <li><strong>Retrieving seed data</strong>: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).</li>
 </ol>
@@ -1535,7 +1571,10 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li><strong>Alignment</strong> for each chain.
 <ol>
 <li>Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 2 kb in upstream and downstream of anchor region.</li>
-<li>Fast alignment of query and subject sequences.</li>
+<li>Fast alignment of query and subject sequences with <a
+  class="gdoc-markdown__link"
+  href="https://doi.org/10.1093/bioinformatics/btaa777"
+>WaveFront alignment algorithm</a>.</li>
 <li>Filtering aligned segments and the whole HSPs (all alignment segments) based on user options.
 <ul>
 <li>For these HSPs that accross more than one reference sequences, splitting them into multiple HSPs.</li>
@@ -1587,8 +1626,14 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-n/--top-n-genomes</code></strong></td>
-<td style="text-align:left">Default 500, 0 for all</td>
+<td style="text-align:left">Default 0, 0 for all</td>
 <td style="text-align:left">Keep top N genome matches for a query</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>-a/--all</code></strong></td>
+<td style="text-align:left"></td>
+<td style="text-align:left">Output more columns, e.g., matched sequences.</td>
 <td style="text-align:left"></td>
 </tr>
 </tbody>
@@ -1673,7 +1718,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <tbody>
 <tr>
 <td style="text-align:left"><strong><code>-Q/--min-qcov-per-genome</code></strong></td>
-<td style="text-align:left">Default 50</td>
+<td style="text-align:left">Default 0</td>
 <td style="text-align:left">Minimum query coverage (percentage) per genome.</td>
 <td style="text-align:left"></td>
 </tr>
@@ -1691,7 +1736,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-i/--align-min-match-pident</code></strong></td>
-<td style="text-align:left">Default 70</td>
+<td style="text-align:left">Default 50</td>
 <td style="text-align:left">Minimum base identity (percentage) in a HSP segment.</td>
 <td style="text-align:left"></td>
 </tr>
@@ -1738,32 +1783,32 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li>
 <p>For short queries like genes or long reads, returning top N hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-genome 70 \
-    --min-match-pident 70 \
+    --min-match-pident 50 \
     --min-qcov-per-hsp 70 \
-    --top-n-genomes 500
+    --min-qcov-per-genome 70 \
+    --top-n-genomes 1000
 </code></pre>
 </li>
 <li>
 <p>For longer queries like plasmids, returning all hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-genome 50 \
-    --min-match-pident 70 \
+    --min-match-pident 50 \
     --min-qcov-per-hsp 0 \
+    --min-qcov-per-genome 0  \
     --top-n-genomes 0
 </code></pre>
 </li>
 </ul>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="b7fcad1f-3">
+  <label class="gdoc-expand__head flex justify-between" for="0651434d-3">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="b7fcad1f-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="0651434d-3" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code>$ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-09:32:55.551 [INFO] LexicProf v0.3.0
+09:32:55.551 [INFO] LexicMap v0.4.0
 09:32:55.551 [INFO]   https://github.com/shenwei356/LexicMap
 09:32:55.551 [INFO]
 09:32:55.551 [INFO] checking input files ...
@@ -1790,6 +1835,22 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
   </div>
 </div>
 
+<ul>
+<li>
+<p>Extracting similar sequences for a query gene.</p>
+<pre><code># search matches with query coverage &gt;= 90%
+lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
+
+# extract matched sequences as FASTA format
+sed 1d results.tsv | awk '{print &quot;&gt;&quot;$5&quot;:&quot;$13&quot;-&quot;$14&quot;:&quot;$15&quot;\n&quot;$19;}' &gt; results.fasta
+
+seqkit head -n 1 results.fasta | head -n 3
+&gt;NZ_JALSCK010000007.1:39224-40522:-
+TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+</code></pre>
+</li>
+</ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="output"
     >
@@ -1811,10 +1872,9 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <pre><code>Query
 ├── Subject genome                             # A query might have one or more genome hits,
     ├── Subject sequence                       # in different sequences.
-        ├── High-Scoring segment Pairs (HSP)   # HSP is a cluster of alignment segments.
-            ├── HSP segment                    # A local alignment with no gaps.
+        ├── High-Scoring segment Pair (HSP)    # HSP is an alignment segment.
 </code></pre>
-<p>Here, the defination of HSP is slightly different from that in BLAST.</p>
+<p>Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.</p>
 <blockquote>
 <p>A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the highest alignment scores in a given search.
 <a
@@ -1831,25 +1891,26 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>Tab-delimited format with 18 columns. (The positions are 1-based).</p>
+<p>Tab-delimited format with 17+ columns, with 1-based positions.</p>
 <pre><code>1.  query,    Query sequence ID.
 2.  qlen,     Query sequence length.
-3.  qstart,   Start of alignment in query sequence.
-4.  qend,     End of alignment in query sequence.
-5.  hits,     The number of Subject genomes.
-6.  sgenome,  Subject genome ID.
-7.  seqid,    Subject sequence ID.
-8.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-9.  hsp,      Nth HSP in the genome.
-10. qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-11. alen,     Aligned length in the current HSP, a HSP might have &gt;=1 HSP segments.
-12. alenSeg,  Aligned length in the current HSP segment.
-13. pident,   Percentage of identical matches in the current HSP segment.
-14. slen,     Subject sequence length.
-15. sstart,   Start of HSP segment in subject sequence.
-16. send,     End of HSP segment in subject sequence.
-17. sstr,     Subject strand.
-18. seeds,    Number of seeds in the current HSP.
+3.  hits,     Number of subject genomes.
+4.  sgenome,  Subject genome ID.
+5.  sseqid,   Subject sequence ID.
+6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
+7.  hsp,      Nth HSP in the genome.
+8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+9.  alenHSP,  Aligned length in the current HSP.
+10. pident,   Percentage of identical matches in the current HSP.
+11. gaps,     Gaps in the current HSP.
+12. qstart,   Start of alignment in query sequence.
+13. qend,     End of alignment in query sequence.
+14. sstart,   Start of alignment in subject sequence.
+15. send,     End of alignment in subject sequence.
+16. sstr,     Subject strand.
+17. slen,     Subject sequence length.
+18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 </code></pre>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="examples"
@@ -1872,21 +1933,21 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
       checked="checked"
     />
     <label for="tabs-t2-0" class="gdoc-tabs__label">
-      A 16S rRNA gene
+      A single-copy gene (SecY)
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <p>The (part) result shows the 16S rRNA gene has 8 genome hits (column <code>sgenome</code>). And in genome <code>GCF_003697165.2</code>, it has 7 highly similar matches with query coverage per HSP (column <code>qcovHSP</code>) of 100% and percentage of identity (<code>pident</code>) &gt; 99%. It makes sense as 16S rRNA genes might have multiple copies in a genome.</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                         qlen   qstart   qend   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident   slen      sstart    send      sstr   seeds
-</span></span><span class="line"><span class="cl">---------------------------   ----   ------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ------   -------   -------   -------   ----   -----
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   1     100.000   1542      1542      99.287   4903501   4844587   4846128   -      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   2     100.000   1542      1542      99.287   4903501   4591684   4593225   -      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   3     100.000   1542      1542      99.287   4903501   4551515   4553056   -      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   4     100.000   1542      1542      99.287   4903501   3780640   3782181   -      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   5     100.000   1542      1542      99.287   4903501   458559    460100    +      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   6     100.000   1542      1542      99.287   4903501   1285123   1286664   +      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_003697165.2   NZ_CP033092.2   100.000   7     100.000   1542      1542      99.092   4903501   4726193   4727734   -      26
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_002950215.1   NZ_CP026788.1   100.000   1     100.000   1542      1542      99.027   4659463   3216505   3218046   +      25
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   1        1542   8      GCF_002950215.1   NZ_CP026788.1   100.000   2     100.000   1542      1542      98.962   4659463   3396068   3397609   +      26
+      <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                                      qlen   hits   sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart   send     sstr   slen
+</span></span><span class="line"><span class="cl">----------------------------------------   ----   ----   ---------------   --------------------   -------   ---   -------   -------   -------   ----   ------   ----   ------   ------   ----   -------
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_000395405.1   NZ_KB947497.1          100.000   1     100.000   1299      100.000   0      1        1299   232279   233577   +      274511
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_019731615.1   NZ_JAASJA010000010.1   100.000   1     100.000   1299      100.000   0      1        1299   2798     4096     +      42998
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCA_004103085.1   RPCL01000012.1         100.000   1     100.000   1299      100.000   0      1        1299   44095    45393    +      84242
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_023571745.1   NZ_JAMKBS010000014.1   100.000   1     100.000   1299      100.000   0      1        1299   44077    45375    +      84206
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_013248625.1   NZ_JABTDK010000002.1   100.000   1     100.000   1299      100.000   0      1        1299   9609     10907    +      49787
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_900092155.1   NZ_FLUS01000006.1      100.000   1     100.000   1299      100.000   0      1        1299   63161    64459    +      77366
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_902165815.1   NZ_CABHHZ010000005.1   100.000   1     100.000   1299      100.000   0      1        1299   39386    40684    -      200163
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_014243495.1   NZ_SJAV01000002.1      100.000   1     100.000   1299      100.000   0      1        1299   39085    40383    -      256772
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_900148695.1   NZ_FRXS01000009.1      100.000   1     100.000   1299      100.000   0      1        1299   39230    40528    -      96692
+</span></span><span class="line"><span class="cl">lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_902164645.1   NZ_LR607334.1          100.000   1     100.000   1299      100.000   0      1        1299   236677   237975   +      3380663
 </span></span></code></pre></div>
     </div>
     <input
@@ -1897,47 +1958,21 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
       
     />
     <label for="tabs-t2-1" class="gdoc-tabs__label">
-      A plasmid
+      A 16S rRNA gene
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <p>This plasmid has 17,716 genome hits in the index (2.34 millions prokaryotic genome from Genbank and RefSeq).</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query     qlen    qstart   qend    hits    sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident    slen      sstart    send      sstr   seeds
-</span></span><span class="line"><span class="cl">-------   -----   ------   -----   -----   ---------------   --------------------   -------   ---   -------   -------   -------   -------   -------   -------   -------   ----   -----
-</span></span><span class="line"><span class="cl">plasmid   51466   1        50164   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   1     100.000   51466     50164     100.000   51479     1303      51479     +      487
-</span></span><span class="line"><span class="cl">plasmid   51466   50165    51466   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      487
-</span></span><span class="line"><span class="cl">plasmid   51466   18302    18401   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   2     0.194     100       100       100.000   51479     25698     25797     -      2
-</span></span><span class="line"><span class="cl">plasmid   51466   34042    34125   17716   GCA_032192075.1   JAVTRN010000003.1      100.000   3     0.163     84        84        89.286    51479     45852     45935     +      1
-</span></span><span class="line"><span class="cl">plasmid   51466   1        50164   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   1     100.000   51466     50164     100.000   51479     1303      51479     +      487
-</span></span><span class="line"><span class="cl">plasmid   51466   50165    51466   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      487
-</span></span><span class="line"><span class="cl">plasmid   51466   18302    18401   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   2     0.194     100       100       100.000   51479     25698     25797     -      2
-</span></span><span class="line"><span class="cl">plasmid   51466   34042    34125   17716   GCF_032192075.1   NZ_JAVTRN010000003.1   100.000   3     0.163     84        84        89.286    51479     45852     45935     +      1
-</span></span><span class="line"><span class="cl">plasmid   51466   1        50164   17716   GCA_030863645.1   CP114982.1             100.000   1     100.000   51466     50164     99.994    51479     1303      51479     +      530
-</span></span><span class="line"><span class="cl">plasmid   51466   50165    51466   17716   GCA_030863645.1   CP114982.1             100.000   1     100.000   51466     1302      100.000   51479     1         1302      +      530
-</span></span><span class="line"><span class="cl">plasmid   51466   27858    29180   17716   GCA_030863645.1   CP114979.1             100.000   2     2.571     1323      1323      100.000   4731337   1893701   1895023   -      12
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43921   17716   GCA_030863645.1   CP114980.1             100.000   3     1.595     821       821       100.000   165063    42818     43638     -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43100    43920   17716   GCA_030863645.1   CP114980.1             100.000   4     1.595     821       821       100.000   165063    50985     51805     -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114981.1             100.000   5     1.593     820       820       100.000   82723     55698     56517     +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   6     1.593     820       820       100.000   165063    153475    154294    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   7     1.593     820       820       100.000   165063    160027    160846    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43452   17716   GCA_030863645.1   CP114980.1             100.000   7     1.593     820       352       99.716    165063    158276    158627    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   8     1.593     820       820       100.000   165063    145617    146436    +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   43101    43920   17716   GCA_030863645.1   CP114980.1             100.000   9     1.593     820       820       99.878    165063    157808    158627    -      4
-</span></span><span class="line"><span class="cl">plasmid   51466   43555    43920   17716   GCA_030863645.1   CP114980.1             100.000   9     1.593     820       366       100.000   165063    160027    160392    -      4
-</span></span><span class="line"><span class="cl">plasmid   51466   29790    30607   17716   GCA_030863645.1   CP114980.1             100.000   10    1.589     818       818       98.778    165063    42819     43639     -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   11    1.589     818       818       98.778    165063    50984     51804     -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   12    1.589     818       818       98.778    165063    145617    146437    +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29790    30607   17716   GCA_030863645.1   CP114981.1             100.000   13    1.589     818       818       98.778    82723     55697     56517     +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   14    1.589     818       818       98.778    165063    160026    160846    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30142   17716   GCA_030863645.1   CP114980.1             100.000   14    1.589     818       352       99.148    165063    158276    158627    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30608   17716   GCA_030863645.1   CP114980.1             100.000   15    1.589     818       818       98.778    165063    153474    154294    -      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30609   17716   GCA_030863645.1   CP114980.1             100.000   16    1.591     819       819       98.657    165063    157806    158627    -      4
-</span></span><span class="line"><span class="cl">plasmid   51466   30242    30608   17716   GCA_030863645.1   CP114980.1             100.000   16    1.591     819       367       100.000   165063    160026    160392    -      4
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30607   17716   GCA_030863645.1   CP114982.1             100.000   17    1.587     817       817       98.776    51479     44415     45234     +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   29791    30607   17716   GCA_030863645.1   CP114980.1             100.000   18    1.587     817       817       98.776    165063    31910     32729     +      5
-</span></span><span class="line"><span class="cl">plasmid   51466   18302    18401   17716   GCA_030863645.1   CP114982.1             100.000   19    0.194     100       100       100.000   51479     25698     25797     -      2
-</span></span><span class="line"><span class="cl">plasmid   51466   44536    44622   17716   GCA_030863645.1   CP114981.1             100.000   20    0.169     87        87        87.356    82723     49696     49782     +      1
-</span></span><span class="line"><span class="cl">plasmid   51466   34042    34125   17716   GCA_030863645.1   CP114982.1             100.000   21    0.163     84        84        89.286    51479     45852     45935     +      1
-</span></span><span class="line"><span class="cl">plasmid   51466   34042    34125   17716   GCA_030863645.1   CP114981.1             100.000   22    0.163     84        84        86.905    82723     49698     49781     +      1
+      <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                         qlen   hits     sgenome           sseqid              qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
+</span></span><span class="line"><span class="cl">---------------------------   ----   ------   ---------------   -----------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_002248685.1   NZ_NQBE01000079.1   100.000   1     100.000   1542      100.000   0      1        1542   40        1581      -      99259
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   1     100.000   1542      100.000   0      1        1542   1270211   1271752   +      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   2     100.000   1542      100.000   0      1        1542   5466287   5467828   -      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   3     100.000   1543      99.546    2      1        1542   557008    558549    +      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   4     100.000   1543      99.482    2      1        1542   4473658   4475199   -      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   5     100.000   1543      99.482    2      1        1542   5154150   5155691   -      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   6     100.000   1543      99.482    2      1        1542   5195176   5196717   -      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   7     100.000   1543      99.482    2      1        1542   5369865   5371406   -      5483624
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_000460355.1   NZ_KE701684.1       100.000   1     100.000   1542      100.000   0      1        1542   1108651   1110192   -      1914390
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200   1542   293398   GCF_000460355.1   NZ_KE701686.1       100.000   2     100.000   1542      99.741    0      1        1542   100680    102221    +      102235
 </span></span></code></pre></div>
     </div>
     <input
@@ -1948,29 +1983,61 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
       
     />
     <label for="tabs-t2-2" class="gdoc-tabs__label">
+      A plasmid
+    </label>
+    <div class="gdoc-markdown--nested gdoc-tabs__content">
+      <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query        qlen    hits    sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend    sstart    send      sstr   slen
+</span></span><span class="line"><span class="cl">----------   -----   -----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   -----   -------   -------   ----   -------
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    1     75.792    40041     99.995    0      12069    52109   11439     51479     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    2     20.316    10733     100.000   0      1        10733   722       11454     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    3     1.365     721       100.000   0      52110    52830   1         721       +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086535.1   97.473    4     0.916     484       91.116    0      51686    52169   27192     27675     -      34058
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086535.1   97.473    5     0.829     438       90.868    1      52342    52779   26583     27019     -      34058
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    6     1.552     820       100.000   0      9049     9868    23092     23911     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086534.1   97.473    7     0.502     265       100.000   0      19788    20052   29842     30106     +      47185
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    8     0.159     84        97.619    0      8348     8431    19574     19657     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    1     75.792    40041     99.995    0      12069    52109   11439     51479     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    2     20.316    10733     100.000   0      1        10733   722       11454     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    3     1.365     721       100.000   0      52110    52830   1         721       +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086547.1   97.473    4     0.916     484       91.116    0      51686    52169   3843      4326      +      34058
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086547.1   97.473    5     0.829     438       90.868    1      52342    52779   4499      4935      +      34058
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    6     1.552     820       100.000   0      9049     9868    23092     23911     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086546.1   97.473    7     0.502     265       100.000   0      19788    20052   29842     30106     +      47185
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    8     0.159     84        97.619    0      8348     8431    19574     19657     +      51479
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    1     77.157    40762     99.993    0      12069    52830   9513      50274     +      51480
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    2     18.033    9528      99.990    1      1207     10733   1         9528      +      51480
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    3     2.283     1206      100.000   0      1        1206    50275     51480     +      51480
+</span></span><span class="line"><span class="cl">CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058618.1   97.473    4     2.497     1319      100.000   0      25153    26471   3019498   3020816   -      4718403
+</span></span></code></pre></div>
+    </div>
+    <input
+      type="radio"
+      class="gdoc-tabs__control hidden"
+      name="tabs-t2"
+      id="tabs-t2-3"
+      
+    />
+    <label for="tabs-t2-3" class="gdoc-tabs__label">
       Long reads
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <p>Queries are a few Nanopore Q20 reads from a mock metagenomic community.</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                qlen   qstart   qend   hits   sgenome           sseqid              qcovGnm   hsp   qcovHSP   alenHSP   alenSeg   pident    slen      sstart    send      sstr   seeds
-</span></span><span class="line"><span class="cl">------------------   ----   ------   ----   ----   ---------------   -----------------   -------   ---   -------   -------   -------   -------   -------   -------   -------   ----   -----
-</span></span><span class="line"><span class="cl">ERR5396170.1000017   516    27       514    1      GCF_013394085.1   NZ_CP040910.1       94.574    1     94.574    488       488       100.000   1887974   293509    293996    +      3
-</span></span><span class="line"><span class="cl">ERR5396170.1000047   960    24       812    1      GCF_001027105.1   NZ_CP011526.1       90.521    1     90.521    869       789       89.480    2755072   2204718   2205520   -      6
-</span></span><span class="line"><span class="cl">ERR5396170.1000047   960    881      960    1      GCF_001027105.1   NZ_CP011526.1       90.521    1     90.521    869       80        100.000   2755072   2204568   2204647   -      6
-</span></span><span class="line"><span class="cl">ERR5396170.1000016   740    71       733    1      GCF_013394085.1   NZ_CP040910.1       89.595    1     89.595    663       663       98.492    1887974   13515     14177     +      12
-</span></span><span class="line"><span class="cl">ERR5396170.1000000   698    53       650    1      GCF_001457615.1   NZ_LN831024.1       85.673    1     85.673    598       598       97.324    6316979   4452083   4452685   +      4
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   38       2510   5      GCF_000006945.2   NC_003197.2         98.291    1     98.291    2473      2473      99.151    4857450   3198806   3201283   +      15
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   38       2497   5      GCF_008692785.1   NZ_VXJV01000001.1   97.774    1     97.774    2460      2460      96.098    797633    423400    425865    +      14
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   40       2510   5      GCA_900478215.1   LS483478.1          98.211    1     98.211    2471      2471      95.548    4624613   785866    788342    -      13
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   1350     2497   5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      1148      95.557    366711    6705      7855      +      12
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   634      1309   5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      676       89.053    366711    5991      6664      +      12
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   387      608    5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      222       85.135    366711    5745      5965      +      12
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   69       205    5      GCF_008692845.1   NZ_VXJW01000004.1   86.765    1     86.765    2183      137       83.212    366711    5426      5563      +      12
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   1830     2263   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      434       97.696    4460105   2898281   2898717   +      7
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   2307     2497   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      191       76.963    4460105   2898761   2898951   +      7
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   415      938    5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      524       86.641    4460105   2896865   2897391   +      7
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   1113     1807   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      695       71.511    4460105   2897564   2898258   +      7
-</span></span><span class="line"><span class="cl">ERR5396170.1000005   2516   961      1088   5      GCF_000252995.1   NC_015761.1         78.378    1     78.378    1972      128       85.156    4460105   2897414   2897541   +      7
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
+</span></span><span class="line"><span class="cl">------------------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
+</span></span><span class="line"><span class="cl">ERR5396170.1000016   740    1      GCF_013394085.1   NZ_CP040910.1   89.595    1     89.595    663       99.246    0      71       733    13515     14177     +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1   85.673    1     85.673    603       98.010    5      53       650    4452083   4452685   +      6316979
+</span></span><span class="line"><span class="cl">ERR5396170.1000017   516    1      GCF_013394085.1   NZ_CP040910.1   94.574    1     94.574    489       99.591    2      27       514    293509    293996    +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000012   848    1      GCF_013394085.1   NZ_CP040910.1   95.165    1     95.165    811       97.411    7      22       828    190329    191136    -      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    1     60.000    973       95.889    13     365      1333   88793     89756     -      2884551
+</span></span><span class="line"><span class="cl">ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    2     4.706     76        98.684    0      266      341    89817     89892     -      2884551
+</span></span><span class="line"><span class="cl">ERR5396170.1000036   1159   1      GCF_013394085.1   NZ_CP040910.1   95.427    1     95.427    1107      99.729    1      32       1137   1400097   1401203   +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    1     86.486    707       99.151    3      104      807    242235    242941    -      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    2     86.486    707       98.444    3      104      807    1138777   1139483   +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    3     84.152    688       98.983    4      104      788    154620    155306    -      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    4     84.029    687       99.127    3      104      787    32477     33163     +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    5     72.727    595       98.992    3      104      695    1280183   1280777   +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
+</span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
 </span></span></code></pre></div>
     </div>
 </div>
@@ -2479,6 +2546,30 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

@@ -4,7 +4,7 @@
     <title>utils on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
     <link>https://bioinf.shenwei.me/LexicMap/usage/utils/</link>
     <description>Recent content in utils on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</description>
-    <generator>Hugo -- gohugo.io</generator>
+    <generator>Hugo</generator>
     <language>en-us</language>
     <atom:link href="https://bioinf.shenwei.me/LexicMap/usage/utils/index.xml" rel="self" type="application/rss+xml" />
     <item>
@@ -15,11 +15,18 @@
       <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attentions: 1. Mask index (column mask) is 1-based. 2. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;.</description>
     </item>
     <item>
+      <title>genomes</title>
+      <link>https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/</guid>
+      <description>Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -h, --help help for genomes -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. -o, --out-file string ► Out file, supports the &amp;#34;.gz&amp;#34; suffix (&amp;#34;-&amp;#34; for stdout). (default &amp;#34;-&amp;#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments.</description>
+    </item>
+    <item>
       <title>subseq</title>
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/</guid>
-      <description>Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. Usage: lexicmap utils subseq [flags] Flags: -h, --help help for subseq -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. -w, --line-width int ► Line width of sequence (0 for no wrap).</description>
+      <description>Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&amp;#39;s in output might be N&amp;#39;s in the genomes.</description>
     </item>
     <item>
       <title>seed-pos</title>

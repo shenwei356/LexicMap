@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
+  <meta name="description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
 
     <title>utils | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="utils"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
+  <meta property="og:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="utils" />
-  <meta name="twitter:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
+  <meta name="twitter:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line)." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "utils",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/",
       "headline": "utils",
-      "description": "$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line).",
-      "wordCount" : "136",
+      "description": "$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data seed-pos Extract seed positions via reference names subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line).",
+      "wordCount" : "143",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -973,6 +973,42 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1380,6 +1416,7 @@
 </span></span><span class="line"><span class="cl">  lexicmap utils [command]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Available Commands:
+</span></span><span class="line"><span class="cl">  genomes       View genome IDs in the index
 </span></span><span class="line"><span class="cl">  kmers         View k-mers captured by the masks
 </span></span><span class="line"><span class="cl">  masks         View masks of the index or generate new masks randomly
 </span></span><span class="line"><span class="cl">  reindex-seeds Recreate indexes of k-mer-value (seeds) data
@@ -1899,6 +1936,30 @@
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

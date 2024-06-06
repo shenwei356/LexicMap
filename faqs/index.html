@@ -9,13 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.123.7">
+<meta name="generator" content="Hugo 0.126.1">
 
 
-  <meta name="description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How&rsquo;s the hardware requirement? For index building. See details hardware requirement.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
+  <meta name="description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.
+For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned." />
 
     <title>FAQs | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -41,10 +40,9 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
     content="FAQs"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How’s the hardware requirement? For index building. See details hardware requirement.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
+  <meta property="og:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.
+For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/faqs/" />
 
@@ -53,10 +51,9 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="FAQs" />
-  <meta name="twitter:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.
-Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-How’s the hardware requirement? For index building. See details hardware requirement.
-More CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch." />
+  <meta name="twitter:description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.
+For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
+Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp, &gt;=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned." />
 
 
   <script type="application/ld+json">
@@ -67,8 +64,8 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
       "name": "FAQs",
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
-      "description": "Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can be supported with more masks.\nDoes LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp, \u003e=1kb is prefered) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.\nHow’s the hardware requirement? For index building. See details hardware requirement.\nMore CPUs would accelerate indexing. The memory occupation is linear with The size of the genome batch.",
-      "wordCount" : "192",
+      "description": "Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.\nFor big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.\nDoes LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp, \u003e=1kb is prefered) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.",
+      "wordCount" : "270",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -982,6 +979,42 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/genomes/"
+                    class="gdoc-nav__entry"
+                  >
+                    genomes
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/subseq/"
                     class="gdoc-nav__entry"
                   >
@@ -1384,7 +1417,8 @@ More CPUs would accelerate indexing. The memory occupation is linear with The si
     </a>
 </div>
 <p>Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-Fungi can be supported with more masks.</p>
+Fungi can also be supported.</p>
+<p>For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="does-lexicmap-support-short-reads"
     >
@@ -1411,7 +1445,7 @@ However, some short queries can also be aligned.</p>
 >hardware requirement</a>.</p>
 <ul>
 <li>More CPUs would accelerate indexing.</li>
-<li>The memory occupation is linear with
+<li>The memory occupation is linear with:
 <ul>
 <li>The size of the genome batch.</li>
 <li>The number of LexicHash masks.</li>
@@ -1424,9 +1458,23 @@ However, some short queries can also be aligned.</p>
 >hardware requirement</a>.</p>
 <ul>
 <li>More CPUs would accelerate searching.</li>
-<li>The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking.</li>
+<li>The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking, and the distance between query and target sequences.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="can-i-extract-the-matched-sequences"
+    >
+        Can I extract the matched sequences?
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#can-i-extract-the-matched-sequences" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Can I extract the matched sequences?" aria-label="Anchor to: Can I extract the matched sequences?" href="#can-i-extract-the-matched-sequences">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>Yes, <code>lexicmap search</code> has a flag</p>
+<pre tabindex="0"><code>  -a, --all                            ► Output more columns, e.g., matched sequences.
+</code></pre><p>to ouput aligned query and subject sequences.</p>
+<pre tabindex="0"><code>18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
+19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+</code></pre><div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="why-is-lexicmap-slow-for-batch-searching"
     >
         Why is LexicMap slow for batch searching?
@@ -1437,7 +1485,7 @@ However, some short queries can also be aligned.</p>
 </div>
 <ul>
 <li>
-<p>LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number of genomes.</p>
+<p>LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 16 million) of genomes.</p>
 </li>
 <li>
 <p><code>lexicmap search</code> has a flag <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for
@@ -1949,6 +1997,30 @@ faster search.</p>
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       
