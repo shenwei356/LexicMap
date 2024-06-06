@@ -36,6 +36,12 @@ LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and 
     - **Genome ID**: they should be distinct for accurate result interpretation, which will be shown in the search result.
     - File extention: a regular expression set by the flag `-N/--ref-name-regexp` is used to extract genome IDs from the file name.
       The default value supports common sequence file extentions, including `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, and `.fna.gz`.
+    - [brename](https://github.com/shenwei356/brename) can help to batch rename files safely.
+    - If you don't want to change the original file names, you can
+        1. Create and change to a new directory.
+        2. Create symbolic links (`ln -s`) for all genome files.
+        3. Batch rename all the symbolic links with brename.
+        4. Use this directory as input via the flag `-I/--in-dir`.
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
     - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
@@ -51,7 +57,7 @@ LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and 
 - **Positional arguments**. For a few input files.
 - A **file list** via the flag `-X/--infile-list`  with one file per line.
   It can be STDIN (`-`), e.g., you can filter a file list and pass it to `lexicmap index`.
-  The flag `-S/--skip-file-check` is optional for skiping input file checking if you believe these files do exist.
+  *The flag `-S/--skip-file-check` is optional for skiping input file checking if you believe these files do exist*.
 - A **directory** containing input files via the flag `-I/--in-dir`.
     - Multiple-level directories are supported.
     - Directory and file symlinks are followed.

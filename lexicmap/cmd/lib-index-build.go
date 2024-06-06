@@ -555,7 +555,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							continue
 						}
 						_end = len(*knl) - 2
-						for _j = 0; _j <= _end; _j++ {
+						for _j = 0; _j <= _end; _j += 2 {
 							kmer = (*knl)[_j]
 							if values, ok = (*data)[kmer]; !ok {
 								values = &[]uint64{}
@@ -841,7 +841,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					continue
 				}
 
-				// there's a really big gap in it, it might be the interver between contigs or a assembly gap
+				// there's a really big gap in it, it might be the interval between contigs or a assembly gap
 				if float64(lengthAAs(refseq.Seq[pre:pos]))/float64(d) >= 0.7 {
 					pre = pos
 					continue
@@ -955,8 +955,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						hashMin = math.MaxUint64
 						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-							hash = kmer ^ (*_kmers)[_im]
-							// hash = kmer ^ lh.Masks[_im] // both are OK
+							// hash = kmer ^ (*_kmers)[_im]
+							hash = kmer ^ lh.Masks[_im] // both are OK
 							if hash < hashMin {
 								_imMostSimilar = _im
 							}
@@ -970,6 +970,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						}
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
+
+						fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 
@@ -1016,8 +1018,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
 
 							// both are OK
-							hash = kmer ^ (*_kmers)[_im] // find the mask which capture the most similar k-mer with current one
-							// hash = kmer ^ lh.Masks[_im] // find the mask which will capture current one
+							// hash = kmer ^ (*_kmers)[_im] // find the mask which capture the most similar k-mer with current one
+							hash = kmer ^ lh.Masks[_im] // find the mask which will capture current one
 							if hash < hashMin {
 								_imMostSimilar = _im
 							}
@@ -1031,6 +1033,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						}
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
+
+						fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 
