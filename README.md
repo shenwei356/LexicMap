@@ -50,7 +50,7 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
 
 
     # Extracting similar sequences for a query gene.
-      # search matches with query cover >= 90%
+      # search matches with query coverage >= 90%
       lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --all -o results.tsv \
           --min-qcov-per-hsp 90
 

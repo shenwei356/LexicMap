@@ -169,7 +169,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 - Extracting similar sequences for a query gene.
 
-      # search matches with query cover >= 90%
+      # search matches with query coverage >= 90%
       lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
 
       # extract matched sequences as FASTA format
