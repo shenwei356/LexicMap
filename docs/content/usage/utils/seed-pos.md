@@ -86,7 +86,7 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
         15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
         ref               pos       strand   distance
         ---------------   -------   ------   --------
@@ -168,7 +168,7 @@ Global Flags:
 
     Plot the histograms of distances between seeds for all genomes.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
+        $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance --force
         processed files:  15 / 15 [======================================] ETA: 0s. done
         11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
         11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance
