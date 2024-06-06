@@ -812,7 +812,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var iter *iterator.Iterator
 			var p, kmer, kmerRC, kmerPos uint64
 			var ok bool
-			shiftOffset := ((k - opt.Prefix) << 1)
+			shiftOffset := (k - prefixLenForMasks(opt.Masks)) << 1
 			var _j, posOfPre, posOfCur, _start, _end int
 
 			// a list of (prefix1, kmer, prefixRC, kmerRC)
@@ -971,7 +971,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
 
-						fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 
@@ -1034,7 +1034,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
 
-						fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 

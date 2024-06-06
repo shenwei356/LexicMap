@@ -365,7 +365,7 @@ Important parameters:
 				log.Infof("number of masks: %d", nMasks)
 				log.Infof("rand seed: %d", seed)
 				log.Infof("maximum sketching desert length: %d", maxDesert)
-				log.Infof("prefix length for checking low-complexity and choosing k-mers to fill sketching deserts: %d", minPrefix)
+				log.Infof("prefix length for checking low-complexity in mask generation: %d", minPrefix)
 				log.Infof("distance of k-mers to fill deserts: %d", seedInDesertDist)
 				log.Infof("")
 				// log.Infof("top N genomes for generating mask: %d", topN)

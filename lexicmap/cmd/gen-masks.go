@@ -1181,3 +1181,12 @@ type Kmer2Locs [][2]uint64
 func (h Kmer2Locs) Len() int           { return len(h) }
 func (h Kmer2Locs) Less(i, j int) bool { return h[i][0] < h[j][0] }
 func (h Kmer2Locs) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func prefixLenForMasks(n int) int {
+	lenPrefix := 1
+	for 1<<(lenPrefix<<1) <= n {
+		lenPrefix++
+	}
+	lenPrefix--
+	return lenPrefix
+}
