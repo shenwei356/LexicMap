@@ -203,8 +203,13 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		m, mj = float64(a.Len), i
 		// (*scores)[k] = m
 
-		for _b = 1; _b <= band; _b++ { // check previous $band seeds
-			j = i - _b // index of the previous seed
+		// this old one can't handle some frequent k-mers properly, which have many hits in other place.
+		// for _b = 1; _b <= band; _b++ { // check previous $band seeds
+		j = i
+		_b = 0
+		// fmt.Printf("i: %d, %s\n", i, a.String())
+		for {
+			j--
 			if j < 0 {
 				break
 			}
@@ -212,8 +217,16 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			b = (*subs)[j] // previous seed/anchor
 			// k++            // index of previous seed in the score matrix
 
-			if b.TBegin > a.TBegin { // filter out messed/crossed anchors
+			// no need to compare
+			// filter out messed/crossed anchors
+			if b.QBegin == a.QBegin || b.TBegin > a.TBegin {
 				continue
+			}
+
+			_b++
+			// fmt.Printf("  b: %d, j: %d, %s\n", _b, j, b.String())
+			if _b > band {
+				break
 			}
 
 			// d = distance2(a, b) + float64(b.Len)
