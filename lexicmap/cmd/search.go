@@ -136,7 +136,7 @@ Output format:
 			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
-		maxAllgnMismatch := getFlagPositiveInt(cmd, "align-max-kmer-dist")
+		// maxAlignMismatch := getFlagPositiveInt(cmd, "align-max-kmer-dist")
 		alignBand := getFlagPositiveInt(cmd, "align-band")
 		if alignBand < 32 {
 			checkError(fmt.Errorf("the value of flag --align-band should not be < 32"))
@@ -368,7 +368,7 @@ Output format:
 				MinAlignLen: minAlignLen,
 				MinIdentity: minIdent,
 				// can not be < k
-				MaxDistance: maxAllgnMismatch,
+				// MaxDistance: maxAlignMismatch,
 				// can not be two small
 				Band: alignBand,
 			},
@@ -491,8 +491,8 @@ func init() {
 
 	mapCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
-	mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
-		formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
+	// mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
+	// 	formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
 	mapCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseduo alignment phase).`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,

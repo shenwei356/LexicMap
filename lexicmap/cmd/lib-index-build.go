@@ -824,7 +824,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var hash, hashMin uint64
 			var knl *[]uint64
 
-			var lenPrefixSuffix uint8 = 1 // that means the firt n base can't be As, just in case.
+			var lenPrefixSuffix uint8 = 3 // that means the firt n base can't be As, just in case.
 			ttt := uint64((1 << (lenPrefixSuffix << 1)) - 1)
 
 			extraLocs := poolInts.Get().(*[]int) // extra positions

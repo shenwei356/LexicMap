@@ -42,6 +42,12 @@ to ouput aligned query and subject sequences.
 19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
 ```
 
+### What is not the pident 100% when aligning with a sequence from the reference genomes?
+
+It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
+In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
+While for the query sequences, we don't convert them.
+
 
 ### Why is LexicMap slow for batch searching?
 

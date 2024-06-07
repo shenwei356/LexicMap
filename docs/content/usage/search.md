@@ -49,8 +49,6 @@ Flags:
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
                                        extracting query and target sequences for alignment. (default 2000)
       --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
-      --align-max-kmer-dist int        ► Maximum distance of (>=11bp) k-mers in a HSP segment.
-                                       (default 100)
   -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
   -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 50)
   -a, --all                            ► Output more columns, e.g., matched sequences.

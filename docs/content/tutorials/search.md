@@ -80,11 +80,11 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< tab "General" >}}
 
-|Flag                       |Value               |Function                                              |Comment                                                                |
-|:--------------------------|:-------------------|:-----------------------------------------------------|:----------------------------------------------------------------------|
-|**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search|Use this if the index is not big and many queries are needed to search.|
-|**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query                 |                                                                       |
-|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.         |                                                                       |
+|Flag                       |Value               |Function                                                   |Comment                                                                                                                                          |
+|:--------------------------|:-------------------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                          |
+|**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query in the chaining phase|The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
+|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |                                                                   |
 
 {{< /tab>}}
 
@@ -110,8 +110,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-i/--align-min-match-pident`**|Default 50  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
 |`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                       |       |
 |`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.|       |
-|`--align-max-gap`                |Default 50  |Maximum gap in a HSP segment.                                                                                     |       |
-|`--align-max-mismatch`           |Default 50  |Maximum mismatch in a HSP segment.                                                                                |       |
+|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                     |       |
 
 
 {{< /tab>}}

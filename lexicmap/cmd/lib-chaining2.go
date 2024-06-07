@@ -188,11 +188,12 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 
 	// compute scores
-	var s, m, M, d, g float64
+	var s, m, M, g float64
+	// var d float64
 	var mj, Mi int
 	var a, b *SubstrPair
 	maxGap := float64(ce.options.MaxGap)
-	maxDistance := float64(ce.options.MaxDistance)
+	// maxDistance := float64(ce.options.MaxDistance)
 	// (*scores)[0] = (*subs)[0].Len
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor
@@ -215,10 +216,10 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 				continue
 			}
 
-			d = distance2(a, b) + float64(b.Len)
-			if d > maxDistance { // limit the distance. necessary?
-				continue
-			}
+			// d = distance2(a, b) + float64(b.Len)
+			// if d > maxDistance { // can't do this
+			// 	continue
+			// }
 
 			g = gap2(a, b)
 			if g > maxGap { // limit the gap. necessary?
@@ -245,7 +246,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		}
 	}
 
-	// fmt.Printf("M: %d, Mi: %d\n", M, Mi)
+	// fmt.Printf("M: %f, Mi: %d\n", M, Mi)
 
 	// // print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
@@ -330,7 +331,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	} else {
 		Mi = Mi0
 	}
-	// fmt.Printf("  Mi: %d, M: %d\n", Mi, M)
+	// fmt.Printf("  Mi: %d, M: %f\n", Mi, M)
 
 	var nMatchedBases int
 	var nAlignedBasesQ, nAlignedBasesT int
