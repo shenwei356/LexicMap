@@ -8,6 +8,7 @@
     - Fix a bug in indexing small genomes.
 - `lexicmap search`:
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
+    - Fix chaining for highly-repetitive regions.
     - Fix alignment against genomes with many short contigs.
     - Out format:
         - Cluster alignments of each target sequence.

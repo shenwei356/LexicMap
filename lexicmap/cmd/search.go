@@ -181,8 +181,12 @@ Output format:
 		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
 
 		if outputLog {
-			if len(files) == 1 && isStdin(files[0]) {
-				log.Info("  no files given, reading from stdin")
+			if len(files) == 1 {
+				if isStdin(files[0]) {
+					log.Info("  no files given, reading from stdin")
+				} else {
+					log.Infof("  %d input file given: %s", len(files), files[0])
+				}
 			} else {
 				log.Infof("  %d input file(s) given", len(files))
 			}

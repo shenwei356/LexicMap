@@ -233,13 +233,12 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			if (*visited)[j] {      // current anchor is abandoned
 				if len(*path) > 0 {
-					// // but don't forget already added path
-					// reverseInts(*path)
-					// *paths = append(*paths, path)
-					// // fmt.Printf("stop at %d, %s\n", i, (*subs)[i])
+					// but don't forget already added path
+					reverseInts(*path)
+					*paths = append(*paths, path)
+					// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
-					// path = poolChain.Get().(*[]int)
-					// *path = (*path)[:0]
+					path = poolChain.Get().(*[]int)
 					*path = (*path)[:0]
 				}
 				(*visited)[i] = true // do not check it again
@@ -261,7 +260,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			} else { // the path starts here
 				reverseInts(*path)
 				*paths = append(*paths, path)
-				// fmt.Printf("stop at %d, %s\n", i, (*subs)[i])
+				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
 				path = poolChain.Get().(*[]int)
 				*path = (*path)[:0]

@@ -26,7 +26,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -809,19 +808,18 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			lenSeq := len(refseq.Seq)
 			var start, end int
+			var _kmers2 *[]uint64
+			var _locses2 *[][]int
+			var _i int
+			kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
+			kmerList := poolKmerKmerRC.Get().(*[]uint64)
+
 			var iter *iterator.Iterator
-			var p, kmer, kmerRC, kmerPos uint64
+			var kmer, kmerRC, kmerPos uint64
 			var ok bool
-			shiftOffset := (k - prefixLenForMasks(opt.Masks)) << 1
 			var _j, posOfPre, posOfCur, _start, _end int
 
-			// a list of (prefix1, kmer, prefixRC, kmerRC)
-			p2ks := poolPrefix2Kmers.Get().(*[]*[4]uint64)
-			counter := poolPrefxCounter.Get().(*map[uint64]uint32)
-			var p2k *[4]uint64
-			var maskList *[]int
-			var _im, _imMostSimilar int
-			var hash, hashMin uint64
+			var _im int
 			var knl *[]uint64
 
 			var lenPrefixSuffix uint8 = 3 // that means the firt n base can't be As, just in case.
@@ -829,9 +827,6 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
-
-			var freq0, freq uint32
-			freq0 = 1
 
 			pre = 0
 			var iD int
@@ -875,51 +870,33 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				// ----o-----[-o-----o------------------o---o--]----o-------
 				//           0123    posOfPre           posOfCur
 
-				// count k-mers and their prefixes.
+				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
+
+				// iterate k-mers
 				iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
 				if err != nil {
 					checkError(err)
 				}
 
-				// recycle p2k, and reset p2ks
-				for _, p2k = range *p2ks {
-					poolPrefix2Kmer.Put(p2k)
-				}
-				*p2ks = (*p2ks)[:0]
-
-				// clear counter
-				clear(*counter)
-
+				*kmerList = (*kmerList)[:0]
 				for {
 					kmer, kmerRC, ok, _ = iter.NextKmer()
 					if !ok {
 						break
 					}
-
-					p2k = poolPrefix2Kmer.Get().(*[4]uint64)
-
-					p = kmer >> shiftOffset
-					(*p2k)[0] = p
-					(*p2k)[1] = kmer
-					(*counter)[p]++
-
-					p = kmerRC >> shiftOffset
-					(*p2k)[2] = p
-					(*p2k)[3] = kmerRC
-					(*counter)[p]++
-
-					*p2ks = append(*p2ks, p2k)
+					*kmerList = append(*kmerList, kmer)
+					*kmerList = append(*kmerList, kmerRC)
 				}
 
-				// first, we will find k-mer with a uniq prefix,
-				// but for some region with short-repeative sequence, it might fail to find uniq prefix.
-				// so we increase the frequency
-				freq = freq0
-
-			TRYAGAIN:
-				// fmt.Printf("  list size： %d\n", len(*p2ks))
-
-				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
+				// masks this region, just treat it as a query sequence
+				_kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
+				clear(*kmer2maskidx)
+				for _i, kmer = range *_kmers2 {
+					// mulitple masks probably capture more than one k-mer in such a short sequence,
+					// we just record the last mask.
+					(*kmer2maskidx)[kmer] = _i
+				}
+				lh.RecycleMaskResult(_kmers2, _locses2)
 
 				// start from the previous seed
 				_j = posOfPre + seedDist
@@ -937,54 +914,43 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					ok = false
 					for ; _j > _end; _j-- {
 						// fmt.Printf("    test u %d\n", _j)
-						p2k = (*p2ks)[_j]
 
 						// strand +
-						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == freq &&
+						kmer = (*kmerList)[_j<<1]
+						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							kmerPos = uint64(start+_j) << 1
-							ok = true
-							break
+							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								kmerPos = uint64(start+_j) << 1
+								break
+							}
 						}
 
 						// strand -
-						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == freq &&
-							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							kmerPos = uint64(start+_j)<<1 | 1
-							ok = true
-							break
+						kmer = (*kmerList)[(_j<<1)+1]
+						if kmer != 0 &&
+							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								kmerPos = uint64(start+_j)<<1 | 1
+								break
+							}
 						}
 					}
 					if ok {
 						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
-						maskList = lh.MaskKmer(kmer)
 
-						hashMin = math.MaxUint64
-						for _, _im = range *maskList { // find the mask which capture the most similar k-mer with current one
-							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-							// hash = kmer ^ (*_kmers)[_im]
-							hash = kmer ^ lh.Masks[_im] // both are OK
-							if hash < hashMin {
-								_imMostSimilar = _im
-							}
-						}
-
-						knl = (*extraKmers)[_imMostSimilar]
+						knl = (*extraKmers)[_im]
 						if knl == nil {
 							knl = poolKmerAndLocs.Get().(*[]uint64)
 							*knl = (*knl)[:0]
-							(*extraKmers)[_imMostSimilar] = knl
+							(*extraKmers)[_im] = knl
 						}
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
 
-						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 
-						lh.RecycleMaskKmerResult(maskList)
 						_j += seedDist
 						continue
 					}
@@ -992,6 +958,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					if _start >= posOfCur {
 						break
 					}
+
 					// downstream scan range: _j+1, _j+seedpoR
 					_end = _start + seedPosR
 					if _end >= posOfCur {
@@ -999,71 +966,49 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					}
 					for _j = _start; _j < _end; _j++ {
 						// fmt.Printf("    test d %d\n", _j)
-						p2k = (*p2ks)[_j]
 
-						p, kmer = (*p2k)[0], (*p2k)[1]
-						if kmer != 0 && (*counter)[p] == freq &&
+						// strand +
+						kmer = (*kmerList)[_j<<1]
+						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							kmerPos = uint64(start+_j) << 1
-							ok = true
-							break
+							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								kmerPos = uint64(start+_j) << 1
+								break
+							}
 						}
 
 						// strand -
-						p, kmer = (*p2k)[2], (*p2k)[3]
-						if kmer != 0 && (*counter)[p] == freq &&
-							!util.MustKmerHasSuffix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							kmerPos = uint64(start+_j)<<1 | 1
-							ok = true
-							break
+						kmer = (*kmerList)[(_j<<1)+1]
+						if kmer != 0 &&
+							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								kmerPos = uint64(start+_j)<<1 | 1
+								break
+							}
 						}
 					}
 					if ok {
 						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
-						maskList = lh.MaskKmer(kmer)
-
-						hashMin = math.MaxUint64
-						for _, _im = range *maskList {
-							// fmt.Printf("     to %s\n", kmers.MustDecode((*_kmers)[_im], k))
-
-							// both are OK
-							// hash = kmer ^ (*_kmers)[_im] // find the mask which capture the most similar k-mer with current one
-							hash = kmer ^ lh.Masks[_im] // find the mask which will capture current one
-							if hash < hashMin {
-								_imMostSimilar = _im
-							}
-						}
-
-						knl = (*extraKmers)[_imMostSimilar]
+						knl = (*extraKmers)[_im]
 						if knl == nil {
 							knl = poolKmerAndLocs.Get().(*[]uint64)
 							*knl = (*knl)[:0]
-							(*extraKmers)[_imMostSimilar] = knl
+							(*extraKmers)[_im] = knl
 						}
 						*knl = append(*knl, kmer)
 						*knl = append(*knl, kmerPos)
 
-						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _imMostSimilar+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
 
 						*extraLocs = append(*extraLocs, int(kmerPos))
 
-						lh.RecycleMaskKmerResult(maskList)
 						_j += seedDist
 						continue
 					}
 
-					if freq <= 10 { // try more times for highly-repetitive regions.
-						freq++
-
-						goto TRYAGAIN
-					}
-
-					// how about mask this region and choose some masked k-mers?
-					// there's no need to count prefix frequency, just add masked k-mer to one of the mask.
-					// for each mask, we have k-mer -> [pos].
-					// mask -> 1 (kmer, [pos]), but a k-mer might match multiple masks.
-					// create a map: kmer -> keep one mask idx
-					// for a candidate(kmer, pos), save it to k-mer -> mask idx
+					// it might fail to fill current region of the desert.
+					//   1. there's a gap here.
+					//   2. it's the interval region between two contigs.
 
 					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 					// 	iD, pre, pos, d, start, end, end-start+1)
@@ -1121,8 +1066,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 
 			poolInts.Put(extraLocs)
-			poolPrefix2Kmers.Put(p2ks)
-			poolPrefxCounter.Put(counter)
+
+			poolKmerKmerRC.Put(kmerList)
+			poolKmer2MaskIdx.Put(kmer2maskidx)
 
 			if skipRegions != nil {
 				poolSkipRegions.Put(skipRegions)
@@ -1399,6 +1345,17 @@ var poolPrefix2Kmer = &sync.Pool{New: func() interface{} {
 
 var poolPrefxCounter = &sync.Pool{New: func() interface{} {
 	tmp := make(map[uint64]uint32)
+	return &tmp
+}}
+
+var poolKmer2MaskIdx = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]int, 1024)
+	return &tmp
+}}
+
+// kmer, kmerRC
+var poolKmerKmerRC = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint64, 1024)
 	return &tmp
 }}
 
