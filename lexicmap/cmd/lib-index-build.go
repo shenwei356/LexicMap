@@ -810,8 +810,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var start, end int
 			var _kmers2 *[]uint64
 			var _locses2 *[][]int
+			var _locs []int
 			var _i int
-			kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
+			// kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
+			loc2maskidx := poolLoc2MaskIdx.Get().(*[]int)
+			loc2maskidxRC := poolLoc2MaskIdx.Get().(*[]int)
 			kmerList := poolKmerKmerRC.Get().(*[]uint64)
 
 			var iter *iterator.Iterator
@@ -890,12 +893,30 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 				// masks this region, just treat it as a query sequence
 				_kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
-				clear(*kmer2maskidx)
-				for _i, kmer = range *_kmers2 {
-					// mulitple masks probably capture more than one k-mer in such a short sequence,
-					// we just record the last mask.
-					(*kmer2maskidx)[kmer] = _i
+
+				// clear(*kmer2maskidx)
+				// for _i, kmer = range *_kmers2 {
+				// 	// mulitple masks probably capture more than one k-mer in such a short sequence,
+				// 	// we just record the last mask.
+				// 	(*kmer2maskidx)[kmer] = _i
+				// }
+
+				*loc2maskidx = (*loc2maskidx)[:0]
+				*loc2maskidxRC = (*loc2maskidxRC)[:0]
+				for _i = start; _i < end; _i++ {
+					*loc2maskidx = append(*loc2maskidx, -1)
+					*loc2maskidxRC = append(*loc2maskidxRC, -1)
 				}
+				for _i, _locs = range *_locses2 {
+					for _, loc = range _locs {
+						if loc&1 == 0 {
+							(*loc2maskidx)[loc>>1] = _i
+						} else {
+							(*loc2maskidxRC)[loc>>1] = _i
+						}
+					}
+				}
+
 				lh.RecycleMaskResult(_kmers2, _locses2)
 
 				// start from the previous seed
@@ -919,8 +940,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// 	kmerPos = uint64(start+_j) << 1
+							// 	break
+							// }
+							_im = (*loc2maskidx)[_j]
+							if _im >= 0 {
 								kmerPos = uint64(start+_j) << 1
+								ok = true
 								break
 							}
 						}
@@ -929,8 +956,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						kmer = (*kmerList)[(_j<<1)+1]
 						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// 	kmerPos = uint64(start+_j)<<1 | 1
+							// 	break
+							// }
+							_im = (*loc2maskidxRC)[_j]
+							if _im >= 0 {
 								kmerPos = uint64(start+_j)<<1 | 1
+								ok = true
 								break
 							}
 						}
@@ -971,8 +1004,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// 	kmerPos = uint64(start+_j) << 1
+							// 	break
+							// }
+							_im = (*loc2maskidx)[_j]
+							if _im >= 0 {
 								kmerPos = uint64(start+_j) << 1
+								ok = true
 								break
 							}
 						}
@@ -981,8 +1020,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						kmer = (*kmerList)[(_j<<1)+1]
 						if kmer != 0 &&
 							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
-							if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+							// 	kmerPos = uint64(start+_j)<<1 | 1
+							// 	break
+							// }
+							_im = (*loc2maskidxRC)[_j]
+							if _im >= 0 {
 								kmerPos = uint64(start+_j)<<1 | 1
+								ok = true
 								break
 							}
 						}
@@ -1068,7 +1113,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			poolInts.Put(extraLocs)
 
 			poolKmerKmerRC.Put(kmerList)
-			poolKmer2MaskIdx.Put(kmer2maskidx)
+			// poolKmer2MaskIdx.Put(kmer2maskidx)
+			poolLoc2MaskIdx.Put(loc2maskidx)
+			poolLoc2MaskIdx.Put(loc2maskidxRC)
 
 			if skipRegions != nil {
 				poolSkipRegions.Put(skipRegions)
@@ -1350,6 +1397,11 @@ var poolPrefxCounter = &sync.Pool{New: func() interface{} {
 
 var poolKmer2MaskIdx = &sync.Pool{New: func() interface{} {
 	tmp := make(map[uint64]int, 1024)
+	return &tmp
+}}
+
+var poolLoc2MaskIdx = &sync.Pool{New: func() interface{} {
+	tmp := make([]int, 1024)
 	return &tmp
 }}
 

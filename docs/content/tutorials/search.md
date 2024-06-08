@@ -108,7 +108,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                      |       |
 |**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                          |       |
 |**`-i/--align-min-match-pident`**|Default 50  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
-|`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                       |       |
+|`--align-band`                   |Default 50  |Band size in backtracking the score matrix.                                                                       |       |
 |`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.|       |
 |`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                     |       |
 

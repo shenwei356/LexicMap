@@ -150,21 +150,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   45737
-        GCF_002950215.1   43617
-        GCF_002949675.1   43469
+        GCF_000017205.1   45745
+        GCF_002950215.1   43615
+        GCF_002949675.1   43474
         GCF_001457655.1   42112
         GCF_006742205.1   42102
         GCF_900638025.1   42008
         GCF_001027105.1   41855
-        GCF_000742135.1   41419
-        GCF_000392875.1   41391
-        GCF_003697165.2   41194
-        GCF_009759685.1   41137
-        GCF_000006945.2   41114
+        GCF_000742135.1   41423
+        GCF_000392875.1   41390
+        GCF_003697165.2   41201
+        GCF_009759685.1   41160
+        GCF_000006945.2   41115
         GCF_000148585.2   41075
-        GCF_001096185.1   40233
-        GCF_001544255.1   40165
+        GCF_001096185.1   40238
+        GCF_001544255.1   40187
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -185,7 +185,7 @@ Global Flags:
     $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 80
     ref               pos       strand   distance   pre_pos   len_aaa   seq
     ---------------   -------   ------   --------   -------   -------   --------------------------------------------------------------------------------
-    GCF_000392875.1   503031    +        1161       501869    1116      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    GCF_000392875.1   502996    -        1126       501869    1089      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -199,7 +199,7 @@ Global Flags:
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGGTGTCAT
+                                                                        AAAAAA
     GCF_000392875.1   2640078   +        1344       2638733   1150      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGCTCCTTTTTATTTTCCCCACTATTTTTCAAT
                                                                         GTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA

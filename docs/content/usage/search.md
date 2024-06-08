@@ -45,7 +45,7 @@ Usage:
 
 Flags:
       --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
-                                       phase). (default 100)
+                                       phase). (default 50)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
                                        extracting query and target sequences for alignment. (default 2000)
       --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
