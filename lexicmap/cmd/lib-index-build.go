@@ -1058,6 +1058,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						goto TRYAGAIN
 					}
 
+					// how about mask this region and choose some masked k-mers?
+					// there's no need to count prefix frequency, just add masked k-mer to one of the mask.
+					// for each mask, we have k-mer -> [pos].
+					// mask -> 1 (kmer, [pos]), but a k-mer might match multiple masks.
+					// create a map: kmer -> keep one mask idx
+					// for a candidate(kmer, pos), save it to k-mer -> mask idx
+
 					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 					// 	iD, pre, pos, d, start, end, end-start+1)
 
