@@ -59,7 +59,7 @@ Flags:
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --pseudo-align                   ► Only perform pseudo alignment (only for debugging)
+      --pseudo-align                   ► Only perform pseudo alignment
       --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
       --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
   -m, --seed-max-mismatch int          ► Maximum mismatch between non-prefix regions of shared

@@ -25,7 +25,7 @@ For index building. See details [hardware requirement](https://bioinf.shenwei.me
 
 For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 - More CPUs would accelerate searching.
-- The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking, and the distance between query and target sequences.
+- The memory occupation mainly depends on the length of queries, the number of hits, and the distance between query and target sequences.
 
 ### Can I extract the matched sequences?
 
@@ -45,7 +45,7 @@ to ouput aligned query and subject sequences.
 ### What is not the pident 100% when aligning with a sequence from the reference genomes?
 
 It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
-In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
+In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., `N` is converted to `A`.
 While for the query sequences, we don't convert them.
 
 
@@ -57,4 +57,8 @@ While for the query sequences, we don't convert them.
 faster search.
     - For example, for ~85,000 GTDB representative genomes, searching on an index built with
 20,000 masks, the memory would be ~100 GB with default parameters.
-    -  {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
+- `lexicmap search` also has a flag `--pseudo-align` to only perform pseudo alignment, which is faster and uses less memory.
+It can be used insearching with long and divergent query sequences like nanopore long-reads.
+
+{{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
+

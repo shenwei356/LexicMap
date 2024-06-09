@@ -490,7 +490,7 @@ func init() {
 
 	// pseudo alignment
 	mapCmd.Flags().BoolP("pseudo-align", "", false,
-		formatFlagUsage(`Only perform pseudo alignment (only for debugging)`))
+		formatFlagUsage(`Only perform pseudo alignment`))
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))

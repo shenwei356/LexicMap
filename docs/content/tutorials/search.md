@@ -45,6 +45,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - More RAM (> 16 GB) is preferred. The memory usage in searching is mainly related to:
         - The number of matched genomes and sequences.
         - The length of query sequences.
+        - The distance between query and target sequences.
 - **Disk**
     - Sufficient space is required to store the index size.
     - No temporary files are generated during searching.
