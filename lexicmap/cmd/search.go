@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -150,9 +151,10 @@ Output format:
 		// 	log.Warningf("the value of flag -Q/--min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
 		// }
 		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
-		if minIdent > 100 {
-			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [0, 100]", minIdent))
+		if minIdent < 60 || minIdent > 100 {
+			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [60, 100]", minIdent))
 		}
+
 		// } else if minIdent < 1 {
 		// 	log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
 		// }
@@ -408,7 +410,7 @@ Output format:
 				wg.Add(1)
 
 				query.seqID = append(query.seqID, record.ID...)
-				query.seq = append(query.seq, record.Seq.Seq...)
+				query.seq = append(query.seq, bytes.ToUpper(record.Seq.Seq)...)
 
 				go func(query *Query) {
 					defer func() {
@@ -488,7 +490,7 @@ func init() {
 
 	// pseudo alignment
 	mapCmd.Flags().BoolP("pseudo-align", "", false,
-		formatFlagUsage(`Only perform pseudo alignment`))
+		formatFlagUsage(`Only perform pseudo alignment (only for debugging)`))
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))
@@ -504,7 +506,7 @@ func init() {
 
 	// general filtering thresholds
 
-	mapCmd.Flags().Float64P("align-min-match-pident", "i", 50,
+	mapCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
 	mapCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,

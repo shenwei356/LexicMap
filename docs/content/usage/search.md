@@ -50,7 +50,7 @@ Flags:
                                        extracting query and target sequences for alignment. (default 2000)
       --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
   -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
-  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 50)
+  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
   -a, --all                            ► Output more columns, e.g., matched sequences.
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
@@ -59,7 +59,7 @@ Flags:
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --pseudo-align                   ► Only perform pseudo alignment
+      --pseudo-align                   ► Only perform pseudo alignment (only for debugging)
       --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
       --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
   -m, --seed-max-mismatch int          ► Maximum mismatch between non-prefix regions of shared
