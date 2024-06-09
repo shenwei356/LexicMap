@@ -65,7 +65,7 @@ lexicmap index -X files.txt -O db." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.txt -O db.",
-      "wordCount" : "2270",
+      "wordCount" : "2319",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -113,12 +113,12 @@ lexicmap index -X files.txt -O db." />
 
 <link
   rel="preload"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   as="style"
 />
 <link
   rel="stylesheet"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   media="all"
 />
 
@@ -1501,6 +1501,18 @@ LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and 
 <li><strong>Genome ID</strong>: they should be distinct for accurate result interpretation, which will be shown in the search result.</li>
 <li>File extention: a regular expression set by the flag <code>-N/--ref-name-regexp</code> is used to extract genome IDs from the file name.
 The default value supports common sequence file extentions, including <code>.fa</code>, <code>.fasta</code>, <code>.fna</code>, <code>.fa.gz</code>, <code>.fasta.gz</code>, and <code>.fna.gz</code>.</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/brename"
+>brename</a> can help to batch rename files safely.</li>
+<li>If you don&rsquo;t want to change the original file names, you can
+<ol>
+<li>Create and change to a new directory.</li>
+<li>Create symbolic links (<code>ln -s</code>) for all genome files.</li>
+<li>Batch rename all the symbolic links with brename.</li>
+<li>Use this directory as input via the flag <code>-I/--in-dir</code>.</li>
+</ol>
+</li>
 </ul>
 </li>
 <li><strong>Sequences</strong>:
@@ -1527,7 +1539,7 @@ via the flag <code>-G/--big-genomes</code>.</li>
 <li><strong>Positional arguments</strong>. For a few input files.</li>
 <li>A <strong>file list</strong> via the flag <code>-X/--infile-list</code>  with one file per line.
 It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it to <code>lexicmap index</code>.
-The flag <code>-S/--skip-file-check</code> is optional for skiping input file checking if you believe these files do exist.</li>
+<em>The flag <code>-S/--skip-file-check</code> is optional for skiping input file checking if you believe these files do exist</em>.</li>
 <li>A <strong>directory</strong> containing input files via the flag <code>-I/--in-dir</code>.
 <ul>
 <li>Multiple-level directories are supported.</li>
@@ -1846,11 +1858,11 @@ merging them and writting to a new file.</li>
 </ol>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="4aa51d0a-3">
+  <label class="gdoc-expand__head flex justify-between" for="6f511fee-3">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="4aa51d0a-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="6f511fee-3" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code># here we set a small --batch-size 5
 $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
@@ -1874,7 +1886,7 @@ $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
 20:24:16.138 [INFO] number of masks: 40000
 20:24:16.138 [INFO] rand seed: 1
 20:24:16.138 [INFO] maximum sketching desert length: 900
-20:24:16.138 [INFO] prefix length for checking low-complexity and choosing k-mers to fill sketching deserts: 15
+20:24:16.138 [INFO] prefix length for checking low-complexity in mask generation: 15
 20:24:16.138 [INFO] distance of k-mers to fill deserts: 200
 20:24:16.139 [INFO]
 20:24:16.139 [INFO]
@@ -2896,7 +2908,7 @@ genbank_refseq.lmi: 2.90 TB
     </div>
 
     
-  <script defer src="/LexicMap/js/search-95c697e2.bundle.min.js"></script>
+  <script defer src="/LexicMap/js/search-49cf88d4.bundle.min.js"></script>
 
   </body>
 </html>

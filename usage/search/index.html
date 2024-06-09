@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID.",
-      "wordCount" : "531",
+      "wordCount" : "520",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -107,12 +107,12 @@
 
 <link
   rel="preload"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   as="style"
 />
 <link
   rel="stylesheet"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   media="all"
 />
 
@@ -1450,14 +1450,12 @@
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">      --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
-</span></span><span class="line"><span class="cl">                                       phase). (default 100)
+</span></span><span class="line"><span class="cl">                                       phase). (default 50)
 </span></span><span class="line"><span class="cl">      --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
 </span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment. (default 2000)
 </span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
-</span></span><span class="line"><span class="cl">      --align-max-kmer-dist int        ► Maximum distance of (&gt;=11bp) k-mers in a HSP segment.
-</span></span><span class="line"><span class="cl">                                       (default 100)
 </span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
-</span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 50)
+</span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
 </span></span><span class="line"><span class="cl">  -a, --all                            ► Output more columns, e.g., matched sequences.
 </span></span><span class="line"><span class="cl">  -h, --help                           help for search
 </span></span><span class="line"><span class="cl">  -d, --index string                   ► Index directory created by &#34;lexicmap index&#34;.
@@ -1466,7 +1464,7 @@
 </span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
 </span></span><span class="line"><span class="cl">  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
 </span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
-</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment
+</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment (only for debugging)
 </span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
 </span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
 </span></span><span class="line"><span class="cl">  -m, --seed-max-mismatch int          ► Maximum mismatch between non-prefix regions of shared
@@ -2303,7 +2301,7 @@
     </div>
 
     
-  <script defer src="/LexicMap/js/search-95c697e2.bundle.min.js"></script>
+  <script defer src="/LexicMap/js/search-49cf88d4.bundle.min.js"></script>
 
   </body>
 </html>

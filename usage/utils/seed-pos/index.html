@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/",
       "headline": "seed-pos",
       "description": "Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027. 2. A distance between seeds (column distance) with a value of \u0022-1\u0022 means it\u0027s the first seed in that sequence, and the distance can\u0027t be computed currently.",
-      "wordCount" : "939",
+      "wordCount" : "1036",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -107,12 +107,12 @@
 
 <link
   rel="preload"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   as="style"
 />
 <link
   rel="stylesheet"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   media="all"
 />
 
@@ -1512,20 +1512,20 @@
  GCF_000017205.1   269   -        84
 </code></pre>
 <p>Or only list records with seed distance longer than a threshold.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 1000 | csvtk pretty -t
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
+ 15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
  ref               pos       strand   distance
  ---------------   -------   ------   --------
- GCF_000017205.1   5430137   -        1235
+ GCF_000017205.1   30713     -        850
 </code></pre>
 <p>Check the biggest seed distances.</p>
 <pre><code> $ csvtk freq -t -f distance seed_distance.tsv \
      | csvtk sort -t -k distance:nr \
-     | head -n 20 \
+     | head -n 10 \
      | csvtk pretty -t
 
  distance   frequency
  --------   ---------
- 1235       1
  899        2
  898        4
  897        1
@@ -1535,15 +1535,6 @@
  893        3
  892        4
  891        2
- 890        2
- 889        2
- 888        3
- 887        4
- 886        7
- 885        2
- 884        5
- 883        2
- 881        6
 </code></pre>
 <p>Plot the histogram of distances between seeds.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
@@ -1562,11 +1553,12 @@
  GCF_000017205.1   45    +        4          40        1         TCAA
 </code></pre>
 <p>Or only list records with seed distance longer than a threshold.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 1000 \
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 890 \
+     | head -n 2 \
      | csvtk pretty -t -W 50 --clip
- ref               pos       strand   distance   pre_pos   len_aaa   seq
- ---------------   -------   ------   --------   -------   -------   --------------------------------------------------
- GCF_000017205.1   5430137   -        1235       5428901   4         CATCGGCGATCACGTTCAGCAGCGCCTTGGTGATGGTCAGGTTGTTG...
+ ref               pos      strand   distance   pre_pos   len_aaa   seq
+ ---------------   ------   ------   --------   -------   -------   --------------------------------------------------
+ GCF_000017205.1   152018   -        892        151125    21        CGCGGCCCAGCCATGCCTACTGGGACCTCTCGCCGGGGATCGATTTC...
 </code></pre>
 </li>
 <li>
@@ -1578,24 +1570,24 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
 <pre><code> $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
  ref               frequency
  ---------------   ---------
- GCF_000017205.1   45711
- GCF_002950215.1   43617
- GCF_002949675.1   43415
+ GCF_000017205.1   45745
+ GCF_002950215.1   43615
+ GCF_002949675.1   43474
  GCF_001457655.1   42112
  GCF_006742205.1   42102
  GCF_900638025.1   42008
  GCF_001027105.1   41855
- GCF_000742135.1   41415
- GCF_000392875.1   41391
- GCF_003697165.2   41189
- GCF_009759685.1   41138
- GCF_000006945.2   41110
+ GCF_000742135.1   41423
+ GCF_000392875.1   41390
+ GCF_003697165.2   41201
+ GCF_009759685.1   41160
+ GCF_000006945.2   41115
  GCF_000148585.2   41075
- GCF_001096185.1   40226
- GCF_001544255.1   40153
+ GCF_001096185.1   40238
+ GCF_001544255.1   40187
 </code></pre>
 <p>Plot the histograms of distances between seeds for all genomes.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance --force
  processed files:  15 / 15 [======================================] ETA: 0s. done
  11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
  11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance
@@ -1605,13 +1597,47 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
  GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
  GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
 </code></pre>
-</li>
+<p>Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N&rsquo;s). In LexicMap, the N&rsquo;s are converted to A&rsquo;s.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 80
+</span></span><span class="line"><span class="cl">ref               pos       strand   distance   pre_pos   len_aaa   seq
+</span></span><span class="line"><span class="cl">---------------   -------   ------   --------   -------   -------   --------------------------------------------------------------------------------
+</span></span><span class="line"><span class="cl">GCF_000392875.1   502996    -        1126       501869    1089      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAA
+</span></span><span class="line"><span class="cl">GCF_000392875.1   2640078   +        1344       2638733   1150      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGCTCCTTTTTATTTTCCCCACTATTTTTCAAT
+</span></span><span class="line"><span class="cl">                                                                    GTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
+</span></span><span class="line"><span class="cl">                                                                    TGCGGTGTAATCTTTTTCTTGGTGTTCTTTTTGTTCCTGAATTAATTTTTCTAACGCTTCTTTC
+</span></span></code></pre></div></li>
 </ol>
-<p>The output (TSV format) is formatted with <a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/csvtk"
->csvtk pretty</a>.</p>
-
+<pre tabindex="0"><code>
+The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
+</code></pre>
   </article>
 
 
@@ -2409,7 +2435,7 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
     </div>
 
     
-  <script defer src="/LexicMap/js/search-95c697e2.bundle.min.js"></script>
+  <script defer src="/LexicMap/js/search-49cf88d4.bundle.min.js"></script>
 
   </body>
 </html>

@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2272",
+      "wordCount" : "2293",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -119,12 +119,12 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 
 <link
   rel="preload"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   as="style"
 />
 <link
   rel="stylesheet"
-  href="/LexicMap/main-a559ecaa.min.css"
+  href="/LexicMap/main-c93819e1.min.css"
   media="all"
 />
 
@@ -1627,8 +1627,8 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <tr>
 <td style="text-align:left"><strong><code>-n/--top-n-genomes</code></strong></td>
 <td style="text-align:left">Default 0, 0 for all</td>
-<td style="text-align:left">Keep top N genome matches for a query</td>
-<td style="text-align:left"></td>
+<td style="text-align:left">Keep top N genome matches for a query in the chaining phase</td>
+<td style="text-align:left">The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-a/--all</code></strong></td>
@@ -1742,7 +1742,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><code>--align-band</code></td>
-<td style="text-align:left">Default 100</td>
+<td style="text-align:left">Default 50</td>
 <td style="text-align:left">Band size in backtracking the score matrix.</td>
 <td style="text-align:left"></td>
 </tr>
@@ -1754,14 +1754,8 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><code>--align-max-gap</code></td>
-<td style="text-align:left">Default 50</td>
+<td style="text-align:left">Default 20</td>
 <td style="text-align:left">Maximum gap in a HSP segment.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--align-max-mismatch</code></td>
-<td style="text-align:left">Default 50</td>
-<td style="text-align:left">Maximum mismatch in a HSP segment.</td>
 <td style="text-align:left"></td>
 </tr>
 </tbody>
@@ -2846,7 +2840,7 @@ ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
     </div>
 
     
-  <script defer src="/LexicMap/js/search-95c697e2.bundle.min.js"></script>
+  <script defer src="/LexicMap/js/search-49cf88d4.bundle.min.js"></script>
 
   </body>
 </html>
