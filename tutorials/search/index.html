@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.1">
+<meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
+  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
@@ -42,7 +42,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
     content="Searching"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
+  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
@@ -55,7 +55,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Searching" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.
+  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
@@ -70,8 +70,8 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "name": "Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2293",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
+      "wordCount" : "2394",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -369,42 +369,6 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
                     class="gdoc-nav__entry"
                   >
                     Introduction
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/quick-start/"
-                    class="gdoc-nav__entry"
-                  >
-                    Quick start
                   </a>
                 </span>
               
@@ -1463,7 +1427,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 <p><a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/index/"
->Build</a> or download a LexicMap index.</p>
+>Build</a> a LexicMap index.</p>
 </li>
 <li>
 <p>Run:</p>
@@ -1514,6 +1478,10 @@ However, some short queries can also be aligned.</div>
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p>See <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/introduction/#searching"
+>benchmark of index building</a>.</p>
 <p>LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.</p>
 <ul>
 <li><strong>CPU:</strong>
@@ -1528,6 +1496,8 @@ However, some short queries can also be aligned.</div>
 <ul>
 <li>The number of matched genomes and sequences.</li>
 <li>The length of query sequences.</li>
+<li>Similarities between query and target sequences.</li>
+<li>The number of threads. It uses all CPUs by default (<code>-j/--threads</code>).</li>
 </ul>
 </li>
 </ul>
@@ -1557,8 +1527,8 @@ For each mask, the captured k-mer is used to search seeds (captured k-mers in re
 <ol>
 <li><strong>Setting the search range</strong>: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
 For example, for a query <code>CATGCT</code> requiring matching at least 4-bp prefix is equal to extract k-mers ranging from <code>CATGAA</code>, <code>CATGAC</code>, <code>CATGAG</code>, &hellip;,  to <code>CATGTT</code>.</li>
-<li><strong>Finding the nearest smaller k-mer</strong>: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
-The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is found by binary search, i.e., <code>CATCAC</code> (blue text in the fingure), and the offset is returned as the start position in traversing the seed data file.</li>
+<li><strong>Finding the nearest smaller k-mer</strong>: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is loaded in RAM.
+The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is found by binary search, i.e., <code>CATCAC</code> (blue text in the figure), and the offset is returned as the start position in traversing the seed data file.</li>
 <li><strong>Retrieving seed data</strong>: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).</li>
 </ol>
 </li>
@@ -1571,15 +1541,19 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li><strong>Alignment</strong> for each chain.
 <ol>
 <li>Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 2 kb in upstream and downstream of anchor region.</li>
-<li>Fast alignment of query and subject sequences with <a
-  class="gdoc-markdown__link"
-  href="https://doi.org/10.1093/bioinformatics/btaa777"
->WaveFront alignment algorithm</a>.</li>
-<li>Filtering aligned segments and the whole HSPs (all alignment segments) based on user options.
+<li>Performing pseudo-alignment with extended query and subject sequences, for find similar regions.
 <ul>
-<li>For these HSPs that accross more than one reference sequences, splitting them into multiple HSPs.</li>
+<li>For these similar regions that accross more than one reference sequences, splitting them into multiple ones.</li>
 </ul>
 </li>
+<li>Fast alignment of query and subject sequence regions with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/wfa"
+>our implementation</a> of <a
+  class="gdoc-markdown__link"
+  href="https://doi.org/10.1093/bioinformatics/btaa777"
+>Wavefront alignment algorithm</a>.</li>
+<li>Filtering alignments based on user options.</li>
 </ol>
 </li>
 </ol>
@@ -1736,7 +1710,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-i/--align-min-match-pident</code></strong></td>
-<td style="text-align:left">Default 50</td>
+<td style="text-align:left">Default 70</td>
 <td style="text-align:left">Minimum base identity (percentage) in a HSP segment.</td>
 <td style="text-align:left"></td>
 </tr>
@@ -1777,7 +1751,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li>
 <p>For short queries like genes or long reads, returning top N hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-match-pident 50 \
+    --min-match-pident 70 \
     --min-qcov-per-hsp 70 \
     --min-qcov-per-genome 70 \
     --top-n-genomes 1000
@@ -1786,7 +1760,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li>
 <p>For longer queries like plasmids, returning all hits.</p>
 <pre><code>lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-match-pident 50 \
+    --min-match-pident 70 \
     --min-qcov-per-hsp 0 \
     --min-qcov-per-genome 0  \
     --top-n-genomes 0
@@ -1832,18 +1806,28 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <ul>
 <li>
 <p>Extracting similar sequences for a query gene.</p>
-<pre><code># search matches with query coverage &gt;= 90%
-lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
-
-# extract matched sequences as FASTA format
-sed 1d results.tsv | awk '{print &quot;&gt;&quot;$5&quot;:&quot;$13&quot;-&quot;$14&quot;:&quot;$15&quot;\n&quot;$19;}' &gt; results.fasta
-
-seqkit head -n 1 results.fasta | head -n 3
-&gt;NZ_JALSCK010000007.1:39224-40522:-
-TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
-ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
-</code></pre>
-</li>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl"># search matches with query coverage &gt;= 90%
+</span></span><span class="line"><span class="cl">lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># extract matched sequences as FASTA format
+</span></span><span class="line"><span class="cl">sed 1d results.tsv | awk -F&#39;\t&#39; &#39;{print &#34;&gt;&#34;$5&#34;:&#34;$14&#34;-&#34;$15&#34;:&#34;$16&#34;\n&#34;$20;}&#39; | seqkit seq -g &gt; results.fasta
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">seqkit head -n 1 results.fasta | head -n 3
+</span></span><span class="line"><span class="cl">&gt;NZ_JALSCK010000007.1:39224-40522:-
+</span></span><span class="line"><span class="cl">TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+</span></span><span class="line"><span class="cl">ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+</span></span></code></pre></div></li>
+<li>
+<p>Exporting blast-like alignment text</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap search -d db.lmi query.fasta --all --quiet \
+</span></span><span class="line"><span class="cl">    | sed 1d | awk -F&#39;\t&#39; &#39;{print &#34;&gt;&#34;$1&#34;:&#34;$12&#34;-&#34;$13&#34; vs &#34;$5&#34;:&#34;$14&#34;-&#34;$15&#34;:&#34;$16&#34; pident:&#34;$10&#34; gaps:&#34;$11&#34;\n&#34;$18&#34;\n&#34;$19&#34;\n&#34;$21&#34;\n&#34;$20&#34;\n&#34;;}&#39;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">&gt;NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
+</span></span><span class="line"><span class="cl">14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
+</span></span><span class="line"><span class="cl">TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
+</span></span><span class="line"><span class="cl">|||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
+</span></span><span class="line"><span class="cl">TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+</span></span></code></pre></div></li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="output"
@@ -1903,8 +1887,10 @@ ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 15. send,     End of alignment in subject sequence.
 16. sstr,     Subject strand.
 17. slen,     Subject sequence length.
-18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+21. align,    Alignment text (&quot;|&quot; and &quot; &quot;) between qseq and sseq. (optional with -a/--all)
 </code></pre>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="examples"
@@ -2069,30 +2055,6 @@ ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
       
     
 
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
     
       
       

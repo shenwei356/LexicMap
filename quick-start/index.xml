@@ -2,10 +2,10 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Quick start on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
-    <link>https://bioinf.shenwei.me/LexicMap/quick-start/</link>
+    <link>http://localhost:1313/LexicMap/quick-start/</link>
     <description>Recent content in Quick start on LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</description>
     <generator>Hugo</generator>
     <language>en-us</language>
-    <atom:link href="https://bioinf.shenwei.me/LexicMap/quick-start/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/LexicMap/quick-start/index.xml" rel="self" type="application/rss+xml" />
   </channel>
 </rss>

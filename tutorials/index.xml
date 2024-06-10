@@ -12,7 +12,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/tutorials/search/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/tutorials/search/</guid>
-      <description>Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build or download a LexicMap index.&#xA;Run:&#xA;For short queries like genes or long reads, returning top N hits.&#xA;lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.&#xA;lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length</description>
+      <description>Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.&#xA;Run:&#xA;For short queries like genes or long reads, returning top N hits.&#xA;lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.&#xA;lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length</description>
     </item>
   </channel>
 </rss>

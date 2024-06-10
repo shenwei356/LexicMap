@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.1">
+<meta name="generator" content="Hugo 0.126.3">
 
 
   <meta name="description" content="Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.
@@ -65,7 +65,7 @@ Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp,
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
       "description": "Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported.\nFor big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.\nDoes LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp, \u003e=1kb is prefered) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.",
-      "wordCount" : "328",
+      "wordCount" : "335",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -363,42 +363,6 @@ Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp,
                     class="gdoc-nav__entry"
                   >
                     Introduction
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/quick-start/"
-                    class="gdoc-nav__entry"
-                  >
-                    Quick start
                   </a>
                 </span>
               
@@ -1439,26 +1403,15 @@ However, some short queries can also be aligned.</p>
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>For index building. See details <a
+<ul>
+<li>For index building. See details <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements"
->hardware requirement</a>.</p>
-<ul>
-<li>More CPUs would accelerate indexing.</li>
-<li>The memory occupation is linear with:
-<ul>
-<li>The size of the genome batch.</li>
-<li>The number of LexicHash masks.</li>
-</ul>
-</li>
-</ul>
-<p>For seaching. See details <a
+>hardware requirement</a>.</li>
+<li>For seaching. See details <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements"
->hardware requirement</a>.</p>
-<ul>
-<li>More CPUs would accelerate searching.</li>
-<li>The memory occupation mainly depends on the length of queries, the number of hits, and band size in backtracking, and the distance between query and target sequences.</li>
+>hardware requirement</a>.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="can-i-extract-the-matched-sequences"
@@ -1471,9 +1424,11 @@ However, some short queries can also be aligned.</p>
 </div>
 <p>Yes, <code>lexicmap search</code> has a flag</p>
 <pre tabindex="0"><code>  -a, --all                            ► Output more columns, e.g., matched sequences.
-</code></pre><p>to ouput aligned query and subject sequences.</p>
-<pre tabindex="0"><code>18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+</code></pre><p>to output CIGAR string, aligned query and subject sequences.</p>
+<pre tabindex="0"><code>18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+21. align,    Alignment text (&#34;|&#34; and &#34; &#34;) between qseq and sseq. (optional with -a/--all)
 </code></pre><div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="what-is-not-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes"
     >
@@ -1484,7 +1439,7 @@ However, some short queries can also be aligned.</p>
     </a>
 </div>
 <p>It happens if there are some degenerate bases (e.g., <code>N</code>) in the query sequence.
-In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
+In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., <code>N</code> is converted to <code>A</code>.
 While for the query sequences, we don&rsquo;t convert them.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="why-is-lexicmap-slow-for-batch-searching"
@@ -1505,7 +1460,14 @@ faster search.</p>
 <ul>
 <li>For example, for ~85,000 GTDB representative genomes, searching on an index built with
 20,000 masks, the memory would be ~100 GB with default parameters.</li>
+</ul>
+</li>
 <li>
+<p><code>lexicmap search</code> also has a flag <code>--pseudo-align</code> to only perform pseudo alignment, which is faster and uses less memory.
+It can be used in searching with long and divergent query sequences like nanopore long-reads.</p>
+</li>
+</ul>
+<p>
 
 
 <span class="gdoc-button gdoc-button--regular">
@@ -1515,10 +1477,7 @@ faster search.</p>
     Click
   </a>
 </span>
-  to read more detail of the usage.</li>
-</ul>
-</li>
-</ul>
+  to read more detail of the usage.</p>
 
   </article>
 
@@ -1548,30 +1507,6 @@ faster search.</p>
       
     
 
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
     
       
       

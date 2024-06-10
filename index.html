@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.1">
+<meta name="generator" content="Hugo 0.126.3">
 
 
 
@@ -330,8 +330,8 @@
   alt="Cross-platform"
   
 /></a></p>
-<p>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying <strong>gene, plasmid, viral, or long-read sequences</strong> against up to <strong>millions</strong> of <strong>prokaryotic genomes</strong>.</p>
-<p>
+<p><font size=5rem>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying <strong>gene, plasmid, virus, or long-read sequences</strong> against up to <strong>millions</strong> of <strong>prokaryotic genomes</strong>.</font></p>
+
 
 
 <span class="gdoc-button gdoc-button--regular">
@@ -342,17 +342,6 @@
   </a>
 </span>
 
-
-
-
-<span class="gdoc-button gdoc-button--regular">
-  <a
-    class="gdoc-button__link" href="/LexicMap/quick-start/"
-  >
-    Quick start
-  </a>
-</span>
-</p>
 <div class="gdoc-page__anchorwrap">
     <h2 id="feature-overview"
     >
@@ -399,11 +388,11 @@
         Easy to use
     </h3>
 </div>
-<pre><code># indexing
-lexicmap index -I genomes/ -O db.lmi
-
-# searching
-lexicmap search -d db.lmi q.fasta -o r.tsv
+<p>Step 1: indexing</p>
+<pre><code>lexicmap index -I genomes/ -O db.lmi
+</code></pre>
+<p>Step 2: searching</p>
+<pre><code>lexicmap search -d db.lmi q.fasta -o r.tsv
 </code></pre>
 <span class="gdoc-button gdoc-button--regular">
   <a
@@ -441,8 +430,8 @@ lexicmap search -d db.lmi q.fasta -o r.tsv
         Efficient search
     </h3>
 </div>
-<p>Querying a 52.8-kb plasmid with <strong>LexicMap</strong> in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only <strong>4 minutes and 8 seconds with 15 GB RAM</strong> and 48 CPUs, with 494,860 genome hits returned.
-In contrast, <strong>Blastn</strong> is unable to run with the same dataset on common servers because it requires &gt;2000 GB RAM.</p>
+<p>Querying a 52.8-kb plasmid with <strong>LexicMap</strong> in all <strong>2,340,672</strong> Genbank+Refseq prokaryotic genomes takes only <strong>5 minutes and  25 GB RAM</strong> with 48 CPUs, with 495,932 genome hits returned.
+In contrast, <em><strong>Blastn</strong> is unable to run with the same dataset on common servers because it requires &gt;2000 GB RAM</em>.</p>
 <span class="gdoc-button gdoc-button--regular">
   <a
     class="gdoc-button__link" href="/LexicMap/introduction/#performance"
@@ -481,30 +470,6 @@ In contrast, <strong>Blastn</strong> is unable to run with the same dataset on c
       
     
 
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
     
       
       

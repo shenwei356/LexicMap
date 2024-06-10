@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.1">
+<meta name="generator" content="Hugo 0.126.3">
 
 
   <meta name="description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzipped FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1093",
+      "wordCount" : "1369",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -357,42 +357,6 @@
                     class="gdoc-nav__entry"
                   >
                     Introduction
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/quick-start/"
-                    class="gdoc-nav__entry"
-                  >
-                    Quick start
                   </a>
                 </span>
               
@@ -1452,6 +1416,49 @@
 </span></span><span class="line"><span class="cl">        B     C/G/T    C
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">        N     A/C/G/T  A
+</span></span><span class="line"><span class="cl">Generate an index from FASTA/Q sequences
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Input:
+</span></span><span class="line"><span class="cl"> *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
+</span></span><span class="line"><span class="cl">     in the file names.
+</span></span><span class="line"><span class="cl">  2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or
+</span></span><span class="line"><span class="cl">     the flag -X/--infile-list with a list of input files.
+</span></span><span class="line"><span class="cl">     Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
+</span></span><span class="line"><span class="cl">  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
+</span></span><span class="line"><span class="cl">     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
+</span></span><span class="line"><span class="cl">     -r/--file-regexp.
+</span></span><span class="line"><span class="cl">  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, &gt;150 mb).
+</span></span><span class="line"><span class="cl">     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
+</span></span><span class="line"><span class="cl">     (-G/--big-genomes).
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  Attention:
+</span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
+</span></span><span class="line"><span class="cl">       identifiers in the index and search result would be: the basenames of files with common FASTA/Q file
+</span></span><span class="line"><span class="cl">       extensions removed, which are extracted via the flag -N/--ref-name-regexp.
+</span></span><span class="line"><span class="cl">       ► The extracted genome identifiers better be distinct, which will be shown in search results
+</span></span><span class="line"><span class="cl">       and are used to extract subsequences in the command &#34;lexicmap utils subseq&#34;.
+</span></span><span class="line"><span class="cl">    2) ► Unwanted sequences like plasmids can be filtered out by content in FASTA/Q header via regular
+</span></span><span class="line"><span class="cl">       expressions (-B/--seq-name-filter).
+</span></span><span class="line"><span class="cl">    3) All degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
+</span></span><span class="line"><span class="cl">        code  bases    saved
+</span></span><span class="line"><span class="cl">        A     A        A
+</span></span><span class="line"><span class="cl">        C     C        C
+</span></span><span class="line"><span class="cl">        G     G        G
+</span></span><span class="line"><span class="cl">        T/U   T        T
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        M     A/C      A
+</span></span><span class="line"><span class="cl">        R     A/G      A
+</span></span><span class="line"><span class="cl">        W     A/T      A
+</span></span><span class="line"><span class="cl">        S     C/G      C
+</span></span><span class="line"><span class="cl">        Y     C/T      C
+</span></span><span class="line"><span class="cl">        K     G/T      G
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        V     A/C/G    A
+</span></span><span class="line"><span class="cl">        H     A/C/T    A
+</span></span><span class="line"><span class="cl">        D     A/G/T    A
+</span></span><span class="line"><span class="cl">        B     C/G/T    C
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        N     A/C/G/T  A
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Important parameters:
 </span></span><span class="line"><span class="cl">
@@ -1472,8 +1479,7 @@
 </span></span><span class="line"><span class="cl">                            ► Bigger values improve the search sensitivity, increase the index size, and slow down
 </span></span><span class="line"><span class="cl">                            the search speed.
 </span></span><span class="line"><span class="cl">  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
-</span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity and choose k-mers
-</span></span><span class="line"><span class="cl">                            to fill sketching deserts.
+</span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  --- Seeds data (k-mer-value data) ---
 </span></span><span class="line"><span class="cl"> *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 900).
@@ -1504,7 +1510,8 @@
 </span></span><span class="line"><span class="cl">  -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  (default 16)
 </span></span><span class="line"><span class="cl">  -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
-</span></span><span class="line"><span class="cl">                                  case ignored. (default &#34;\\.(f[aq](st[aq])?|fna)(.gz)?$&#34;)
+</span></span><span class="line"><span class="cl">                                  case ignored. (default
+</span></span><span class="line"><span class="cl">                                  &#34;\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
 </span></span><span class="line"><span class="cl">      --force                     ► Overwrite existing output directory.
 </span></span><span class="line"><span class="cl">  -h, --help                      help for index
 </span></span><span class="line"><span class="cl">  -I, --in-dir string             ► Input directory containing FASTA/Q files. Directory and file
@@ -1522,7 +1529,7 @@
 </span></span><span class="line"><span class="cl">  -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
 </span></span><span class="line"><span class="cl">  -N, --ref-name-regexp string    ► Regular expression (must contains &#34;(&#34; and &#34;)&#34;) for extracting the
 </span></span><span class="line"><span class="cl">                                  reference name from the filename. (default
-</span></span><span class="line"><span class="cl">                                  &#34;(?i)(.+)\\.(f[aq](st[aq])?|fna)(.gz)?$&#34;)
+</span></span><span class="line"><span class="cl">                                  &#34;(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
 </span></span><span class="line"><span class="cl">      --save-seed-pos             ► Save seed positions, which can be inspected with &#34;lexicmap utils
 </span></span><span class="line"><span class="cl">                                  seed-pos&#34;.
 </span></span><span class="line"><span class="cl">      --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 200)
@@ -1593,30 +1600,6 @@
       
     
 
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
     
       
       

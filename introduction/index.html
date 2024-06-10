@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.1">
+<meta name="generator" content="Hugo 0.126.3">
 
 
   <meta name="description" content="LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
@@ -62,7 +62,7 @@ Motivation: Alignment against a database of genomes is a fundamental operation i
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
       "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nMotivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds, or they fall back on k-mer indexing, without information of where matches occur in the genome.",
-      "wordCount" : "1148",
+      "wordCount" : "1317",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -360,42 +360,6 @@ Motivation: Alignment against a database of genomes is a fundamental operation i
                     class="gdoc-nav__entry is-active"
                   >
                     Introduction
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/quick-start/"
-                    class="gdoc-nav__entry"
-                  >
-                    Quick start
                   </a>
                 </span>
               
@@ -1426,15 +1390,19 @@ Running at this scale has previously only been achieved by <a
   class="gdoc-markdown__link"
   href="https://github.com/karel-brinda/Phylign"
 >Phylign</a> (previously called mof-search).</p>
-<p>For example, <strong>querying a 52.8-kb plasmid in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only 4 minutes and 8 seconds with 15 GB RAM and 48 CPUs, with 494,860 genome hits returned</strong>.
-In contrast, BLASTN is unable to run with the same dataset on common servers because it requires &gt;2000 GB RAM. See <a
+<p>For example, for searching in all 2,340,672 Genbank+Refseq prokaryotic genomes, <em>BLASTN is unable to run with this dataset on common servers because it requires &gt;2000 GB RAM</em>.  (see <a
   class="gdoc-markdown__link"
   href="#performance"
->performance</a>.</p>
+>performance</a>). <strong>With LexicMap</strong>,</p>
+<ul>
+<li>Querying with a <strong>1.3-kb marker gene</strong> took <strong>4.5 seconds</strong> with <strong>3.33 GB RAM</strong> and 48 CPUs, with <strong>16,756 genome hits</strong> returned.</li>
+<li>Querying with a <strong>52.8-kb plasmid</strong> took <strong>5 minutes</strong> with <strong>25.24 GB RAM</strong> and 48 CPUs, with <strong>495,932 genome hits</strong> returned.</li>
+<li>Querying with a <strong>1.5-kb 16S rRNA gene</strong> took <strong>8.5 minutes</strong> with <strong>17.16 GB RAM</strong> and 48 CPUs, with <strong>1,894,943 genome hits</strong> returned.</li>
+</ul>
 <p>LexicMap is easy to <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/installation/"
->install</a> (a binary file with no dependencies) and use (<a
+>install</a> (binary files with no dependencies are provided for most common platforms, ) and use (<a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/tutorials/index/"
 >tutorials</a> and <a
@@ -1482,11 +1450,11 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
       --min-qcov-per-hsp 90
 
   # extract matched sequences as FASTA format
-  sed 1d results.tsv | awk '{print &quot;&gt;&quot;$5&quot;:&quot;$13&quot;-&quot;$14&quot;:&quot;$15&quot;\n&quot;$19;}' &gt; results.fasta
+  sed 1d results.tsv | awk -F'\t' '{print &quot;&gt;&quot;$5&quot;:&quot;$14&quot;-&quot;$15&quot;:&quot;$16&quot;\n&quot;$20;}' | seqkit seq -g &gt; results.fasta
 </code></pre>
 <p>Sample output (queries are a few Nanopore Q20 reads). See <a
   class="gdoc-markdown__link"
-  href="http://bioinf.shenwei.me/LexicMap/tutorials/search/#output"
+  href="http://bioinf.shenwei.me/LexicMap/tutorials/search/#output-format"
 >output format details</a>.</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
 </span></span><span class="line"><span class="cl">------------------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
@@ -1504,7 +1472,17 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 </span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    5     72.727    595       98.992    3      104      695    1280183   1280777   +      1887974
 </span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
 </span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
-</span></span></code></pre></div><p>Matched query and subject sequences can be outputted as extra two columns via the flag <code>-a/--all</code>.</p>
+</span></span></code></pre></div><p>CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag <code>-a/--all</code>.</p>
+<pre><code># export blast-like alignment text
+lexicmap search -d db.lmi query.fasta --all --quiet \
+    | sed 1d | awk -F'\t' '{print &quot;&gt;&quot;$1&quot;:&quot;$12&quot;-&quot;$13&quot; vs &quot;$5&quot;:&quot;$14&quot;-&quot;$15&quot;:&quot;$16&quot; pident:&quot;$10&quot; gaps:&quot;$11&quot;\n&quot;$18&quot;\n&quot;$19&quot;\n&quot;$21&quot;\n&quot;$20&quot;\n&quot;;}'
+
+&gt;NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
+14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
+TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
+|||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
+TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+</code></pre>
 <p>Learn more <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/tutorials/index/"
@@ -1549,8 +1527,8 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 <td style="text-align:right">578 GB</td>
 <td style="text-align:left">LexicMap</td>
 <td style="text-align:right">510 GB</td>
-<td style="text-align:right">3 h 26 m</td>
-<td style="text-align:right">35 GB</td>
+<td style="text-align:right">3 h 40 m</td>
+<td style="text-align:right">37.4 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1567,8 +1545,8 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 <td style="text-align:right">3.5 TB</td>
 <td style="text-align:left">LexicMap</td>
 <td style="text-align:right">2.91 TB</td>
-<td style="text-align:right">16 h 40 m</td>
-<td style="text-align:right">79 GB</td>
+<td style="text-align:right">21 h 28 m</td>
+<td style="text-align:right">82.14 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1576,7 +1554,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 <td style="text-align:right"></td>
 <td style="text-align:left">Blastn</td>
 <td style="text-align:right">2.15 TB</td>
-<td style="text-align:right">14 h 4 m</td>
+<td style="text-align:right">14 h 04 m</td>
 <td style="text-align:right">4.3 GB</td>
 </tr>
 <tr>
@@ -1585,8 +1563,8 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 <td style="text-align:right">3.1 TB</td>
 <td style="text-align:left">LexicMap</td>
 <td style="text-align:right">2.32 TB</td>
-<td style="text-align:right">10 h 48 m</td>
-<td style="text-align:right">43 GB</td>
+<td style="text-align:right">11 h 51 m</td>
+<td style="text-align:right">42.6 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1594,7 +1572,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 <td style="text-align:right"></td>
 <td style="text-align:left">Blastn</td>
 <td style="text-align:right">1.76 TB</td>
-<td style="text-align:right">14 h 3 m</td>
+<td style="text-align:right">14 h 03 m</td>
 <td style="text-align:right">2.9 GB</td>
 </tr>
 <tr>
@@ -1608,6 +1586,12 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 </tr>
 </tbody>
 </table> </div>
+<p>Notes:</p>
+<ul>
+<li>All files are stored on a server with HDD disks. No files are cached in memory.</li>
+<li>Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).</li>
+<li>LexicMap index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</li>
+</ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="searching"
     >
@@ -1627,6 +1611,7 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <th style="text-align:right">query_len</th>
 <th style="text-align:left">tool</th>
 <th style="text-align:right">genome_hits</th>
+<th style="text-align:right">genome_hits(qcov&gt;50)</th>
 <th style="text-align:right">time</th>
 <th style="text-align:right">RAM</th>
 </tr>
@@ -1636,15 +1621,17 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">3,588</td>
-<td style="text-align:right">1.4 s</td>
-<td style="text-align:right">598 MB</td>
+<td style="text-align:right">3,649</td>
+<td style="text-align:right">3,645</td>
+<td style="text-align:right">2.020 s</td>
+<td style="text-align:right">1.83 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Blastn</td>
 <td style="text-align:right">7,121</td>
+<td style="text-align:right">6,177</td>
 <td style="text-align:right">36 m 11 s</td>
 <td style="text-align:right">351 GB</td>
 </tr>
@@ -1652,15 +1639,17 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">294,285</td>
-<td style="text-align:right">1 m 19 s</td>
-<td style="text-align:right">3.0 GB</td>
+<td style="text-align:right">295,628</td>
+<td style="text-align:right">275,454</td>
+<td style="text-align:right">1 m 57 s</td>
+<td style="text-align:right">5.08 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Blastn</td>
 <td style="text-align:right">301,197</td>
+<td style="text-align:right">277,042</td>
 <td style="text-align:right">39 m 13 s</td>
 <td style="text-align:right">378 GB</td>
 </tr>
@@ -1668,15 +1657,17 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">58,930</td>
-<td style="text-align:right">40 s</td>
-<td style="text-align:right">3.2 GB</td>
+<td style="text-align:right">59,211</td>
+<td style="text-align:right">1,186</td>
+<td style="text-align:right">41.546 s</td>
+<td style="text-align:right">7.41 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Blastn</td>
 <td style="text-align:right">69,311</td>
+<td style="text-align:right">2,308</td>
 <td style="text-align:right">37 m 42 s</td>
 <td style="text-align:right">365 GB</td>
 </tr>
@@ -1690,6 +1681,7 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <th style="text-align:right">query_len</th>
 <th style="text-align:left">tool</th>
 <th style="text-align:right">genome_hits</th>
+<th style="text-align:right">genome_hits(qcov&gt;50)</th>
 <th style="text-align:right">time</th>
 <th style="text-align:right">RAM</th>
 </tr>
@@ -1699,73 +1691,82 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">10,837</td>
-<td style="text-align:right">11.3 s</td>
-<td style="text-align:right">1.1 GB</td>
+<td style="text-align:right">11,205</td>
+<td style="text-align:right">11,199</td>
+<td style="text-align:right">4.185 s</td>
+<td style="text-align:right">2.87 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_local</td>
 <td style="text-align:right">7,937</td>
+<td style="text-align:right">N/A</td>
 <td style="text-align:right">29 m 13 s</td>
-<td style="text-align:right">78.5 GB</td>
+<td style="text-align:right">78.50 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_cluster</td>
 <td style="text-align:right">7,937</td>
+<td style="text-align:right">N/A</td>
 <td style="text-align:right">32 m 26 s</td>
-<td style="text-align:right">/</td>
+<td style="text-align:right">N/A</td>
 </tr>
 <tr>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">1,853,846</td>
-<td style="text-align:right">12 m 31 s</td>
-<td style="text-align:right">9.7 GB</td>
+<td style="text-align:right">1,854,616</td>
+<td style="text-align:right">1,735,763</td>
+<td style="text-align:right">8 m 42 s</td>
+<td style="text-align:right">14.69 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_local</td>
 <td style="text-align:right">1,032,948</td>
+<td style="text-align:right">N/A</td>
 <td style="text-align:right">1 h 58 m</td>
-<td style="text-align:right">73.3 GB</td>
+<td style="text-align:right">73.30 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_cluster</td>
 <td style="text-align:right">1,032,948</td>
+<td style="text-align:right">N/A</td>
 <td style="text-align:right">83 m 36 s</td>
-<td style="text-align:right">/</td>
+<td style="text-align:right">N/A</td>
 </tr>
 <tr>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">427,112</td>
-<td style="text-align:right">4 m 13 s</td>
-<td style="text-align:right">12.9 GB</td>
+<td style="text-align:right">427,565</td>
+<td style="text-align:right">3,620</td>
+<td style="text-align:right">4 m 49 s</td>
+<td style="text-align:right">22.37 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_local</td>
 <td style="text-align:right">46,822</td>
-<td style="text-align:right">38 m 55 s</td>
-<td style="text-align:right">76.6 GB</td>
+<td style="text-align:right">N/A</td>
+<td style="text-align:right">39 m 37 s</td>
+<td style="text-align:right">76.99 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
 <td style="text-align:right"></td>
 <td style="text-align:left">Phylign_cluster</td>
 <td style="text-align:right">46,822</td>
-<td style="text-align:right">36 m 30s</td>
-<td style="text-align:right">/</td>
+<td style="text-align:right">N/A</td>
+<td style="text-align:right">38 m 22 s</td>
+<td style="text-align:right">N/A</td>
 </tr>
 </tbody>
 </table> </div>
@@ -1777,6 +1778,7 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <th style="text-align:right">query_len</th>
 <th style="text-align:left">tool</th>
 <th style="text-align:right">genome_hits</th>
+<th style="text-align:right">genome_hits(qcov&gt;50)</th>
 <th style="text-align:right">time</th>
 <th style="text-align:right">RAM</th>
 </tr>
@@ -1786,25 +1788,28 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">16,556</td>
-<td style="text-align:right">6.2 s</td>
-<td style="text-align:right">1.3 GB</td>
+<td style="text-align:right">16,788</td>
+<td style="text-align:right">16,756</td>
+<td style="text-align:right">4.481 s</td>
+<td style="text-align:right">3.33 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">1,875,260</td>
-<td style="text-align:right">8 m 29 s</td>
-<td style="text-align:right">10.8 GB</td>
+<td style="text-align:right">1,894,943</td>
+<td style="text-align:right">1,375,561</td>
+<td style="text-align:right">8 m 32 s</td>
+<td style="text-align:right">17.16 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">494,860</td>
-<td style="text-align:right">4 m 08 s</td>
-<td style="text-align:right">15.0 GB</td>
+<td style="text-align:right">495,932</td>
+<td style="text-align:right">6,555</td>
+<td style="text-align:right">5 m 01 s</td>
+<td style="text-align:right">25.24 GB</td>
 </tr>
 </tbody>
 </table> </div>
@@ -1812,12 +1817,11 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <ul>
 <li>All files are stored on a server with HDD disks. No files are cached in memory.</li>
 <li>Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).</li>
-<li>LexicMap index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</li>
 <li>Main searching parameters:
 <ul>
-<li>LexicMap v0.4.0: <code>--threads 48 --top-n-genomes 0 --min-qcov-per-genome 0 --min-qcov-per-hsp 0 --min-match-pident 50</code>.</li>
+<li>LexicMap v0.4.0: <code>--threads 48 --top-n-genomes 0 --min-qcov-per-genome 0 --min-qcov-per-hsp 0 --min-match-pident 70</code>.</li>
 <li>Blastn v2.15.0+: <code>-num_threads 48 -max_target_seqs 10000000</code>.</li>
-<li>Phylign (AllTheBacteria fork 9fc65e6): <code>threads: 48, cobs_kmer_thres: 0.33, nb_best_hits: 5000000, max_ram_gb: 100</code>; For cluster: maximum number of slurm jobs is <code>100</code>.</li>
+<li>Phylign (AllTheBacteria fork 9fc65e6): <code>threads: 48, cobs_kmer_thres: 0.33, minimap_preset: &quot;sr&quot; for genes and &quot;asm20&quot; for plasmid, nb_best_hits: 5000000, max_ram_gb: 100</code>; For cluster, maximum number of slurm jobs is <code>100</code>.</li>
 </ul>
 </li>
 </ul>
@@ -1866,6 +1870,10 @@ in <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/LexicHash"
 >LexicHash</a> computation in Go.</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/wfa"
+>Wavefront alignment algorithm (WFA) in Golang</a>.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="support"
@@ -1951,35 +1959,6 @@ propose new functions or ask for help.</p>
         
       
     
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-          
-            
-            
-          
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
 
   
     
@@ -2001,6 +1980,11 @@ propose new functions or ask for help.</p>
         
         
 
+        
+          
+            
+            
+          
         
 
         
@@ -2637,10 +2621,10 @@ propose new functions or ask for help.</p>
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/quick-start/"
-      title="Quick start"
+      href="/LexicMap/installation/"
+      title="Installation"
     >
-      Quick start
+      Installation
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   
