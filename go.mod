@@ -19,7 +19,7 @@ require (
 	github.com/shenwei356/kmers v0.1.0
 	github.com/shenwei356/lexichash v0.4.0
 	github.com/shenwei356/util v0.5.2
-	github.com/shenwei356/wfa v0.2.3
+	github.com/shenwei356/wfa v0.3.0
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.7.2

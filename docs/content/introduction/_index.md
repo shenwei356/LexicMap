@@ -15,9 +15,9 @@ successfully indexing and searching both RefSeq+GenBank, and the [AllTheBacteria
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
 
 For example, for searching in all 2,340,672 Genbank+Refseq prokaryotic genomes, *BLASTN is unable to run with this dataset on common servers because it requires >2000 GB RAM*.  (see [performance](#performance)). **With LexicMap**,
-- Querying with a **1.3-kb marker gene** took **4.5 seconds** with **3.33 GB RAM** and 48 CPUs, with **16,756 genome hits** returned.
-- Querying with a **52.8-kb plasmid** took **5 minutes** with **25.24 GB RAM** and 48 CPUs, with **495,932 genome hits** returned.
-- Querying with a **1.5-kb 16S rRNA gene** took **8.5 minutes** with **17.16 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
+- Querying with a **1.3-kb marker gene** took **4 seconds** with **2.12 GB RAM** and 48 CPUs, with **16,788 genome hits** returned.
+- Querying with a **52.8-kb plasmid** took **4 minutes** with **22.46 GB RAM** and 48 CPUs, with **495,915 genome hits** returned.
+- Querying with a **1.5-kb 16S rRNA gene** took **5.5 minutes** with **17.25 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
 
 LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (binary files with no dependencies are provided for most common platforms, ) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
 
@@ -115,36 +115,36 @@ Phylign only has the index for AllTheBacteria HQ dataset.
 
 GTDB complete (402,538 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM     |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|-------:|
-|a marker gene  |1,299 bp |LexicMap       |3,649      |3,645               |2.020 s  |1.83 GB |
-|               |         |Blastn         |7,121      |6,177               |36 m 11 s|351 GB  |
-|a 16S rRNA gene|1,542 bp |LexicMap       |295,628    |275,454             |1 m 57 s |5.08 GB |
-|               |         |Blastn         |301,197    |277,042             |39 m 13 s|378 GB  |
-|a plasmid      |52,830 bp|LexicMap       |59,211     |1,186               |41.546 s |7.41 GB |
-|               |         |Blastn         |69,311     |2,308               |37 m 42 s|365 GB  |
+|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
+|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
+|a marker gene  |1,299 bp |LexicMap       |3,649      |3,645               |1.555 s  |905.57 MB|
+|               |         |Blastn         |7,121      |6,177               |36 m 11 s|351 GB   |
+|a 16S rRNA gene|1,542 bp |LexicMap       |295,628    |275,454             |1 m 17 s |3.98 GB  |
+|               |         |Blastn         |301,197    |277,042             |39 m 13 s|378 GB   |
+|a plasmid      |52,830 bp|LexicMap       |59,211     |1,186               |35.269 s |4.46 GB  |
+|               |         |Blastn         |69,311     |2,308               |37 m 42 s|365 GB   |
 
 AllTheBacteria HQ (1,858,610 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM     |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|-------:|
-|a marker gene  |1,299 bp |LexicMap       |11,205     |11,199              |4.185 s  |2.87 GB |
-|               |         |Phylign_local  |7,937      |N/A                 |29 m 13 s|78.50 GB|
-|               |         |Phylign_cluster|7,937      |N/A                 |32 m 26 s|N/A     |
-|a 16S rRNA gene|1,542 bp |LexicMap       |1,854,616  |1,735,763           |8 m 42 s |14.69 GB|
-|               |         |Phylign_local  |1,032,948  |N/A                 |1 h 58 m |73.30 GB|
-|               |         |Phylign_cluster|1,032,948  |N/A                 |83 m 36 s|N/A     |
-|a plasmid      |52,830 bp|LexicMap       |427,565    |3,620               |4 m 49 s |22.37 GB|
-|               |         |Phylign_local  |46,822     |N/A                 |39 m 37 s|76.99 GB|
-|               |         |Phylign_cluster|46,822     |N/A                 |38 m 22 s|N/A     |
+|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
+|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
+|a marker gene  |1,299 bp |LexicMap       |11,205     |11,199              |3.226 s  |1.83 GB  |
+|               |         |Phylign_local  |7,937      |N/A                 |29 m 13 s|78.50 GB |
+|               |         |Phylign_cluster|7,937      |N/A                 |32 m 26 s|N/A      |
+|a 16S rRNA gene|1,542 bp |LexicMap       |1,854,616  |1,735,763           |3 m 42 s |14.70 GB |
+|               |         |Phylign_local  |1,032,948  |N/A                 |1 h 58 m |73.30 GB |
+|               |         |Phylign_cluster|1,032,948  |N/A                 |83 m 36 s|N/A      |
+|a plasmid      |52,830 bp|LexicMap       |427,544    |3,620               |4 m 49 s |19.24 GB |
+|               |         |Phylign_local  |46,822     |N/A                 |39 m 37 s|76.99 GB |
+|               |         |Phylign_cluster|46,822     |N/A                 |38 m 22 s|N/A      |
 
 Genbank+RefSeq (2,340,672 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM     |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|-------:|
-|a marker gene  |1,299 bp |LexicMap       |16,788     |16,756              |4.481 s  |3.33 GB |
-|a 16S rRNA gene|1,542 bp |LexicMap       |1,894,943  |1,375,561           |8 m 32 s |17.16 GB|
-|a plasmid      |52,830 bp|LexicMap       |495,932    |6,555               |5 m 01 s |25.24 GB|
+|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
+|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
+|a marker gene  |1,299 bp |LexicMap       |16,788     |16,756              |3.119 s  |2.12 GB  |
+|a 16S rRNA gene|1,542 bp |LexicMap       |1,894,943  |1,375,561           |5 m 32 s |17.25 GB |
+|a plasmid      |52,830 bp|LexicMap       |495,915    |6,555               |3 m 50 s |22.46 GB |
 
 Notes:
 - All files are stored on a server with HDD disks. No files are cached in memory.

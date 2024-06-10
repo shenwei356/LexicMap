@@ -15,9 +15,9 @@ successfully indexing and searching both RefSeq+GenBank, and the [AllTheBacteria
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
 
 For example, for searching in all 2,340,672 Genbank+Refseq prokaryotic genomes, *BLASTN is unable to run with this dataset on common servers because it requires >2000 GB RAM*.  (see [performance](#performance)). **With LexicMap**,
-- Querying with a **1.3-kb marker gene** took **4.5 seconds** with **3.33 GB RAM** and 48 CPUs, with **16,756 genome hits** returned.
-- Querying with a **52.8-kb plasmid** took **5 minutes** with **25.24 GB RAM** and 48 CPUs, with **495,932 genome hits** returned.
-- Querying with a **1.5-kb 16S rRNA gene** took **8.5 minutes** with **17.16 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
+- Querying with a **1.3-kb marker gene** took **4 seconds** with **2.12 GB RAM** and 48 CPUs, with **16,788 genome hits** returned.
+- Querying with a **52.8-kb plasmid** took **4 minutes** with **22.46 GB RAM** and 48 CPUs, with **495,915 genome hits** returned.
+- Querying with a **1.5-kb 16S rRNA gene** took **5.5 minutes** with **17.25 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
 
 LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (binary files with no dependencies are provided for most common platforms, ) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
 
