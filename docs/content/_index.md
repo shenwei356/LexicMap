@@ -15,11 +15,10 @@ geekdocAnchor: false
 
 
 
-LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences** against up to **millions** of **prokaryotic genomes**.
+<font size=5rem>LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, virus, or long-read sequences** against up to **millions** of **prokaryotic genomes**.</font>
 
 
 {{< button size="medium" relref="introduction" >}}Introduction{{< /button >}}
-{{< button size="medium" relref="quick-start" >}}Quick start{{< /button >}}
 
 
 
@@ -43,10 +42,12 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
 
 ### Easy to use
 
-    # indexing
+Step 1: indexing
+
     lexicmap index -I genomes/ -O db.lmi
 
-    # searching
+Step 2: searching
+
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
@@ -58,8 +59,8 @@ Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files 
 
 ### Efficient search
 
-Querying a 52.8-kb plasmid with **LexicMap** in all 2,340,672 Genbank+Refseq prokaryotic genomes takes only **4 minutes and 8 seconds with 15 GB RAM** and 48 CPUs, with 494,860 genome hits returned.
-In contrast, **Blastn** is unable to run with the same dataset on common servers because it requires >2000 GB RAM.
+Querying a 52.8-kb plasmid with **LexicMap** in all **2,340,672** Genbank+Refseq prokaryotic genomes takes only **5 minutes and  25 GB RAM** with 48 CPUs, with 495,932 genome hits returned.
+In contrast, ***Blastn** is unable to run with the same dataset on common servers because it requires >2000 GB RAM*.
 
 {{< button size="small" relref="introduction/#performance" >}}Performance{{< /button >}}
 

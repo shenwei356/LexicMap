@@ -13,7 +13,7 @@
     - Out format:
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
-        - Add a column `gaps`.
+        - Add columns `gaps`, `cigar`, `align`.
 
 ### v0.3.0 - 2024-05-14
 

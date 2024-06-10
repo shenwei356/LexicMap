@@ -113,7 +113,11 @@ type Chain2Result struct {
 
 	tPosOffsetBegin int // start position of the sequence in the concatenated genome
 
-	TSeq []byte // target seq
+	// for output
+	CIGAR     []byte // cigar string
+	QSeq      []byte // query seq
+	TSeq      []byte // target seq
+	Alignment []byte // alignment text
 }
 
 // Reset resets a Chain2Result

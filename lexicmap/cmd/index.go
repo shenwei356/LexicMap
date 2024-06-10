@@ -42,8 +42,9 @@ var indexCmd = &cobra.Command{
 Input:
  *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
      in the file names.
-  2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
-     with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking.
+  2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or
+     the flag -X/--infile-list with a list of input files.
+     Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
      sub-directories allowed. A regular expression for matching sequencing files is available via the flag
      -r/--file-regexp.
@@ -99,8 +100,7 @@ Important parameters:
                             ► Bigger values improve the search sensitivity, increase the index size, and slow down
                             the search speed.
   3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
-                            ► This value is used to remove masks with a prefix of low-complexity and choose k-mers
-                            to fill sketching deserts.
+                            ► This value is used to remove masks with a prefix of low-complexity.
 
   --- Seeds data (k-mer-value data) ---
  *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 900).
@@ -358,23 +358,26 @@ Important parameters:
 				log.Infof("  output file of skipped genomes: %s", fileBigGenomes)
 			}
 			log.Info()
+
+			log.Info("mask generation:")
 			if maskFile != "" {
 				log.Infof("  custom mask file: %s", maskFile)
 			} else {
-				log.Infof("k-mer size: %d", k)
-				log.Infof("number of masks: %d", nMasks)
-				log.Infof("rand seed: %d", seed)
-				log.Infof("prefix length for checking low-complexity in mask generation: %d", minPrefix)
-				log.Infof("maximum sketching desert length: %d", maxDesert)
-				log.Infof("distance of k-mers to fill deserts: %d", seedInDesertDist)
-				log.Infof("")
-				// log.Infof("top N genomes for generating mask: %d", topN)
-				// log.Infof("prefix extension length: %d", prefixExt)
+				log.Infof("  k-mer size: %d", k)
+				log.Infof("  number of masks: %d", nMasks)
+				log.Infof("  rand seed: %d", seed)
+				log.Infof("  prefix length for checking low-complexity in mask generation: %d", minPrefix)
 			}
+
 			log.Info()
-			log.Infof("seeds data chunks: %d", chunks)
-			log.Infof("seeds data indexing partitions: %d", partitions)
-			log.Infof("genome batch size: %d", batchSize)
+			log.Info("seed data:")
+			log.Infof("  maximum sketching desert length: %d", maxDesert)
+			log.Infof("  distance of k-mers to fill deserts: %d", seedInDesertDist)
+			log.Infof("  seeds data chunks: %d", chunks)
+			log.Infof("  seeds data indexing partitions: %d", partitions)
+			log.Info()
+			log.Info("general:")
+			log.Infof("  genome batch size: %d", batchSize)
 			log.Info()
 		}
 
@@ -403,10 +406,10 @@ func init() {
 	indexCmd.Flags().StringP("in-dir", "I", "",
 		formatFlagUsage(`Input directory containing FASTA/Q files. Directory and file symlinks are followed.`))
 
-	indexCmd.Flags().StringP("file-regexp", "r", `\.(f[aq](st[aq])?|fna)(.gz)?$`,
+	indexCmd.Flags().StringP("file-regexp", "r", `\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored.`))
 
-	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(.gz)?$`,
+	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
 		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename.`))
 
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},

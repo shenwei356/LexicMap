@@ -70,8 +70,10 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -266,7 +268,7 @@ Output format:
 		// fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
 		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen")
 		if moreColumns {
-			fmt.Fprintf(outfh, "\tqseq\tsseq")
+			fmt.Fprintf(outfh, "\tcigar\tqseq\tsseq\talign")
 		}
 		fmt.Fprintln(outfh)
 
@@ -328,7 +330,11 @@ Output format:
 							strand, sd.SeqLen,
 						)
 						if moreColumns {
-							fmt.Fprintf(outfh, "\t%s\t%s", q.seq[c.QBegin:c.QEnd+1], c.TSeq)
+							if onlyPseudoAlign {
+								fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, q.seq[c.QBegin:c.QEnd+1], c.TSeq, c.Alignment)
+							} else {
+								fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
+							}
 						}
 
 						fmt.Fprintln(outfh)

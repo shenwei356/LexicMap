@@ -37,8 +37,10 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]

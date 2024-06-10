@@ -9,7 +9,7 @@ weight: 10
 
 ## TL;DR
 
-1. [Build](https://bioinf.shenwei.me/LexicMap/tutorials/index/) or download a LexicMap index.
+1. [Build](https://bioinf.shenwei.me/LexicMap/tutorials/index/) a LexicMap index.
 
 1. Run:
 
@@ -36,6 +36,8 @@ Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
 
 ## Hardware requirements
 
+See [benchmark of index building](https://bioinf.shenwei.me/LexicMap/introduction/#searching).
+
 LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
 
 - **CPU:**
@@ -45,7 +47,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - More RAM (> 16 GB) is preferred. The memory usage in searching is mainly related to:
         - The number of matched genomes and sequences.
         - The length of query sequences.
-        - The distance between query and target sequences.
+        - Similarities between query and target sequences.
+        - The number of threads. It uses all CPUs by default (`-j/--threads`).
 - **Disk**
     - Sufficient space is required to store the index size.
     - No temporary files are generated during searching.
@@ -60,17 +63,18 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
    For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least *p* bases.
     1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
        For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
-    2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is Loaded in RAM.
-       The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the fingure), and the offset is returned as the start position in traversing the seed data file.
+    2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is loaded in RAM.
+       The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the figure), and the offset is returned as the start position in traversing the seed data file.
     3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
 1. **Chaining:**
     1. Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.
     2. Performing chaining.
 1. **Alignment** for each chain.
     1. Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 2 kb in upstream and downstream of anchor region.
-    2. Fast alignment of query and subject sequences with [WaveFront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
-    3. Filtering aligned segments and the whole HSPs (all alignment segments) based on user options.
-       - For these HSPs that accross more than one reference sequences, splitting them into multiple HSPs.
+    1. Performing pseudo-alignment with extended query and subject sequences, for find similar regions.
+       - For these similar regions that accross more than one reference sequences, splitting them into multiple ones.
+    2. Fast alignment of query and subject sequence regions with [our implementation](https://github.com/shenwei356/wfa) of [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
+    3. Filtering alignments based on user options.
 
 
 ## Parameters
@@ -108,7 +112,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                   |       |
 |**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                      |       |
 |**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                          |       |
-|**`-i/--align-min-match-pident`**|Default 50  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
+|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
 |`--align-band`                   |Default 50  |Band size in backtracking the score matrix.                                                                       |       |
 |`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.|       |
 |`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                     |       |
@@ -125,7 +129,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 - For short queries like genes or long reads, returning top N hits.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-          --min-match-pident 50 \
+          --min-match-pident 70 \
           --min-qcov-per-hsp 70 \
           --min-qcov-per-genome 70 \
           --top-n-genomes 1000
@@ -133,7 +137,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 - For longer queries like plasmids, returning all hits.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-          --min-match-pident 50 \
+          --min-match-pident 70 \
           --min-qcov-per-hsp 0 \
           --min-qcov-per-genome 0  \
           --top-n-genomes 0
@@ -169,16 +173,32 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 - Extracting similar sequences for a query gene.
 
-      # search matches with query coverage >= 90%
-      lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
+    ```text
+    # search matches with query coverage >= 90%
+    lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
 
-      # extract matched sequences as FASTA format
-      sed 1d results.tsv | awk '{print ">"$5":"$13"-"$14":"$15"\n"$19;}' > results.fasta
+    # extract matched sequences as FASTA format
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' | seqkit seq -g > results.fasta
 
-      seqkit head -n 1 results.fasta | head -n 3
-      >NZ_JALSCK010000007.1:39224-40522:-
-      TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
-      ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+    seqkit head -n 1 results.fasta | head -n 3
+    >NZ_JALSCK010000007.1:39224-40522:-
+    TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+    ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+    ```
+
+- Exporting blast-like alignment text
+
+    ```text
+    lexicmap search -d db.lmi query.fasta --all --quiet \
+        | sed 1d | awk -F'\t' '{print ">"$1":"$12"-"$13" vs "$5":"$14"-"$15":"$16" pident:"$10" gaps:"$11"\n"$18"\n"$19"\n"$21"\n"$20"\n";}'
+
+    >NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
+    14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
+    TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
+    |||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
+    TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+    ```
+
 
 ## Output
 
@@ -216,8 +236,10 @@ Tab-delimited format with 17+ columns, with 1-based positions.
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. qseq,     Aligned part of query sequence.   (optional with -a/--all)
-    19. sseq,     Aligned part of subject sequence. (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 ### Examples
 

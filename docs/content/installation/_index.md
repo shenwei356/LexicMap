@@ -26,7 +26,7 @@ Besides, it supports [shell completion](#shell-completion), which could help acc
     |Linux  |**64-bit**|[**lexicmap_linux_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_linux_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_amd64.tar.gz)                  |
     |Linux  |arm64     |[**lexicmap_linux_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_linux_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_arm64.tar.gz)                  |
 
-2. Decompress it
+2. Decompress it:
 
         tar -zxvf lexicmap_linux_amd64.tar.gz
 

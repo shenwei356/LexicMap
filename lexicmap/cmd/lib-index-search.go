@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"sync"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
@@ -1009,8 +1010,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
-			var _tseq []byte
+			var _qseq, _tseq []byte
 			var cigar *wfa.AlignmentResult
+			var op *wfa.CIGARRecord
+			var Q, A, T *[]byte
 
 			// -----------------------------------------------------
 
@@ -1271,30 +1274,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								hasResult := false
 								j := 0
 								for i, c := range *r2.Chains {
-									if outSeq {
-										if c.TSeq == nil {
-											c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
-										} else {
-											c.TSeq = c.TSeq[:0]
-										}
-
+									if accurateAlign {
+										_qseq = s[c.QBegin : c.QEnd+1]
 										if rc {
 											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 										} else {
 											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 										}
-										c.TSeq = append(c.TSeq, _tseq...)
-									}
-
-									if accurateAlign {
-										if !outSeq {
-											if rc {
-												_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
-											} else {
-												_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
-											}
-										}
-										cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
+										cigar, err = algn.Align(_qseq, _tseq)
 										if err != nil {
 											checkError(fmt.Errorf("fail to align sequence"))
 										}
@@ -1308,7 +1295,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 										}
 										c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
-										wfa.RecycleAlignmentResult(cigar)
+										if !outSeq {
+											wfa.RecycleAlignmentResult(cigar)
+										}
 									} else {
 										c.AlignedLength = c.AlignedBasesQ
 										c.Gaps = -1
@@ -1318,6 +1307,48 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 										poolChain2.Put(c)
 										(*r2.Chains)[i] = nil
 										continue
+									}
+
+									if outSeq {
+										if accurateAlign {
+											if c.CIGAR == nil {
+												c.CIGAR = make([]byte, 0, 1024)
+												c.QSeq = make([]byte, 0, cigar.AlignLen)
+												c.TSeq = make([]byte, 0, cigar.AlignLen)
+												c.Alignment = make([]byte, 0, cigar.AlignLen)
+											} else {
+												c.CIGAR = c.CIGAR[:0]
+												c.QSeq = c.QSeq[:0]
+												c.TSeq = c.TSeq[:0]
+												c.Alignment = c.Alignment[:0]
+											}
+
+											for _, op = range cigar.Ops {
+												c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+												c.CIGAR = append(c.CIGAR, op.Op)
+											}
+
+											Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
+
+											c.QSeq = append(c.QSeq, *Q...)
+											c.TSeq = append(c.TSeq, *T...)
+											c.Alignment = append(c.Alignment, *A...)
+
+											wfa.RecycleAlignmentText(Q, A, T)
+											wfa.RecycleAlignmentResult(cigar)
+										} else {
+											if c.TSeq == nil {
+												c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
+											} else {
+												c.TSeq = c.TSeq[:0]
+											}
+											if rc {
+												_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
+											} else {
+												_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
+											}
+											c.TSeq = append(c.TSeq, _tseq...)
+										}
 									}
 
 									if !hasResult {
@@ -1429,32 +1460,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						hasResult := false
 						j := 0
 						for i, c := range *r2.Chains {
-							// fmt.Printf("c: [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
-							if outSeq {
-								if c.TSeq == nil {
-									c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
-								} else {
-									c.TSeq = c.TSeq[:0]
-								}
 
+							if accurateAlign {
+								_qseq = s[c.QBegin : c.QEnd+1]
 								if rc {
 									// Attention, it's different from previous code
 									_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
 								} else {
 									_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
-								}
-								c.TSeq = append(c.TSeq, _tseq...)
-							}
-
-							if accurateAlign {
-								if !outSeq {
-									if rc {
-										// fmt.Printf("tEnd: %d, c.Tend: %d, tPosOffsetBegin: %d,  c.TBegin: %d\n", tEnd, c.TEnd, tPosOffsetBegin, c.TBegin)
-										// Attention, it's different from previous code
-										_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
-									} else {
-										_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
-									}
 								}
 								cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
 								if err != nil {
@@ -1470,7 +1483,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								}
 								c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
-								wfa.RecycleAlignmentResult(cigar)
+								if !outSeq {
+									wfa.RecycleAlignmentResult(cigar)
+								}
 							} else {
 								c.AlignedLength = c.AlignedBasesQ
 								c.Gaps = -1
@@ -1480,6 +1495,52 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								poolChain2.Put(c)
 								(*r2.Chains)[i] = nil
 								continue
+							}
+
+							if outSeq {
+								if accurateAlign {
+									if c.CIGAR == nil {
+										c.CIGAR = make([]byte, 0, 1024)
+										c.QSeq = make([]byte, 0, cigar.AlignLen)
+										c.TSeq = make([]byte, 0, cigar.AlignLen)
+										c.Alignment = make([]byte, 0, cigar.AlignLen)
+									} else {
+										c.CIGAR = c.CIGAR[:0]
+										c.QSeq = c.QSeq[:0]
+										c.TSeq = c.TSeq[:0]
+										c.Alignment = c.Alignment[:0]
+									}
+
+									for _, op = range cigar.Ops {
+										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+										c.CIGAR = append(c.CIGAR, op.Op)
+									}
+
+									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
+
+									c.QSeq = append(c.QSeq, *Q...)
+									c.TSeq = append(c.TSeq, *T...)
+									c.Alignment = append(c.Alignment, *A...)
+
+									wfa.RecycleAlignmentText(Q, A, T)
+									wfa.RecycleAlignmentResult(cigar)
+								} else {
+									if c.TSeq == nil {
+										c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
+									} else {
+										c.TSeq = c.TSeq[:0]
+									}
+									if !accurateAlign {
+										if rc {
+											// Attention, it's different from previous code
+											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
+										} else {
+											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
+										}
+									}
+									c.TSeq = append(c.TSeq, _tseq...)
+								}
+
 							}
 
 							if !hasResult {
