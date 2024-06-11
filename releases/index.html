@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N&rsquo;s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
+  <meta name="description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Fix a bug in indexing small genomes. lexicmap search: Perform more accurate alignment with WFA. Fix chaining for highly-repetitive regions. Fix alignment against genomes with many short contigs. Out format: Cluster alignments of each target sequence. Remove the column seeds. Add columns gaps, cigar, align. Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !" />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
+  <meta property="og:description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Fix a bug in indexing small genomes. lexicmap search: Perform more accurate alignment with WFA. Fix chaining for highly-repetitive regions. Fix alignment against genomes with many short contigs. Out format: Cluster alignments of each target sequence. Remove the column seeds. Add columns gaps, cigar, align. Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content="Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions." />
+  <meta name="twitter:description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Fix a bug in indexing small genomes. lexicmap search: Perform more accurate alignment with WFA. Fix chaining for highly-repetitive regions. Fix alignment against genomes with many short contigs. Out format: Cluster alignments of each target sequence. Remove the column seeds. Add columns gaps, cigar, align. Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !" />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": "Latest version v0.4.0 Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! Previous versions v0.3.0 v0.3.0 - 2024-05-14 lexicmap index: Better seed coverage by filling sketching deserts. Use longer (1000bp N’s, previous: k-1) intervals between contigs. Fix a concurrency bug between genome data writing and k-mer-value data collecting. Change the format of k-mer-value index file, and fix the computation of index partitions.",
-      "wordCount" : "291",
+      "description": "Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Fix a bug in indexing small genomes. lexicmap search: Perform more accurate alignment with WFA. Fix chaining for highly-repetitive regions. Fix alignment against genomes with many short contigs. Out format: Cluster alignments of each target sequence. Remove the column seeds. Add columns gaps, cigar, align. Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !",
+      "wordCount" : "348",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1383,6 +1383,42 @@
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0"
+>v0.4.0</a> - 2024-06-xx <a
+  class="gdoc-markdown__link--raw"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0"
+><img
+  src="https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.4.0/total.svg"
+  alt="Github Releases (by Release)"
+  
+/></a></p>
+<ul>
+<li><code>lexicmap index</code>:
+<ul>
+<li><strong>Better sketching desert filling for highly-repetitive regions</strong>.</li>
+<li>Fix a bug in indexing small genomes.</li>
+</ul>
+</li>
+<li><code>lexicmap search</code>:
+<ul>
+<li><strong>Perform more accurate alignment with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/wfa"
+>WFA</a></strong>.</li>
+<li>Fix chaining for highly-repetitive regions.</li>
+<li>Fix alignment against genomes with many short contigs.</li>
+<li>Out format:
+<ul>
+<li>Cluster alignments of each target sequence.</li>
+<li>Remove the column <code>seeds</code>.</li>
+<li>Add columns <code>gaps</code>, <code>cigar</code>, <code>align</code>.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 
 
 
