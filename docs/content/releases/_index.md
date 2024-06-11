@@ -9,6 +9,20 @@ weight: 30
 
 ### v0.4.0
 
+[v0.4.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0) - 2024-06-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.4.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0)
+
+- `lexicmap index`:
+    - **Better sketching desert filling for highly-repetitive regions**.
+    - Fix a bug in indexing small genomes.
+- `lexicmap search`:
+    - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
+    - Fix chaining for highly-repetitive regions.
+    - Fix alignment against genomes with many short contigs.
+    - Out format:
+        - Cluster alignments of each target sequence.
+        - Remove the column `seeds`.
+        - Add columns `gaps`, `cigar`, `align`.
+
 {{< hint type=note >}}
 
 - Please run `lexicmap version` to check update !!!
