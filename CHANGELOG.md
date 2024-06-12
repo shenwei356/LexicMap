@@ -5,6 +5,7 @@
 
 - `lexicmap index`:
     - **Better sketching desert filling for highly-repetitive regions**.
+    - Faster indexing speed by improving lexichash data structure.
     - Fix a bug in indexing small genomes.
 - `lexicmap search`:
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
