@@ -37,7 +37,7 @@ to output CIGAR string, aligned query and subject sequences.
 21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 ```
 
-### What is not the pident 100% when aligning with a sequence from the reference genomes?
+### Why isn't the pident 100% when aligning with a sequence from the reference genomes?
 
 It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
 In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., `N` is converted to `A`.
