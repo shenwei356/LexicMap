@@ -75,15 +75,39 @@ ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
 
-    # export blast-like alignment text
-    lexicmap search -d db.lmi query.fasta --all --quiet \
-        | sed 1d | awk -F'\t' '{print ">"$1":"$12"-"$13" vs "$5":"$14"-"$15":"$16" pident:"$10" gaps:"$11"\n"$18"\n"$19"\n"$21"\n"$20"\n";}'
+```
+# export blast-like alignment text
+lexicmap search -d demo.lmi/ q.gene.fasta --all \
+    | lexicmap utils 2blast
 
-    >NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
-    14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
-    TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
-    |||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
-    TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+Query = NC_000913.3:4166659-4168200
+Length = 1542
+
+[Subject genome #1/15] = GCF_003697165.2
+Query coverage per genome = 100.000%
+
+>NZ_CP033092.2
+Length = 4903501
+
+ HSP #1
+ Query coverage per seq = 100.000%, Aligned length = 1542, Identities = 99.805%, Gaps = 0
+ Query range = 1-1542, Subject range = 458559-460100, Strand = Plus/Plus
+
+Query  1       AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAA  60
+               ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Sbjct  458559  AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAA  458618
+
+Query  61      GTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA  120
+               ||||||||||||||||||| |||||||| |||||||||||||||||||||||||||||||
+Sbjct  458619  GTCGAACGGTAACAGGAAGCAGCTTGCTGCTTTGCTGACGAGTGGCGGACGGGTGAGTAA  458678
+
+Query  121     TGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCAT  180
+               ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Sbjct  458679  TGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCAT  458738
+
+...
+
+```
 
 
 Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).

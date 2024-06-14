@@ -239,7 +239,7 @@ func getFileListFromFile(file string, checkFile bool) ([]string, error) {
 	}
 
 	if !checkFile {
-		return lists, nil
+		return lists, fh.Close()
 	}
 
 	for _, _file = range lists {
@@ -250,7 +250,7 @@ func getFileListFromFile(file string, checkFile bool) ([]string, error) {
 		}
 	}
 
-	return lists, nil
+	return lists, fh.Close()
 }
 
 func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFromArgs bool, flag string, checkFileFromFile bool) []string {
@@ -270,4 +270,54 @@ func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFrom
 		files = append(files, _files...)
 	}
 	return files
+}
+
+// ParseByteSize parses byte size from string
+func ParseByteSize(val string) (int64, error) {
+	val = strings.Trim(val, " \t\r\n")
+	if val == "" {
+		return 0, nil
+	}
+	var u int64
+	var noUnit bool
+	switch val[len(val)-1] {
+	case 'B', 'b':
+		u = 1
+	case 'K', 'k':
+		u = 1 << 10
+	case 'M', 'm':
+		u = 1 << 20
+	case 'G', 'g':
+		u = 1 << 30
+	case 'T', 't':
+		u = 1 << 40
+	default:
+		noUnit = true
+		u = 1
+	}
+	var size float64
+	var err error
+	if noUnit {
+		size, err = strconv.ParseFloat(val, 10)
+		if err != nil {
+			return 0, fmt.Errorf("invalid byte size: %s", val)
+		}
+		if size < 0 {
+			size = 0
+		}
+		return int64(size), nil
+	}
+
+	if len(val) == 1 { // no value
+		return 0, nil
+	}
+
+	size, err = strconv.ParseFloat(strings.Trim(val[0:len(val)-1], " \t\r\n"), 10)
+	if err != nil {
+		return 0, fmt.Errorf("invalid byte size: %s", val)
+	}
+	if size < 0 {
+		size = 0
+	}
+	return int64(size * float64(u)), nil
 }
