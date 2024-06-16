@@ -828,6 +828,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var lenPrefixSuffix uint8 = 3 // that means the firt n base can't be As, just in case.
 			ttt := uint64((1 << (lenPrefixSuffix << 1)) - 1)
 
+			// it's hard to skip k-mers locating at the last k-1 bases of a contig,
+			// ----------AAAAAAAAAAAAA
+			//       ACCAAAAAAAA
+			// so we just detect these k-mers by it's suffix
+			var lenSuffixLong uint8 = 5
+
 			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
 
@@ -939,6 +945,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						// strand +
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
+							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffixLong) &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j) << 1
@@ -1003,6 +1010,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						// strand +
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
+							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffixLong) &&
 							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j) << 1
@@ -1156,6 +1164,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			Masks:    len(lh.Masks),
 			RandSeed: lh.Seed,
 
+			MaxDesert:        int(opt.DesertMaxLen),
+			SeedDistInDesert: int(opt.DesertExpectedSeedDist),
+
 			Chunks:     opt.Chunks,
 			Partitions: opt.Partitions,
 
@@ -1231,17 +1242,19 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 // IndexInfo contains summary of the index
 type IndexInfo struct {
-	MainVersion     uint8 `toml:"main-version" comment:"Index format"`
-	MinorVersion    uint8 `toml:"minor-version"`
-	K               uint8 `toml:"max-K" comment:"LexicHash"`
-	Masks           int   `toml:"masks"`
-	RandSeed        int64 `toml:"rand-seed"`
-	Chunks          int   `toml:"chunks" comment:"Seeds (k-mer-value data) files"`
-	Partitions      int   `toml:"index-partitions"`
-	Genomes         int   `toml:"genomes" comment:"Genome data"`
-	GenomeBatchSize int   `toml:"genome-batch-size"`
-	GenomeBatches   int   `toml:"genome-batches"`
-	ContigInterval  int   `toml:"contig-interval"`
+	MainVersion      uint8 `toml:"main-version" comment:"Index format"`
+	MinorVersion     uint8 `toml:"minor-version"`
+	K                uint8 `toml:"max-K" comment:"LexicHash"`
+	Masks            int   `toml:"masks"`
+	RandSeed         int64 `toml:"rand-seed"`
+	MaxDesert        int   `toml:"max-seed-dist" comment:"Seed distance"`
+	SeedDistInDesert int   `toml:"seed-dist-in-desert"`
+	Chunks           int   `toml:"chunks" comment:"Seeds (k-mer-value data) files"`
+	Partitions       int   `toml:"index-partitions"`
+	Genomes          int   `toml:"genomes" comment:"Genome data"`
+	GenomeBatchSize  int   `toml:"genome-batch-size"`
+	GenomeBatches    int   `toml:"genome-batches"`
+	ContigInterval   int   `toml:"contig-interval"`
 }
 
 // writeIndexInfo writes summary of one index

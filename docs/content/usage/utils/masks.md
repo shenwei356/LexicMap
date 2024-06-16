@@ -57,4 +57,10 @@ $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
 39998   TTTTGTGAATAAGAGATCCTGTCGCAGGAAA
 39999   TTTTGTGGACGGTAGAACCCCGTGGTCACCA
 40000   TTTTGTGTAGCATAAAGGGCTGGCGACCTGT
+
+# check a specific mask
+
+$ lexicmap utils masks --quiet -d demo.lmi/ -m 12345
+12345   CATGTTATAGCACTGGCGGCTAACGCCTTTG
+
 ```

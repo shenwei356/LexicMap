@@ -145,6 +145,7 @@ Attentions:
 		var bar *mpb.Bar
 		var chDuration chan time.Duration
 		var doneDuration chan int
+		var showProgressBar bool
 
 		var masks []int
 		if mask == 0 {
@@ -153,21 +154,23 @@ Attentions:
 				masks[i] = i + 1
 			}
 
-			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(len(lh.Masks)),
-				mpb.PrependDecorators(
-					decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
-					decor.Name("", decor.WCSyncSpaceR),
-					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
-				),
-				mpb.AppendDecorators(
-					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 10),
-					decor.OnComplete(decor.Name(""), ". done"),
-				),
-			)
-
 			if opt.Verbose {
+				showProgressBar = true
+
+				pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+				bar = pbs.AddBar(int64(len(lh.Masks)),
+					mpb.PrependDecorators(
+						decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
+						decor.Name("", decor.WCSyncSpaceR),
+						decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+					),
+					mpb.AppendDecorators(
+						decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+						decor.EwmaETA(decor.ET_STYLE_GO, 10),
+						decor.OnComplete(decor.Name(""), ". done"),
+					),
+				)
+
 				chDuration = make(chan time.Duration, opt.NumCPUs)
 				doneDuration = make(chan int)
 				go func() {
@@ -336,12 +339,12 @@ Attentions:
 
 			r.Close()
 
-			if len(masks) > 1 {
+			if showProgressBar {
 				chDuration <- time.Duration(float64(time.Since(startTime)))
 			}
 		}
 
-		if len(masks) > 1 && opt.Verbose {
+		if showProgressBar {
 			close(chDuration)
 			<-doneDuration
 			pbs.Wait()

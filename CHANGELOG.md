@@ -5,6 +5,7 @@
 
 - `lexicmap index`:
     - **Better sketching desert filling for highly-repetitive regions**.
+    - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Faster indexing speed by improving lexichash data structure.
     - Fix a bug in indexing small genomes.
 - `lexicmap search`:
@@ -15,6 +16,12 @@
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
         - Add columns `gaps`, `cigar`, `align`.
+- `lexicmap utils kmers`:
+    - Fix the progress bar.
+- `lexicmap utils masks`:
+    - Add outputting a specific mask.
+- New commands:
+    - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 
 ### v0.3.0 - 2024-05-14
 

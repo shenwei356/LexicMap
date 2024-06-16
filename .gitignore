@@ -31,6 +31,7 @@ demo/seed_distance.tsv
 demo/seed_distance
 demo/seed-pos.tsv.gz
 demo/t.txt
+demo/kmers.tsv*
 
 lexicmap/binaries/*
 lexicmap/lexicmap*

@@ -94,6 +94,8 @@ var masksCmd = &cobra.Command{
 
 		var lh *lexichash.LexicHash
 
+		decoder := lexichash.MustDecoder()
+
 		if dbDir != "" { // from the index
 			if outputLog {
 				log.Info()
@@ -116,21 +118,30 @@ var masksCmd = &cobra.Command{
 				log.Infof("  checking passed")
 				log.Infof("reading masks...")
 			}
+
+			_k := uint8(lh.K)
+
+			maskChanged := cmd.Flags().Lookup("masks").Changed
+			if maskChanged {
+				fmt.Fprintf(outfh, "%d\t%s\n", nMasks, decoder(lh.Masks[nMasks-1], _k))
+			} else {
+				for i, code := range lh.Masks {
+					fmt.Fprintf(outfh, "%d\t%s\n", i+1, decoder(code, _k))
+				}
+			}
 		} else { // re generate
 			if outputLog {
 				log.Infof("generating new mask...")
 			}
 			lh, err = lexichash.NewWithSeed(k, nMasks, int64(seed), lcPrefix)
 			checkError(err)
+
+			_k := uint8(lh.K)
+
+			for i, code := range lh.Masks {
+				fmt.Fprintf(outfh, "%d\t%s\n", i+1, decoder(code, _k))
+			}
 		}
-
-		decoder := lexichash.MustDecoder()
-		_k := uint8(lh.K)
-
-		for i, code := range lh.Masks {
-			fmt.Fprintf(outfh, "%d\t%s\n", i+1, decoder(code, _k))
-		}
-
 	},
 }
 

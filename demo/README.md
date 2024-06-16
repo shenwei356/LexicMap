@@ -139,7 +139,7 @@ Overview of index files:
       12.93 MB      genomes
      312.53 KB      masks.bin
       375.00 B      genomes.map.bin
-      261.00 B      info.toml
+      323.00 B      info.toml
 
 ## Searching
 

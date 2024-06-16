@@ -82,6 +82,41 @@ Global Flags:
 1. For all masks. The result might be very big, therefore, writing to gzip format is recommended.
 
 
-        $ lexicmap utils kmers --quiet -d demo.lmi/ --mask 0 -o kmers.tsv.gz
+        $ lexicmap utils kmers -d demo.lmi/ --mask 0 -o kmers.tsv.gz
+
+        $ zcat kmers.tsv.gz | csvtk freq -t -f 1 -nr | head -n 10
+        mask    frequency
+        38388   142
+        38030   138
+        31609   130
+        15643   129
+        35924   129
+        35160   89
+        8960    88
+        36439   86
+        19132   84
+
+        $ lexicmap utils kmers -d demo.lmi/ -m 38388 | head -n 20 | csvtk pretty -t
+        mask    kmer                              number   ref               pos       strand
+        -----   -------------------------------   ------   ---------------   -------   ------
+        38388   TTCCATCAGATATTGCAGTTGCCGCGCCAGC   1        GCF_000017205.1   2157565   -
+        38388   TTCCATCAGATCCTCCTACTTCAAAGACCAG   1        GCF_001096185.1   1159072   +
+        38388   TTCCATCAGATCCTTTGTCACTACCTGAAGC   1        GCF_001027105.1   1108238   -
+        38388   TTCCATCAGATGATGACCGGTGGACGAACAC   1        GCF_001544255.1   1315664   -
+        38388   TTCCATCAGATGCTTCTGGTTCTTTATTTAA   1        GCF_000392875.1   503146    -
+        38388   TTCCATCAGATGGAAGGTCTGATTGTTGATA   1        GCF_000006945.2   1416284   +
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   38864     -
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   818406    +
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   1622053   -
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   2064518   +
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   2227218   -
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   3381540   -
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5301234   +
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5431183   -
+        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5433483   -
+        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   17655     +
+        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   70503     -
+        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   81837     +
+        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   83307     +
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
