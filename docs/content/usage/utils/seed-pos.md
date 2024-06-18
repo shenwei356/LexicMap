@@ -39,7 +39,7 @@ Flags:
   -h, --help                 help for seed-pos
   -d, --index string         ► Index directory created by "lexicmap index".
       --max-open-files int   ► Maximum opened files, used for extracting sequences. (default 512)
-  -D, --min-dist int         ► Only output records with seed distance >= this value.
+  -D, --min-dist int         ► Only output records with seed distance >= this value. (default -1)
   -o, --out-file string      ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                              (default "-")
   -O, --plot-dir string      ► Output directory for histograms of seed distances.

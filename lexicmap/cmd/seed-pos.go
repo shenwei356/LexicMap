@@ -87,7 +87,7 @@ Extra columns:
 
 		outFile := getFlagString(cmd, "out-file")
 		moreColumns := getFlagBool(cmd, "verbose")
-		minDist := getFlagNonNegativeInt(cmd, "min-dist")
+		minDist := getFlagInt(cmd, "min-dist")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
 		// ------------------------------
@@ -409,7 +409,9 @@ Extra columns:
 						continue
 					}
 
-					v = append(v, float64(dist))
+					if dist >= 0 {
+						v = append(v, float64(dist))
+					}
 
 					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str>>1&1], dist)
 
@@ -620,7 +622,7 @@ func init() {
 		formatFlagUsage(`Show more columns including position of the previous seed and sequence between the two seeds. `+
 			`Warning: it's slow to extract the sequences, recommend set -D 1000 or higher values to filter results `))
 
-	seedPosCmd.Flags().IntP("min-dist", "D", 0,
+	seedPosCmd.Flags().IntP("min-dist", "D", -1,
 		formatFlagUsage(`Only output records with seed distance >= this value.`))
 
 	seedPosCmd.Flags().IntP("max-open-files", "", 512,

@@ -12,7 +12,7 @@ For big and complex genomes, like the human genome which has many repetitive seq
 
 ### Does LexicMap support short reads?
 
-No. LexicMap only supports long (>=500 bp, >=1kb is prefered) reads or gene/genome/virus/plasmid/phage sequences.
+No. LexicMap only supports long (>=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
 However, some short queries can also be aligned.
 
 ### How's the hardware requirement?

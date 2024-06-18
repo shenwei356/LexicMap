@@ -12,7 +12,7 @@
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
     - Fix chaining for highly-repetitive regions.
     - Fix alignment against genomes with many short contigs.
-    - Out format:
+    - Result format:
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
         - Add columns `gaps`, `cigar`, `align`.
