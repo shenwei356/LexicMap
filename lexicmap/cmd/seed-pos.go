@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -85,8 +86,10 @@ Extra columns:
 
 		outFile := getFlagString(cmd, "out-file")
 		moreColumns := getFlagBool(cmd, "verbose")
-		minDist := getFlagInt(cmd, "min-dist")
+		minDist := getFlagNonNegativeInt(cmd, "min-dist")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+		step := uint32(getFlagPositiveInt(cmd, "slid-step"))
+		window := uint32(getFlagPositiveInt(cmd, "slid-window"))
 
 		// ------------------------------
 
@@ -295,13 +298,15 @@ Extra columns:
 			var pos2str, pos, pre uint32
 			var dist int
 			var refname string
-			var v plotter.Values
+			var v plotter.Values  // for seed distance
+			var v2 plotter.Values // for number of seed
 			var filePlot string
 			var p *plot.Plot
 			threadsFloat := float64(opt.NumCPUs)
 
 			if outputPlotDir {
 				v = make(plotter.Values, 0, 40<<20)
+				v2 = make(plotter.Values, 0, 40<<10)
 			}
 
 			var tSeq *genome.Genome
@@ -314,6 +319,14 @@ Extra columns:
 			var slen int
 			var ri, rs int
 			var sseqid []byte
+
+			var seqRegion [2]int
+			var ws, we, end uint32 // start position of current window
+			var nSeeds int
+			var locs *[]uint32
+			var nPos, pi, ps int
+			k32p1 := uint32(info.K) - 1
+			var first bool
 
 			// var kp1 int = int(info.K) - 1
 
@@ -374,7 +387,7 @@ Extra columns:
 						continue
 					}
 
-					if outputPlotDir && dist >= 0 {
+					if outputPlotDir {
 						v = append(v, float64(dist))
 					}
 
@@ -394,6 +407,45 @@ Extra columns:
 					fmt.Fprintln(outfh)
 
 					pre = pos
+				}
+
+				// sliding window
+				v2 = v2[:0]
+				locs = ref2locs.Locs
+				nPos = len(*locs)
+				ps = 0
+				for _, seqRegion = range *seqRegions { // each sequence
+					end = uint32(seqRegion[1]) - window
+					// fmt.Printf("seq: %d-%d\n", seqRegion[0], end)
+
+					nSeeds = 0
+					first = true
+					for ws = uint32(seqRegion[0]); ws <= end; ws += step { // each window
+						we = ws + window - k32p1
+						// fmt.Printf("  window: %d-%d\n", ws, we)
+
+						for pi = ps; pi < nPos; pi++ {
+							pos = (*locs)[pi] >> 2
+							// fmt.Printf("    pi:%d, pos:%d\n", pi, pos)
+
+							if first && pos >= ws+step {
+								first = false
+								ps = pi // start index of next window
+								// fmt.Printf("      next ps:%d\n", ps)
+							}
+
+							if pos < we {
+								nSeeds++
+								// fmt.Printf("      in range. nSeeds:%d\n", nSeeds)
+							} else { // out of current window
+								v2 = append(v2, float64(nSeeds))
+								// fmt.Printf("      out range. nSeeds:%d\n", nSeeds)
+								nSeeds = 0
+								first = true
+								break
+							}
+						}
+					}
 				}
 
 				if !outputPlotDir || len(v) == 0 { // no distance > -D
@@ -419,6 +471,8 @@ Extra columns:
 
 				nPlot++
 
+				// -------------------------------------------------------------
+
 				p = plot.New()
 
 				h, err := plotter.NewHist(v, bins)
@@ -436,13 +490,10 @@ Extra columns:
 					p.Title.Text = ""
 				}
 				p.Title.TextStyle.Font.Size = 16
-				//if percentiles {
 				sort.Float64s(v)
 				p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",
 					"Seed distance (bp)", getPercentile(0.99, v), getPercentile(0.999, v), getPercentile(0.5, v), v[len(v)-1])
-				// } else {
-				// 	p.X.Label.Text = "Seed distance (bp)"
-				// }
+
 				p.Y.Label.Text = "Frequency"
 				p.X.Label.TextStyle.Font.Size = 14
 				p.Y.Label.TextStyle.Font.Size = 14
@@ -454,8 +505,47 @@ Extra columns:
 				p.Y.Tick.Label.Font.Size = 12
 
 				// Save image
-
 				filePlot = filepath.Join(plotDir, refname+plotExt)
+				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
+
+				// -------------------------------------------------------------
+
+				p = plot.New()
+
+				h, err = plotter.NewHist(v2, bins)
+				if err != nil {
+					checkError(err)
+				}
+
+				// h.Normalize(1)
+				h.FillColor = plotutil.Color(0)
+				p.Add(h)
+
+				if plotTitle {
+					p.Title.Text = refname
+				} else {
+					p.Title.Text = ""
+				}
+				p.Title.TextStyle.Font.Size = 16
+				sort.Float64s(v)
+				// p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",
+				// 	fmt.Sprintf("Number of seeds in %d-bp sliding windows", window), getPercentile(0.99, v2), getPercentile(0.999, v2), getPercentile(0.5, v), v2[len(v2)-1])
+				m, M := minAndMax(v2)
+				p.X.Label.Text = fmt.Sprintf("Number of seeds in %d-bp sliding windows of step %d-bp\nmin=%.0f, max=%.0f",
+					window, step, m, M)
+
+				p.Y.Label.Text = "Frequency"
+				p.X.Label.TextStyle.Font.Size = 14
+				p.Y.Label.TextStyle.Font.Size = 14
+				p.X.Width = 1.5
+				p.Y.Width = 1.5
+				p.X.Tick.Width = 1.5
+				p.Y.Tick.Width = 1.5
+				p.X.Tick.Label.Font.Size = 12
+				p.Y.Tick.Label.Font.Size = 12
+
+				// Save image
+				filePlot = filepath.Join(plotDir, refname+".seed_number"+plotExt)
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// ---------------------------------------------------------
@@ -616,14 +706,20 @@ func init() {
 		formatFlagUsage(`Show more columns including position of the previous seed and sequence between the two seeds. `+
 			`Warning: it's slow to extract the sequences, recommend set -D 1000 or higher values to filter results `))
 
-	seedPosCmd.Flags().IntP("min-dist", "D", -1,
+	seedPosCmd.Flags().IntP("min-dist", "D", 0,
 		formatFlagUsage(`Only output records with seed distance >= this value.`))
 
 	seedPosCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files, used for extracting sequences.`))
 
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
-		formatFlagUsage(`Output directory for histograms of seed distances.`))
+		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seed in sliding windows.`))
+
+	seedPosCmd.Flags().IntP("slid-step", "s", 200,
+		formatFlagUsage(`The step size of sliding windows for counting the number of seeds`))
+
+	seedPosCmd.Flags().IntP("slid-window", "w", 500,
+		formatFlagUsage(`The window size of sliding windows for counting the number of seeds`))
 
 	seedPosCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existing output directory.`))
@@ -663,4 +759,18 @@ func lengthAAs(s []byte) int {
 		p = b
 	}
 	return n
+}
+
+func minAndMax(vals []float64) (m, M float64) {
+	m = math.MaxFloat64
+	M = 0
+	for _, v := range vals {
+		if v > M {
+			M = v
+		}
+		if v < m {
+			m = v
+		}
+	}
+	return m, M
 }

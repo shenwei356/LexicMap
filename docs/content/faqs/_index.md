@@ -6,7 +6,13 @@ weight: 60
 ### Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-Fungi can also be supported.
+Fungi can also be supported, just remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
+which is used to skip genomes larger than 15Mb by default.
+
+```
+  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
+                                  assemblies from Genbank) will be skipped. (default 15000000)
+```
 
 For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
 
