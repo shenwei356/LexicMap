@@ -14,15 +14,13 @@ Attentions:
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
+     So values of column pos_gnm and pos_seq might be different.
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
-  2. A distance between seeds (column distance) with a value of "-1" means it's the first seed
-     in that sequence, and the distance can't be computed currently.
-  3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 
 Extra columns:
   Using -v/--verbose will output more columns:
-     pre_pos,  the position of the previous seed.
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
 
@@ -72,27 +70,17 @@ Global Flags:
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
         $ head -n 10 seed_distance.tsv | csvtk pretty -t
-        ref               pos   strand   distance
-        ---------------   ---   ------   --------
-        GCF_000017205.1   2     +        1
-        GCF_000017205.1   41    -        39
-        GCF_000017205.1   45    +        4
-        GCF_000017205.1   74    -        29
-        GCF_000017205.1   85    -        11
-        GCF_000017205.1   119   -        34
-        GCF_000017205.1   130   -        11
-        GCF_000017205.1   185   +        55
-        GCF_000017205.1   269   -        84
-
-    Or only list records with seed distance longer than a threshold.
-
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 500 | csvtk pretty -t | head -n 5
-        15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
-        ref               pos       strand   distance
-        ---------------   -------   ------   --------
-        GCF_000017205.1   26578     -        403
-        GCF_000017205.1   32937     +        413
-        GCF_000017205.1   37656     -        438
+        ref               seqid         pos_gnm   pos_seq   strand   distance
+        ---------------   -----------   -------   -------   ------   --------
+        GCF_000017205.1   NC_009656.1   2         2         +        1
+        GCF_000017205.1   NC_009656.1   41        41        -        39
+        GCF_000017205.1   NC_009656.1   45        45        +        4
+        GCF_000017205.1   NC_009656.1   74        74        -        29
+        GCF_000017205.1   NC_009656.1   85        85        -        11
+        GCF_000017205.1   NC_009656.1   119       119       -        34
+        GCF_000017205.1   NC_009656.1   130       130       -        11
+        GCF_000017205.1   NC_009656.1   185       185       +        55
+        GCF_000017205.1   NC_009656.1   269       269       -        84
 
     Check the biggest seed distances.
 
@@ -113,6 +101,15 @@ Global Flags:
         442        11
         441        15
 
+    Or only list records with seed distance longer than a threshold.
+
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 400 \
+            | csvtk pretty -t | head -n 5
+        ref               seqid         pos_gnm   pos_seq   strand   distance
+        ---------------   -----------   -------   -------   ------   --------
+        GCF_000017205.1   NC_009656.1   26578     26578     -        403
+        GCF_000017205.1   NC_009656.1   32937     32937     +        413
+        GCF_000017205.1   NC_009656.1   37656     37656     -        438
 
     Plot the histogram of distances between seeds.
 
@@ -131,21 +128,21 @@ Global Flags:
 2. More columns including sequences between two seeds.
 
         $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
-            | head -n4 | csvtk pretty -t -W 50 --clip
-        ref               pos   strand   distance   pre_pos   len_aaa   seq
-        ---------------   ---   ------   --------   -------   -------   ---------------------------------------
-        GCF_000017205.1   2     +        1          0         0         T
-        GCF_000017205.1   41    -        39         1         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
-        GCF_000017205.1   45    +        4          40        1         TCAA
+            | head -n4 | csvtk pretty -t -W 40 --clip
+        ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
+        ---------------   -----------   -------   -------   ------   --------   -------   ---------------------------------------
+        GCF_000017205.1   NC_009656.1   2         2         +        1          0         T
+        GCF_000017205.1   NC_009656.1   41        41        -        39         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
+        GCF_000017205.1   NC_009656.1   45        45        +        4          1         TCAA
 
     Or only list records with seed distance longer than a threshold.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 400 \
             | head -n 2 \
-            | csvtk pretty -t -W 50 --clip
-    ref               pos     strand   distance   pre_pos   len_aaa   seq
-    ---------------   -----   ------   --------   -------   -------   --------------------------------------------------
-    GCF_000017205.1   26578   -        403        26174     8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCTTCGCCTTCAT...
+            | csvtk pretty -t -W 40 --clip
+        ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
+        ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
+        GCF_000017205.1   NC_009656.1   26578     26578     -        403        8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCT...
 
 
 3. Listing seed position of all genomes.
@@ -162,17 +159,17 @@ Global Flags:
         GCF_000742135.1   48041
         GCF_002950215.1   47010
         GCF_002949675.1   46932
-        GCF_003697165.2   45484
+        GCF_003697165.2   45483
         GCF_000006945.2   45300
         GCF_009759685.1   43059
         GCF_001027105.1   42429
         GCF_006742205.1   42428
         GCF_001457655.1   42167
         GCF_900638025.1   42046
-        GCF_000392875.1   41829
+        GCF_000392875.1   41826
         GCF_000148585.2   41118
-        GCF_001544255.1   40444
-        GCF_001096185.1   40357
+        GCF_001544255.1   40443
+        GCF_001096185.1   40356
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -186,69 +183,80 @@ Global Flags:
         GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
         GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
 
-    Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N's). In LexicMap, the N's are converted to A's.
+    Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N's).
+    And note that, in LexicMap, the N's are converted to A's.
 
 
     ```text
-    $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 80
-    ref               pos       strand   distance   pre_pos   len_aaa   seq
-    ---------------   -------   ------   --------   -------   -------   --------------------------------------------------------------------------------
-    GCF_000392875.1   502996    -        1126       501869    1089      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAA
-    GCF_000392875.1   2640078   +        1344       2638733   1150      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGCTCCTTTTTATTTTCCCCACTATTTTTCAAT
-                                                                        GTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
-                                                                        TGCGGTGTAATCTTTTTCTTGGTGTTCTTTTTGTTCCTGAATTAATTTTTCTAACGCTTCTTTC
+    $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 50
+    ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
+    ---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
+    GCF_000392875.1   NZ_KB944589.1   503144    227382    -        1274       1136      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAGGTGTCATTGAAGTAACGTATCCAGATGGTACAAAAGATACAGTAAA
+                                                                                        AGTTCCAGTAGAAGTAACAGACAATCGCTCTGACGCTGATAAATATACAC
+                                                                                        CTAAAGGTCAAAAAGTAACTACTG
+    GCF_000392875.1   NZ_KB944590.1   2640014   1680826   +        1280       1146      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGC
+                                                                                        TCCTTTTTATTTTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTT
+                                                                                        CAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
     ```
 
-    The gap regions:
+    Long gap regions (>=1000 bp) of the genome, which are excatly the regions in the table above.
 
     ```
-    $ zcat GCF_000392875.1.fa.gz | seqkit locate -G -r -p '"N{20,}"' -M | csvtk pretty -t
+    $ zcat refs/GCF_000392875.1.fa.gz \
+        | seqkit locate -G -r -p '"N{20,}"' -P -M \
+        | csvtk filter2 -t -f '$end - $start + 1 >=1000' \
+        | csvtk pretty -t
+
     seqID           patternName   pattern   strand   start     end
     -------------   -----------   -------   ------   -------   -------
-    NZ_KB944588.1   N{20,}        N{20,}    +        156283    156571
-    NZ_KB944588.1   N{20,}        N{20,}    -        156283    156571
-    NZ_KB944589.1   N{20,}        N{20,}    +        6046      6725
     NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
-    NZ_KB944589.1   N{20,}        N{20,}    -        226154    227258
-    NZ_KB944589.1   N{20,}        N{20,}    -        6046      6725
-    NZ_KB944590.1   N{20,}        N{20,}    +        910218    910382
-    NZ_KB944590.1   N{20,}        N{20,}    +        963431    964320
-    NZ_KB944590.1   N{20,}        N{20,}    +        1100883   1101062
     NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
-    NZ_KB944590.1   N{20,}        N{20,}    +        1895617   1896129
-    NZ_KB944590.1   N{20,}        N{20,}    -        1895617   1896129
-    NZ_KB944590.1   N{20,}        N{20,}    -        1679646   1680787
-    NZ_KB944590.1   N{20,}        N{20,}    -        1100883   1101062
-    NZ_KB944590.1   N{20,}        N{20,}    -        963431    964320
-    NZ_KB944590.1   N{20,}        N{20,}    -        910218    910382
     ```
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).

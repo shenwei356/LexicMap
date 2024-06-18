@@ -18,8 +18,12 @@
         - Add columns `gaps`, `cigar`, `align`.
 - `lexicmap utils kmers`:
     - Fix the progress bar.
+    - Fix a bug where some masks don not have any k-mer.
 - `lexicmap utils masks`:
     - Add outputting a specific mask.
+- `lexicmap utils seed-pos`:
+    - New columns: `sseqid` and `pos_seq`
+    - More accurate seed distance.
 - New commands:
     - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 

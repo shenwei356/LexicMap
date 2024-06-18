@@ -43,6 +43,8 @@ import (
 	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
+
+	itree "github.com/rdleal/intervalst/interval"
 )
 
 var be = binary.BigEndian
@@ -734,6 +736,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 			// skip regions around junctions of two sequences.
 
+			// interval tree of 1000-bp interval regions, used in filling deserts
+			_itree := itree.NewSearchTree[uint8, int](cmpFn)
+
 			// because lh.Mask accepts a list, while when skipRegions is nil, *skipRegions is illegal.
 			var _skipRegions [][2]int
 			var skipRegions *[][2]int
@@ -744,7 +749,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				var n int // len of concatenated seqs
 				for i, s := range refseq.SeqSizes {
 					if i > 0 {
+						// 0-based region. [n, n+interval-1]
 						*skipRegions = append(*skipRegions, [2]int{n, n + interval - 1})
+
+						_itree.Insert(n-k+1, n+interval-1, 1)
+
 						n += interval
 					}
 					n += s
@@ -825,14 +834,18 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			var _im int
 			var knl *[]uint64
 
-			var lenPrefixSuffix uint8 = 3 // that means the firt n base can't be As, just in case.
-			ttt := uint64((1 << (lenPrefixSuffix << 1)) - 1)
+			var inIntervalRegion bool
 
-			// it's hard to skip k-mers locating at the last k-1 bases of a contig,
-			// ----------AAAAAAAAAAAAA
-			//       ACCAAAAAAAA
+			// it's hard to skip k-mers at the edge of a gap
+			//       ACCAAAAAAAA      AAAAAAGCCAGA
+			// ----------AAAAAAAAAAAAAAAAAAA-------
+			// ----------TTTTTTTTTTTTTTTTTTT-------
+			//      TTTTTTAC         ACGTTTTTTT
 			// so we just detect these k-mers by it's suffix
-			var lenSuffixLong uint8 = 5
+			var lenSuffix uint8 = 5
+			var lenPrefix uint8 = 3                          // that means the firt n base can't be As, just in case.
+			tttPrefix := uint64((1 << (lenPrefix << 1)) - 1) // for k-mer on the negative strand
+			tttSuffix := uint64((1 << (lenSuffix << 1)) - 1) // for k-mer on the negative strand
 
 			extraLocs := poolInts.Get().(*[]int) // extra positions
 			*extraLocs = (*extraLocs)[:0]
@@ -942,11 +955,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					for ; _j > _end; _j-- {
 						// fmt.Printf("    test u %d\n", _j)
 
+						if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
+							continue
+						}
+
 						// strand +
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
-							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffixLong) &&
-							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
+							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j) << 1
 							// 	break
@@ -962,7 +979,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						// strand -
 						kmer = (*kmerList)[(_j<<1)+1]
 						if kmer != 0 &&
-							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
+							!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j)<<1 | 1
 							// 	break
@@ -1007,11 +1025,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					for _j = _start; _j < _end; _j++ {
 						// fmt.Printf("    test d %d\n", _j)
 
+						if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
+							continue
+						}
+
 						// strand +
 						kmer = (*kmerList)[_j<<1]
 						if kmer != 0 &&
-							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffixLong) &&
-							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
+							!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j) << 1
 							// 	break
@@ -1027,7 +1049,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						// strand -
 						kmer = (*kmerList)[(_j<<1)+1]
 						if kmer != 0 &&
-							!util.MustKmerHasPrefix(kmer, ttt, k8, lenPrefixSuffix) { // (gap AAAAAAAAAAAA) ACTGACTAG
+							!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
+							!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
 							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 							// 	kmerPos = uint64(start+_j)<<1 | 1
 							// 	break
@@ -1433,3 +1456,5 @@ var poolInts = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 0, 1024)
 	return &tmp
 }}
+
+var cmpFn = func(x, y int) int { return int(x - y) }

@@ -207,6 +207,15 @@ Attentions:
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
+			if len(indexes[iMask]) == 0 { // no k-mers
+				r.Close()
+
+				if showProgressBar {
+					chDuration <- time.Duration(float64(time.Since(startTime)))
+				}
+				continue
+			}
+
 			_, err = r.Seek(int64(indexes[iMask][1]), 0)
 			if err != nil {
 				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))

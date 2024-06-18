@@ -130,6 +130,9 @@ func (r *Genome) Reset() {
 
 // RecycleGenome recycle a Genome
 func RecycleGenome(g *Genome) {
+	if g == nil {
+		return
+	}
 	if g.TwoBit != nil {
 		RecycleTwoBit(g.TwoBit)
 	}
@@ -467,6 +470,128 @@ func (r *Reader) Close() error {
 // Seq returns the sequence with index of genome (0-based).
 func (r *Reader) Seq(idx int) (*Genome, error) {
 	return r.SubSeq(idx, 0, math.MaxUint32)
+}
+
+// GenomeInfo returns the genome information of a genome (idx is 0-based),
+// Please call RecycleGenome() after using the result.
+func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
+	if idx < 0 || idx >= int(r.nSeqs) {
+		return nil, fmt.Errorf("sequence index (%d) out of range: [0, %d]", idx, int(r.nSeqs)-1)
+	}
+
+	buf := r.buf
+
+	// -----------------------------------------------------------
+	// // read index information
+	// // 24 + 12 * idx
+	// r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
+
+	// // offset in the data file and bases
+	// n, err := io.ReadFull(r.fh, buf[:12])
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if n < 12 {
+	// 	return nil, ErrBrokenFile
+	// }
+	// offset := int64(be.Uint64(buf[:8]))
+	// nBases := int(be.Uint32(buf[8:12])) // for check end
+
+	var n int
+	var err error
+	i2 := idx << 1
+	offset := int64(r.Index[i2])
+
+	// -----------------------------------------------------------
+	// get sequence information
+
+	g := PoolGenome.Get().(*Genome)
+
+	r.fhData.Seek(offset, 0)
+
+	// ID length
+	n, err = io.ReadFull(r.fhData, buf[:2])
+	if err != nil {
+		return nil, err
+	}
+	if n < 2 {
+		return nil, ErrBrokenFile
+	}
+	idLen := be.Uint16(buf[:2])
+	offset += 2
+
+	// ID
+	n, err = io.ReadFull(r.fhData, buf[:idLen])
+	if err != nil {
+		return nil, err
+	}
+	if n < int(idLen) {
+		return nil, ErrBrokenFile
+	}
+	g.ID = g.ID[:0]
+	g.ID = append(g.ID, buf[:idLen]...)
+	offset += int64(idLen)
+
+	// genome size, Len of concatenated seqs, NumSeqs
+	n, err = io.ReadFull(r.fhData, buf[:12])
+	if err != nil {
+		return nil, err
+	}
+	if n < 12 {
+		return nil, ErrBrokenFile
+	}
+	g.GenomeSize = int(be.Uint32(buf[:4]))
+	g.Len = int(be.Uint32(buf[4:8]))
+	g.NumSeqs = int(be.Uint32(buf[8:12]))
+	offset += 12
+
+	// SeqSizes and SeqIDs
+	g.SeqSizes = g.SeqSizes[:0]
+	g.SeqIDs = g.SeqIDs[:0]
+	var j, nappend int
+	var idLen2 int
+	for i := 0; i < g.NumSeqs; i++ {
+		n, err = io.ReadFull(r.fhData, buf[:4])
+		if err != nil {
+			return nil, err
+		}
+		if n < 4 {
+			return nil, ErrBrokenFile
+		}
+		g.SeqSizes = append(g.SeqSizes, int(be.Uint32(buf[:4])))
+
+		// seq id
+		n, err = io.ReadFull(r.fhData, buf[:2])
+		if err != nil {
+			return nil, err
+		}
+		if n < 2 {
+			return nil, ErrBrokenFile
+		}
+
+		idLen2 = int(be.Uint16(buf[:2]))
+		id := poolID.Get().(*[]byte)
+		if len(*id) >= idLen2 {
+			*id = (*id)[:idLen2]
+		} else {
+			nappend = idLen2 - len(*id)
+			for j = 0; j < nappend; j++ {
+				*id = append(*id, 0)
+			}
+		}
+		n, err = io.ReadFull(r.fhData, *id)
+		if err != nil {
+			return nil, err
+		}
+		if n < idLen2 {
+			return nil, ErrBrokenFile
+		}
+		g.SeqIDs = append(g.SeqIDs, id)
+
+		offset += int64(6 + idLen2)
+	}
+
+	return g, nil
 }
 
 // SubSeq returns the subsequence of a genome (idx is 0-based),
@@ -1000,7 +1125,9 @@ var bit2base = [4]byte{'A', 'C', 'G', 'T'}
 
 // RecycleSeq recycles the sequence.
 func RecycleTwoBit(b2 *[]byte) {
-	poolTwoBit.Put(b2)
+	if b2 != nil {
+		poolTwoBit.Put(b2)
+	}
 }
 
 var poolTwoBit = &sync.Pool{New: func() interface{} {

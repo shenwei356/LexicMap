@@ -54,15 +54,13 @@ Attentions:
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
+     So values of column pos_gnm and pos_seq might be different.
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
-  2. A distance between seeds (column distance) with a value of "-1" means it's the first seed
-     in that sequence, and the distance can't be computed currently.
-  3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 	
 Extra columns:
   Using -v/--verbose will output more columns:
-     pre_pos,  the position of the previous seed.
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
 
@@ -152,7 +150,7 @@ Extra columns:
 		var hasGenomeRdrs bool
 		var poolGenomeRdrs []chan *genome.Reader
 
-		if moreColumns {
+		{
 			openFiles := info.Chunks + 2
 			if maxOpenFiles < openFiles {
 				checkError(fmt.Errorf("invalid max open files: %d, should be >= %d", maxOpenFiles, openFiles))
@@ -246,9 +244,9 @@ Extra columns:
 			w.Close()
 		}()
 
-		fmt.Fprintf(outfh, "ref\tpos\tstrand\tdistance")
+		fmt.Fprintf(outfh, "ref\tseqid\tpos_gnm\tpos_seq\tstrand\tdistance")
 		if moreColumns {
-			fmt.Fprintf(outfh, "\tpre_pos\tlen_aaa\tseq")
+			fmt.Fprintf(outfh, "\tlen_aaa\tseq")
 		}
 		fmt.Fprintln(outfh)
 
@@ -258,6 +256,8 @@ Extra columns:
 			GenomeIdx   int
 			Locs        *[]uint32
 			StartTime   time.Time
+
+			Genome *genome.Genome
 		}
 
 		poolRef2Locs := &sync.Pool{New: func() interface{} {
@@ -267,7 +267,7 @@ Extra columns:
 			}
 		}}
 
-		// readers
+		// seed position readers
 		var readers []*seedposition.Reader                    // save for closing them in the end
 		readerPools := make([]*sync.Pool, info.GenomeBatches) // one for each genome batch
 		for batch := 0; batch < info.GenomeBatches; batch++ {
@@ -308,6 +308,13 @@ Extra columns:
 			var rdr *genome.Reader
 			var genomeIdx int
 
+			seqRegions := poolSkipRegions.Get().(*[][2]int)
+			var interval int
+			var _n int // len of concatenated seqs
+			var slen int
+			var ri, rs int
+			var sseqid []byte
+
 			// var kp1 int = int(info.K) - 1
 
 			for ref2locs := range ch {
@@ -315,6 +322,7 @@ Extra columns:
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
+					genome.RecycleGenome(ref2locs.Genome)
 					poolRef2Locs.Put(ref2locs)
 				}
 
@@ -333,101 +341,54 @@ Extra columns:
 					}
 				}
 
-				if !outputPlotDir {
-					for _, pos2str = range *ref2locs.Locs {
-						pos = pos2str >> 2
-
-						if pos2str&1 > 0 { // this is the first pos after an interval region
-							dist = -1
-						} else {
-							dist = int(pos - pre)
-						}
-
-						if dist < minDist {
-							pre = pos
-							continue
-						}
-
-						fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str>>1&1], dist)
-
-						if moreColumns {
-							if dist <= 0 {
-								fmt.Fprintf(outfh, "\t%d\t0\t", pre+1)
-							} else {
-								tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
-								if err != nil {
-									checkError(fmt.Errorf("failed to read subsequence: %s", err))
-								}
-
-								fmt.Fprintf(outfh, "\t%d\t%d\t%s", pre, lengthAAs(tSeq.Seq), tSeq.Seq)
-
-								genome.RecycleGenome(tSeq)
-							}
-						}
-
-						fmt.Fprintln(outfh)
-
-						pre = pos
-					}
-
-					// ---------------------------------------------------------
-
-					if showProgressBar {
-						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
-					}
-					poolRef2Locs.Put(ref2locs)
-
-					// return or close genome reader
-					if hasGenomeRdrs {
-						poolGenomeRdrs[ref2locs.GenomeBatch] <- rdr
-					} else {
-						err = rdr.Close()
-						if err != nil {
-							checkError(fmt.Errorf("failed to close genome data file: %s", err))
-						}
-					}
-
-					continue
+				*seqRegions = (*seqRegions)[:0]
+				if ref2locs.Genome.NumSeqs > 1 {
+					interval = (ref2locs.Genome.Len - ref2locs.Genome.GenomeSize) / (ref2locs.Genome.NumSeqs - 1)
 				}
-
-				// ---------------------------------------------------------
-				// plot histogram
+				_n = 0
+				for _, slen = range ref2locs.Genome.SeqSizes {
+					*seqRegions = append(*seqRegions, [2]int{_n, _n + slen - 1})
+					_n += slen + interval
+				}
 
 				v = v[:0]
 				pre = 0
+
+				ri = 0                    // index of seq region
+				rs = (*seqRegions)[ri][0] // end of that region
+				sseqid = *ref2locs.Genome.SeqIDs[ri]
 				for _, pos2str = range *ref2locs.Locs {
 					pos = pos2str >> 2
 
 					if pos2str&1 > 0 { // this is the first pos after an interval region
-						dist = -1
-					} else {
-						dist = int(pos - pre)
+						ri++
+						rs = (*seqRegions)[ri][0] // end of that region
+						sseqid = *ref2locs.Genome.SeqIDs[ri]
+
+						pre = uint32(rs)
 					}
+					dist = int(pos - pre)
 
 					if dist < minDist {
 						pre = pos
 						continue
 					}
 
-					if dist >= 0 {
+					if outputPlotDir && dist >= 0 {
 						v = append(v, float64(dist))
 					}
 
-					fmt.Fprintf(outfh, "%s\t%d\t%c\t%d", refname, pos+1, lexichash.Strands[pos2str>>1&1], dist)
+					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%c\t%d", refname, sseqid, pos+1, int(pos)-rs+1, lexichash.Strands[pos2str>>1&1], dist)
 
 					if moreColumns {
-						if dist <= 0 {
-							fmt.Fprintf(outfh, "\t%d\t", pre+1)
-						} else {
-							tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
-							if err != nil {
-								checkError(fmt.Errorf("failed to read subsequence: %s", err))
-							}
-
-							fmt.Fprintf(outfh, "\t%d\t%d\t%s", pre, lengthAAs(tSeq.Seq), tSeq.Seq)
-
-							genome.RecycleGenome(tSeq)
+						tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
+						if err != nil {
+							checkError(fmt.Errorf("failed to read subsequence: %s", err))
 						}
+
+						fmt.Fprintf(outfh, "\t%d\t%s", lengthAAs(tSeq.Seq), tSeq.Seq)
+
+						genome.RecycleGenome(tSeq)
 					}
 
 					fmt.Fprintln(outfh)
@@ -435,12 +396,13 @@ Extra columns:
 					pre = pos
 				}
 
-				if len(v) == 0 { // no distance > -D
+				if !outputPlotDir || len(v) == 0 { // no distance > -D
 					// ---------------------------------------------------------
 
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
+					genome.RecycleGenome(ref2locs.Genome)
 					poolRef2Locs.Put(ref2locs)
 
 					// return or close genome reader
@@ -501,6 +463,7 @@ Extra columns:
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 				}
+				genome.RecycleGenome(ref2locs.Genome)
 				poolRef2Locs.Put(ref2locs)
 
 				// return or close genome reader
@@ -513,6 +476,8 @@ Extra columns:
 					}
 				}
 			}
+
+			poolSkipRegions.Put(seqRegions)
 			done <- 1
 		}()
 
@@ -542,6 +507,8 @@ Extra columns:
 				genomeBatch := int(batchIDAndRefID >> 17)
 				genomeIdx := int(batchIDAndRefID & 131071)
 
+				// seed positions ------------------------------------------------------------
+
 				ref2locs.GenomeBatch = genomeBatch
 				ref2locs.GenomeIdx = genomeIdx
 
@@ -552,6 +519,33 @@ Extra columns:
 				}
 
 				readerPools[genomeBatch].Put(rdr)
+
+				// sequence length ----------------------------------------------------------
+
+				var gRdr *genome.Reader
+				if hasGenomeRdrs {
+					gRdr = <-poolGenomeRdrs[ref2locs.GenomeBatch]
+				} else {
+					fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(ref2locs.GenomeBatch), FileGenomes)
+					gRdr, err = genome.NewReader(fileGenome)
+					if err != nil {
+						checkError(fmt.Errorf("failed to read genome data file: %s", err))
+					}
+				}
+				g, err := gRdr.GenomeInfo(genomeIdx)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read genome infomation: %s", err))
+				}
+				ref2locs.Genome = g
+
+				if hasGenomeRdrs {
+					poolGenomeRdrs[ref2locs.GenomeBatch] <- gRdr
+				} else {
+					err = gRdr.Close()
+					if err != nil {
+						checkError(fmt.Errorf("failed to close genome data file: %s", err))
+					}
+				}
 
 				ch <- ref2locs
 
