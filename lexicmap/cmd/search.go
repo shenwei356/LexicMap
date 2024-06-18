@@ -42,6 +42,7 @@ var mapCmd = &cobra.Command{
 
 Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
+  2. For multiple queries, the order of queries might be different from the input.
 
 Alignment result relationship:
 

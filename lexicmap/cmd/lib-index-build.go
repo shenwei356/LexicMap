@@ -1089,7 +1089,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					nRegions = len(*skipRegions)
 
 					_ri = 0
-					_rs = (*skipRegions)[_ri][0] // start  of a interval region
+					_rs = (*skipRegions)[_ri][1] // start  of a interval region
 				}
 
 				if !checkRegion {
@@ -1100,7 +1100,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					for _i, _loc = range *locs {
 						_j = int(_loc >> 1)
 
-						if _j >= _rs { // this is the first pos after an interval region
+						if checkRegion && _j >= _rs { // this is the first pos after an interval region
 							(*locs)[_i] = _loc<<1 | 1 // add a flag
 
 							// fmt.Printf("the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[_ri][1])
@@ -1109,7 +1109,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							if _ri == nRegions { // this is already the last one
 								checkRegion = false
 							} else {
-								_rs = (*skipRegions)[_ri][0]
+								_rs = (*skipRegions)[_ri][1]
 							}
 						} else {
 							(*locs)[_i] = _loc << 1

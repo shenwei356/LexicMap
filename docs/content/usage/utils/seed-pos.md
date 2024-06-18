@@ -86,11 +86,13 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 500 | csvtk pretty -t | head -n 5
         15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
         ref               pos       strand   distance
         ---------------   -------   ------   --------
-        GCF_000017205.1   30713     -        850
+        GCF_000017205.1   26578     -        403
+        GCF_000017205.1   32937     +        413
+        GCF_000017205.1   37656     -        438
 
     Check the biggest seed distances.
 
@@ -101,24 +103,30 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        899        2
-        898        4
-        897        1
-        896        5
-        895        4
-        894        3
-        893        3
-        892        4
-        891        2
+        449        9
+        448        7
+        447        8
+        446        13
+        445        14
+        444        14
+        443        17
+        442        11
+        441        15
 
 
     Plot the histogram of distances between seeds.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 
-    In the plot below, there's a peak at 200 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 200 bp by default.
+    In the plot below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default.
 
-    <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
+    - GCF_000017205.1 (genome size: 6.6 Mb)
+
+        <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
+
+    - GCF_002949675.1 (genome size: 4.6 Mb)
+
+        <img src="/LexicMap/GCF_002949675.1.png" alt="" width="600"/>
 
 2. More columns including sequences between two seeds.
 
@@ -132,12 +140,12 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 890 \
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 400 \
             | head -n 2 \
             | csvtk pretty -t -W 50 --clip
-        ref               pos      strand   distance   pre_pos   len_aaa   seq
-        ---------------   ------   ------   --------   -------   -------   --------------------------------------------------
-        GCF_000017205.1   152018   -        892        151125    21        CGCGGCCCAGCCATGCCTACTGGGACCTCTCGCCGGGGATCGATTTC...
+    ref               pos     strand   distance   pre_pos   len_aaa   seq
+    ---------------   -----   ------   --------   -------   -------   --------------------------------------------------
+    GCF_000017205.1   26578   -        403        26174     8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCTTCGCCTTCAT...
 
 
 3. Listing seed position of all genomes.
@@ -150,21 +158,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   45745
-        GCF_002950215.1   43615
-        GCF_002949675.1   43474
-        GCF_001457655.1   42112
-        GCF_006742205.1   42102
-        GCF_900638025.1   42008
-        GCF_001027105.1   41855
-        GCF_000742135.1   41423
-        GCF_000392875.1   41390
-        GCF_003697165.2   41201
-        GCF_009759685.1   41160
-        GCF_000006945.2   41115
-        GCF_000148585.2   41075
-        GCF_001096185.1   40238
-        GCF_001544255.1   40187
+        GCF_000017205.1   58958
+        GCF_000742135.1   48041
+        GCF_002950215.1   47010
+        GCF_002949675.1   46932
+        GCF_003697165.2   45484
+        GCF_000006945.2   45300
+        GCF_009759685.1   43059
+        GCF_001027105.1   42429
+        GCF_006742205.1   42428
+        GCF_001457655.1   42167
+        GCF_900638025.1   42046
+        GCF_000392875.1   41829
+        GCF_000148585.2   41118
+        GCF_001544255.1   40444
+        GCF_001096185.1   40357
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -217,6 +225,30 @@ Global Flags:
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
                                                                         TGCGGTGTAATCTTTTTCTTGGTGTTCTTTTTGTTCCTGAATTAATTTTTCTAACGCTTCTTTC
-```
+    ```
+
+    The gap regions:
+
+    ```
+    $ zcat GCF_000392875.1.fa.gz | seqkit locate -G -r -p '"N{20,}"' -M | csvtk pretty -t
+    seqID           patternName   pattern   strand   start     end
+    -------------   -----------   -------   ------   -------   -------
+    NZ_KB944588.1   N{20,}        N{20,}    +        156283    156571
+    NZ_KB944588.1   N{20,}        N{20,}    -        156283    156571
+    NZ_KB944589.1   N{20,}        N{20,}    +        6046      6725
+    NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
+    NZ_KB944589.1   N{20,}        N{20,}    -        226154    227258
+    NZ_KB944589.1   N{20,}        N{20,}    -        6046      6725
+    NZ_KB944590.1   N{20,}        N{20,}    +        910218    910382
+    NZ_KB944590.1   N{20,}        N{20,}    +        963431    964320
+    NZ_KB944590.1   N{20,}        N{20,}    +        1100883   1101062
+    NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
+    NZ_KB944590.1   N{20,}        N{20,}    +        1895617   1896129
+    NZ_KB944590.1   N{20,}        N{20,}    -        1895617   1896129
+    NZ_KB944590.1   N{20,}        N{20,}    -        1679646   1680787
+    NZ_KB944590.1   N{20,}        N{20,}    -        1100883   1101062
+    NZ_KB944590.1   N{20,}        N{20,}    -        963431    964320
+    NZ_KB944590.1   N{20,}        N{20,}    -        910218    910382
+    ```
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).

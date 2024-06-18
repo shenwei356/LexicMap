@@ -184,7 +184,7 @@ We use a small dataset for demonstration.
 
         lexicmap index -I refs/ -O demo.lmi
 
-    It would take about 2 seconds and 2 GB RAM in a 16-CPU PC.
+    It would take about 3.5 seconds and 2 GB RAM in a 16-CPU PC.
 
     Optionally, we can also use **a file list** as the input.
 
@@ -199,74 +199,74 @@ We use a small dataset for demonstration.
 
     # here we set a small --batch-size 5
     $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-    20:18:51.410 [INFO] LexicMap v0.4.0
-    20:18:51.410 [INFO]   https://github.com/shenwei356/LexicMap
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] checking input files ...
-    20:18:51.410 [INFO]   15 input file(s) given
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] --------------------- [ main parameters ] ---------------------
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] input and output:
-    20:18:51.410 [INFO]   input directory: refs/
-    20:18:51.410 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    20:18:51.410 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    20:18:51.410 [INFO]     *regular expressions for filtering out sequences: []
-    20:18:51.410 [INFO]   max genome size: 15000000
-    20:18:51.410 [INFO]   output directory: demo.lmi
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] mask generation:
-    20:18:51.410 [INFO]   k-mer size: 31
-    20:18:51.410 [INFO]   number of masks: 40000
-    20:18:51.410 [INFO]   rand seed: 1
-    20:18:51.410 [INFO]   prefix length for checking low-complexity in mask generation: 15
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] seed data:
-    20:18:51.410 [INFO]   maximum sketching desert length: 900
-    20:18:51.410 [INFO]   distance of k-mers to fill deserts: 200
-    20:18:51.410 [INFO]   seeds data chunks: 16
-    20:18:51.410 [INFO]   seeds data indexing partitions: 512
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] general:
-    20:18:51.410 [INFO]   genome batch size: 5
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO]
-    20:18:51.410 [INFO] --------------------- [ generating masks ] ---------------------
-    20:18:51.728 [INFO]
-    20:18:51.728 [INFO] --------------------- [ building index ] ---------------------
-    20:18:51.884 [INFO]
-    20:18:51.884 [INFO]   ------------------------[ batch 0 ]------------------------
-    20:18:51.884 [INFO]   building index for batch 0 with 5 files...
+    14:43:49.967 [INFO] LexicMap v0.4.0
+    14:43:49.967 [INFO]   https://github.com/shenwei356/LexicMap
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] checking input files ...
+    14:43:49.967 [INFO]   15 input file(s) given
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] --------------------- [ main parameters ] ---------------------
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] input and output:
+    14:43:49.967 [INFO]   input directory: refs/
+    14:43:49.967 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    14:43:49.967 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    14:43:49.967 [INFO]     *regular expressions for filtering out sequences: []
+    14:43:49.967 [INFO]   max genome size: 15000000
+    14:43:49.967 [INFO]   output directory: demo.lmi
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] mask generation:
+    14:43:49.967 [INFO]   k-mer size: 31
+    14:43:49.967 [INFO]   number of masks: 40000
+    14:43:49.967 [INFO]   rand seed: 1
+    14:43:49.967 [INFO]   prefix length for checking low-complexity in mask generation: 15
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] seed data:
+    14:43:49.967 [INFO]   maximum sketching desert length: 450
+    14:43:49.967 [INFO]   distance of k-mers to fill deserts: 150
+    14:43:49.967 [INFO]   seeds data chunks: 16
+    14:43:49.967 [INFO]   seeds data indexing partitions: 512
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] general:
+    14:43:49.967 [INFO]   genome batch size: 5
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] --------------------- [ generating masks ] ---------------------
+    14:43:50.269 [INFO]
+    14:43:50.269 [INFO] --------------------- [ building index ] ---------------------
+    14:43:50.426 [INFO]
+    14:43:50.426 [INFO]   ------------------------[ batch 0 ]------------------------
+    14:43:50.426 [INFO]   building index for batch 0 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    20:18:52.463 [INFO]   writing seeds...
-    20:18:52.606 [INFO]   finished writing seeds in 143.292864ms
-    20:18:52.606 [INFO]   finished building index for batch 0 in: 722.316862ms
-    20:18:52.606 [INFO]
-    20:18:52.606 [INFO]   ------------------------[ batch 1 ]------------------------
-    20:18:52.606 [INFO]   building index for batch 1 with 5 files...
+    14:43:51.414 [INFO]   writing seeds...
+    14:43:51.551 [INFO]   finished writing seeds in 136.823165ms
+    14:43:51.551 [INFO]   finished building index for batch 0 in: 1.124974632s
+    14:43:51.551 [INFO]
+    14:43:51.551 [INFO]   ------------------------[ batch 1 ]------------------------
+    14:43:51.551 [INFO]   building index for batch 1 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    20:18:54.073 [INFO]   writing seeds...
-    20:18:54.251 [INFO]   finished writing seeds in 178.055055ms
-    20:18:54.251 [INFO]   finished building index for batch 1 in: 1.645034631s
-    20:18:54.251 [INFO]
-    20:18:54.251 [INFO]   ------------------------[ batch 2 ]------------------------
-    20:18:54.251 [INFO]   building index for batch 2 with 5 files...
+    14:43:54.088 [INFO]   writing seeds...
+    14:43:54.276 [INFO]   finished writing seeds in 187.45683ms
+    14:43:54.276 [INFO]   finished building index for batch 1 in: 2.724371973s
+    14:43:54.276 [INFO]
+    14:43:54.276 [INFO]   ------------------------[ batch 2 ]------------------------
+    14:43:54.276 [INFO]   building index for batch 2 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    20:18:54.993 [INFO]   writing seeds...
-    20:18:55.182 [INFO]   finished writing seeds in 188.702811ms
-    20:18:55.182 [INFO]   finished building index for batch 2 in: 931.156662ms
-    20:18:55.183 [INFO]
-    20:18:55.183 [INFO] merging 3 indexes...
-    20:18:55.183 [INFO]   [round 1]
-    20:18:55.183 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
-    20:18:55.741 [INFO]   [round 1] finished in 558.606877ms
-    20:18:55.741 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-    20:18:55.746 [INFO]
-    20:18:55.746 [INFO] finished building LexicMap index from 15 files with 40000 masks in 4.336354688s
-    20:18:55.746 [INFO] LexicMap index saved: demo.lmi
-    20:18:55.746 [INFO]
-    20:18:55.746 [INFO] elapsed time: 4.336386606s
-    20:18:55.746 [INFO]
+    14:43:55.655 [INFO]   writing seeds...
+    14:43:55.831 [INFO]   finished writing seeds in 176.057529ms
+    14:43:55.831 [INFO]   finished building index for batch 2 in: 1.555726985s
+    14:43:55.832 [INFO]
+    14:43:55.832 [INFO] merging 3 indexes...
+    14:43:55.832 [INFO]   [round 1]
+    14:43:55.832 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
+    14:43:56.417 [INFO]   [round 1] finished in 585.31833ms
+    14:43:56.417 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+    14:43:56.422 [INFO]
+    14:43:56.422 [INFO] finished building LexicMap index from 15 files with 40000 masks in 6.454799284s
+    14:43:56.422 [INFO] LexicMap index saved: demo.lmi
+    14:43:56.422 [INFO]
+    14:43:56.422 [INFO] elapsed time: 6.454828408s
+    14:43:56.422 [INFO]
 
 {{< /expand >}}
 
@@ -300,18 +300,19 @@ The LexicMap index is a directory with multiple files.
 {{< tab "Demo data" >}}
 
     # 15 genomes
-    demo.lmi/: 26.87 MB
-      13.64 MB      seeds
+    demo.lmi/: 27.75 MB
+      14.51 MB      seeds
       12.93 MB      genomes
      312.53 KB      masks.bin
       375.00 B      genomes.map.bin
-      260.00 B      info.toml
+      323.00 B      info.tom
 
 {{< /tab>}}
 
 {{< tab "GTDB repr" >}}
 
-    # 85,205 genomes
+    # 85,205 genomes/
+    # to be updated
     gtdb_repr.lmi: 110.37 GB
       66.78 GB      genomes
       43.59 GB      seeds
@@ -324,12 +325,12 @@ The LexicMap index is a directory with multiple files.
 {{< tab "GTDB complete" >}}
 
     # 402,538 genomes
-    gtdb_complete.lmi: 509.99 GB
+    gtdb_complete.lmi: 522.58 GB
      362.98 GB      genomes
-     147.00 GB      seeds
+     159.59 GB      seeds
        9.60 MB      genomes.map.bin
      312.53 KB      masks.bin
-      269.00 B      info.toml
+      331.00 B      info.toml
 
 {{< /tab>}}
 
@@ -337,12 +338,12 @@ The LexicMap index is a directory with multiple files.
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
-    genbank_refseq.lmi: 2.91 TB
+    genbank_refseq.lmi: 2.97 TB
        2.17 TB      genomes
-     764.22 GB      seeds
+     824.42 GB      seeds
       55.81 MB      genomes.map.bin
      312.53 KB      masks.bin
-      270.00 B      info.toml
+      332.00 B      info.toml
 
 {{< /tab>}}
 
@@ -350,12 +351,12 @@ The LexicMap index is a directory with multiple files.
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
-    atb_hq.lmi: 2.32 TB
+    atb_hq.lmi: 2.37 TB
        1.77 TB      genomes
-     569.44 GB      seeds
+     614.58 GB      seeds
       39.22 MB      genomes.map.bin
      312.53 KB      masks.bin
-      270.00 B      info.toml
+      332.00 B      info.toml
 
 {{< /tab>}}
 
