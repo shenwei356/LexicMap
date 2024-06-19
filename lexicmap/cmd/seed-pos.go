@@ -124,7 +124,6 @@ Figures:
 			checkError(fmt.Errorf("the value of --plot-ext should not be empty"))
 		}
 		// plotTitle := getFlagBool(cmd, "plot-title")
-		plotTitle := true
 
 		// ---------------------------------------------------------------
 
@@ -280,8 +279,8 @@ Figures:
 		}}
 
 		// seed position readers
-		var readers []*seedposition.Reader                    // save for closing them in the end
-		readerPools := make([]*sync.Pool, info.GenomeBatches) // one for each genome batch
+		readers := make([]*seedposition.Reader, 0, info.GenomeBatches) // save for closing them in the end
+		readerPools := make([]*sync.Pool, info.GenomeBatches)          // one for each genome batch
 		for batch := 0; batch < info.GenomeBatches; batch++ {
 			_batch := batch
 			readerPools[batch] = &sync.Pool{New: func() interface{} {
@@ -480,6 +479,9 @@ Figures:
 
 				nPlot++
 
+				title := fmt.Sprintf("%s\n%s bp, %d contig(s), %s seeds",
+					refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)),
+					len(ref2locs.Genome.SeqSizes), humanize.Comma(int64(len(*ref2locs.Locs))))
 				// -------------------------------------------------------------
 
 				p = plot.New()
@@ -493,12 +495,7 @@ Figures:
 				h.FillColor = plotutil.Color(0)
 				p.Add(h)
 
-				if plotTitle {
-					p.Title.Text = fmt.Sprintf("%s\n%s bp, %d contig(s)",
-						refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)), len(ref2locs.Genome.SeqSizes))
-				} else {
-					p.Title.Text = ""
-				}
+				p.Title.Text = title
 				p.Title.TextStyle.Font.Size = 16
 				sort.Float64s(v)
 				p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",
@@ -531,12 +528,7 @@ Figures:
 				h.FillColor = plotutil.Color(0)
 				p.Add(h)
 
-				if plotTitle {
-					p.Title.Text = fmt.Sprintf("%s\n%s bp, %d contig(s)",
-						refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)), len(ref2locs.Genome.SeqSizes))
-				} else {
-					p.Title.Text = ""
-				}
+				p.Title.Text = title
 				p.Title.TextStyle.Font.Size = 16
 				sort.Float64s(v2)
 				// p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",

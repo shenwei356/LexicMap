@@ -110,7 +110,7 @@ Global Flags:
         442        11
         441        15
 
-    Or only list records with seed distance longer than a threshold.
+    Or only list records with seed distances longer than a threshold.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 400 \
             | csvtk pretty -t | head -n 5
@@ -120,27 +120,13 @@ Global Flags:
         GCF_000017205.1   NC_009656.1   32937     32937     +        413
         GCF_000017205.1   NC_009656.1   37656     37656     -        438
 
-    Plot the histogram of distances between seeds.
+    Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 
     In the plot below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default.
 
-    - GCF_000392875.1 (genome size: 2.9 Mb)
-
-        <img src="/LexicMap/GCF_000392875.1.png" alt="" width="400"/>
-        <img src="/LexicMap/GCF_000392875.1.seed_number.png" alt="" width="400"
-
-    - GCF_002949675.1 (genome size: 4.6 Mb)
-
-        <img src="/LexicMap/GCF_002949675.1.png" alt="" width="400"/>
-        <img src="/LexicMap/GCF_002949675.1.seed_number.png" alt="" width="400"/>
-
-    - GCF_000017205.1 (genome size: 6.6 Mb)
-
-        <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
-        <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
-
+    <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
 
 2. More columns including sequences between two seeds.
 
@@ -192,21 +178,50 @@ Global Flags:
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz \
             --plot-dir seed_distance --force
+        09:56:34.059 [INFO] creating genome reader pools, each batch with 1 readers...
         processed files:  15 / 15 [======================================] ETA: 0s. done
-        11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
-        11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance
+        09:56:34.656 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
+        09:56:34.656 [INFO] histograms of 15 genomes(s) saved to seed_distance
+        09:56:34.656 [INFO]
+        09:56:34.656 [INFO] elapsed time: 598.080462ms
+        09:56:34.656 [INFO]
 
         $ ls seed_distance/
-        GCF_000006945.2.png  GCF_000392875.1.png  GCF_001096185.1.png  GCF_002949675.1.png  GCF_006742205.1.png
-        GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
-        GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
+        GCF_000006945.2.png              GCF_000742135.1.png              GCF_001544255.1.png              GCF_006742205.1.png
+        GCF_000006945.2.seed_number.png  GCF_000742135.1.seed_number.png  GCF_001544255.1.seed_number.png  GCF_006742205.1.seed_number.png
+        GCF_000017205.1.png              GCF_001027105.1.png              GCF_002949675.1.png              GCF_009759685.1.png
+        GCF_000017205.1.seed_number.png  GCF_001027105.1.seed_number.png  GCF_002949675.1.seed_number.png  GCF_009759685.1.seed_number.png
+        GCF_000148585.2.png              GCF_001096185.1.png              GCF_002950215.1.png              GCF_900638025.1.png
+        GCF_000148585.2.seed_number.png  GCF_001096185.1.seed_number.png  GCF_002950215.1.seed_number.png  GCF_900638025.1.seed_number.png
+        GCF_000392875.1.png              GCF_001457655.1.png              GCF_003697165.2.png
+        GCF_000392875.1.seed_number.png  GCF_001457655.1.seed_number.png  GCF_003697165.2.seed_number.png
+
+
+    In the plots below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.
+
+    - GCF_000392875.1 (genome size: 2.9 Mb)
+
+        <img src="/LexicMap/GCF_000392875.1.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_000392875.1.seed_number.png" alt="" width="400"
+
+    - GCF_002949675.1 (genome size: 4.6 Mb)
+
+        <img src="/LexicMap/GCF_002949675.1.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_002949675.1.seed_number.png" alt="" width="400"/>
+
+    - GCF_000017205.1 (genome size: 6.6 Mb)
+
+        <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
 
     Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N's).
-    And note that, in LexicMap, the N's are converted to A's.
+    This also explain why there are a few sliding windows has zero seeds in the figure above.
+
+    Let's check the regions with big seed distances. Note that, in LexicMap, the N's are converted to A's.
 
 
     ```text
-    $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 50
+    $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
     ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
     ---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
     GCF_000392875.1   NZ_KB944589.1   503144    227382    -        1274       1136      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAA
@@ -278,3 +293,5 @@ Global Flags:
     ```
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
+[SeqKit](https://github.com/shenwei356/seqkit) is used to locating subsequences from fasta files.
+[lexicmap utils subseq](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/) can also be used to extract subsequences from the index.
