@@ -124,7 +124,8 @@ Attention:
 		if concatenatedPositions {
 			tSeq, err = rdr.SubSeq(genomeIdx, start-1, end-1)
 		} else {
-			tSeq, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+			tSeq, end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+			end++ // returned end is 0-based.
 		}
 		if err != nil {
 			checkError(fmt.Errorf("failed to read subsequence: %s", err))
