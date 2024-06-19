@@ -186,17 +186,68 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
     ```
 
-- Exporting blast-like alignment text
+- Exporting blast-like alignment text.
+
+    From file:
+
 
     ```text
-    lexicmap search -d db.lmi query.fasta --all --quiet \
-        | sed 1d | awk -F'\t' '{print ">"$1":"$12"-"$13" vs "$5":"$14"-"$15":"$16" pident:"$10" gaps:"$11"\n"$18"\n"$19"\n"$21"\n"$20"\n";}'
+    lexicmap utils 2blast results.tsv -o results.txt
 
-    >NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
-    14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
-    TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
-    |||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
-    TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+    ```
+
+    From stdin:
+
+    ```text
+    # align only one long-read <= 500 bp
+
+    $ seqkit seq -M 500 q.long-reads.fasta.gz \
+        | seqkit head -n 1 \
+        | lexicmap search -d demo.lmi/ -a \
+        | lexicmap utils 2blast
+
+    Query = GCF_006742205.1_r100
+    Length = 431
+
+    [Subject genome #1/1] = GCF_006742205.1
+    Query coverage per genome = 92.575%
+
+    >NZ_AP019721.1
+    Length = 2422602
+
+    HSP #1
+    Query coverage per seq = 92.575%, Aligned length = 402, Identities = 98.507%, Gaps = 4
+    Query range = 33-431, Subject range = 1321677-1322077, Strand = Plus/Minus
+
+    Query  33       TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  92
+                    ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    Sbjct  1322077  TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  1322018
+
+    Query  93       GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTG-TACATTTGC  151
+                    |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
+    Sbjct  1322017  GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTGATACATTTGC  1321958
+
+    Query  152      TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCACAGGATGACCA  211
+                    |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
+    Sbjct  1321957  TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCAC-GGATGACCA  1321899
+
+    Query  212      TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  271
+                    ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+    Sbjct  1321898  TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  1321839
+
+    Query  272      AGTACCTTGTATTAATTTCTAATTCTAA-TACTCATTCTGTTGTGATTCAAATGGTGCTT  330
+                    |||||||||||||||||||||||||||| ||||||||||||||||||||||||| |||||
+    Sbjct  1321838  AGTACCTTGTATTAATTTCTAATTCTAAATACTCATTCTGTTGTGATTCAAATGTTGCTT  1321779
+
+    Query  331      CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATAATCAG  390
+                    |||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||
+    Sbjct  1321778  CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATCATCAG  1321719
+
+    Query  391      CCATCTTGTT-GACAATATGATTTCACGTTGATTATTAATGC  431
+                    |||||||||| |||||||||||||||||||||||||||||||
+    Sbjct  1321718  CCATCTTGTTTGACAATATGATTTCACGTTGATTATTAATGC  1321677
+
+
     ```
 
 

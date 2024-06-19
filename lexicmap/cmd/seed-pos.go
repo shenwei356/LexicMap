@@ -527,12 +527,12 @@ Extra columns:
 					p.Title.Text = ""
 				}
 				p.Title.TextStyle.Font.Size = 16
-				sort.Float64s(v)
+				sort.Float64s(v2)
 				// p.X.Label.Text = fmt.Sprintf("%s\n99th pctl=%.0f, 99.9th pctl=%.0f, median=%.0f, max=%.0f\n",
 				// 	fmt.Sprintf("Number of seeds in %d-bp sliding windows", window), getPercentile(0.99, v2), getPercentile(0.999, v2), getPercentile(0.5, v), v2[len(v2)-1])
 				m, M := minAndMax(v2)
-				p.X.Label.Text = fmt.Sprintf("Number of seeds in %d-bp sliding windows of step %d-bp\nmin=%.0f, max=%.0f",
-					window, step, m, M)
+				p.X.Label.Text = fmt.Sprintf("Number of seeds in %d-bp sliding windows of step %d-bp\nmin=%.0f, median=%.0f, max=%.0f",
+					window, step, m, getPercentile(0.5, v2), M)
 
 				p.Y.Label.Text = "Frequency"
 				p.X.Label.TextStyle.Font.Size = 14
