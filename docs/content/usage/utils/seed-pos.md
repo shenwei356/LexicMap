@@ -7,9 +7,9 @@ weight: 30
 
 ```plain
 $ lexicmap utils seed-pos -h
-Extract seed positions via reference names
+Extract and plot seed positions via reference name(s)
 
-Attentions:
+Attention:
   0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index.
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
@@ -23,6 +23,11 @@ Extra columns:
   Using -v/--verbose will output more columns:
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
+
+Figures:
+  Using -O/--plot-dir will write plots into given directory:
+    - Histograms of seed distances.
+        - Histograms of numbers of seeds in sliding windows.
 
 Usage:
   lexicmap utils seed-pos [flags]
@@ -41,9 +46,8 @@ Flags:
   -o, --out-file string      ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                              (default "-")
   -O, --plot-dir string      ► Output directory for 1) histograms of seed distances, 2) histograms of
-                             numbers of seed in sliding windows.
+                             numbers of seeds in sliding windows.
       --plot-ext string      ► Histogram plot file extention. (default ".png")
-  -t, --plot-title           ► Plot genome ID as the title.
   -n, --ref-name strings     ► Reference name(s).
   -s, --slid-step int        ► The step size of sliding windows for counting the number of seeds
                              (default 200)
@@ -122,15 +126,21 @@ Global Flags:
 
     In the plot below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default.
 
-    - GCF_000017205.1 (genome size: 6.6 Mb)
+    - GCF_000392875.1 (genome size: 2.9 Mb)
 
-        <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
-        <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_000392875.1.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_000392875.1.seed_number.png" alt="" width="400"
 
     - GCF_002949675.1 (genome size: 4.6 Mb)
 
         <img src="/LexicMap/GCF_002949675.1.png" alt="" width="400"/>
         <img src="/LexicMap/GCF_002949675.1.seed_number.png" alt="" width="400"/>
+
+    - GCF_000017205.1 (genome size: 6.6 Mb)
+
+        <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
+        <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
+
 
 2. More columns including sequences between two seeds.
 
@@ -181,7 +191,7 @@ Global Flags:
     Plot the histograms of distances between seeds for all genomes.
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz \
-            --plot-dir seed_distance --plot-title --force
+            --plot-dir seed_distance --force
         processed files:  15 / 15 [======================================] ETA: 0s. done
         11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
         11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance

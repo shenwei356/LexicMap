@@ -42,7 +42,7 @@ var kmersCmd = &cobra.Command{
 	Short: "View k-mers captured by the masks",
 	Long: `View k-mers captured by the masks
 
-Attentions:
+Attention:
   1. Mask index (column mask) is 1-based.
   2. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were

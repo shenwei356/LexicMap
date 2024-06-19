@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
 	"github.com/shenwei356/bio/seq"
@@ -47,10 +48,10 @@ import (
 
 var seedPosCmd = &cobra.Command{
 	Use:   "seed-pos",
-	Short: "Extract seed positions via reference names",
-	Long: `Extract seed positions via reference names
+	Short: "Extract and plot seed positions via reference name(s)",
+	Long: `Extract and plot seed positions via reference name(s)
 
-Attentions:
+Attention:
   0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index.
   1. Seed/K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
@@ -65,10 +66,17 @@ Extra columns:
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
 
+Figures:
+  Using -O/--plot-dir will write plots into given directory:
+    - Histograms of seed distances.
+	- Histograms of numbers of seeds in sliding windows.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
+
+		timeStart := time.Now()
 
 		// ------------------------------
 
@@ -115,7 +123,8 @@ Extra columns:
 		if plotExt == "" {
 			checkError(fmt.Errorf("the value of --plot-ext should not be empty"))
 		}
-		plotTitle := getFlagBool(cmd, "plot-title")
+		// plotTitle := getFlagBool(cmd, "plot-title")
+		plotTitle := true
 
 		// ---------------------------------------------------------------
 
@@ -485,7 +494,8 @@ Extra columns:
 				p.Add(h)
 
 				if plotTitle {
-					p.Title.Text = refname
+					p.Title.Text = fmt.Sprintf("%s\n%s bp, %d contig(s)",
+						refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)), len(ref2locs.Genome.SeqSizes))
 				} else {
 					p.Title.Text = ""
 				}
@@ -522,7 +532,8 @@ Extra columns:
 				p.Add(h)
 
 				if plotTitle {
-					p.Title.Text = refname
+					p.Title.Text = fmt.Sprintf("%s\n%s bp, %d contig(s)",
+						refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)), len(ref2locs.Genome.SeqSizes))
 				} else {
 					p.Title.Text = ""
 				}
@@ -683,6 +694,9 @@ Extra columns:
 			if outputPlotDir {
 				log.Infof("histograms of %d genomes(s) saved to %s", nPlot, plotDir)
 			}
+			log.Info()
+			log.Infof("elapsed time: %s", time.Since(timeStart))
+			log.Info()
 		}
 	},
 }
@@ -713,7 +727,7 @@ func init() {
 		formatFlagUsage(`Maximum opened files, used for extracting sequences.`))
 
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
-		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seed in sliding windows.`))
+		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows.`))
 
 	seedPosCmd.Flags().IntP("slid-step", "s", 200,
 		formatFlagUsage(`The step size of sliding windows for counting the number of seeds`))
@@ -737,8 +751,8 @@ func init() {
 		formatFlagUsage(`Histogram height (unit: inch).`))
 	seedPosCmd.Flags().StringP("plot-ext", "", ".png",
 		formatFlagUsage(`Histogram plot file extention.`))
-	seedPosCmd.Flags().BoolP("plot-title", "t", false,
-		formatFlagUsage(`Plot genome ID as the title.`))
+	// seedPosCmd.Flags().BoolP("plot-title", "t", false,
+	// 	formatFlagUsage(`Plot genome ID and size as the title.`))
 
 	seedPosCmd.SetUsageTemplate(usageTemplate(""))
 }

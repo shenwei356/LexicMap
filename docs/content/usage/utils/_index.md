@@ -17,7 +17,7 @@ Available Commands:
   kmers         View k-mers captured by the masks
   masks         View masks of the index or generate new masks randomly
   reindex-seeds Recreate indexes of k-mer-value (seeds) data
-  seed-pos      Extract seed positions via reference names
+  seed-pos      Extract and plot seed positions via reference name(s)
   subseq        Extract subsequence via reference name, sequence ID, position and strand
 
 Flags:

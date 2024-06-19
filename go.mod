@@ -7,6 +7,7 @@ toolchain go1.22.4
 replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
 
 require (
+	github.com/dustin/go-humanize v1.0.1
 	github.com/iafan/cwalk v0.0.0-20210125030640-586a8832a711
 	github.com/klauspost/pgzip v1.2.6
 	github.com/mattn/go-colorable v0.1.13
