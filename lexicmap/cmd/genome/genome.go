@@ -1069,7 +1069,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	*s = (*s)[:j]
 	if j >= l {
 		*s = (*s)[:l]
-		return g, -1, nil
+		return g, end, nil
 	}
 
 	// -- middle byte --

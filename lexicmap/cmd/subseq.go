@@ -144,14 +144,17 @@ Attention:
 
 		s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)
 		checkError(err)
+
+		strand := "+"
 		if revcom {
+			strand = "-"
 			s.RevComInplace()
 		}
 
 		if concatenatedPositions {
-			fmt.Fprintf(outfh, ">%s:%d-%d\n", refname, start, end)
+			fmt.Fprintf(outfh, ">%s:%d-%d:%s\n", refname, start, end, strand)
 		} else {
-			fmt.Fprintf(outfh, ">%s:%d-%d\n", seqid, start, end)
+			fmt.Fprintf(outfh, ">%s:%d-%d:%s\n", seqid, start, end, strand)
 		}
 		outfh.Write(s.FormatSeq(lineWidth))
 		outfh.WriteByte('\n')

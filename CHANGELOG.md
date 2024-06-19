@@ -27,6 +27,7 @@
     - Add histograms of numbers of seed in sliding windows.
 - `lexicmap utils subseq`:
     - Fix a bug when the given end position is larger than the sequence length.
+    - Add the strand ("+" or "-") in the sequence header.
 - New commands:
     - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 
