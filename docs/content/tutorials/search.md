@@ -100,7 +100,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-p, --seed-min-prefix`**       |Default 15   |Minimum length of shared substrings (anchors).                         |       |
 |**`-P, --seed-min-single-prefix`**|Default 20   |Minimum length of shared substrings (anchors) if there's only one pair.|       |
 |`--seed-max-dist`                 |Default 10000|Max distance between seeds in seed chaining.                           |       |
-|`--seed-max-gap`                  |Default 2000 |Max gap in seed chaining.                                              |       |
+|`--seed-max-gap`                  |Default 500  |Max gap in seed chaining.                                              |       |
 |`-m/--seed-max-mismatch`          |Default -1   |Minimum mismatch between non-prefix regions of shared substrings.      |       |
 
 {{< /tab>}}

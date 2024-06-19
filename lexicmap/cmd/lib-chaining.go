@@ -107,6 +107,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		return paths, w
 	}
 
+	minScore := ce.options.MinScore
+
 	var i, j, mj int
 
 	// a list for storing triangular score matrix, the size is n*(n+1)>>1
@@ -135,51 +137,61 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// }
 	*maxscores = append(*maxscores, seedWeight(float64((*subs)[0].Len)))
 	*maxscoresIdxs = append(*maxscoresIdxs, 0)
-	*directions = append(*directions, 1)
+	*directions = append(*directions, 0)
 
 	// compute scores
-	var s, m, d, g float64
+	var s, m, w, d, g float64
 	var dir, mdir float64
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
-	var _first bool
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
+		// fmt.Printf("i:%d, a: %s\n", i, a)
+
 		// just initialize the max score, which comes from the current seed
 		// m = scores[k]
-		m, mj, mdir = seedWeight(float64(a.Len)), i, 1
+		w = seedWeight(float64(a.Len))
+		m, mj, mdir = w, i, 0
 
-		_first = true
 		for j = 0; j < i; j++ { // try all previous seeds, no bound
 			b = (*subs)[j]
 
+			// fmt.Printf("  j:%d, b: %s\n", j, b)
 			if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
 				continue
 			}
 
 			d = distance(a, b)
 			if d > maxDistance {
+				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
 				continue
 			}
 
 			g = gap(a, b)
 			if g > maxGap {
+				// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
 				continue
 			}
 
 			// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
 
 			dir = direction(a, b)
-			if _first {
-				s = (*maxscores)[j] + seedWeight(float64(b.Len)) - gapScore(g)
-				_first = false
+
+			if (*directions)[j] == 0 {
+				s = (*maxscores)[j] + w - gapScore(g)
+			} else if (*directions)[j] != dir {
+				// fmt.Printf("   different directions: pre: %f, ab: %f\n", (*directions)[j], dir)
+				continue
 			} else {
-				s = (*maxscores)[j] + seedWeight(float64(b.Len))*(*directions)[j]*dir - gapScore(g)
+				s = (*maxscores)[j] + w - gapScore(g)
 			}
 
-			if s >= m { // update the max score
+			// fmt.Printf("  j:%d, b: %s, seedweight:%.0f, gapscore:%.0f\n", j, b, w, gapScore(g))
+			// fmt.Printf("  j:%d, b: %s, dir_j:%.0f, dir_ab:%.0f, s:%f\n", j, b, (*directions)[j], dir, s)
+
+			if s >= minScore && s > m { //
 				m = s
 				mj = j
 				mdir = dir
@@ -204,7 +216,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	paths := poolChains.Get().(*[]*[]int)
 	*paths = (*paths)[:0]
 	var first bool
-	minScore := ce.options.MinScore
 
 	path := poolChain.Get().(*[]int)
 	*path = (*path)[:0]
@@ -226,12 +237,19 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		if M < minScore { // no valid anchors
 			break
 		}
+		// fmt.Printf("max: %d, %f\n", Mi, M)
 
 		i = Mi
 		first = true
 		for {
 			j = (*maxscoresIdxs)[i] // previous anchor
-			if (*visited)[j] {      // current anchor is abandoned
+			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
+			if (*visited)[j] { // current anchor is abandoned
+				if len(*path) == 0 && !(*visited)[i] {
+					*path = append(*path, i) // record the anchor
+					// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
+				}
+
 				if len(*path) > 0 {
 					// but don't forget already added path
 					reverseInts(*path)
@@ -242,13 +260,14 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 					*path = (*path)[:0]
 				}
 				(*visited)[i] = true // do not check it again
+
 				break
 			}
 
 			*path = append(*path, i) // record the anchor
 			(*visited)[i] = true     // mark as visited
 			if first {
-				// fmt.Printf("start from %d, %s\n", i, (*subs)[i])
+				// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
 				sumMaxScore += (*maxscores)[i]
 				first = false
 			}

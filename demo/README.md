@@ -367,7 +367,7 @@ Here we use the flag `-w/--load-whole-seeds` to accelerate searching.
     processed queries: 3584, speed: 4663.404 queries per minute
     14:32:39.277 [INFO]
     14:32:39.277 [INFO] processed queries: 3692, speed: 4641.273 queries per minute
-    14:32:39.278 [INFO] 77.0314% (2844/3692) queries matched
+    14:32:39.278 [INFO] 77.0585% (2845/3692) queries matched
     14:32:39.278 [INFO] done searching
     14:32:39.278 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
     14:32:39.283 [INFO]

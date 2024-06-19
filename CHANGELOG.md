@@ -9,8 +9,8 @@
     - Faster indexing speed by improving lexichash data structure.
     - Fix a bug in indexing small genomes.
 - `lexicmap search`:
+    - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
-    - Fix chaining for highly-repetitive regions.
     - Fix alignment against genomes with many short contigs.
     - Result format:
         - Cluster alignments of each target sequence.
@@ -18,11 +18,11 @@
         - Add columns `gaps`, `cigar`, `align`.
 - `lexicmap utils kmers`:
     - Fix the progress bar.
-    - Fix a bug where some masks don not have any k-mer.
+    - Fix a bug where some masks do not have any k-mer.
 - `lexicmap utils masks`:
-    - Add outputting a specific mask.
+    - Add only outputting a specific mask.
 - `lexicmap utils seed-pos`:
-    - New columns: `sseqid` and `pos_seq`
+    - New columns: `sseqid` and `pos_seq`.
     - More accurate seed distance.
     - Add histograms of numbers of seed in sliding windows.
 - `lexicmap utils subseq`:
