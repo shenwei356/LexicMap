@@ -117,21 +117,21 @@ Output format:
 		moreColumns := getFlagBool(cmd, "all")
 
 		// maxMismatch := getFlagInt(cmd, "seed-max-mismatch")
-		// minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
-		// if minSinglePrefix > 32 {
-		// 	checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
-		// }
-		// if minSinglePrefix < minPrefix {
-		// 	checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
-		// }
+		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
+		if minSinglePrefix > 32 {
+			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
+		}
+		if minSinglePrefix < minPrefix {
+			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
+		}
 
-		minMatches := getFlagPositiveInt(cmd, "seed-min-matches")
-		if minMatches > 32 {
-			checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be <= 32", minMatches))
-		}
-		if minMatches < minPrefix {
-			checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be >= that of -p/--seed-min-prefix (%d)", minMatches, minPrefix))
-		}
+		// minMatches := getFlagPositiveInt(cmd, "seed-min-matches")
+		// if minMatches > 32 {
+		// 	checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be <= 32", minMatches))
+		// }
+		// if minMatches < minPrefix {
+		// 	checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be >= that of -P/--seed-min-single-prefix (%d)", minMatches, minSinglePrefix))
+		// }
 
 		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
 		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
@@ -145,8 +145,8 @@ Output format:
 		onlyPseudoAlign := getFlagBool(cmd, "pseudo-align")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
-		if minAlignLen < minMatches {
-			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minMatches))
+		if minAlignLen < minSinglePrefix {
+			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
 		// maxAlignMismatch := getFlagPositiveInt(cmd, "align-max-kmer-dist")
@@ -229,10 +229,10 @@ Output format:
 
 			MinPrefix: uint8(minPrefix),
 			// MaxMismatch:     maxMismatch,
-			// MinSinglePrefix: uint8(minSinglePrefix),
-			MinMatchedBases: uint8(minMatches),
-			TopN:            topn,
-			InMemorySearch:  inMemorySearch,
+			MinSinglePrefix: uint8(minSinglePrefix),
+			// MinMatchedBases: uint8(minMatches),
+			TopN:           topn,
+			InMemorySearch: inMemorySearch,
 
 			MaxGap:      float64(maxGap),
 			MaxDistance: float64(maxDist),
@@ -488,8 +488,11 @@ func init() {
 	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings (anchors).`))
 
-	mapCmd.Flags().IntP("seed-min-matches", "m", 18,
-		formatFlagUsage(`Minimum matched bases in the only one pair of seeds.`))
+	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
+		formatFlagUsage(`Minimum length of shared substrings (anchors) if there's only one pair.`))
+
+	// mapCmd.Flags().IntP("seed-min-matches", "m", 20,
+	// 	formatFlagUsage(`Minimum matched bases in the only one pair of seeds.`))
 
 	// mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
 	// 	formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
