@@ -26,7 +26,6 @@ import (
 	"math/bits"
 
 	"github.com/pkg/errors"
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 )
 
 // Searcher provides searching service of querying k-mer values in a k-mer-value file.
@@ -82,7 +81,8 @@ func NewInMemomrySearcher2(file string) (*InMemorySearcher2, error) {
 // For m <0 or m >= k-p, mismatch will not be checked.
 //
 // Please remember to recycle the results object with RecycleSearchResults().
-func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8) (*[]*SearchResult, error) {
+	// func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
 	if len(kmers) != scr.ChunkSize {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.KVdata))
 	}
@@ -94,8 +94,8 @@ func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*Search
 		p = k
 	}
 
-	checkMismatch := m >= 0 && m < int(k-p)
-	m8 := uint8(m)
+	// checkMismatch := m >= 0 && m < int(k-p)
+	// m8 := uint8(m)
 
 	// ----------------------------------------------------------
 
@@ -113,7 +113,7 @@ func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*Search
 	*results = (*results)[:0]
 
 	var found, saveKmer bool
-	var mismatch uint8
+	// var mismatch uint8
 	var sr1 *SearchResult
 
 	var kmer uint64
@@ -214,14 +214,14 @@ func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*Search
 
 			saveKmer = false
 			if found && kmer1 >= leftBound {
-				if checkMismatch {
-					mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-					if mismatch <= m8 {
-						saveKmer = true
-					}
-				} else {
-					saveKmer = true
-				}
+				// if checkMismatch {
+				// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+				// 	if mismatch <= m8 {
+				// 		saveKmer = true
+				// 	}
+				// } else {
+				saveKmer = true
+				// }
 			}
 			if saveKmer {
 				// fmt.Printf("  save: %s\n", lexichash.MustDecode(kmer1, k))
@@ -235,7 +235,7 @@ func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8, m int) (*[]*Search
 					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					sr1.Kmer = kmer1
 					sr1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
-					sr1.Mismatch = mismatch
+					// sr1.Mismatch = mismatch
 					sr1.Values = sr1.Values[:0]
 
 					//	fmt.Printf("  create new result: %p\n", sr1)

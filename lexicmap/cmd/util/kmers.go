@@ -115,3 +115,37 @@ func MustSharingPrefixKmersMismatch(code1, code2 uint64, k, p uint8) (n uint8) {
 	}
 	return n
 }
+
+// SharingPrefixKmersMatches counts the number of matches in the suffix region of two k-mers
+// sharing with a p-bp prefix.
+func SharingPrefixKmersSuffixMatches(code1, code2 uint64, k, p uint8) (n uint8) {
+	if p >= k {
+		return 0
+	}
+	var i uint8
+	for i = 0; i < k-p; i++ {
+		if code1&3 == code2&3 {
+			n++
+		}
+		code1 >>= 2
+		code2 >>= 2
+	}
+	return n
+}
+
+// MustSharingPrefixKmersSuffixMatches counts the number of matches in the suffix region of two k-mers
+// sharing with a p-bp prefix.
+func MustSharingPrefixKmersSuffixMatches(code1, code2 uint64, k, p uint8) (n uint8) {
+	if p >= k {
+		return 0
+	}
+	var i uint8
+	for i = 0; i < k-p; i++ {
+		if code1&3 == code2&3 {
+			n++
+		}
+		code1 >>= 2
+		code2 >>= 2
+	}
+	return n
+}

@@ -31,7 +31,7 @@ import (
 func TestKVData(t *testing.T) {
 	var k uint8 = 5
 	nMasks := 3
-	maxMismatch := -1
+	// maxMismatch := -1
 
 	// generate data
 
@@ -163,7 +163,8 @@ func TestKVData(t *testing.T) {
 			for j := 0; j < nMasks; j++ {
 				kmers[j] = i
 			}
-			results, err := scr.Search(kmers, mPrefix, maxMismatch)
+			// results, err := scr.Search(kmers, mPrefix, maxMismatch)
+			results, err := scr.Search(kmers, mPrefix)
 			if err != nil {
 				t.Errorf("%s", err)
 				return
@@ -182,8 +183,10 @@ func TestKVData(t *testing.T) {
 				t.Errorf("unexpected number of results: %d, expected: %d", len(*results), nExpectedResults)
 				for _, r := range *results {
 					for _, v := range r.Values {
-						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
+						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
+						t.Logf("  %s, prefix:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
 					}
 				}
 			}
@@ -202,8 +205,10 @@ func TestKVData(t *testing.T) {
 				t.Errorf("query (%s) not found in the results:", lexichash.MustDecode(i, k))
 				for _, r := range *results {
 					for _, v := range r.Values {
-						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
+						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
+						t.Logf("  %s, prefix:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
 					}
 				}
 				return
@@ -228,7 +233,8 @@ func TestKVData(t *testing.T) {
 			for j := 0; j < nMasks; j++ {
 				kmers[j] = i
 			}
-			results, err := scr2.Search(kmers, mPrefix, maxMismatch)
+			// results, err := scr2.Search(kmers, mPrefix, maxMismatch)
+			results, err := scr2.Search(kmers, mPrefix)
 			if err != nil {
 				t.Errorf("%s", err)
 				return
@@ -247,8 +253,10 @@ func TestKVData(t *testing.T) {
 				t.Errorf("unexpected number of results: %d, expected: %d", len(*results), nExpectedResults)
 				for _, r := range *results {
 					for _, v := range r.Values {
-						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+						t.Logf("  %s, prefix:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
 					}
 				}
 			}
@@ -267,8 +275,10 @@ func TestKVData(t *testing.T) {
 				t.Errorf("query (%s) not found in the results:", lexichash.MustDecode(i, k))
 				for _, r := range *results {
 					for _, v := range r.Values {
-						t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
+						t.Logf("  %s, prefix:%d %d\n",
+							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
 					}
 				}
 				return

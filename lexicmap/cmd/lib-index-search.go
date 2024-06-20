@@ -33,6 +33,7 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/shenwei356/wfa"
@@ -48,11 +49,12 @@ type IndexSearchingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
 	// seed searching
-	InMemorySearch  bool  // load the seed/kv data into memory
-	MinPrefix       uint8 // minimum prefix length, e.g., 15
-	MaxMismatch     int   // maximum mismatch, e.g., 3
-	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
-	TopN            int   // keep the topN scores, e.g, 10
+	InMemorySearch bool  // load the seed/kv data into memory
+	MinPrefix      uint8 // minimum prefix length, e.g., 15
+	// MaxMismatch     int   // maximum mismatch, e.g., 3
+	MinMatchedBases uint8 // the total matched bases
+	// MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
+	TopN int // keep the topN scores, e.g, 10
 
 	// seeds chaining
 	MaxGap      float64 // e.g., 5000
@@ -90,9 +92,10 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	NumCPUs:      runtime.NumCPU(),
 	MaxOpenFiles: 512,
 
-	MinPrefix:       15,
-	MaxMismatch:     -1,
-	MinSinglePrefix: 20,
+	MinPrefix: 15,
+	// MaxMismatch:     -1,
+	// MinSinglePrefix: 20,
+	MinMatchedBases: 18,
 	TopN:            500,
 
 	MaxGap:      5000,
@@ -352,8 +355,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// other resources
 	co := &ChainingOptions{
-		MaxGap:      opt.MaxGap,
-		MinScore:    seedWeight(float64(opt.MinSinglePrefix)),
+		MaxGap: opt.MaxGap,
+		// MinScore:    seedWeight(float64(opt.MinSinglePrefix)),
+		MinScore:    seedWeight(float64(opt.MinMatchedBases)),
 		MaxDistance: opt.MaxDistance,
 	}
 	idx.chainingOptions = co
@@ -414,13 +418,18 @@ type SubstrPair struct {
 	QBegin int32 // start position of the substring (0-based) in query
 	TBegin int32 // start position of the substring (0-based) in reference
 
-	// Code   uint64 // k-mer, only for debugging
-
-	Len      uint8 // prefix length
-	Mismatch uint8 // number of mismatches
+	Len uint8 // prefix length
+	// Mismatch uint8 // number of mismatches
 
 	TRC bool // is the substring from the reference seq on the negative strand.
 	QRC bool // is the substring from the query seq on the negative strand.
+
+	QCode uint64 // k-mer, for computing matched k-mers
+	TCode uint64
+}
+
+func (s SubstrPair) Matches(k uint8) uint8 {
+	return s.Len + util.MustSharingPrefixKmersSuffixMatches(s.QCode, s.TCode, k, s.Len)
 }
 
 func (s SubstrPair) String() string {
@@ -432,8 +441,10 @@ func (s SubstrPair) String() string {
 	if s.TRC {
 		s2 = "-"
 	}
-	return fmt.Sprintf("%3d-%3d (%s) vs %3d-%3d (%s), len:%2d, mismatches:%d",
-		s.QBegin+1, s.QBegin+int32(s.Len), s1, s.TBegin+1, s.TBegin+int32(s.Len), s2, s.Len, s.Mismatch)
+	// return fmt.Sprintf("%3d-%3d (%s) vs %3d-%3d (%s), len:%2d, mismatches:%d",
+	// 	s.QBegin+1, s.QBegin+int32(s.Len), s1, s.TBegin+1, s.TBegin+int32(s.Len), s2, s.Len, s.Mismatch)
+	return fmt.Sprintf("%3d-%3d (%s) vs %3d-%3d (%s), len:%2d",
+		s.QBegin+1, s.QBegin+int32(s.Len), s1, s.TBegin+1, s.TBegin+int32(s.Len), s2, s.Len)
 }
 
 var poolSub = &sync.Pool{New: func() interface{} {
@@ -739,7 +750,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}
 
 	minPrefix := idx.opt.MinPrefix
-	maxMismatch := idx.opt.MaxMismatch
+	// maxMismatch := idx.opt.MaxMismatch
 
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int) // later, we will reuse this
@@ -756,10 +767,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		var beginQ int
 		var rcQ bool
 
-		// var code uint64
+		var qCode, tCode uint64
 		var kPrefix int
 		var refBatchAndIdx, posT, beginT int
-		var mismatch uint8
+		// var mismatch uint8
 		var rcT bool
 
 		K := idx.k
@@ -774,7 +785,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			for _, sr = range *srs {
 				// matched length
 				kPrefix = int(sr.LenPrefix)
-				mismatch = sr.Mismatch
+				// mismatch = sr.Mismatch
+				qCode = (*_kmers)[sr.IQuery]
 
 				// locations in the query
 				// multiple locations for each QUERY k-mer,
@@ -793,6 +805,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 					// matched
 					// code = util.KmerPrefix(sr.Kmer, K8, sr.LenPrefix)
+					tCode = sr.Kmer
 
 					// multiple locations for each MATCHED k-mer
 					// but most of cases, there's only one.
@@ -811,9 +824,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						_sub2 := poolSub.Get().(*SubstrPair)
 						_sub2.QBegin = int32(beginQ)
 						_sub2.TBegin = int32(beginT)
-						// _sub2.Code = code
+						_sub2.QCode = qCode
+						_sub2.TCode = tCode
 						_sub2.Len = uint8(kPrefix)
-						_sub2.Mismatch = mismatch
+						// _sub2.Mismatch = mismatch
 						_sub2.QRC = rcQ
 						_sub2.TRC = rcT
 
@@ -865,9 +879,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var srs *[]*kv.SearchResult
 			var err error
 			if inMemorySearch {
-				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+				// srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix)
 			} else {
-				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+				// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
+				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix)
 			}
 			if err != nil {
 				checkError(err)
@@ -895,30 +911,40 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// ----------------------------------------------------------------
 	// 3) chaining matches for all reference genomes, and alignment
 
-	minSinglePrefix := idx.opt.MinSinglePrefix
+	// minSinglePrefix := idx.opt.MinSinglePrefix
+	minMatchedBases := idx.opt.MinMatchedBases
 
 	// 3.1) preprocess substring matches for each reference genome
 	rs := poolSearchResults.Get().(*[]*SearchResult)
 	*rs = (*rs)[:0]
 
 	K := idx.k
-	checkMismatch := maxMismatch >= 0 && maxMismatch < K-int(idx.opt.MinPrefix)
+	k8 := idx.k8
+	var matches uint8
+	// checkMismatch := maxMismatch >= 0 && maxMismatch < K-int(idx.opt.MinPrefix)
 	for _, r := range *m {
 		ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
 
 		// there's no need to chain for a single short seed.
 		// we might give it a chance if the mismatch is low
 		if len(*r.Subs) == 1 {
-			if checkMismatch {
-				if int((*r.Subs)[0].Mismatch) > maxMismatch {
-					idx.RecycleSearchResult(r)
-					continue
-				}
-			} else if (*r.Subs)[0].Len < minSinglePrefix {
+			// if checkMismatch {
+			// 	if int((*r.Subs)[0].Mismatch) > maxMismatch {
+			// 		idx.RecycleSearchResult(r)
+			// 		continue
+			// 	}
+			// } else if (*r.Subs)[0].Len < minSinglePrefix {
+			// 	// do not forget to recycle filtered result
+			// 	idx.RecycleSearchResult(r)
+			// 	continue
+			// }
+			matches = (*r.Subs)[0].Matches(k8)
+			if matches < minMatchedBases {
 				// do not forget to recycle filtered result
 				idx.RecycleSearchResult(r)
 				continue
 			}
+			(*r.Subs)[0].Len = matches
 		}
 
 		for _, sub := range *r.Subs {
