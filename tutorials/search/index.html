@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2394",
+      "wordCount" : "2544",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -861,6 +861,50 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1608,7 +1652,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <td style="text-align:left"><strong><code>-a/--all</code></strong></td>
 <td style="text-align:left"></td>
 <td style="text-align:left">Output more columns, e.g., matched sequences.</td>
-<td style="text-align:left"></td>
+<td style="text-align:left">Use this if you want to output blast-style format with &ldquo;lexicmap utils 2blast&rdquo;</td>
 </tr>
 </tbody>
 </table> </div>
@@ -1638,14 +1682,14 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <tr>
 <td style="text-align:left"><strong><code>-p, --seed-min-prefix</code></strong></td>
 <td style="text-align:left">Default 15</td>
-<td style="text-align:left">Minimum length of shared substrings (anchors).</td>
-<td style="text-align:left"></td>
+<td style="text-align:left">Minimum (prefix) length of matched seeds.</td>
+<td style="text-align:left">Smaller values produce more results at the cost of slow speed.</td>
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-P, --seed-min-single-prefix</code></strong></td>
-<td style="text-align:left">Default 20</td>
-<td style="text-align:left">Minimum length of shared substrings (anchors) if there&rsquo;s only one pair.</td>
-<td style="text-align:left"></td>
+<td style="text-align:left">Default 17</td>
+<td style="text-align:left">Minimum (prefix) length of matched seeds if there&rsquo;s only one pair of seeds matched.</td>
+<td style="text-align:left">Smaller values produce more results at the cost of slow speed.</td>
 </tr>
 <tr>
 <td style="text-align:left"><code>--seed-max-dist</code></td>
@@ -1655,14 +1699,8 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left"><code>--seed-max-gap</code></td>
-<td style="text-align:left">Default 2000</td>
+<td style="text-align:left">Default 500</td>
 <td style="text-align:left">Max gap in seed chaining.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>-m/--seed-max-mismatch</code></td>
-<td style="text-align:left">Default -1</td>
-<td style="text-align:left">Minimum mismatch between non-prefix regions of shared substrings.</td>
 <td style="text-align:left"></td>
 </tr>
 </tbody>
@@ -1818,15 +1856,57 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </span></span><span class="line"><span class="cl">ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 </span></span></code></pre></div></li>
 <li>
-<p>Exporting blast-like alignment text</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap search -d db.lmi query.fasta --all --quiet \
-</span></span><span class="line"><span class="cl">    | sed 1d | awk -F&#39;\t&#39; &#39;{print &#34;&gt;&#34;$1&#34;:&#34;$12&#34;-&#34;$13&#34; vs &#34;$5&#34;:&#34;$14&#34;-&#34;$15&#34;:&#34;$16&#34; pident:&#34;$10&#34; gaps:&#34;$11&#34;\n&#34;$18&#34;\n&#34;$19&#34;\n&#34;$21&#34;\n&#34;$20&#34;\n&#34;;}&#39;
+<p>Exporting blast-like alignment text.</p>
+<p>From file:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap utils 2blast results.tsv -o results.txt
+</span></span></code></pre></div><p>From stdin:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl"># align only one long-read &lt;= 500 bp
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">&gt;NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
-</span></span><span class="line"><span class="cl">14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
-</span></span><span class="line"><span class="cl">TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
-</span></span><span class="line"><span class="cl">|||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
-</span></span><span class="line"><span class="cl">TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
+</span></span><span class="line"><span class="cl">$ seqkit seq -M 500 q.long-reads.fasta.gz \
+</span></span><span class="line"><span class="cl">    | seqkit head -n 1 \
+</span></span><span class="line"><span class="cl">    | lexicmap search -d demo.lmi/ -a \
+</span></span><span class="line"><span class="cl">    | lexicmap utils 2blast
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query = GCF_006742205.1_r100
+</span></span><span class="line"><span class="cl">Length = 431
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_006742205.1
+</span></span><span class="line"><span class="cl">Query coverage per genome = 92.575%
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">&gt;NZ_AP019721.1
+</span></span><span class="line"><span class="cl">Length = 2422602
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">HSP #1
+</span></span><span class="line"><span class="cl">Query coverage per seq = 92.575%, Aligned length = 402, Identities = 98.507%, Gaps = 4
+</span></span><span class="line"><span class="cl">Query range = 33-431, Subject range = 1321677-1322077, Strand = Plus/Minus
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  33       TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  92
+</span></span><span class="line"><span class="cl">                ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+</span></span><span class="line"><span class="cl">Sbjct  1322077  TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  1322018
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  93       GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTG-TACATTTGC  151
+</span></span><span class="line"><span class="cl">                |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
+</span></span><span class="line"><span class="cl">Sbjct  1322017  GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTGATACATTTGC  1321958
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  152      TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCACAGGATGACCA  211
+</span></span><span class="line"><span class="cl">                |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
+</span></span><span class="line"><span class="cl">Sbjct  1321957  TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCAC-GGATGACCA  1321899
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  212      TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  271
+</span></span><span class="line"><span class="cl">                ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+</span></span><span class="line"><span class="cl">Sbjct  1321898  TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  1321839
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  272      AGTACCTTGTATTAATTTCTAATTCTAA-TACTCATTCTGTTGTGATTCAAATGGTGCTT  330
+</span></span><span class="line"><span class="cl">                |||||||||||||||||||||||||||| ||||||||||||||||||||||||| |||||
+</span></span><span class="line"><span class="cl">Sbjct  1321838  AGTACCTTGTATTAATTTCTAATTCTAAATACTCATTCTGTTGTGATTCAAATGTTGCTT  1321779
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  331      CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATAATCAG  390
+</span></span><span class="line"><span class="cl">                |||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||
+</span></span><span class="line"><span class="cl">Sbjct  1321778  CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATCATCAG  1321719
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Query  391      CCATCTTGTT-GACAATATGATTTCACGTTGATTATTAATGC  431
+</span></span><span class="line"><span class="cl">                |||||||||| |||||||||||||||||||||||||||||||
+</span></span><span class="line"><span class="cl">Sbjct  1321718  CCATCTTGTTTGACAATATGATTTCACGTTGATTATTAATGC  1321677
 </span></span></code></pre></div></li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
@@ -1887,7 +1967,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 15. send,     End of alignment in subject sequence.
 16. sstr,     Subject strand.
 17. slen,     Subject sequence length.
-18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
 19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
 20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
 21. align,    Alignment text (&quot;|&quot; and &quot; &quot;) between qseq and sseq. (optional with -a/--all)
@@ -2429,6 +2509,39 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
+  <meta name="description" content="Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;." />
 
     <title>seed-pos | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="seed-pos"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
+  <meta property="og:description" content="Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="seed-pos" />
-  <meta name="twitter:description" content="Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed in that sequence, and the distance can&#39;t be computed currently." />
+  <meta name="twitter:description" content="Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "seed-pos",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/",
       "headline": "seed-pos",
-      "description": "Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027. 2. A distance between seeds (column distance) with a value of \u0022-1\u0022 means it\u0027s the first seed in that sequence, and the distance can\u0027t be computed currently.",
-      "wordCount" : "1036",
+      "description": "Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027.",
+      "wordCount" : "1101",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -849,6 +849,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1391,24 +1435,27 @@
     </a>
 </div>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils seed-pos -h
-</span></span><span class="line"><span class="cl">Extract seed positions via reference names
+</span></span><span class="line"><span class="cl">Extract and plot seed positions via reference name(s)
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Attentions:
+</span></span><span class="line"><span class="cl">Attention:
 </span></span><span class="line"><span class="cl">  0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index.
 </span></span><span class="line"><span class="cl">  1. Seed/K-mer positions (column pos) are 1-based.
 </span></span><span class="line"><span class="cl">     For reference genomes with multiple sequences, the sequences were
 </span></span><span class="line"><span class="cl">     concatenated to a single sequence with intervals of N&#39;s.
+</span></span><span class="line"><span class="cl">     So values of column pos_gnm and pos_seq might be different.
 </span></span><span class="line"><span class="cl">     The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;.
-</span></span><span class="line"><span class="cl">  2. A distance between seeds (column distance) with a value of &#34;-1&#34; means it&#39;s the first seed
-</span></span><span class="line"><span class="cl">     in that sequence, and the distance can&#39;t be computed currently.
-</span></span><span class="line"><span class="cl">  3. All degenerate bases in reference genomes were converted to the lexicographic first bases.
+</span></span><span class="line"><span class="cl">  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
 </span></span><span class="line"><span class="cl">     E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Extra columns:
 </span></span><span class="line"><span class="cl">  Using -v/--verbose will output more columns:
-</span></span><span class="line"><span class="cl">     pre_pos,  the position of the previous seed.
 </span></span><span class="line"><span class="cl">     len_aaa,  length of consecutive A&#39;s.
 </span></span><span class="line"><span class="cl">     seq,      sequence between the previous and current seed.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Figures:
+</span></span><span class="line"><span class="cl">  Using -O/--plot-dir will write plots into given directory:
+</span></span><span class="line"><span class="cl">    - Histograms of seed distances.
+</span></span><span class="line"><span class="cl">        - Histograms of numbers of seeds in sliding windows.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils seed-pos [flags]
@@ -1426,10 +1473,14 @@
 </span></span><span class="line"><span class="cl">  -D, --min-dist int         ► Only output records with seed distance &gt;= this value.
 </span></span><span class="line"><span class="cl">  -o, --out-file string      ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                             (default &#34;-&#34;)
-</span></span><span class="line"><span class="cl">  -O, --plot-dir string      ► Output directory for histograms of seed distances.
+</span></span><span class="line"><span class="cl">  -O, --plot-dir string      ► Output directory for 1) histograms of seed distances, 2) histograms of
+</span></span><span class="line"><span class="cl">                             numbers of seeds in sliding windows.
 </span></span><span class="line"><span class="cl">      --plot-ext string      ► Histogram plot file extention. (default &#34;.png&#34;)
-</span></span><span class="line"><span class="cl">  -t, --plot-title           ► Plot genome ID as the title.
 </span></span><span class="line"><span class="cl">  -n, --ref-name strings     ► Reference name(s).
+</span></span><span class="line"><span class="cl">  -s, --slid-step int        ► The step size of sliding windows for counting the number of seeds
+</span></span><span class="line"><span class="cl">                             (default 200)
+</span></span><span class="line"><span class="cl">  -w, --slid-window int      ► The window size of sliding windows for counting the number of seeds
+</span></span><span class="line"><span class="cl">                             (default 500)
 </span></span><span class="line"><span class="cl">  -v, --verbose              ► Show more columns including position of the previous seed and sequence
 </span></span><span class="line"><span class="cl">                             between the two seeds. Warning: it&#39;s slow to extract the sequences,
 </span></span><span class="line"><span class="cl">                             recommend set -D 1000 or higher values to filter results
@@ -1463,24 +1514,17 @@
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
  $ head -n 10 seed_distance.tsv | csvtk pretty -t
- ref               pos   strand   distance
- ---------------   ---   ------   --------
- GCF_000017205.1   2     +        1
- GCF_000017205.1   41    -        39
- GCF_000017205.1   45    +        4
- GCF_000017205.1   74    -        29
- GCF_000017205.1   85    -        11
- GCF_000017205.1   119   -        34
- GCF_000017205.1   130   -        11
- GCF_000017205.1   185   +        55
- GCF_000017205.1   269   -        84
-</code></pre>
-<p>Or only list records with seed distance longer than a threshold.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 850 | csvtk pretty -t | head -n 3
- 15:34:58.669 [INFO] seed positions of 1 genomes(s) saved to -
- ref               pos       strand   distance
- ---------------   -------   ------   --------
- GCF_000017205.1   30713     -        850
+ ref               seqid         pos_gnm   pos_seq   strand   distance
+ ---------------   -----------   -------   -------   ------   --------
+ GCF_000017205.1   NC_009656.1   2         2         +        1
+ GCF_000017205.1   NC_009656.1   41        41        -        39
+ GCF_000017205.1   NC_009656.1   45        45        +        4
+ GCF_000017205.1   NC_009656.1   74        74        -        29
+ GCF_000017205.1   NC_009656.1   85        85        -        11
+ GCF_000017205.1   NC_009656.1   119       119       -        34
+ GCF_000017205.1   NC_009656.1   130       130       -        11
+ GCF_000017205.1   NC_009656.1   185       185       +        55
+ GCF_000017205.1   NC_009656.1   269       269       -        84
 </code></pre>
 <p>Check the biggest seed distances.</p>
 <pre><code> $ csvtk freq -t -f distance seed_distance.tsv \
@@ -1490,39 +1534,48 @@
 
  distance   frequency
  --------   ---------
- 899        2
- 898        4
- 897        1
- 896        5
- 895        4
- 894        3
- 893        3
- 892        4
- 891        2
+ 449        9
+ 448        7
+ 447        8
+ 446        13
+ 445        14
+ 444        14
+ 443        17
+ 442        11
+ 441        15
 </code></pre>
-<p>Plot the histogram of distances between seeds.</p>
+<p>Or only list records with seed distances longer than a threshold.</p>
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 400 \
+     | csvtk pretty -t | head -n 5
+ ref               seqid         pos_gnm   pos_seq   strand   distance
+ ---------------   -----------   -------   -------   ------   --------
+ GCF_000017205.1   NC_009656.1   26578     26578     -        403
+ GCF_000017205.1   NC_009656.1   32937     32937     +        413
+ GCF_000017205.1   NC_009656.1   37656     37656     -        438
+</code></pre>
+<p>Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 </code></pre>
-<p>In the plot below, there&rsquo;s a peak at 200 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 200 bp by default.</p>
- <img src="/LexicMap/GCF_000017205.1.png" alt="" width="600"/>
+<p>In the plot below, there&rsquo;s a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default.</p>
+ <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
 </li>
 <li>
 <p>More columns including sequences between two seeds.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
-     | head -n4 | csvtk pretty -t -W 50 --clip
- ref               pos   strand   distance   pre_pos   len_aaa   seq
- ---------------   ---   ------   --------   -------   -------   ---------------------------------------
- GCF_000017205.1   2     +        1          0         0         T
- GCF_000017205.1   41    -        39         1         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
- GCF_000017205.1   45    +        4          40        1         TCAA
+     | head -n4 | csvtk pretty -t -W 40 --clip
+ ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
+ ---------------   -----------   -------   -------   ------   --------   -------   ---------------------------------------
+ GCF_000017205.1   NC_009656.1   2         2         +        1          0         T
+ GCF_000017205.1   NC_009656.1   41        41        -        39         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
+ GCF_000017205.1   NC_009656.1   45        45        +        4          1         TCAA
 </code></pre>
 <p>Or only list records with seed distance longer than a threshold.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 890 \
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 400 \
      | head -n 2 \
-     | csvtk pretty -t -W 50 --clip
- ref               pos      strand   distance   pre_pos   len_aaa   seq
- ---------------   ------   ------   --------   -------   -------   --------------------------------------------------
- GCF_000017205.1   152018   -        892        151125    21        CGCGGCCCAGCCATGCCTACTGGGACCTCTCGCCGGGGATCGATTTC...
+     | csvtk pretty -t -W 40 --clip
+ ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
+ ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
+ GCF_000017205.1   NC_009656.1   26578     26578     -        403        8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCT...
 </code></pre>
 </li>
 <li>
@@ -1534,74 +1587,144 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
 <pre><code> $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
  ref               frequency
  ---------------   ---------
- GCF_000017205.1   45745
- GCF_002950215.1   43615
- GCF_002949675.1   43474
- GCF_001457655.1   42112
- GCF_006742205.1   42102
- GCF_900638025.1   42008
- GCF_001027105.1   41855
- GCF_000742135.1   41423
- GCF_000392875.1   41390
- GCF_003697165.2   41201
- GCF_009759685.1   41160
- GCF_000006945.2   41115
- GCF_000148585.2   41075
- GCF_001096185.1   40238
- GCF_001544255.1   40187
+ GCF_000017205.1   58958
+ GCF_000742135.1   48041
+ GCF_002950215.1   47010
+ GCF_002949675.1   46932
+ GCF_003697165.2   45483
+ GCF_000006945.2   45300
+ GCF_009759685.1   43059
+ GCF_001027105.1   42429
+ GCF_006742205.1   42428
+ GCF_001457655.1   42167
+ GCF_900638025.1   42046
+ GCF_000392875.1   41826
+ GCF_000148585.2   41118
+ GCF_001544255.1   40443
+ GCF_001096185.1   40356
 </code></pre>
 <p>Plot the histograms of distances between seeds for all genomes.</p>
-<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz --plot-dir seed_distance --force
+<pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz \
+     --plot-dir seed_distance --force
+ 09:56:34.059 [INFO] creating genome reader pools, each batch with 1 readers...
  processed files:  15 / 15 [======================================] ETA: 0s. done
- 11:48:31.346 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
- 11:48:31.346 [INFO] histograms of 15 genomes(s) saved to seed_distance
+ 09:56:34.656 [INFO] seed positions of 15 genomes(s) saved to seed-pos.tsv.gz
+ 09:56:34.656 [INFO] histograms of 15 genomes(s) saved to seed_distance
+ 09:56:34.656 [INFO]
+ 09:56:34.656 [INFO] elapsed time: 598.080462ms
+ 09:56:34.656 [INFO]
 
  $ ls seed_distance/
- GCF_000006945.2.png  GCF_000392875.1.png  GCF_001096185.1.png  GCF_002949675.1.png  GCF_006742205.1.png
- GCF_000017205.1.png  GCF_000742135.1.png  GCF_001457655.1.png  GCF_002950215.1.png  GCF_009759685.1.png
- GCF_000148585.2.png  GCF_001027105.1.png  GCF_001544255.1.png  GCF_003697165.2.png  GCF_900638025.1.png
+ GCF_000006945.2.png              GCF_000742135.1.png              GCF_001544255.1.png              GCF_006742205.1.png
+ GCF_000006945.2.seed_number.png  GCF_000742135.1.seed_number.png  GCF_001544255.1.seed_number.png  GCF_006742205.1.seed_number.png
+ GCF_000017205.1.png              GCF_001027105.1.png              GCF_002949675.1.png              GCF_009759685.1.png
+ GCF_000017205.1.seed_number.png  GCF_001027105.1.seed_number.png  GCF_002949675.1.seed_number.png  GCF_009759685.1.seed_number.png
+ GCF_000148585.2.png              GCF_001096185.1.png              GCF_002950215.1.png              GCF_900638025.1.png
+ GCF_000148585.2.seed_number.png  GCF_001096185.1.seed_number.png  GCF_002950215.1.seed_number.png  GCF_900638025.1.seed_number.png
+ GCF_000392875.1.png              GCF_001457655.1.png              GCF_003697165.2.png
+ GCF_000392875.1.seed_number.png  GCF_001457655.1.seed_number.png  GCF_003697165.2.seed_number.png
 </code></pre>
-<p>Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N&rsquo;s). In LexicMap, the N&rsquo;s are converted to A&rsquo;s.</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v -D 1000 | csvtk pretty -t -W 80
-</span></span><span class="line"><span class="cl">ref               pos       strand   distance   pre_pos   len_aaa   seq
-</span></span><span class="line"><span class="cl">---------------   -------   ------   --------   -------   -------   --------------------------------------------------------------------------------
-</span></span><span class="line"><span class="cl">GCF_000392875.1   502996    -        1126       501869    1089      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAA
-</span></span><span class="line"><span class="cl">GCF_000392875.1   2640078   +        1344       2638733   1150      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGCTCCTTTTTATTTTCCCCACTATTTTTCAAT
-</span></span><span class="line"><span class="cl">                                                                    GTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
-</span></span><span class="line"><span class="cl">                                                                    TGCGGTGTAATCTTTTTCTTGGTGTTCTTTTTGTTCCTGAATTAATTTTTCTAACGCTTCTTTC
-</span></span></code></pre></div></li>
+<p>In the plots below, there&rsquo;s a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.</p>
+<ul>
+<li>
+<p>GCF_000392875.1 (genome size: 2.9 Mb)</p>
+  <img src="/LexicMap/GCF_000392875.1.png" alt="" width="400"/>
+  <img src="/LexicMap/GCF_000392875.1.seed_number.png" alt="" width="400"
+</li>
+<li>
+<p>GCF_002949675.1 (genome size: 4.6 Mb)</p>
+  <img src="/LexicMap/GCF_002949675.1.png" alt="" width="400"/>
+  <img src="/LexicMap/GCF_002949675.1.seed_number.png" alt="" width="400"/>
+</li>
+<li>
+<p>GCF_000017205.1 (genome size: 6.6 Mb)</p>
+  <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
+  <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
+</li>
+</ul>
+<p>Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N&rsquo;s).
+This also explain why there are a few sliding windows has zero seeds in the figure above.</p>
+<p>Let&rsquo;s check the regions with big seed distances. Note that, in LexicMap, the N&rsquo;s are converted to A&rsquo;s.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
+</span></span><span class="line"><span class="cl">ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
+</span></span><span class="line"><span class="cl">---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
+</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944589.1   503144    227382    -        1274       1136      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAGGTGTCATTGAAGTAACGTATCCAGATGGTACAAAAGATACAGTAAA
+</span></span><span class="line"><span class="cl">                                                                                    AGTTCCAGTAGAAGTAACAGACAATCGCTCTGACGCTGATAAATATACAC
+</span></span><span class="line"><span class="cl">                                                                                    CTAAAGGTCAAAAAGTAACTACTG
+</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944590.1   2640014   1680826   +        1280       1146      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGC
+</span></span><span class="line"><span class="cl">                                                                                    TCCTTTTTATTTTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTT
+</span></span><span class="line"><span class="cl">                                                                                    CAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
+</span></span></code></pre></div><p>Long gap regions (&gt;=1000 bp) of the genome, which are excatly the regions in the table above.</p>
+<pre tabindex="0"><code>$ zcat refs/GCF_000392875.1.fa.gz \
+    | seqkit locate -G -r -p &#39;&#34;N{20,}&#34;&#39; -P -M \
+    | csvtk filter2 -t -f &#39;$end - $start + 1 &gt;=1000&#39; \
+    | csvtk pretty -t
+
+seqID           patternName   pattern   strand   start     end
+-------------   -----------   -------   ------   -------   -------
+NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
+NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
+</code></pre></li>
 </ol>
-<pre tabindex="0"><code>
-The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
-</code></pre>
+<p>The output (TSV format) is formatted with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/csvtk"
+>csvtk pretty</a>.
+<a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/seqkit"
+>SeqKit</a> is used to locating subsequences from fasta files.
+<a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/"
+>lexicmap utils subseq</a> can also be used to extract subsequences from the index.</p>
+
   </article>
 
 
@@ -1994,6 +2117,39 @@ The output (TSV format) is formatted with [csvtk pretty](https://github.com/shen
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

@@ -8,11 +8,18 @@
     <language>en-us</language>
     <atom:link href="https://bioinf.shenwei.me/LexicMap/usage/utils/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>masks</title>
+      <link>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</guid>
+      <description>$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &amp;lt;index path&amp;gt; | [-k &amp;lt;k&amp;gt;] [-n &amp;lt;masks&amp;gt;] [-s &amp;lt;seed&amp;gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &amp;lt;= 32. (default 31) -m, --masks int ► Number of masks.</description>
+    </item>
+    <item>
       <title>kmers</title>
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</guid>
-      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attentions: 1. Mask index (column mask) is 1-based. 2. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;.</description>
+      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;.</description>
     </item>
     <item>
       <title>genomes</title>
@@ -33,7 +40,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</guid>
-      <description>Usage $ lexicmap utils seed-pos -h Extract seed positions via reference names Attentions: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. The positions can be used to extract subsequence with &amp;#39;lexicmap utils subseq&amp;#39;. 2. A distance between seeds (column distance) with a value of &amp;#34;-1&amp;#34; means it&amp;#39;s the first seed in that sequence, and the distance can&amp;#39;t be computed currently.</description>
+      <description>Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &amp;#39;lexicmap utils subseq&amp;#39;.</description>
     </item>
     <item>
       <title>reindex-seeds</title>
@@ -43,11 +50,11 @@
       <description>Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. (default 512) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments.</description>
     </item>
     <item>
-      <title>masks</title>
-      <link>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</link>
+      <title>2blast</title>
+      <link>https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</guid>
-      <description>$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &amp;lt;index path&amp;gt; | [-k &amp;lt;k&amp;gt;] [-n &amp;lt;masks&amp;gt;] [-s &amp;lt;seed&amp;gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &amp;lt;= 32. (default 31) -m, --masks int ► Number of masks.</description>
+      <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/</guid>
+      <description>Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of &amp;#39;lexicmap search&amp;#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &amp;#34;bufio.Scanner: token too long&amp;#34; error reported (default &amp;#34;20M&amp;#34;) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a &amp;#34;.</description>
     </item>
   </channel>
 </rss>

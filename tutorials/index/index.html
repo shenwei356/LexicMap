@@ -12,9 +12,9 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
+  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db." />
+lexicmap index -X files." />
 
     <title>Building an index | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +40,9 @@ lexicmap index -X files.txt -O db." />
     content="Building an index"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
+  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db." />
+lexicmap index -X files." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -51,9 +51,9 @@ lexicmap index -X files.txt -O db." />
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Building an index" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
+  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
 lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files.txt -O db." />
+lexicmap index -X files." />
 
 
   <script type="application/ld+json">
@@ -64,8 +64,8 @@ lexicmap index -X files.txt -O db." />
       "name": "Building an index",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.txt -O db.",
-      "wordCount" : "2235",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
+      "wordCount" : "2350",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -855,6 +855,50 @@ lexicmap index -X files.txt -O db." />
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1403,6 +1447,7 @@ lexicmap index -X files.txt -O db." />
             <li><a href="#index-size">Index size</a></li>
           </ul>
         </li>
+        <li><a href="#explore-the-index">Explore the index</a></li>
       </ul></nav>
       <hr />
     </div>
@@ -1457,7 +1502,7 @@ E.g., GCF_000006945.2.fna.gz</li>
 LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.</div>
 </blockquote>
 
-<p><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.</p>
+<p><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.Click to show</p>
 <ul>
 <li><strong>File type</strong>: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.</li>
 <li><strong>File name</strong>: &ldquo;Genome ID&rdquo; + &ldquo;File extention&rdquo;. E.g., <code>GCF_000006945.2.fna.gz</code>.
@@ -1745,9 +1790,9 @@ merging them and writting to a new file.</li>
 <tbody>
 <tr>
 <td style="text-align:left"><strong><code>--seed-max-desert</code></strong></td>
-<td style="text-align:left">Default: 900</td>
+<td style="text-align:left">Default: 450</td>
 <td style="text-align:left">Maximum length of distances between seeds</td>
-<td style="text-align:left">The default value of 900 guarantees queries &gt;900 bp would match at least one seed. ► Smaller values improve the search sensitivity and slightly increase the index size. ►Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every <code>--seed-in-desert-dist</code> (200 by default) bases.</td>
+<td style="text-align:left">The default value of 450 guarantees queries &gt;450 bp would match at least one seed. ► Smaller values improve the search sensitivity and slightly increase the index size. ►Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every <code>--seed-in-desert-dist</code> (150 by default) bases.</td>
 </tr>
 <tr>
 <td style="text-align:left"><code>-c/--chunks</code></td>
@@ -1804,7 +1849,7 @@ merging them and writting to a new file.</li>
 <p>Building an index with genomes from <strong>a directory</strong>.</p>
 <pre><code> lexicmap index -I refs/ -O demo.lmi
 </code></pre>
-<p>It would take about 2 seconds and 2 GB RAM in a 16-CPU PC.</p>
+<p>It would take about 3.5 seconds and 2 GB RAM in a 16-CPU PC.</p>
 <p>Optionally, we can also use <strong>a file list</strong> as the input.</p>
 <pre><code> $ head -n 3 files.txt
  refs/GCF_000006945.2.fa.gz
@@ -1813,91 +1858,91 @@ merging them and writting to a new file.</li>
 
  lexicmap index -X files.txt -O demo.lmi
 </code></pre>
-</li>
-</ol>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="7d3cc273-3">
+  <label class="gdoc-expand__head flex justify-between" for="95e9e582-3">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="7d3cc273-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="95e9e582-3" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
-    <pre><code># here we set a small --batch-size 5
-$ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-20:18:51.410 [INFO] LexicMap v0.4.0
-20:18:51.410 [INFO]   https://github.com/shenwei356/LexicMap
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] checking input files ...
-20:18:51.410 [INFO]   15 input file(s) given
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] --------------------- [ main parameters ] ---------------------
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] input and output:
-20:18:51.410 [INFO]   input directory: refs/
-20:18:51.410 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-20:18:51.410 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-20:18:51.410 [INFO]     *regular expressions for filtering out sequences: []
-20:18:51.410 [INFO]   max genome size: 15000000
-20:18:51.410 [INFO]   output directory: demo.lmi
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] mask generation:
-20:18:51.410 [INFO]   k-mer size: 31
-20:18:51.410 [INFO]   number of masks: 40000
-20:18:51.410 [INFO]   rand seed: 1
-20:18:51.410 [INFO]   prefix length for checking low-complexity in mask generation: 15
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] seed data:
-20:18:51.410 [INFO]   maximum sketching desert length: 900
-20:18:51.410 [INFO]   distance of k-mers to fill deserts: 200
-20:18:51.410 [INFO]   seeds data chunks: 16
-20:18:51.410 [INFO]   seeds data indexing partitions: 512
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] general:
-20:18:51.410 [INFO]   genome batch size: 5
-20:18:51.410 [INFO]
-20:18:51.410 [INFO]
-20:18:51.410 [INFO] --------------------- [ generating masks ] ---------------------
-20:18:51.728 [INFO]
-20:18:51.728 [INFO] --------------------- [ building index ] ---------------------
-20:18:51.884 [INFO]
-20:18:51.884 [INFO]   ------------------------[ batch 0 ]------------------------
-20:18:51.884 [INFO]   building index for batch 0 with 5 files...
-processed files:  5 / 5 [======================================] ETA: 0s. done
-20:18:52.463 [INFO]   writing seeds...
-20:18:52.606 [INFO]   finished writing seeds in 143.292864ms
-20:18:52.606 [INFO]   finished building index for batch 0 in: 722.316862ms
-20:18:52.606 [INFO]
-20:18:52.606 [INFO]   ------------------------[ batch 1 ]------------------------
-20:18:52.606 [INFO]   building index for batch 1 with 5 files...
-processed files:  5 / 5 [======================================] ETA: 0s. done
-20:18:54.073 [INFO]   writing seeds...
-20:18:54.251 [INFO]   finished writing seeds in 178.055055ms
-20:18:54.251 [INFO]   finished building index for batch 1 in: 1.645034631s
-20:18:54.251 [INFO]
-20:18:54.251 [INFO]   ------------------------[ batch 2 ]------------------------
-20:18:54.251 [INFO]   building index for batch 2 with 5 files...
-processed files:  5 / 5 [======================================] ETA: 0s. done
-20:18:54.993 [INFO]   writing seeds...
-20:18:55.182 [INFO]   finished writing seeds in 188.702811ms
-20:18:55.182 [INFO]   finished building index for batch 2 in: 931.156662ms
-20:18:55.183 [INFO]
-20:18:55.183 [INFO] merging 3 indexes...
-20:18:55.183 [INFO]   [round 1]
-20:18:55.183 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
-20:18:55.741 [INFO]   [round 1] finished in 558.606877ms
-20:18:55.741 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-20:18:55.746 [INFO]
-20:18:55.746 [INFO] finished building LexicMap index from 15 files with 40000 masks in 4.336354688s
-20:18:55.746 [INFO] LexicMap index saved: demo.lmi
-20:18:55.746 [INFO]
-20:18:55.746 [INFO] elapsed time: 4.336386606s
-20:18:55.746 [INFO]
+    <pre><code>    # here we set a small --batch-size 5
+    $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
+    14:43:49.967 [INFO] LexicMap v0.4.0
+    14:43:49.967 [INFO]   https://github.com/shenwei356/LexicMap
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] checking input files ...
+    14:43:49.967 [INFO]   15 input file(s) given
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] --------------------- [ main parameters ] ---------------------
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] input and output:
+    14:43:49.967 [INFO]   input directory: refs/
+    14:43:49.967 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    14:43:49.967 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    14:43:49.967 [INFO]     *regular expressions for filtering out sequences: []
+    14:43:49.967 [INFO]   max genome size: 15000000
+    14:43:49.967 [INFO]   output directory: demo.lmi
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] mask generation:
+    14:43:49.967 [INFO]   k-mer size: 31
+    14:43:49.967 [INFO]   number of masks: 40000
+    14:43:49.967 [INFO]   rand seed: 1
+    14:43:49.967 [INFO]   prefix length for checking low-complexity in mask generation: 15
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] seed data:
+    14:43:49.967 [INFO]   maximum sketching desert length: 450
+    14:43:49.967 [INFO]   distance of k-mers to fill deserts: 150
+    14:43:49.967 [INFO]   seeds data chunks: 16
+    14:43:49.967 [INFO]   seeds data indexing partitions: 512
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] general:
+    14:43:49.967 [INFO]   genome batch size: 5
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO]
+    14:43:49.967 [INFO] --------------------- [ generating masks ] ---------------------
+    14:43:50.269 [INFO]
+    14:43:50.269 [INFO] --------------------- [ building index ] ---------------------
+    14:43:50.426 [INFO]
+    14:43:50.426 [INFO]   ------------------------[ batch 0 ]------------------------
+    14:43:50.426 [INFO]   building index for batch 0 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    14:43:51.414 [INFO]   writing seeds...
+    14:43:51.551 [INFO]   finished writing seeds in 136.823165ms
+    14:43:51.551 [INFO]   finished building index for batch 0 in: 1.124974632s
+    14:43:51.551 [INFO]
+    14:43:51.551 [INFO]   ------------------------[ batch 1 ]------------------------
+    14:43:51.551 [INFO]   building index for batch 1 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    14:43:54.088 [INFO]   writing seeds...
+    14:43:54.276 [INFO]   finished writing seeds in 187.45683ms
+    14:43:54.276 [INFO]   finished building index for batch 1 in: 2.724371973s
+    14:43:54.276 [INFO]
+    14:43:54.276 [INFO]   ------------------------[ batch 2 ]------------------------
+    14:43:54.276 [INFO]   building index for batch 2 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    14:43:55.655 [INFO]   writing seeds...
+    14:43:55.831 [INFO]   finished writing seeds in 176.057529ms
+    14:43:55.831 [INFO]   finished building index for batch 2 in: 1.555726985s
+    14:43:55.832 [INFO]
+    14:43:55.832 [INFO] merging 3 indexes...
+    14:43:55.832 [INFO]   [round 1]
+    14:43:55.832 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
+    14:43:56.417 [INFO]   [round 1] finished in 585.31833ms
+    14:43:56.417 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+    14:43:56.422 [INFO]
+    14:43:56.422 [INFO] finished building LexicMap index from 15 files with 40000 masks in 6.454799284s
+    14:43:56.422 [INFO] LexicMap index saved: demo.lmi
+    14:43:56.422 [INFO]
+    14:43:56.422 [INFO] elapsed time: 6.454828408s
+    14:43:56.422 [INFO]
 </code></pre>
 
   </div>
 </div>
 
+</li>
+</ol>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="output"
     >
@@ -1958,12 +2003,12 @@ demo.lmi/                    # the index directory
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 15 genomes
-demo.lmi/: 26.87 MB
-  13.64 MB      seeds
+demo.lmi/: 27.75 MB
+  14.51 MB      seeds
   12.93 MB      genomes
  312.53 KB      masks.bin
   375.00 B      genomes.map.bin
-  260.00 B      info.toml
+  323.00 B      info.tom
 </code></pre>
 
     </div>
@@ -1978,7 +2023,8 @@ demo.lmi/: 26.87 MB
       GTDB repr
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 85,205 genomes
+      <pre><code># 85,205 genomes/
+# to be updated
 gtdb_repr.lmi: 110.37 GB
   66.78 GB      genomes
   43.59 GB      seeds
@@ -2000,12 +2046,12 @@ gtdb_repr.lmi: 110.37 GB
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 402,538 genomes
-gtdb_complete.lmi: 509.99 GB
+gtdb_complete.lmi: 522.58 GB
  362.98 GB      genomes
- 147.00 GB      seeds
+ 159.59 GB      seeds
    9.60 MB      genomes.map.bin
  312.53 KB      masks.bin
-  269.00 B      info.toml
+  331.00 B      info.toml
 </code></pre>
 
     </div>
@@ -2021,12 +2067,13 @@ gtdb_complete.lmi: 509.99 GB
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 2,340,672 genomes
-genbank_refseq.lmi: 2.91 TB
+# to be updated
+genbank_refseq.lmi: 2.97 TB
    2.17 TB      genomes
- 764.22 GB      seeds
+ 824.42 GB      seeds
   55.81 MB      genomes.map.bin
  312.53 KB      masks.bin
-  270.00 B      info.toml
+  332.00 B      info.toml
 </code></pre>
 
     </div>
@@ -2042,12 +2089,13 @@ genbank_refseq.lmi: 2.91 TB
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 1,858,610 genomes
-atb_hq.lmi: 2.32 TB
+# to be updated
+atb_hq.lmi: 2.37 TB
    1.77 TB      genomes
- 569.44 GB      seeds
+ 614.58 GB      seeds
   39.22 MB      genomes.map.bin
  312.53 KB      masks.bin
-  270.00 B      info.toml
+  332.00 B      info.toml
 </code></pre>
 
     </div>
@@ -2060,6 +2108,43 @@ atb_hq.lmi: 2.32 TB
 >https://github.com/shenwei356/dirsize</a>.</li>
 <li>Index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</li>
 </ul>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="explore-the-index"
+    >
+        Explore the index
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/tutorials/index/#explore-the-index" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Explore the index" aria-label="Anchor to: Explore the index" href="#explore-the-index">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<ol>
+<li><code>lexicmap utils genomes</code> can list genome IDs of indexed genomes,
+see the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/"
+>usage and example</a>.</li>
+<li><code>lexicmap utils masks</code> can list masks of the index,
+see the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/masks/"
+>usage and example</a>.</li>
+<li><code>lexicmap utils kmers</code> can list details of all seeds (k-mers), including reference, location(s) and the strand.
+see the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/"
+>usage and example</a>.</li>
+<li><code>lexicmap utils seed-pos</code> can help to explore the seed positions,
+see the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/"
+>usage and example</a>.
+Before that, the flag <code>--save-seed-pos</code> needs to be added to <code>lexicmap index</code>.</li>
+<li><code>lexicmap utils subseq</code> can extract subsequences via genome ID, sequence ID and positions,
+see the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/"
+>usage and example</a>.</li>
+</ol>
 <p><strong>What&rsquo;s next:</strong> 
 
 
@@ -2472,6 +2557,39 @@ atb_hq.lmi: 2.32 TB
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

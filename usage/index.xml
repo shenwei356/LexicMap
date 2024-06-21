@@ -12,7 +12,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/search/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/search/</guid>
-      <description>$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17+ columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID.</description>
+      <description>$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17+ columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length.</description>
     </item>
     <item>
       <title>lexicmap</title>

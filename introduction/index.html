@@ -62,7 +62,7 @@ Motivation: Alignment against a database of genomes is a fundamental operation i
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
       "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nMotivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds, or they fall back on k-mer indexing, without information of where matches occur in the genome.",
-      "wordCount" : "1317",
+      "wordCount" : "1452",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -852,6 +852,50 @@ Motivation: Alignment against a database of genomes is a fundamental operation i
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1408,7 +1452,11 @@ Running at this scale has previously only been achieved by <a
 >tutorials</a> and <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/usage/lexicmap/"
->usages</a>).</p>
+>usages</a>).
+Besides, we provide <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/"
+>several commands</a> to explore the index data and extract indexed subsequences.</p>
 <p>More documents: <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap"
@@ -1473,17 +1521,57 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
 </span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
 </span></span><span class="line"><span class="cl">ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
 </span></span></code></pre></div><p>CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag <code>-a/--all</code>.</p>
-<pre><code># export blast-like alignment text
-lexicmap search -d db.lmi query.fasta --all --quiet \
-    | sed 1d | awk -F'\t' '{print &quot;&gt;&quot;$1&quot;:&quot;$12&quot;-&quot;$13&quot; vs &quot;$5&quot;:&quot;$14&quot;-&quot;$15&quot;:&quot;$16&quot; pident:&quot;$10&quot; gaps:&quot;$11&quot;\n&quot;$18&quot;\n&quot;$19&quot;\n&quot;$21&quot;\n&quot;$20&quot;\n&quot;;}'
+<p>Export blast-style format:</p>
+<pre tabindex="0"><code>seqkit seq -M 500 q.long-reads.fasta.gz \
+    | seqkit head -n 2 \
+    | lexicmap search -d demo.lmi/ -a \
+    | lexicmap utils 2blast
 
-&gt;NC_000913.3:4166659-4168200:5-120 vs CAMDMN010000161.1:25-140:- pident:87.069 gaps:0
-14M1X25M1X24M1X1M1X2M1X1M4X8M4X2M1X2M1X22M
-TGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
-|||||||||||||| ||||||||||||||||||||||||| |||||||||||||||||||||||| | || |    ||||||||    || || ||||||||||||||||||||||
-TGAAGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCATGCCTAACACATGCAAGTCGAACGGCAGCATGGTCTAGCTTGCTAGACTGATGGCGAGTGGCGGACGGGTGAGTAA
-</code></pre>
-<p>Learn more <a
+Query = GCF_000017205.1_r160
+Length = 478
+
+[Subject genome #1/1] = GCF_000017205.1
+Query coverage per genome = 95.188%
+
+&gt;NC_009656.1
+Length = 6588339
+
+ HSP #1
+ Query coverage per seq = 95.188%, Aligned length = 463, Identities = 95.680%, Gaps = 12
+ Query range = 13-467, Subject range = 4866862-4867320, Strand = Plus/Plus
+
+Query  13       CCTCAAACGAGTCC-AACAGGCCAACGCCTAGCAATCCCTCCCCTGTGGGGCAGGGAAAA  71
+                |||||||||||||| |||||||| ||||||  | ||||||||||||| ||||||||||||
+Sbjct  4866862  CCTCAAACGAGTCCGAACAGGCCCACGCCTCACGATCCCTCCCCTGTCGGGCAGGGAAAA  4866921
+
+Query  72       TCGTCCTTTATGGTCCGTTCCGGGCACGCACCGGAACGGCGGTCATCTTCCACGGTGCCC  131
+                |||||||||||||||||||||||||||||||||||||||||||||| |||||||||||||
+Sbjct  4866922  TCGTCCTTTATGGTCCGTTCCGGGCACGCACCGGAACGGCGGTCAT-TTCCACGGTGCCC  4866980
+
+Query  132      GCCCACGGCGGACCCGCGGAAACCGACCCGGGCGCCAAGGCGCCCGGGAACGGAGTA-CA  190
+                ||| ||||||||||| ||||||||||||||||||||||||||||||||||||||||| ||
+Sbjct  4866981  GCC-ACGGCGGACCC-CGGAAACCGACCCGGGCGCCAAGGCGCCCGGGAACGGAGTATCA  4867038
+
+Query  191      CTCGGCGTTCGGCCAGCGACAGC---GACGCGTTGCCGCCCACCGCGGTGGTGTTCACCG  247
+                |||||||| ||||||||||||||   ||||||||||||||||||||||||||||||||||
+Sbjct  4867039  CTCGGCGT-CGGCCAGCGACAGCAGCGACGCGTTGCCGCCCACCGCGGTGGTGTTCACCG  4867097
+
+Query  248      AGGTGGTGCGCTCGCTGAC-AAACGCAGCAGGTAGTTCGGCCCGCCGGCCTTGGGACCG-  305
+                ||||||||||||||||||| |||||||||||||||||||||||||||||||||||||||
+Sbjct  4867098  AGGTGGTGCGCTCGCTGACGAAACGCAGCAGGTAGTTCGGCCCGCCGGCCTTGGGACCGG  4867157
+
+Query  306      TGCCGGACAGCCCGTGGCCGCCGAACAGTTGCACGCCCACCACCGCGCCGAT-TGGTTTC  364
+                |||||||||||||||||||||||||| ||||||||||||||||||||||||| ||||| |
+Sbjct  4867158  TGCCGGACAGCCCGTGGCCGCCGAACGGTTGCACGCCCACCACCGCGCCGATCTGGTTGC  4867217
+
+Query  365      GGTTGACGTAGAGGTTGCCGACCCGCGCCAGCTCTTGGATGCGGCGGGCGGTTTCCTCGT  424
+                |||||||||||||||||||||||||||||||||||| |||||||||||||||||||||||
+Sbjct  4867218  GGTTGACGTAGAGGTTGCCGACCCGCGCCAGCTCTTCGATGCGGCGGGCGGTTTCCTCGT  4867277
+
+Query  425      TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  467
+                |||||||||||||||||||||||||||||||||||||||||||
+Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
+</code></pre><p>Learn more <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/tutorials/index/"
 >tutorials</a> and <a
@@ -2303,6 +2391,39 @@ propose new functions or ask for help.</p>
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
+  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
 
     <title>search | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="search"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
+  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/search/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="search" />
-  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID." />
+  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
 
 
   <script type="application/ld+json">
@@ -58,7 +58,7 @@
       "name": "search",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
-      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length. 3. hits, Number of subject genomes. 4. sgenome, Subject genome ID. 5. sseqid, Subject sequence ID.",
+      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length.",
       "wordCount" : "542",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -849,6 +849,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1378,6 +1422,7 @@
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Attention:
 </span></span><span class="line"><span class="cl">  1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
+</span></span><span class="line"><span class="cl">  2. For multiple queries, the order of queries might be different from the input.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Alignment result relationship:
 </span></span><span class="line"><span class="cl">
@@ -1432,12 +1477,10 @@
 </span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment
 </span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
-</span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 2000)
-</span></span><span class="line"><span class="cl">  -m, --seed-max-mismatch int          ► Maximum mismatch between non-prefix regions of shared
-</span></span><span class="line"><span class="cl">                                       substrings. (default -1)
+</span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 500)
 </span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
 </span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there&#39;s only
-</span></span><span class="line"><span class="cl">                                       one pair. (default 20)
+</span></span><span class="line"><span class="cl">                                       one pair. (default 17)
 </span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
 </span></span><span class="line"><span class="cl">                                       phase.
 </span></span><span class="line"><span class="cl">
@@ -1870,6 +1913,39 @@
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

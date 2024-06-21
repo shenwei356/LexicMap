@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/",
       "headline": "subseq",
       "description": "Usage $ lexicmap utils subseq -h Exextract subsequence via reference name, sequence ID, position and strand Attention: 1. The option -s\/--seq-id is optional. 1) If given, the positions are these in the original sequence. 2) If not given, the positions are these in the concatenated sequence. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A\u0027s in output might be N\u0027s in the genomes.",
-      "wordCount" : "365",
+      "wordCount" : "411",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -849,6 +849,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/2blast/"
+                    class="gdoc-nav__entry"
+                  >
+                    2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1436,7 +1480,7 @@
 <li>
 <p>Extracting subsequence with genome ID, sequence ID, position range and strand information.</p>
 <pre><code> $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -s NZ_CP033092.2 -r 4591684:4593225 -R
- &gt;NZ_CP033092.2:4591684-4593225
+ &gt;NZ_CP033092.2:4591684-4593225:-
  AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAA
  GTCGAACGGTAACAGGAAGCAGCTTGCTGCTTTGCTGACGAGTGGCGGACGGGTGAGTAA
  TGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCAT
@@ -1477,7 +1521,7 @@
 </code></pre>
 <p>Extracting the 1000-bp interval sequence inserted by <code>lexicmap index</code>.</p>
 <pre><code> $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -r 4903502:4904501
- &gt;GCF_003697165.2:4903502-4904501
+ &gt;GCF_003697165.2:4903502-4904501:+
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -1495,6 +1539,19 @@
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</code></pre>
+</li>
+<li>
+<p>It detects if the end position is larger than the sequence length.</p>
+<pre><code> # the length of NZ_CP033092.2 is 4903501
+
+ $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -s NZ_CP033092.2 -r 4903501:1000000000
+ &gt;NZ_CP033092.2:4903501-4903501:+
+ C
+
+
+ $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -s NZ_CP033092.2 -r 4903502:1000000000
+ &gt;NZ_CP033092.2:4903502-4903501:+
 </code></pre>
 </li>
 </ol>
@@ -1891,6 +1948,39 @@
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 
