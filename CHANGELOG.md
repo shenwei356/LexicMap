@@ -19,6 +19,7 @@
 - `lexicmap utils kmers`:
     - Fix the progress bar.
     - Fix a bug where some masks do not have any k-mer.
+    - Add a new column `prefix` to show the length of common prefix between the seed and the probe.
 - `lexicmap utils masks`:
     - Add only outputting a specific mask.
 - `lexicmap utils seed-pos`:

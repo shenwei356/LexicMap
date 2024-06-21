@@ -45,15 +45,6 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
         --min-qcov-per-hsp 0  --min-qcov-per-genome 0   --top-n-genomes 0
 
 
-    # Extracting similar sequences for a query gene.
-      # search matches with query coverage >= 90%
-      lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --all -o results.tsv \
-          --min-qcov-per-hsp 90
-
-      # extract matched sequences as FASTA format
-      sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' | seqkit seq -g > results.fasta
-
-
 Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output-format).
 
     query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
@@ -75,6 +66,16 @@ Sample output (queries are a few Nanopore Q20 reads). See [output format details
 
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
+
+    # Extracting similar sequences for a query gene.
+
+    # search matches with query coverage >= 90%
+    lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta -o results.tsv \
+        --min-qcov-per-hsp 90 --all
+
+    # extract matched sequences as FASTA format
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' \
+        | seqkit seq -g > results.fasta
 
 Export blast-style format:
 
@@ -128,7 +129,6 @@ Sbjct  4867218  GGTTGACGTAGAGGTTGCCGACCCGCGCCAGCTCTTCGATGCGGCGGGCGGTTTCCTCGT  48
 Query  425      TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  467
                 |||||||||||||||||||||||||||||||||||||||||||
 Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
-
 
 ```
 

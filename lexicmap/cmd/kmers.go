@@ -44,7 +44,8 @@ var kmersCmd = &cobra.Command{
 
 Attention:
   1. Mask index (column mask) is 1-based.
-  2. K-mer positions (column pos) are 1-based.
+  2. Prefix means the length of shared prefix between a k-mer and the mask.
+  3. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
 
@@ -136,7 +137,7 @@ Attention:
 
 		decoder := lexichash.MustDecoder()
 
-		fmt.Fprintf(outfh, "mask\tkmer\tnumber\tref\tpos\tstrand\n")
+		fmt.Fprintf(outfh, "mask\tkmer\tprefix\tnumber\tref\tpos\tstrand\n")
 
 		// ---------------------------------------------------------------
 
@@ -184,21 +185,50 @@ Attention:
 			masks = []int{mask}
 		}
 
+		var chunkSize, chunk, iMask int
+		var fileSeeds string
+
 		var startTime time.Time
+		k8 := uint8(lh.K)
+		buf := make([]byte, 64)
+		buf8 := make([]uint8, 8)
+		var ctrlByte byte
+		var first bool     // the first kmer has a different way to comput the value
+		var lastPair bool  // check if this is the last pair
+		var hasKmer2 bool  // check if there's a kmer2
+		var _offset uint64 // offset of kmer
+		var nBytes int
+		var nReaded, nDecoded int
+		var v1, v2 uint64
+		var kmer1, kmer2 uint64
+		var lenVal1, lenVal2 uint64
+		var j uint64
+		var v, batchIDAndRefID uint64
+		var pos, rc int
+		var maskCode uint64
+
+		// compute the chunk
+		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
+
 		for _, mask = range masks {
 			startTime = time.Now()
 
-			// compute the chunk
-			chunkSize := (len(lh.Masks) + info.Chunks - 1) / info.Chunks
-			chunk := (mask - 1) / chunkSize
-			iMask := (mask - 1) % chunkSize
+			chunk = (mask - 1) / chunkSize
+			iMask = (mask - 1) % chunkSize
 
-			fileSeeds := filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
+			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
 			k, _, indexes, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+			}
+
+			if len(indexes[iMask]) == 0 { // no k-mers
+				if showProgressBar {
+					chDuration <- time.Duration(float64(time.Since(startTime)))
+				}
+				continue
 			}
 
 			// kv-data file
@@ -207,36 +237,14 @@ Attention:
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
-			if len(indexes[iMask]) == 0 { // no k-mers
-				r.Close()
-
-				if showProgressBar {
-					chDuration <- time.Duration(float64(time.Since(startTime)))
-				}
-				continue
-			}
-
 			_, err = r.Seek(int64(indexes[iMask][1]), 0)
 			if err != nil {
 				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))
 			}
 
-			buf := make([]byte, 64)
-			buf8 := make([]uint8, 8)
-			var ctrlByte byte
-			var first bool     // the first kmer has a different way to comput the value
-			var lastPair bool  // check if this is the last pair
-			var hasKmer2 bool  // check if there's a kmer2
-			var _offset uint64 // offset of kmer
-			var nBytes int
-			var nReaded, nDecoded int
-			var v1, v2 uint64
-			var kmer1, kmer2 uint64
-			var lenVal1, lenVal2 uint64
-			var j uint64
-			var v, batchIDAndRefID uint64
-			var pos, rc int
+			maskCode = lh.Masks[mask-1]
 
+			_offset = 0
 			for {
 				// read the control byte
 				_, err = io.ReadFull(r, buf[:1])
@@ -316,8 +324,9 @@ Attention:
 					v = be.Uint64(buf8)
 					pos, rc = int(v<<34>>35), int(v&1)
 					batchIDAndRefID = v >> 30
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%s\t%d\t%c\n",
-						mask, decoder(kmer1, k), lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\n",
+						mask, decoder(kmer1, k), util.MustKmerLongestPrefix(kmer1, maskCode, k8, k8),
+						lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
 				}
 
 				if lastPair && !hasKmer2 {
@@ -336,8 +345,9 @@ Attention:
 					v = be.Uint64(buf8)
 					pos, rc = int(v<<34>>35), int(v&1)
 					batchIDAndRefID = v >> 30
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%s\t%d\t%c\n",
-						mask, decoder(kmer2, k), lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\n",
+						mask, decoder(kmer2, k), util.MustKmerLongestPrefix(kmer2, maskCode, k8, k8),
+						lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
 				}
 
 				if lastPair {

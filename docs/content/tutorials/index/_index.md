@@ -313,13 +313,12 @@ The LexicMap index is a directory with multiple files.
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes/
-    # to be updated
-    gtdb_repr.lmi: 110.37 GB
+    gtdb_repr.lmi: 113.53 GB
       66.78 GB      genomes
-      43.59 GB      seeds
+      46.74 GB      seeds
        2.03 MB      genomes.map.bin
      312.53 KB      masks.bin
-      266.00 B      info.toml
+      328.00 B      info.toml
 
 {{< /tab>}}
 
