@@ -10,48 +10,6 @@ Generate an index from FASTA/Q sequences
 Input:
  *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
      in the file names.
-  2. Input plain or gzipped FASTA/Q files can be given via positional arguments or the flag -X/--infile-list
-     with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking.
-  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
-     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
-     -r/--file-regexp.
-  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
-     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
-     (-G/--big-genomes).
-
-  Attention:
-   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
-       identifiers in the index and search result would be: the basenames of files with common FASTA/Q file
-       extensions removed, which are extracted via the flag -N/--ref-name-regexp.
-       ► The extracted genome identifiers better be distinct, which will be shown in search results
-       and are used to extract subsequences in the command "lexicmap utils subseq".
-    2) ► Unwanted sequences like plasmids can be filtered out by content in FASTA/Q header via regular
-       expressions (-B/--seq-name-filter).
-    3) All degenerate bases are converted to their lexicographic first bases. E.g., N is converted to A.
-        code  bases    saved
-        A     A        A
-        C     C        C
-        G     G        G
-        T/U   T        T
-
-        M     A/C      A
-        R     A/G      A
-        W     A/T      A
-        S     C/G      C
-        Y     C/T      C
-        K     G/T      G
-
-        V     A/C/G    A
-        H     A/C/T    A
-        D     A/G/T    A
-        B     C/G/T    C
-
-        N     A/C/G/T  A
-Generate an index from FASTA/Q sequences
-
-Input:
- *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
-     in the file names.
   2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or
      the flag -X/--infile-list with a list of input files.
      Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.

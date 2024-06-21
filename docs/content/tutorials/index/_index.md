@@ -29,7 +29,7 @@ weight: 0
 LexicMap is only suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.
 {{< /hint >}}
 
-**Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
+**Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.Click to show
 
 - **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
@@ -195,80 +195,81 @@ We use a small dataset for demonstration.
 
         lexicmap index -X files.txt -O demo.lmi
 
-{{< expand "Click to show the log of a demo run." "..." >}}
+    {{< expand "Click to show the log of a demo run." "..." >}}
 
-    # here we set a small --batch-size 5
-    $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-    14:43:49.967 [INFO] LexicMap v0.4.0
-    14:43:49.967 [INFO]   https://github.com/shenwei356/LexicMap
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] checking input files ...
-    14:43:49.967 [INFO]   15 input file(s) given
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] --------------------- [ main parameters ] ---------------------
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] input and output:
-    14:43:49.967 [INFO]   input directory: refs/
-    14:43:49.967 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    14:43:49.967 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    14:43:49.967 [INFO]     *regular expressions for filtering out sequences: []
-    14:43:49.967 [INFO]   max genome size: 15000000
-    14:43:49.967 [INFO]   output directory: demo.lmi
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] mask generation:
-    14:43:49.967 [INFO]   k-mer size: 31
-    14:43:49.967 [INFO]   number of masks: 40000
-    14:43:49.967 [INFO]   rand seed: 1
-    14:43:49.967 [INFO]   prefix length for checking low-complexity in mask generation: 15
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] seed data:
-    14:43:49.967 [INFO]   maximum sketching desert length: 450
-    14:43:49.967 [INFO]   distance of k-mers to fill deserts: 150
-    14:43:49.967 [INFO]   seeds data chunks: 16
-    14:43:49.967 [INFO]   seeds data indexing partitions: 512
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] general:
-    14:43:49.967 [INFO]   genome batch size: 5
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO]
-    14:43:49.967 [INFO] --------------------- [ generating masks ] ---------------------
-    14:43:50.269 [INFO]
-    14:43:50.269 [INFO] --------------------- [ building index ] ---------------------
-    14:43:50.426 [INFO]
-    14:43:50.426 [INFO]   ------------------------[ batch 0 ]------------------------
-    14:43:50.426 [INFO]   building index for batch 0 with 5 files...
-    processed files:  5 / 5 [======================================] ETA: 0s. done
-    14:43:51.414 [INFO]   writing seeds...
-    14:43:51.551 [INFO]   finished writing seeds in 136.823165ms
-    14:43:51.551 [INFO]   finished building index for batch 0 in: 1.124974632s
-    14:43:51.551 [INFO]
-    14:43:51.551 [INFO]   ------------------------[ batch 1 ]------------------------
-    14:43:51.551 [INFO]   building index for batch 1 with 5 files...
-    processed files:  5 / 5 [======================================] ETA: 0s. done
-    14:43:54.088 [INFO]   writing seeds...
-    14:43:54.276 [INFO]   finished writing seeds in 187.45683ms
-    14:43:54.276 [INFO]   finished building index for batch 1 in: 2.724371973s
-    14:43:54.276 [INFO]
-    14:43:54.276 [INFO]   ------------------------[ batch 2 ]------------------------
-    14:43:54.276 [INFO]   building index for batch 2 with 5 files...
-    processed files:  5 / 5 [======================================] ETA: 0s. done
-    14:43:55.655 [INFO]   writing seeds...
-    14:43:55.831 [INFO]   finished writing seeds in 176.057529ms
-    14:43:55.831 [INFO]   finished building index for batch 2 in: 1.555726985s
-    14:43:55.832 [INFO]
-    14:43:55.832 [INFO] merging 3 indexes...
-    14:43:55.832 [INFO]   [round 1]
-    14:43:55.832 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
-    14:43:56.417 [INFO]   [round 1] finished in 585.31833ms
-    14:43:56.417 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-    14:43:56.422 [INFO]
-    14:43:56.422 [INFO] finished building LexicMap index from 15 files with 40000 masks in 6.454799284s
-    14:43:56.422 [INFO] LexicMap index saved: demo.lmi
-    14:43:56.422 [INFO]
-    14:43:56.422 [INFO] elapsed time: 6.454828408s
-    14:43:56.422 [INFO]
+        # here we set a small --batch-size 5
+        $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
+        14:43:49.967 [INFO] LexicMap v0.4.0
+        14:43:49.967 [INFO]   https://github.com/shenwei356/LexicMap
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] checking input files ...
+        14:43:49.967 [INFO]   15 input file(s) given
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] --------------------- [ main parameters ] ---------------------
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] input and output:
+        14:43:49.967 [INFO]   input directory: refs/
+        14:43:49.967 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+        14:43:49.967 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+        14:43:49.967 [INFO]     *regular expressions for filtering out sequences: []
+        14:43:49.967 [INFO]   max genome size: 15000000
+        14:43:49.967 [INFO]   output directory: demo.lmi
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] mask generation:
+        14:43:49.967 [INFO]   k-mer size: 31
+        14:43:49.967 [INFO]   number of masks: 40000
+        14:43:49.967 [INFO]   rand seed: 1
+        14:43:49.967 [INFO]   prefix length for checking low-complexity in mask generation: 15
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] seed data:
+        14:43:49.967 [INFO]   maximum sketching desert length: 450
+        14:43:49.967 [INFO]   distance of k-mers to fill deserts: 150
+        14:43:49.967 [INFO]   seeds data chunks: 16
+        14:43:49.967 [INFO]   seeds data indexing partitions: 512
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] general:
+        14:43:49.967 [INFO]   genome batch size: 5
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO]
+        14:43:49.967 [INFO] --------------------- [ generating masks ] ---------------------
+        14:43:50.269 [INFO]
+        14:43:50.269 [INFO] --------------------- [ building index ] ---------------------
+        14:43:50.426 [INFO]
+        14:43:50.426 [INFO]   ------------------------[ batch 0 ]------------------------
+        14:43:50.426 [INFO]   building index for batch 0 with 5 files...
+        processed files:  5 / 5 [======================================] ETA: 0s. done
+        14:43:51.414 [INFO]   writing seeds...
+        14:43:51.551 [INFO]   finished writing seeds in 136.823165ms
+        14:43:51.551 [INFO]   finished building index for batch 0 in: 1.124974632s
+        14:43:51.551 [INFO]
+        14:43:51.551 [INFO]   ------------------------[ batch 1 ]------------------------
+        14:43:51.551 [INFO]   building index for batch 1 with 5 files...
+        processed files:  5 / 5 [======================================] ETA: 0s. done
+        14:43:54.088 [INFO]   writing seeds...
+        14:43:54.276 [INFO]   finished writing seeds in 187.45683ms
+        14:43:54.276 [INFO]   finished building index for batch 1 in: 2.724371973s
+        14:43:54.276 [INFO]
+        14:43:54.276 [INFO]   ------------------------[ batch 2 ]------------------------
+        14:43:54.276 [INFO]   building index for batch 2 with 5 files...
+        processed files:  5 / 5 [======================================] ETA: 0s. done
+        14:43:55.655 [INFO]   writing seeds...
+        14:43:55.831 [INFO]   finished writing seeds in 176.057529ms
+        14:43:55.831 [INFO]   finished building index for batch 2 in: 1.555726985s
+        14:43:55.832 [INFO]
+        14:43:55.832 [INFO] merging 3 indexes...
+        14:43:55.832 [INFO]   [round 1]
+        14:43:55.832 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
+        14:43:56.417 [INFO]   [round 1] finished in 585.31833ms
+        14:43:56.417 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+        14:43:56.422 [INFO]
+        14:43:56.422 [INFO] finished building LexicMap index from 15 files with 40000 masks in 6.454799284s
+        14:43:56.422 [INFO] LexicMap index saved: demo.lmi
+        14:43:56.422 [INFO]
+        14:43:56.422 [INFO] elapsed time: 6.454828408s
+        14:43:56.422 [INFO]
 
-{{< /expand >}}
+    {{< /expand >}}
+
 
 ## Output
 
@@ -338,6 +339,7 @@ The LexicMap index is a directory with multiple files.
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
+    # to be updated
     genbank_refseq.lmi: 2.97 TB
        2.17 TB      genomes
      824.42 GB      seeds
@@ -351,6 +353,7 @@ The LexicMap index is a directory with multiple files.
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
+    # to be updated
     atb_hq.lmi: 2.37 TB
        1.77 TB      genomes
      614.58 GB      seeds
@@ -364,5 +367,21 @@ The LexicMap index is a directory with multiple files.
 
 - Directory/file sizes are counted with https://github.com/shenwei356/dirsize.
 - Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 10000` for GTDB datasets, `-b 50000` for others.
+
+
+## Explore the index
+
+1. `lexicmap utils genomes` can list genome IDs of indexed genomes,
+    see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/).
+1. `lexicmap utils masks` can list masks of the index,
+    see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/masks/).
+1. `lexicmap utils kmers` can list details of all seeds (k-mers), including reference, location(s) and the strand.
+    see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/).
+1. `lexicmap utils seed-pos` can help to explore the seed positions,
+    see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/).
+    Before that, the flag `--save-seed-pos` needs to be added to `lexicmap index`.
+1. `lexicmap utils subseq` can extract subsequences via genome ID, sequence ID and positions,
+    see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
+
 
 **What's next:** {{< button size="small" relref="tutorials/search" >}}Searching{{< /button >}}

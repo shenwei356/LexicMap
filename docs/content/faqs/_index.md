@@ -3,6 +3,12 @@ title: FAQs
 weight: 60
 ---
 
+### Does LexicMap support short reads?
+
+No. LexicMap only supports long (>=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
+However, some short queries can also be aligned.
+
+
 ### Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
@@ -16,15 +22,12 @@ which is used to skip genomes larger than 15Mb by default.
 
 For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.
 
-### Does LexicMap support short reads?
-
-No. LexicMap only supports long (>=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
-However, some short queries can also be aligned.
 
 ### How's the hardware requirement?
 
 - For index building. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
 - For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
+
 
 ### Can I extract the matched sequences?
 
@@ -43,6 +46,14 @@ to output CIGAR string, aligned query and subject sequences.
 21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 ```
 
+## How can I extract the upstream and downstream flanking sequences of matched regions?
+
+[lexicmap utils subseq](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/)
+can extract subsequencess via genome ID, sequence ID and positions.
+So you can use these information from the search result and expand the region positions to extract flanking sequences.
+
+
+
 ### Why isn't the pident 100% when aligning with a sequence from the reference genomes?
 
 It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
@@ -56,9 +67,8 @@ While for the query sequences, we don't convert them.
 
 - `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
 faster search.
-    - For example, for ~85,000 GTDB representative genomes, searching on an index built with
-20,000 masks, the memory would be ~100 GB with default parameters.
-- `lexicmap search` also has a flag `--pseudo-align` to only perform pseudo alignment, which is faster and uses less memory.
+    - For example, for ~85,000 GTDB representative genomes, the memory would be ~150 GB with default parameters.
+- `lexicmap search` also has a flag `--pseudo-align` to only perform pseudo alignment, which is slightly faster and uses less memory.
 It can be used in searching with long and divergent query sequences like nanopore long-reads.
 
 {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.

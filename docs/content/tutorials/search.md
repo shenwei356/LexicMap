@@ -89,19 +89,18 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |:--------------------------|:-------------------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
 |**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                          |
 |**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query in the chaining phase|The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
-|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |                                                                   |
+|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                              |
 
 {{< /tab>}}
 
 {{< tab "Chaining" >}}
 
-|Flag                              |Value        |Function                                                               |Comment|
-|:---------------------------------|:------------|:----------------------------------------------------------------------|:------|
-|**`-p, --seed-min-prefix`**       |Default 15   |Minimum length of shared substrings (anchors).                         |       |
-|**`-P, --seed-min-single-prefix`**|Default 20   |Minimum length of shared substrings (anchors) if there's only one pair.|       |
-|`--seed-max-dist`                 |Default 10000|Max distance between seeds in seed chaining.                           |       |
-|`--seed-max-gap`                  |Default 500  |Max gap in seed chaining.                                              |       |
-|`-m/--seed-max-mismatch`          |Default -1   |Minimum mismatch between non-prefix regions of shared substrings.      |       |
+|Flag                              |Value        |Function                                                                           |Comment                                                       |
+|:---------------------------------|:------------|:----------------------------------------------------------------------------------|:-------------------------------------------------------------|
+|**`-p, --seed-min-prefix`**       |Default 15   |Minimum (prefix) length of matched seeds.                                          |Smaller values produce more results at the cost of slow speed.|
+|**`-P, --seed-min-single-prefix`**|Default 17   |Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.|Smaller values produce more results at the cost of slow speed.|
+|`--seed-max-dist`                 |Default 10000|Max distance between seeds in seed chaining.                                       |                                                              |
+|`--seed-max-gap`                  |Default 500  |Max gap in seed chaining.                                                          |                                                              |
 
 {{< /tab>}}
 
@@ -287,7 +286,7 @@ Tab-delimited format with 17+ columns, with 1-based positions.
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
     21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)

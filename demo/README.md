@@ -345,34 +345,35 @@ Sbjct  460059  CAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA  460100
     NC_001895.1   33593   1      GCF_003697165.2   NZ_CP033092.2   77.183    3     8.844     2971      91.754   0      10308    13278   1873846   1876816   +      4903501   Escherichia coli
     NC_001895.1   33593   1      GCF_003697165.2   NZ_CP033092.2   77.183    4     2.355     791       84.703   0      14543    15333   1878801   1879591   +      4903501   Escherichia coli
     NC_001895.1   33593   1      GCF_003697165.2   NZ_CP033092.2   77.183    5     17.644    5927      98.043   0      24355    30281   1853098   1859024   +      4903501   Escherichia coli
+    NC_001895.1   33593   1      GCF_003697165.2   NZ_CP033092.2   77.183    6     2.566     862       96.868   0      8496     9357    1872908   1873769   +      4903501   Escherichia coli
 
 ### Simulated Oxford Nanopore R10.4.1 long-reads
 
 Here we use the flag `-w/--load-whole-seeds` to accelerate searching.
 
     $ lexicmap search -d demo.lmi/ q.long-reads.fasta.gz -o q.long-reads.fasta.gz.lexicmap.tsv.gz -w -q 70
-    14:31:51.535 [INFO] LexicMap v0.4.0
-    14:31:51.535 [INFO]   https://github.com/shenwei356/LexicMap
-    14:31:51.535 [INFO]
-    14:31:51.535 [INFO] checking input files ...
-    14:31:51.535 [INFO]   1 input file given: q.long-reads.fasta.gz
-    14:31:51.535 [INFO]
-    14:31:51.535 [INFO] loading index: demo.lmi/
-    14:31:51.535 [INFO]   reading masks...
-    14:31:51.537 [INFO]   reading seeds (k-mer-value) data into memory...
-    14:31:51.549 [INFO]   creating genome reader pools, each batch with 16 readers...
-    14:31:51.549 [INFO] index loaded in 14.065271ms
-    14:31:51.549 [INFO]
-    14:31:51.549 [INFO] searching ...
-    processed queries: 3584, speed: 4663.404 queries per minute
-    14:32:39.277 [INFO]
-    14:32:39.277 [INFO] processed queries: 3692, speed: 4641.273 queries per minute
-    14:32:39.278 [INFO] 77.0585% (2845/3692) queries matched
-    14:32:39.278 [INFO] done searching
-    14:32:39.278 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
-    14:32:39.283 [INFO]
-    14:32:39.283 [INFO] elapsed time: 47.747769601s
-    14:32:39.283 [INFO]
+    09:02:33.364 [INFO] LexicMap v0.4.0
+    09:02:33.364 [INFO]   https://github.com/shenwei356/LexicMap
+    09:02:33.364 [INFO]
+    09:02:33.364 [INFO] checking input files ...
+    09:02:33.364 [INFO]   1 input file given: q.long-reads.fasta.gz
+    09:02:33.364 [INFO]
+    09:02:33.364 [INFO] loading index: demo.lmi/
+    09:02:33.364 [INFO]   reading masks...
+    09:02:33.368 [INFO]   reading seeds (k-mer-value) data into memory...
+    09:02:33.378 [INFO]   creating genome reader pools, each batch with 16 readers...
+    09:02:33.378 [INFO] index loaded in 13.92089ms
+    09:02:33.378 [INFO]
+    09:02:33.378 [INFO] searching ...
+    processed queries: 3584, speed: 4499.200 queries per minute
+    09:03:23.119 [INFO]
+    09:03:23.119 [INFO] processed queries: 3692, speed: 4453.513 queries per minute
+    09:03:23.119 [INFO] 77.2210% (2851/3692) queries matched
+    09:03:23.119 [INFO] done searching
+    09:03:23.119 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
+    09:03:23.125 [INFO]
+    09:03:23.125 [INFO] elapsed time: 49.760391202s
+    09:03:23.125 [INFO]
 
 Result overview:
 
@@ -415,7 +416,7 @@ Blast-style format:
 ```
 # align only one long-read <= 500 bp
 
-$ seqkit seq -M 500 q.long-reads.fasta.gz \
+$ seqkit seq -g -M 500 q.long-reads.fasta.gz \
     | seqkit head -n 1 \
     | lexicmap search -d demo.lmi/ -a \
     | lexicmap utils 2blast

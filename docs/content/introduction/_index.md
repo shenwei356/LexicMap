@@ -20,6 +20,7 @@ For example, for searching in all 2,340,672 Genbank+Refseq prokaryotic genomes, 
 - Querying with a **1.5-kb 16S rRNA gene** took **5.5 minutes** with **17.25 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
 
 LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (binary files with no dependencies are provided for most common platforms, ) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
+Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
 
 More documents: http://bioinf.shenwei.me/LexicMap.
 
@@ -75,37 +76,59 @@ ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
 
+Export blast-style format:
+
 ```
-# export blast-like alignment text
-lexicmap search -d demo.lmi/ q.gene.fasta --all \
+seqkit seq -M 500 q.long-reads.fasta.gz \
+    | seqkit head -n 2 \
+    | lexicmap search -d demo.lmi/ -a \
     | lexicmap utils 2blast
 
-Query = NC_000913.3:4166659-4168200
-Length = 1542
+Query = GCF_000017205.1_r160
+Length = 478
 
-[Subject genome #1/15] = GCF_003697165.2
-Query coverage per genome = 100.000%
+[Subject genome #1/1] = GCF_000017205.1
+Query coverage per genome = 95.188%
 
->NZ_CP033092.2
-Length = 4903501
+>NC_009656.1
+Length = 6588339
 
  HSP #1
- Query coverage per seq = 100.000%, Aligned length = 1542, Identities = 99.805%, Gaps = 0
- Query range = 1-1542, Subject range = 458559-460100, Strand = Plus/Plus
+ Query coverage per seq = 95.188%, Aligned length = 463, Identities = 95.680%, Gaps = 12
+ Query range = 13-467, Subject range = 4866862-4867320, Strand = Plus/Plus
 
-Query  1       AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAA  60
-               ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-Sbjct  458559  AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAA  458618
+Query  13       CCTCAAACGAGTCC-AACAGGCCAACGCCTAGCAATCCCTCCCCTGTGGGGCAGGGAAAA  71
+                |||||||||||||| |||||||| ||||||  | ||||||||||||| ||||||||||||
+Sbjct  4866862  CCTCAAACGAGTCCGAACAGGCCCACGCCTCACGATCCCTCCCCTGTCGGGCAGGGAAAA  4866921
 
-Query  61      GTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAA  120
-               ||||||||||||||||||| |||||||| |||||||||||||||||||||||||||||||
-Sbjct  458619  GTCGAACGGTAACAGGAAGCAGCTTGCTGCTTTGCTGACGAGTGGCGGACGGGTGAGTAA  458678
+Query  72       TCGTCCTTTATGGTCCGTTCCGGGCACGCACCGGAACGGCGGTCATCTTCCACGGTGCCC  131
+                |||||||||||||||||||||||||||||||||||||||||||||| |||||||||||||
+Sbjct  4866922  TCGTCCTTTATGGTCCGTTCCGGGCACGCACCGGAACGGCGGTCAT-TTCCACGGTGCCC  4866980
 
-Query  121     TGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCAT  180
-               ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-Sbjct  458679  TGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCAT  458738
+Query  132      GCCCACGGCGGACCCGCGGAAACCGACCCGGGCGCCAAGGCGCCCGGGAACGGAGTA-CA  190
+                ||| ||||||||||| ||||||||||||||||||||||||||||||||||||||||| ||
+Sbjct  4866981  GCC-ACGGCGGACCC-CGGAAACCGACCCGGGCGCCAAGGCGCCCGGGAACGGAGTATCA  4867038
 
-...
+Query  191      CTCGGCGTTCGGCCAGCGACAGC---GACGCGTTGCCGCCCACCGCGGTGGTGTTCACCG  247
+                |||||||| ||||||||||||||   ||||||||||||||||||||||||||||||||||
+Sbjct  4867039  CTCGGCGT-CGGCCAGCGACAGCAGCGACGCGTTGCCGCCCACCGCGGTGGTGTTCACCG  4867097
+
+Query  248      AGGTGGTGCGCTCGCTGAC-AAACGCAGCAGGTAGTTCGGCCCGCCGGCCTTGGGACCG-  305
+                ||||||||||||||||||| |||||||||||||||||||||||||||||||||||||||
+Sbjct  4867098  AGGTGGTGCGCTCGCTGACGAAACGCAGCAGGTAGTTCGGCCCGCCGGCCTTGGGACCGG  4867157
+
+Query  306      TGCCGGACAGCCCGTGGCCGCCGAACAGTTGCACGCCCACCACCGCGCCGAT-TGGTTTC  364
+                |||||||||||||||||||||||||| ||||||||||||||||||||||||| ||||| |
+Sbjct  4867158  TGCCGGACAGCCCGTGGCCGCCGAACGGTTGCACGCCCACCACCGCGCCGATCTGGTTGC  4867217
+
+Query  365      GGTTGACGTAGAGGTTGCCGACCCGCGCCAGCTCTTGGATGCGGCGGGCGGTTTCCTCGT  424
+                |||||||||||||||||||||||||||||||||||| |||||||||||||||||||||||
+Sbjct  4867218  GGTTGACGTAGAGGTTGCCGACCCGCGCCAGCTCTTCGATGCGGCGGGCGGTTTCCTCGT  4867277
+
+Query  425      TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  467
+                |||||||||||||||||||||||||||||||||||||||||||
+Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
+
 
 ```
 

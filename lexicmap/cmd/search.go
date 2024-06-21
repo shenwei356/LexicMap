@@ -71,7 +71,7 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
     21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
@@ -481,15 +481,15 @@ func init() {
 		formatFlagUsage(`Maximum opened files.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
-		formatFlagUsage(`Output more columns, e.g., matched sequences.`))
+		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
 
 	// seed searching
 
 	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
-		formatFlagUsage(`Minimum length of shared substrings (anchors).`))
+		formatFlagUsage(`Minimum (prefix) length of matched seeds.`))
 
 	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
-		formatFlagUsage(`Minimum length of shared substrings (anchors) if there's only one pair.`))
+		formatFlagUsage(`Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.`))
 
 	// mapCmd.Flags().IntP("seed-min-matches", "m", 20,
 	// 	formatFlagUsage(`Minimum matched bases in the only one pair of seeds.`))
@@ -510,7 +510,7 @@ func init() {
 
 	// pseudo alignment
 	mapCmd.Flags().BoolP("pseudo-align", "", false,
-		formatFlagUsage(`Only perform pseudo alignment`))
+		formatFlagUsage(`Only perform pseudo alignment, alignment metrics, including qcovGnm, qcovSHP and pident, will be less accurate.`))
 
 	mapCmd.Flags().IntP("align-ext-len", "", 2000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))
