@@ -4,23 +4,43 @@
 [![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
 [![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
 
-LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
+LexicMap is a **nucleotide sequence alignment** tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to **millions of prokaryotic genomes**.
 
-**Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds, or they fall back on k-mer indexing, without information of where matches occur in the genome.
+**Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
+However, given the increasing rate at which genomes are sequenced, **existing tools struggle to scale**.
 
-**Results**: In LexicMap, a [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds.
-A multi-level index enables fast and low-memory variable-length seed matching and alignment on a single server
-at the scale of millions of genomes (see [algorithm overview](#algorithm-overview)),
-successfully indexing and searching both RefSeq+GenBank, and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (2.3 and 1.9 million genomes respectively).
+1. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds,
+1. Or they fall back on k-mer indexing and searching, without position information returned for retrieving annotation.
+
+**Methods**: ([algorithm overview](#algorithm-overview))
+
+1. A [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to efficiently compute alignment seeds.
+   And we solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to satisfy the [window guarantee](https://doi.org/10.1093/bioinformatics/btab790).
+2. A multi-level index enables fast and low-memory variable-length seed matching and chaining.
+3. A pseudo alignment algorithm is used to find similar sequence regions from chaining result for alignment.
+4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
+
+**Results**:
+
+1. LexicMap enables efficiently indexing and searching both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million genomes** respectively).
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
+1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Bastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
+    
+    **With LexicMap** (48 CPUs),
 
-For example, for searching in all 2,340,672 Genbank+Refseq prokaryotic genomes, *BLASTN is unable to run with this dataset on common servers because it requires >2000 GB RAM*.  (see [performance](#performance)). **With LexicMap**,
-- Querying with a **1.3-kb marker gene** took **4 seconds** with **2.12 GB RAM** and 48 CPUs, with **16,788 genome hits** returned.
-- Querying with a **52.8-kb plasmid** took **4 minutes** with **22.46 GB RAM** and 48 CPUs, with **495,915 genome hits** returned.
-- Querying with a **1.5-kb 16S rRNA gene** took **5.5 minutes** with **17.25 GB RAM** and 48 CPUs, with **1,894,943 genome hits** returned.
+    |Query                   |Genome hits|Time     |RAM     |
+    |:-----------------------|----------:|--------:|-------:|
+    |One 1.3-kb marker gene  |16,832     |7 seconds|2.24 GB |
+    |One 52.8-kb plasmid     |508,230    |7 minutes|21.83 GB|
+    |One 1.5-kb 16S rRNA gene|1,923,014  |8 minutes|16.09 GB|
+    |1003 AMR genes          |18,181,992 |1 h 22 m |56.81 GB|
 
-LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/) (binary files with no dependencies are provided for most common platforms, ) and use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)).
-Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
+**Features**:
+
+1. LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
+   we provide [binary files](https://github.com/shenwei356/LexicMap/releases/) with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
+2. LexicMap is easy to use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
+3. Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
 
 More documents: http://bioinf.shenwei.me/LexicMap.
 

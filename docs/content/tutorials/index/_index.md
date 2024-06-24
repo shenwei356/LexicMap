@@ -338,10 +338,9 @@ The LexicMap index is a directory with multiple files.
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
-    # to be updated
     genbank_refseq.lmi: 2.97 TB
        2.17 TB      genomes
-     824.42 GB      seeds
+     824.38 GB      seeds
       55.81 MB      genomes.map.bin
      312.53 KB      masks.bin
       332.00 B      info.toml
@@ -352,10 +351,9 @@ The LexicMap index is a directory with multiple files.
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
-    # to be updated
     atb_hq.lmi: 2.37 TB
        1.77 TB      genomes
-     614.58 GB      seeds
+     614.45 GB      seeds
       39.22 MB      genomes.map.bin
      312.53 KB      masks.bin
       332.00 B      info.toml
