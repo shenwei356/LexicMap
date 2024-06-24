@@ -207,12 +207,12 @@ Blast-style format:
 
 ```
 $ lexicmap search -d demo.lmi/ q.gene.fasta --all \
-    | lexicmap utils 2blast
+    | lexicmap utils 2blast --kv-file-genome ass2species.map
 
 Query = NC_000913.3:4166659-4168200
 Length = 1542
 
-[Subject genome #1/15] = GCF_003697165.2
+[Subject genome #1/15] = GCF_003697165.2 Escherichia coli
 Query coverage per genome = 100.000%
 
 >NZ_CP033092.2
@@ -419,12 +419,12 @@ Blast-style format:
 $ seqkit seq -g -M 500 q.long-reads.fasta.gz \
     | seqkit head -n 1 \
     | lexicmap search -d demo.lmi/ -a \
-    | lexicmap utils 2blast
+    | lexicmap utils 2blast --kv-file-genome ass2species.map
 
 Query = GCF_006742205.1_r100
 Length = 431
 
-[Subject genome #1/1] = GCF_006742205.1
+[Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
 Query coverage per genome = 92.575%
 
 >NZ_AP019721.1

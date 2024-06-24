@@ -35,6 +35,10 @@ var toBlastCmd = &cobra.Command{
 	Short: "Convert the default search output to blast-style format",
 	Long: `Convert the default search output to blast-style format
 
+LexicMap only stores genome IDs and sequence IDs, without description information.
+But the option -g/--kv-file-genome enables adding description data after the genome ID
+with a tabular key-value mapping file.
+
 Input:
    - Output of 'lexicmap search' with the flag -a/--all.
 
@@ -52,6 +56,33 @@ Input:
 		bufferSize, err := ParseByteSize(bufferSizeS)
 		if err != nil {
 			checkError(fmt.Errorf("invalid value of buffer size. supported unit: K, M, G"))
+		}
+
+		kvFileSeq := getFlagString(cmd, "kv-file-seq")
+		kvFileGenome := getFlagString(cmd, "kv-file-genome")
+		ignoreCase := getFlagBool(cmd, "ignore-case")
+
+		hasKVSeq := kvFileSeq != ""
+		hasKVGenome := kvFileGenome != ""
+
+		var kvsSeq, kvsGenome map[string]string
+
+		if hasKVSeq {
+			kvsSeq, err = readKVs(kvFileSeq, ignoreCase)
+			if err != nil {
+				checkError(fmt.Errorf("read sseqid kv file: %s", err))
+			} else if opt.Verbose {
+				log.Infof("%d pairs of sseqid key-value loaded", len(kvsSeq))
+			}
+		}
+
+		if hasKVGenome {
+			kvsGenome, err = readKVs(kvFileGenome, ignoreCase)
+			if err != nil {
+				checkError(fmt.Errorf("read sseqid kv file: %s", err))
+			} else if opt.Verbose {
+				log.Infof("%d pairs of sgenome key-value loaded", len(kvsGenome))
+			}
 		}
 
 		// ---------------------------------------------------------------
@@ -90,6 +121,8 @@ Input:
 		var _strand string
 		var q, t string
 		var rc bool
+
+		var value string
 
 		for _, file := range files {
 			fh, err = xopen.Ropen(file)
@@ -164,11 +197,28 @@ Input:
 				}
 				if preGenome != sgenome {
 					iGenome++
-					fmt.Fprintf(outfh, "[Subject genome #%d/%s] = %s\nQuery coverage per genome = %s%%\n\n", iGenome, hits, sgenome, qcovGnm)
+					value = ""
+					if hasKVGenome {
+						if ignoreCase {
+							value = kvsGenome[strings.ToLower(sgenome)]
+						} else {
+							value = kvsGenome[sgenome]
+						}
+					}
+					fmt.Fprintf(outfh, "[Subject genome #%d/%s] = %s %s\nQuery coverage per genome = %s%%\n\n",
+						iGenome, hits, sgenome, value, qcovGnm)
 				}
 				if preSeq != sseqid {
 					iSeq = 1
-					fmt.Fprintf(outfh, ">%s\nLength = %s\n\n", sseqid, slen)
+					value = ""
+					if hasKVSeq {
+						if ignoreCase {
+							value = kvsSeq[strings.ToLower(sseqid)]
+						} else {
+							value = kvsSeq[sseqid]
+						}
+					}
+					fmt.Fprintf(outfh, ">%s %s\nLength = %s\n\n", sseqid, value, slen)
 				}
 
 				fmt.Fprintf(outfh, " HSP #%s\n", hsp)
@@ -236,6 +286,15 @@ func init() {
 
 	toBlastCmd.Flags().StringP("buffer-size", "b", "20M",
 		formatFlagUsage(`Size of buffer, supported unit: K, M, G. You need increase the value when "bufio.Scanner: token too long" error reported`))
+
+	toBlastCmd.Flags().BoolP("ignore-case", "i", false,
+		formatFlagUsage(`Ignore cases of sgenome and sseqid`))
+
+	toBlastCmd.Flags().StringP("kv-file-seq", "s", "",
+		formatFlagUsage(`Two-column tabular file for mapping the target sequence ID (sseqid) to the corresponding value`))
+
+	toBlastCmd.Flags().StringP("kv-file-genome", "g", "",
+		formatFlagUsage(`Two-column tabular file for mapping the target genome ID (sgenome) to the corresponding value`))
 
 	toBlastCmd.SetUsageTemplate(usageTemplate(""))
 }

@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"math"
@@ -35,6 +36,7 @@ import (
 	"github.com/iafan/cwalk"
 	"github.com/pkg/errors"
 	"github.com/shenwei356/util/pathutil"
+	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
 	"github.com/twotwotwo/sorts"
 )
@@ -360,16 +362,37 @@ func randInts(start int, end int, n int) []int {
 	return ns
 }
 
-func min(a, b int) int {
-	if a <= b {
-		return a
+func readKVs(file string, ignoreCase bool) (map[string]string, error) {
+	fh, err := xopen.Ropen(file)
+	if err != nil {
+		return nil, err
 	}
-	return b
-}
 
-func max(a, b int) int {
-	if a <= b {
-		return b
+	m := make(map[string]string, 1024)
+
+	items := make([]string, 2)
+	scanner := bufio.NewScanner(fh)
+	var line string
+	for scanner.Scan() {
+		line = strings.TrimRight(scanner.Text(), "\r\n")
+		if line == "" {
+			continue
+		}
+
+		stringSplitNByByte(line, '\t', 2, &items)
+		if len(items) < 2 {
+			continue
+		}
+
+		if ignoreCase {
+			m[strings.ToLower(items[0])] = items[1]
+		} else {
+			m[items[0]] = items[1]
+		}
 	}
-	return a
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return m, fh.Close()
 }

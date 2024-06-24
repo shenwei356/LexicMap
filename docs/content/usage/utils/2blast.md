@@ -9,6 +9,10 @@ weight: 0
 $ lexicmap utils 2blast -h
 Convert the default search output to blast-style format
 
+LexicMap only stores genome IDs and sequence IDs, without description information.
+But the option -g/--kv-file-genome enables adding description data after the genome ID
+with a tabular key-value mapping file.
+
 Input:
    - Output of 'lexicmap search' with the flag -a/--all.
 
@@ -16,11 +20,16 @@ Usage:
   lexicmap utils 2blast [flags]
 
 Flags:
-  -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
-                             when "bufio.Scanner: token too long" error reported (default "20M")
-  -h, --help                 help for 2blast
-  -o, --out-file string      ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
-                             (default "-")
+  -b, --buffer-size string      ► Size of buffer, supported unit: K, M, G. You need increase the value
+                                when "bufio.Scanner: token too long" error reported (default "20M")
+  -h, --help                    help for 2blast
+  -i, --ignore-case             ► Ignore cases of sgenome and sseqid
+  -g, --kv-file-genome string   ► Two-column tabular file for mapping the target genome ID (sgenome)
+                                to the corresponding value
+  -s, --kv-file-seq string      ► Two-column tabular file for mapping the target sequence ID (sseqid)
+                                to the corresponding value
+  -o, --out-file string         ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
+                                (default "-")
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -41,12 +50,12 @@ From stdin.
 $ seqkit seq -M 500 q.long-reads.fasta.gz \
     | seqkit head -n 2 \
     | lexicmap search -d demo.lmi/ -a \
-    | lexicmap utils 2blast
+    | lexicmap utils 2blast --kv-file-genome ass2species.map
 
 Query = GCF_000017205.1_r160
 Length = 478
 
-[Subject genome #1/1] = GCF_000017205.1
+[Subject genome #1/1] = GCF_000017205.1 Pseudomonas aeruginosa
 Query coverage per genome = 95.188%
 
 >NC_009656.1
@@ -92,7 +101,7 @@ Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
 Query = GCF_006742205.1_r100
 Length = 431
 
-[Subject genome #1/1] = GCF_006742205.1
+[Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
 Query coverage per genome = 92.575%
 
 >NZ_AP019721.1
