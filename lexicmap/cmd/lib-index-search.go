@@ -1600,8 +1600,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				genome.RecycleGenome(tSeq)
 			}
 
+			poolHashes.Put(hashes)
+			wfa.RecycleAligner(algn)
+
 			if len(*sds) == 0 { // no valid alignments
-				poolSimilarityDetails.Put(sds)
+				idx.RecycleSimilarityDetails(sds)
 				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 
 				if idx.hasGenomeRdrs {
@@ -1616,8 +1619,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				return
 			}
-
-			wfa.RecycleAligner(algn)
 
 			// compute aligned bases per genome
 			var alignedBasesGenome int
@@ -1641,8 +1642,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				r.AlignedFraction = 100
 			}
 			if r.AlignedFraction < minQcovGnm { // no valid alignments
-				poolHashes.Put(hashes)
-
 				idx.RecycleSimilarityDetails(sds)
 				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 
@@ -1657,8 +1656,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 				return
 			}
-
-			poolHashes.Put(hashes)
 
 			// sort target genomes according to their best alignment
 			// r.AlignResults = ars
