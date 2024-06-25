@@ -54,20 +54,24 @@ Flags:
       --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
   -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
   -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
-  -a, --all                            ► Output more columns, e.g., matched sequences.
+  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
+                                       want to output blast-style format with "lexicmap utils 2blast".
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
       --max-open-files int             ► Maximum opened files. (default 512)
+  -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
+                                       improve the batch searching speed and consume much memory. (default 8)
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --pseudo-align                   ► Only perform pseudo alignment
+      --pseudo-align                   ► Only perform pseudo alignment, alignment metrics, including
+                                       qcovGnm, qcovSHP and pident, will be less accurate.
       --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
       --seed-max-gap int               ► Max gap in seed chaining. (default 500)
-  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
-  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there's only
-                                       one pair. (default 17)
+  -p, --seed-min-prefix int            ► Minimum (prefix) length of matched seeds. (default 15)
+  -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there's only one
+                                       pair of seeds matched. (default 17)
   -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
                                        phase.
 

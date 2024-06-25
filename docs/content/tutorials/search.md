@@ -89,7 +89,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |:--------------------------|:-------------------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
 |**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                          |
 |**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query in the chaining phase|The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
-|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                              |
+|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                                   |
+|-J/--max-query-conc        |Default 8, 0 for all|Maximum number of concurrent queries                       |Bigger values do not improve the batch searching speed and consume much memory                                                                   |
 
 {{< /tab>}}
 

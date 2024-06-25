@@ -26,6 +26,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -213,6 +214,11 @@ Output format:
 			}
 		}
 
+		maxQueryConcurrency := getFlagNonNegativeInt(cmd, "max-query-conc")
+		if maxQueryConcurrency == 0 {
+			maxQueryConcurrency = runtime.NumCPU()
+		}
+
 		// ---------------------------------------------------------------
 		// loading index
 
@@ -362,7 +368,7 @@ Output format:
 		}
 
 		// outputter
-		ch := make(chan *Query, opt.NumCPUs)
+		ch := make(chan *Query, maxQueryConcurrency)
 		done := make(chan int)
 		go func() {
 
@@ -374,7 +380,7 @@ Output format:
 		}()
 
 		var wg sync.WaitGroup
-		tokens := make(chan int, opt.NumCPUs)
+		tokens := make(chan int, maxQueryConcurrency)
 
 		var record *fastx.Record
 		K := idx.k
@@ -482,6 +488,9 @@ func init() {
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
+
+	mapCmd.Flags().IntP("max-query-conc", "J", 8,
+		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
 
 	// seed searching
 
