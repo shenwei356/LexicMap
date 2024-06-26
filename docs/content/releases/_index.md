@@ -13,16 +13,38 @@ weight: 30
 
 - `lexicmap index`:
     - **Better sketching desert filling for highly-repetitive regions**.
-    - Faster indexing speed by improving lexichash data structure.
+    - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**,
+      at the cost of slower indexing speed.
+    - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Fix a bug in indexing small genomes.
+    - Improve lexichash data structure.
 - `lexicmap search`:
+    - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
-    - Fix chaining for highly-repetitive regions.
+    - Fix object recycling and reduce memory usage.
     - Fix alignment against genomes with many short contigs.
-    - Out format:
+    - Add a new option `-J/--max-query-conc` to limit the miximum number of concurrent queries,
+      with a default valule of 8 instead of the number of CPUs, which reduce the memory usage
+      in batch searching.
+    - Result format:
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
-        - Add columns `gaps`, `cigar`, `align`.
+        - Add columns `gaps`, `cigar`, `align`, which can be reformated with `lexicmap utils 2blast`.
+- `lexicmap utils kmers`:
+    - Fix the progress bar.
+    - Fix a bug where some masks do not have any k-mer.
+    - Add a new column `prefix` to show the length of common prefix between the seed and the probe.
+- `lexicmap utils masks`:
+    - Add the support of only outputting a specific mask.
+- `lexicmap utils seed-pos`:
+    - New columns: `sseqid` and `pos_seq`.
+    - More accurate seed distance.
+    - Add histograms of numbers of seed in sliding windows.
+- `lexicmap utils subseq`:
+    - Fix a bug when the given end position is larger than the sequence length.
+    - Add the strand ("+" or "-") in the sequence header.
+- New commands:
+    - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 
 {{< hint type=note >}}
 

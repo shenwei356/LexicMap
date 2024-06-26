@@ -23,6 +23,7 @@ package cmd
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strings"
 
 	"github.com/shenwei356/util/cliutil"
@@ -31,6 +32,18 @@ import (
 
 // VERSION is the version
 var VERSION = "0.4.0"
+
+// COMMIT is the last commit
+var COMMIT = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value[:7]
+			}
+		}
+	}
+	return ""
+}()
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
@@ -41,7 +54,7 @@ var versionCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		app := "LexicMap"
-		fmt.Printf("%s v%s\n", app, VERSION)
+		fmt.Printf("%s v%s (%s)\n", app, VERSION, COMMIT)
 
 		if !cliutil.GetFlagBool(cmd, "check-update") {
 			return

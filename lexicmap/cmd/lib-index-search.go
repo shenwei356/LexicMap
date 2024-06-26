@@ -1004,22 +1004,16 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		checkError(err)
 	}
 
-	for _, r := range *rs {
+	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
 
-		go func(r *SearchResult) {
-			minChainingScore := idx.chainingOptions.MinScore
-			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
-			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
-			minPIdent := idx.seqCompareOption.MinIdentity
-			extLen := idx.opt.ExtendLength
-			contigInterval := idx.contigInterval
-			outSeq := idx.opt.OutputSeq
-			accurateAlign := idx.opt.MoreAccurateAlignment
-
+		go func(r *SearchResult) { // for a reference genome
 			// -----------------------------------------------------
 			// chaining
+
+			minChainingScore := idx.chainingOptions.MinScore
+
 			chainer := idx.poolChainers.Get().(*Chainer)
 			r.Chains, r.Score = chainer.Chain(r.Subs)
 
@@ -1036,6 +1030,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			// -----------------------------------------------------
 			// alignment
+
+			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
+			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+			minPIdent := idx.seqCompareOption.MinIdentity
+			extLen := idx.opt.ExtendLength
+			contigInterval := idx.contigInterval
+			outSeq := idx.opt.OutputSeq
+			accurateAlign := idx.opt.MoreAccurateAlignment
 
 			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
