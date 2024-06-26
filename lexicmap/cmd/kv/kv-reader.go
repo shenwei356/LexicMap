@@ -166,6 +166,10 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	}
 	nKmers := int(be.Uint64(buf8))
 
+	if nKmers == 0 {
+		return m, nil
+	}
+
 	for {
 		// read the control byte
 		_, err = io.ReadFull(r, buf[:1])

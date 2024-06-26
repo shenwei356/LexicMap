@@ -21,15 +21,15 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. A [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to efficiently compute alignment seeds.
    And we solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to satisfy the [window guarantee](https://doi.org/10.1093/bioinformatics/btab790).
 2. A multi-level index enables fast and low-memory variable-length seed matching and chaining.
-3. A pseudo alignment algorithm is used to find similar sequence regions from chaining result for alignment.
+3. A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.
 4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
 
 **Results**:
 
-1. LexicMap enables efficiently indexing and searching both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million genomes** respectively).
+1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million genomes** respectively).
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search).
 1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Bastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
-    
+
     **With LexicMap** (48 CPUs),
 
     |Query                   |Genome hits|Time     |RAM     |
