@@ -12,8 +12,8 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="BLASTN is not able to scale to millions of bacterial genomes, it&rsquo;s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
-Large-scale sequence searching tools only return which genomes a query matches (color), but they can&rsquo;t return location information." />
+  <meta name="description" content="BLASTN is not able to scale to millions of bacterial genomes, it&rsquo;s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
+Large-scale sequence searching tools only return which genomes a query matches (color), but they can&rsquo;t return positional information." />
 
     <title>Motivation | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -39,8 +39,8 @@ Large-scale sequence searching tools only return which genomes a query matches (
     content="Motivation"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
-Large-scale sequence searching tools only return which genomes a query matches (color), but they can’t return location information." />
+  <meta property="og:description" content="BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
+Large-scale sequence searching tools only return which genomes a query matches (color), but they can’t return positional information." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/notes/motivation/" />
 
@@ -49,8 +49,8 @@ Large-scale sequence searching tools only return which genomes a query matches (
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Motivation" />
-  <meta name="twitter:description" content="BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
-Large-scale sequence searching tools only return which genomes a query matches (color), but they can’t return location information." />
+  <meta name="twitter:description" content="BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires &gt;2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.
+Large-scale sequence searching tools only return which genomes a query matches (color), but they can’t return positional information." />
 
 
   <script type="application/ld+json">
@@ -61,7 +61,7 @@ Large-scale sequence searching tools only return which genomes a query matches (
       "name": "Motivation",
       "url" : "https://bioinf.shenwei.me/LexicMap/notes/motivation/",
       "headline": "Motivation",
-      "description": "BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires \u003e2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.\nLarge-scale sequence searching tools only return which genomes a query matches (color), but they can’t return location information.",
+      "description": "BLASTN is not able to scale to millions of bacterial genomes, it’s slow and has a high memory occupation. For example, it requires \u003e2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.\nLarge-scale sequence searching tools only return which genomes a query matches (color), but they can’t return positional information.",
       "wordCount" : "61",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -1265,6 +1265,50 @@ Large-scale sequence searching tools only return which genomes a query matches (
         
       
     
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/notes/stories/"
+                    class="gdoc-nav__entry"
+                  >
+                    Project stories
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
   </ul>
 
             
@@ -1423,13 +1467,13 @@ Large-scale sequence searching tools only return which genomes a query matches (
     <ol>
 <li>
 <p>BLASTN is not able to scale to millions of bacterial genomes, it&rsquo;s slow and has a high memory occupation.
-For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.</p>
+For example, it requires &gt;2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.</p>
 </li>
 <li>
 <p><a
   class="gdoc-markdown__link"
   href="https://kamimrcht.github.io/webpage/set_kmer_sets2.html"
->Large-scale sequence searching tools</a> only return which genomes a query matches (color), but they can&rsquo;t return location information.</p>
+>Large-scale sequence searching tools</a> only return which genomes a query matches (color), but they can&rsquo;t return positional information.</p>
 </li>
 </ol>
 
@@ -2162,6 +2206,44 @@ For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against 
     
 
   
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+          
+            
+            
+          
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
 
         
       
@@ -2185,6 +2267,15 @@ For example, it requires &gt;2000 GB for alignment a 2-kp gene sequence against 
   
 </span>
 <span class="gdoc-page__nav">
+  
+    <a
+      class="gdoc-page__nav--next flex align-center"
+      href="/LexicMap/notes/stories/"
+      title="Project stories"
+    >
+      Project stories
+      <i class="gdoc-icon">gdoc_arrow_right_alt</i>
+    </a>
   
 </span>
 

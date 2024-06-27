@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.126.3">
 
 
-  <meta name="description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a &#34;." />
+  <meta name="description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G." />
 
     <title>2blast | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="2blast"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a &#34;." />
+  <meta property="og:description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="2blast" />
-  <meta name="twitter:description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a &#34;." />
+  <meta name="twitter:description" content="Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "2blast",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/",
       "headline": "2blast",
-      "description": "Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of \u0027lexicmap search\u0027 with the flag -a\/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a \u0022.",
-      "wordCount" : "438",
+      "description": "Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g\/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of \u0027lexicmap search\u0027 with the flag -a\/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G.",
+      "wordCount" : "518",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1262,6 +1262,50 @@
         
       
     
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/notes/stories/"
+                    class="gdoc-nav__entry"
+                  >
+                    Project stories
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
   </ul>
 
             
@@ -1437,6 +1481,10 @@
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils 2blast -h
 </span></span><span class="line"><span class="cl">Convert the default search output to blast-style format
 </span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">LexicMap only stores genome IDs and sequence IDs, without description information.
+</span></span><span class="line"><span class="cl">But the option -g/--kv-file-genome enables adding description data after the genome ID
+</span></span><span class="line"><span class="cl">with a tabular key-value mapping file.
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Input:
 </span></span><span class="line"><span class="cl">   - Output of &#39;lexicmap search&#39; with the flag -a/--all.
 </span></span><span class="line"><span class="cl">
@@ -1444,11 +1492,16 @@
 </span></span><span class="line"><span class="cl">  lexicmap utils 2blast [flags]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
-</span></span><span class="line"><span class="cl">  -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
-</span></span><span class="line"><span class="cl">                             when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;)
-</span></span><span class="line"><span class="cl">  -h, --help                 help for 2blast
-</span></span><span class="line"><span class="cl">  -o, --out-file string      ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
-</span></span><span class="line"><span class="cl">                             (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">  -b, --buffer-size string      ► Size of buffer, supported unit: K, M, G. You need increase the value
+</span></span><span class="line"><span class="cl">                                when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;)
+</span></span><span class="line"><span class="cl">  -h, --help                    help for 2blast
+</span></span><span class="line"><span class="cl">  -i, --ignore-case             ► Ignore cases of sgenome and sseqid
+</span></span><span class="line"><span class="cl">  -g, --kv-file-genome string   ► Two-column tabular file for mapping the target genome ID (sgenome)
+</span></span><span class="line"><span class="cl">                                to the corresponding value
+</span></span><span class="line"><span class="cl">  -s, --kv-file-seq string      ► Two-column tabular file for mapping the target sequence ID (sseqid)
+</span></span><span class="line"><span class="cl">                                to the corresponding value
+</span></span><span class="line"><span class="cl">  -o, --out-file string         ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
+</span></span><span class="line"><span class="cl">                                (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -1471,12 +1524,12 @@
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ seqkit seq -M 500 q.long-reads.fasta.gz \
 </span></span><span class="line"><span class="cl">    | seqkit head -n 2 \
 </span></span><span class="line"><span class="cl">    | lexicmap search -d demo.lmi/ -a \
-</span></span><span class="line"><span class="cl">    | lexicmap utils 2blast
+</span></span><span class="line"><span class="cl">    | lexicmap utils 2blast --kv-file-genome ass2species.map
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Query = GCF_000017205.1_r160
 </span></span><span class="line"><span class="cl">Length = 478
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_000017205.1
+</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_000017205.1 Pseudomonas aeruginosa
 </span></span><span class="line"><span class="cl">Query coverage per genome = 95.188%
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">&gt;NC_009656.1
@@ -1522,7 +1575,7 @@
 </span></span><span class="line"><span class="cl">Query = GCF_006742205.1_r100
 </span></span><span class="line"><span class="cl">Length = 431
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_006742205.1
+</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
 </span></span><span class="line"><span class="cl">Query coverage per genome = 92.575%
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">&gt;NZ_AP019721.1
@@ -2263,6 +2316,39 @@
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

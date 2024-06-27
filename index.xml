@@ -8,6 +8,13 @@
     <language>en-us</language>
     <atom:link href="https://bioinf.shenwei.me/LexicMap/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>Project stories</title>
+      <link>https://bioinf.shenwei.me/LexicMap/notes/stories/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/notes/stories/</guid>
+      <description>TODO</description>
+    </item>
+    <item>
       <title>masks</title>
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -19,7 +26,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</guid>
-      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;.</description>
+      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.</description>
     </item>
     <item>
       <title>Searching</title>
@@ -68,7 +75,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/</guid>
-      <description>Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format Input: - Output of &amp;#39;lexicmap search&amp;#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &amp;#34;bufio.Scanner: token too long&amp;#34; error reported (default &amp;#34;20M&amp;#34;) -h, --help help for 2blast -o, --out-file string ► Out file, supports and recommends a &amp;#34;.</description>
+      <description>Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of &amp;#39;lexicmap search&amp;#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G.</description>
     </item>
     <item>
       <title>lexicmap</title>
@@ -82,7 +89,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/notes/motivation/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/notes/motivation/</guid>
-      <description>BLASTN is not able to scale to millions of bacterial genomes, it&amp;rsquo;s slow and has a high memory occupation. For example, it requires &amp;gt;2000 GB for alignment a 2-kp gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.&#xA;Large-scale sequence searching tools only return which genomes a query matches (color), but they can&amp;rsquo;t return location information.</description>
+      <description>BLASTN is not able to scale to millions of bacterial genomes, it&amp;rsquo;s slow and has a high memory occupation. For example, it requires &amp;gt;2000 GB for alignment a 2-kb gene sequence against all the 2.34 millions of prokaryotics genomes in Genbank and RefSeq.&#xA;Large-scale sequence searching tools only return which genomes a query matches (color), but they can&amp;rsquo;t return positional information.</description>
     </item>
   </channel>
 </rss>

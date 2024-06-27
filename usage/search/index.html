@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length.",
-      "wordCount" : "542",
+      "wordCount" : "593",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1262,6 +1262,50 @@
         
       
     
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/notes/stories/"
+                    class="gdoc-nav__entry"
+                  >
+                    Project stories
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
   </ul>
 
             
@@ -1467,20 +1511,24 @@
 </span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
 </span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
 </span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
-</span></span><span class="line"><span class="cl">  -a, --all                            ► Output more columns, e.g., matched sequences.
+</span></span><span class="line"><span class="cl">  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
+</span></span><span class="line"><span class="cl">                                       want to output blast-style format with &#34;lexicmap utils 2blast&#34;.
 </span></span><span class="line"><span class="cl">  -h, --help                           help for search
 </span></span><span class="line"><span class="cl">  -d, --index string                   ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
 </span></span><span class="line"><span class="cl">      --max-open-files int             ► Maximum opened files. (default 512)
+</span></span><span class="line"><span class="cl">  -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
+</span></span><span class="line"><span class="cl">                                       improve the batch searching speed and consume much memory. (default 8)
 </span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
 </span></span><span class="line"><span class="cl">  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
 </span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
-</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment
+</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment, alignment metrics, including
+</span></span><span class="line"><span class="cl">                                       qcovGnm, qcovSHP and pident, will be less accurate.
 </span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
 </span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 500)
-</span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum length of shared substrings (anchors). (default 15)
-</span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum length of shared substrings (anchors) if there&#39;s only
-</span></span><span class="line"><span class="cl">                                       one pair. (default 17)
+</span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum (prefix) length of matched seeds. (default 15)
+</span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there&#39;s only one
+</span></span><span class="line"><span class="cl">                                       pair of seeds matched. (default 17)
 </span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
 </span></span><span class="line"><span class="cl">                                       phase.
 </span></span><span class="line"><span class="cl">
@@ -2213,6 +2261,39 @@
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

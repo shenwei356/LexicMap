@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2544",
+      "wordCount" : "2568",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1274,6 +1274,50 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
         
       
     
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/notes/stories/"
+                    class="gdoc-nav__entry"
+                  >
+                    Project stories
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
   </ul>
 
             
@@ -1653,6 +1697,12 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <td style="text-align:left"></td>
 <td style="text-align:left">Output more columns, e.g., matched sequences.</td>
 <td style="text-align:left">Use this if you want to output blast-style format with &ldquo;lexicmap utils 2blast&rdquo;</td>
+</tr>
+<tr>
+<td style="text-align:left">-J/&ndash;max-query-conc</td>
+<td style="text-align:left">Default 8, 0 for all</td>
+<td style="text-align:left">Maximum number of concurrent queries</td>
+<td style="text-align:left">Bigger values do not improve the batch searching speed and consume much memory</td>
 </tr>
 </tbody>
 </table> </div>
@@ -2809,6 +2859,39 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 
