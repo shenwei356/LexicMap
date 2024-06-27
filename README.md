@@ -9,8 +9,10 @@ LexicMap is a **nucleotide sequence alignment** tool for efficiently querying ge
 **Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
 However, given the increasing rate at which genomes are sequenced, **existing tools struggle to scale**.
 
-1. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds,
-1. Or they fall back on k-mer indexing and searching, without position information returned for retrieving annotation.
+1. Existing full alignment tools face challenges of high memory consumption and slow speeds.
+1. Alignment-free large-scale sequence searching tools only return the matched genomes,
+   without the vital positional information for downstream analysis.
+1. Prefilter+Align strategies have the sensitivity issue in the prefiltering step.
 
 **Methods**: ([algorithm overview](#algorithm-overview))
 
@@ -28,12 +30,12 @@ Running at this scale has previously only been achieved by [Phylign](https://git
     
     **With LexicMap** (48 CPUs),
 
-    |Query                   |Genome hits|Time     |RAM     |
-    |:-----------------------|----------:|--------:|-------:|
-    |One 1.3-kb marker gene  |16,832     |7 seconds|2.24 GB |
-    |One 52.8-kb plasmid     |508,230    |7 minutes|21.83 GB|
-    |One 1.5-kb 16S rRNA gene|1,923,014  |8 minutes|16.09 GB|
-    |1003 AMR genes          |18,181,992 |1 h 22 m |56.81 GB|
+    |Query                   |Genome hits|Time    |RAM    |
+    |:-----------------------|----------:|-------:|------:|
+    |One 1.3-kb marker gene  |16,832     |6.1 s   |1.5 GB |
+    |One 52.8-kb plasmid     |508,230    |6 m 50 s|17.6 GB|
+    |One 1.5-kb 16S rRNA gene|1,923,014  |7 m 32 s|12.3 GB|
+    |1003 AMR genes          |18,181,903 |1 h 28 m|20.0 GB|
 
 **Features**:
 

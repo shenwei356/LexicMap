@@ -28,11 +28,16 @@ geekdocAnchor: false
 
 ### Easy to install
 
-Both x86 and ARM CPUs are supported. Just install it by
+Linux, Windows, MacOS and more OS are supported.
+
+Both x86 and ARM CPUs are supported.
+
+Just [download](https://github.com/shenwei356/lexicmap/releases) the binary files and run!
+
+
+Or install it by
 
     conda install -c bioconda lexicmap
-
-Or [download](https://github.com/shenwei356/lexicmap/releases) the binary files for popular platforms.
 
 
 {{< button size="small" relref="installation" >}}Installation{{< /button >}}
@@ -59,8 +64,17 @@ Step 2: searching
 
 ### Efficient search
 
-Querying a 52.8-kb plasmid with **LexicMap** in all **2,340,672** Genbank+Refseq prokaryotic genomes takes only **5 minutes and  25 GB RAM** with 48 CPUs, with 495,932 genome hits returned.
-In contrast, ***Blastn** is unable to run with the same dataset on common servers because it requires >2000 GB RAM*.
+Using LexicMap to searching in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
+
+|Query                   |Genome hits|Time    |RAM    |
+|:-----------------------|----------:|-------:|------:|
+|One 1.3-kb  gene        |16,832     |6.1 s   |1.5 GB |
+|One 52.8-kb plasmid     |508,230    |6 m 50 s|17.6 GB|
+|One 16S rRNA gene       |1,923,014  |7 m 32 s|12.3 GB|
+|1003 AMR genes          |18,181,903 |1 h 28 m|20.0 GB|
+
+
+***Blastn** is unable to run with the same dataset on common servers as it requires >2000 GB RAM*.
 
 {{< button size="small" relref="introduction/#performance" >}}Performance{{< /button >}}
 

@@ -13,8 +13,10 @@ LexicMap is a **nucleotide sequence alignment** tool for efficiently querying ge
 **Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
 However, given the increasing rate at which genomes are sequenced, **existing tools struggle to scale**.
 
-1. Current tools either attempt full alignment but face challenges of high memory consumption and slow speeds,
-1. Or they fall back on k-mer indexing and searching, without position information returned for retrieving annotation.
+1. Existing full alignment tools face challenges of high memory consumption and slow speeds.
+1. Alignment-free large-scale sequence searching tools only return the matched genomes,
+   without the vital positional information for downstream analysis.
+1. Prefilter+Align strategies have the sensitivity issue in the prefiltering step.
 
 **Methods**: ([algorithm overview](#algorithm-overview))
 
@@ -32,12 +34,12 @@ Running at this scale has previously only been achieved by [Phylign](https://git
 
     **With LexicMap** (48 CPUs),
 
-    |Query                   |Genome hits|Time     |RAM     |
-    |:-----------------------|----------:|--------:|-------:|
-    |One 1.3-kb marker gene  |16,832     |7 seconds|2.24 GB |
-    |One 52.8-kb plasmid     |508,230    |7 minutes|21.83 GB|
-    |One 1.5-kb 16S rRNA gene|1,923,014  |8 minutes|16.09 GB|
-    |1003 AMR genes          |18,181,992 |1 h 22 m |56.81 GB|
+    |Query                   |Genome hits|Time    |RAM    |
+    |:-----------------------|----------:|-------:|------:|
+    |One 1.3-kb marker gene  |16,832     |6.1 s   |1.5 GB |
+    |One 52.8-kb plasmid     |508,230    |6 m 50 s|17.6 GB|
+    |One 1.5-kb 16S rRNA gene|1,923,014  |7 m 32 s|12.3 GB|
+    |1003 AMR genes          |18,181,903 |1 h 28 m|20.0 GB|
 
 **Features**:
 
@@ -69,23 +71,24 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
 
 Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output-format).
 
-    query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
-    ------------------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
-    ERR5396170.1000016   740    1      GCF_013394085.1   NZ_CP040910.1   89.595    1     89.595    663       99.246    0      71       733    13515     14177     +      1887974
-    ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1   85.673    1     85.673    603       98.010    5      53       650    4452083   4452685   +      6316979
-    ERR5396170.1000017   516    1      GCF_013394085.1   NZ_CP040910.1   94.574    1     94.574    489       99.591    2      27       514    293509    293996    +      1887974
-    ERR5396170.1000012   848    1      GCF_013394085.1   NZ_CP040910.1   95.165    1     95.165    811       97.411    7      22       828    190329    191136    -      1887974
-    ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    1     60.000    973       95.889    13     365      1333   88793     89756     -      2884551
-    ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    2     4.706     76        98.684    0      266      341    89817     89892     -      2884551
-    ERR5396170.1000036   1159   1      GCF_013394085.1   NZ_CP040910.1   95.427    1     95.427    1107      99.729    1      32       1137   1400097   1401203   +      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    1     86.486    707       99.151    3      104      807    242235    242941    -      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    2     86.486    707       98.444    3      104      807    1138777   1139483   +      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    3     84.152    688       98.983    4      104      788    154620    155306    -      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    4     84.029    687       99.127    3      104      787    32477     33163     +      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    5     72.727    595       98.992    3      104      695    1280183   1280777   +      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
-    ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
-
+```text
+query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
+------------------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
+ERR5396170.1000016   740    1      GCF_013394085.1   NZ_CP040910.1   89.595    1     89.595    663       99.246    0      71       733    13515     14177     +      1887974
+ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1   85.673    1     85.673    603       98.010    5      53       650    4452083   4452685   +      6316979
+ERR5396170.1000017   516    1      GCF_013394085.1   NZ_CP040910.1   94.574    1     94.574    489       99.591    2      27       514    293509    293996    +      1887974
+ERR5396170.1000012   848    1      GCF_013394085.1   NZ_CP040910.1   95.165    1     95.165    811       97.411    7      22       828    190329    191136    -      1887974
+ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    1     60.000    973       95.889    13     365      1333   88793     89756     -      2884551
+ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    2     4.706     76        98.684    0      266      341    89817     89892     -      2884551
+ERR5396170.1000036   1159   1      GCF_013394085.1   NZ_CP040910.1   95.427    1     95.427    1107      99.729    1      32       1137   1400097   1401203   +      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    1     86.486    707       99.151    3      104      807    242235    242941    -      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    2     86.486    707       98.444    3      104      807    1138777   1139483   +      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    3     84.152    688       98.983    4      104      788    154620    155306    -      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    4     84.029    687       99.127    3      104      787    32477     33163     +      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    5     72.727    595       98.992    3      104      695    1280183   1280777   +      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
+ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
+```
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
 
@@ -161,15 +164,15 @@ Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [
 
 ### Indexing
 
-|dataset          |genomes  |gzip_size|tool    |db_size|time     |RAM     |
-|:----------------|--------:|--------:|:-------|------:|--------:|-------:|
-|GTDB complete    |402,538  |578 GB   |LexicMap|510 GB |3 h 40 m |37.4 GB |
-|                 |         |         |Blastn  |360 GB |3 h 11 m |718 MB  |
-|Genbank+RefSeq   |2,340,672|3.5 TB   |LexicMap|2.91 TB|21 h 28 m|82.14 GB|
-|                 |         |         |Blastn  |2.15 TB|14 h 04 m|4.3 GB  |
-|AllTheBacteria HQ|1,858,610|3.1 TB   |LexicMap|2.32 TB|11 h 51 m|42.6 GB |
-|                 |         |         |Blastn  |1.76 TB|14 h 03 m|2.9 GB  |
-|                 |         |         |Phylign |248 GB |/        |/       |
+|dataset          |genomes  |gzip_size|tool    |db_size|time     |RAM    |
+|:----------------|--------:|--------:|:-------|------:|--------:|------:|
+|GTDB complete    |402,538  |578 GB   |LexicMap|523 GB |6 h 34 m |30.9 GB|
+|                 |         |         |Blastn  |360 GB |3 h 11 m |718 MB |
+|Genbank+RefSeq   |2,340,672|3.5 TB   |LexicMap|2.97 TB|27 h 26 m|91.2 GB|
+|                 |         |         |Blastn  |2.15 TB|14 h 04 m|4.3 GB |
+|AllTheBacteria HQ|1,858,610|3.1 TB   |LexicMap|2.37 TB|23 h 34 m|41.0 GB|
+|                 |         |         |Blastn  |1.76 TB|14 h 03 m|2.9 GB |
+|                 |         |         |Phylign |248 GB |/        |/      |
 
 Notes:
 - All files are stored on a server with HDD disks. No files are cached in memory.
@@ -184,36 +187,39 @@ Phylign only has the index for AllTheBacteria HQ dataset.
 
 GTDB complete (402,538 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
-|a marker gene  |1,299 bp |LexicMap       |3,649      |3,645               |1.555 s  |905.57 MB|
-|               |         |Blastn         |7,121      |6,177               |36 m 11 s|351 GB   |
-|a 16S rRNA gene|1,542 bp |LexicMap       |295,628    |275,454             |1 m 17 s |3.98 GB  |
-|               |         |Blastn         |301,197    |277,042             |39 m 13 s|378 GB   |
-|a plasmid      |52,830 bp|LexicMap       |59,211     |1,186               |35.269 s |4.46 GB  |
-|               |         |Blastn         |69,311     |2,308               |37 m 42 s|365 GB   |
+|query          |query_len    |tool           |genome_hits|genome_hits(qcov>50)|time      |RAM     |
+|:--------------|------------:|:--------------|----------:|-------------------:|---------:|-------:|
+|a marker gene  |1,299 bp     |LexicMap       |3,669      |3,662               |1.9 s     |0.7 GB  |
+|               |             |Blastn         |7,121      |6,177               |2,171 s   |351.2 GB|
+|a 16S rRNA gene|1,542 bp     |LexicMap       |297,765    |276,244             |113 s     |3.3 GB  |
+|               |             |Blastn         |301,197    |277,042             |2,353 s   |378.4 GB|
+|a plasmid      |52,830 bp    |LexicMap       |60,499     |1,188               |63 s      |4.1 GB  |
+|               |             |Blastn         |69,311     |2,308               |2,262 s   |364.7 GB|
+|1033 AMR genes |1 kb (median)|LexicMap       |2,803,798  |1,886,841           |1,086 s   |6.8 GB  |
+|               |             |Blastn         |5,357,772  |2,240,766           |4,686 s   |442.1 GB|
 
 AllTheBacteria HQ (1,858,610 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
-|a marker gene  |1,299 bp |LexicMap       |11,205     |11,199              |3.226 s  |1.83 GB  |
-|               |         |Phylign_local  |7,937      |N/A                 |29 m 13 s|78.50 GB |
-|               |         |Phylign_cluster|7,937      |N/A                 |32 m 26 s|N/A      |
-|a 16S rRNA gene|1,542 bp |LexicMap       |1,854,616  |1,735,763           |3 m 42 s |14.70 GB |
-|               |         |Phylign_local  |1,032,948  |N/A                 |1 h 58 m |73.30 GB |
-|               |         |Phylign_cluster|1,032,948  |N/A                 |83 m 36 s|N/A      |
-|a plasmid      |52,830 bp|LexicMap       |427,544    |3,620               |4 m 49 s |19.24 GB |
-|               |         |Phylign_local  |46,822     |N/A                 |39 m 37 s|76.99 GB |
-|               |         |Phylign_cluster|46,822     |N/A                 |38 m 22 s|N/A      |
+|query          |query_len    |tool           |genome_hits|genome_hits(qcov>50)|time      |RAM     |
+|:--------------|------------:|:--------------|----------:|-------------------:|---------:|-------:|
+|a marker gene  |1,299 bp     |LexicMap       |11,227     |11,210              |7.3 s     |1.3 GB  |
+|               |             |Phylign_local  |7,936      |                    |30 m 48 s |77.6 GB |
+|               |             |Phylign_cluster|7,936      |                    |28 m 33 s |        |
+|a 16S rRNA gene|1,542 bp     |LexicMap       |1,855,197  |1,738,085           |9 m 57 s  |13.4 GB |
+|               |             |Phylign_local  |1,017,765  |                    |130 m 33 s|77.0 GB |
+|               |             |Phylign_cluster|1,017,765  |                    |86 m 41 s |        |
+|a plasmid      |52,830 bp    |LexicMap       |438,640    |11,103              |7 m 23 s  |14.3 GB |
+|               |             |Phylign_local  |46,822     |                    |47 m 33 s |82.6 GB |
+|               |             |Phylign_cluster|46,822     |                    |39 m 34 s |        |
+|1033 AMR genes |1 kb (median)|LexicMap       |15,118,773 |10,630,977          |75 m 27 s |16.9 GB |
+|               |             |Phylign_local  |1,135,215  |                    |156 m 08 s|85.9 GB |
+|               |             |Phylign_cluster|1,135,215  |                    |133 m 49 s|        |
+
 
 Genbank+RefSeq (2,340,672 genomes):
 
-|query          |query_len|tool           |genome_hits|genome_hits(qcov>50)|time     |RAM      |
-|:--------------|--------:|:--------------|----------:|-------------------:|--------:|--------:|
-|a marker gene  |1,299 bp |LexicMap       |16,788     |16,756              |3.119 s  |2.12 GB  |
-|a 16S rRNA gene|1,542 bp |LexicMap       |1,894,943  |1,375,561           |5 m 32 s |17.25 GB |
-|a plasmid      |52,830 bp|LexicMap       |495,915    |6,555               |3 m 50 s |22.46 GB |
+|query          |query_len    |tool           |genome_hits|genome_hits(qcov>50)|time      |RAM     |
+|:--------------|------------:|:--------------|----------:|-------------------:|---------:|-------:|
 
 Notes:
 - All files are stored on a server with HDD disks. No files are cached in memory.
@@ -221,7 +227,7 @@ Notes:
 - Main searching parameters:
     - LexicMap v0.4.0: `--threads 48 --top-n-genomes 0 --min-qcov-per-genome 0 --min-qcov-per-hsp 0 --min-match-pident 70`.
     - Blastn v2.15.0+: `-num_threads 48 -max_target_seqs 10000000`.
-    - Phylign (AllTheBacteria fork 9fc65e6): `threads: 48, cobs_kmer_thres: 0.33, minimap_preset: "sr" for genes and "asm20" for plasmid, nb_best_hits: 5000000, max_ram_gb: 100`; For cluster, maximum number of slurm jobs is `100`.
+    - Phylign (AllTheBacteria fork 9fc65e6): `threads: 48, cobs_kmer_thres: 0.33, minimap_preset: "asm20", nb_best_hits: 5000000, max_ram_gb: 100`; For cluster, maximum number of slurm jobs is `100`.
 
 ## Installation
 
