@@ -220,6 +220,10 @@ Genbank+RefSeq (2,340,672 genomes):
 
 |query          |query_len    |tool           |genome_hits|genome_hits(qcov>50)|time      |RAM     |
 |:--------------|------------:|:--------------|----------:|-------------------:|---------:|-------:|
+|a marker gene  |1,299 bp     |LexicMap       |16,832     |16,794              |6.1 s     |1.5 GB  |
+|a 16S rRNA gene|1,542 bp     |LexicMap       |1,923,014  |1,377,586           |7 m 32 s  |12.3 GB |
+|a plasmid      |52,830 bp    |LexicMap       |508,230    |6,561               |6 m 50 s  |17.6 GB |
+|1033 AMR genes |1 kb (median)|LexicMap       |18,181,903 |12,675,869          |88 m 10 s |20.0 GB |
 
 Notes:
 - All files are stored on a server with HDD disks. No files are cached in memory.
