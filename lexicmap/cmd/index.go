@@ -336,6 +336,8 @@ Important parameters:
 		}
 		if len(files) < 1 {
 			checkError(fmt.Errorf("FASTA/Q files needed"))
+		} else if len(files) > 17179869184 { // 1<< 34
+			checkError(fmt.Errorf("at most 17179869184 files supported, given: %d", len(files)))
 		} else if opt.Verbose || opt.Log2File {
 			log.Infof("  %d input file(s) given", len(files))
 		}

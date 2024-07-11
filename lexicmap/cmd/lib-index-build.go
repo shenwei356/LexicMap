@@ -282,6 +282,8 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		if err != nil {
 			checkError(fmt.Errorf("failed to create dir: %s", err))
 		}
+	} else if nBatches > 131072 { // 1<<17
+		checkError(fmt.Errorf("at most 131072 batches supported. current: %d", nBatches))
 	}
 
 	var begin, end int
