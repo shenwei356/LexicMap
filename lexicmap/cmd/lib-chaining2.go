@@ -488,7 +488,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			if nAlignedBasesQ >= minAlignLen {
 				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
-				if pident >= minPident {
+				if pident >= 20 {
 					if pident > 100 {
 						pident = 100
 					}
