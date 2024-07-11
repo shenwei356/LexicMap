@@ -233,7 +233,7 @@ func (scr *InMemorySearcher2) Search(kmers []uint64, p uint8) (*[]*SearchResult,
 
 					sr1 = poolSearchResult.Get().(*SearchResult)
 					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
-					sr1.Kmer = kmer1
+					// sr1.Kmer = kmer1
 					sr1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
 					// sr1.Mismatch = mismatch
 					sr1.Values = sr1.Values[:0]

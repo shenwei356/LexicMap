@@ -78,9 +78,9 @@ func NewSearcher(file string) (*Searcher, error) {
 
 // SearchResult represents a search result.
 type SearchResult struct {
-	IQuery    int    // index of the query kmer
-	Kmer      uint64 // matched kmer
-	LenPrefix uint8  // length of common prefix between the query and this k-mer
+	IQuery int // index of the query kmer
+	// Kmer      uint64 // matched kmer
+	LenPrefix uint8 // length of common prefix between the query and this k-mer
 	// Mismatch  uint8    // number of mismatch, it has meanning only when checking mismatch!
 	Values []uint64 // value of this key
 }
@@ -334,7 +334,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8) (*[]*SearchResult, error) {
 			if saveKmer {
 				sr1 = poolSearchResult.Get().(*SearchResult)
 				sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				sr1.Kmer = kmer1
+				// sr1.Kmer = kmer1
 				sr1.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
 				// sr1.Mismatch = mismatch
 				sr1.Values = sr1.Values[:0]
@@ -390,7 +390,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8) (*[]*SearchResult, error) {
 			if saveKmer {
 				sr2 = poolSearchResult.Get().(*SearchResult)
 				sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				sr2.Kmer = kmer2
+				// sr2.Kmer = kmer2
 				sr2.LenPrefix = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
 				// sr2.Mismatch = mismatch
 				sr2.Values = sr2.Values[:0]

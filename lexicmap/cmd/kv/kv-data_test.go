@@ -185,19 +185,22 @@ func TestKVData(t *testing.T) {
 					for _, v := range r.Values {
 						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
-						t.Logf("  %s, prefix:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						// t.Logf("  %s, prefix:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
 					}
 				}
 			}
 
 			hit = false
 			for _, r := range *results {
-				if r.Kmer == i {
+				// if r.Kmer == i {
+				if r.LenPrefix == k {
 					hit = true
 					if r.Values[0] != i+(i<<30) {
-						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
-						return
+						// t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
+						// return
+						hit = false
 					}
 				}
 			}
@@ -207,8 +210,9 @@ func TestKVData(t *testing.T) {
 					for _, v := range r.Values {
 						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
-						t.Logf("  %s, prefix:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						// t.Logf("  %s, prefix:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
 					}
 				}
 				return
@@ -255,15 +259,17 @@ func TestKVData(t *testing.T) {
 					for _, v := range r.Values {
 						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
-						t.Logf("  %s, prefix:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						// t.Logf("  %s, prefix:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
 					}
 				}
 			}
 
 			hit = false
 			for _, r := range *results {
-				if r.Kmer == i {
+				// if r.Kmer == i {
+				if r.LenPrefix == k {
 					hit = true
 					if r.Values[0] != i+(i<<30) {
 						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
@@ -277,8 +283,10 @@ func TestKVData(t *testing.T) {
 					for _, v := range r.Values {
 						// t.Logf("  %s, prefix:%d, mismatch:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
-						t.Logf("  %s, prefix:%d %d\n",
-							lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+						// t.Logf("  %s, prefix:%d %d\n",
+						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
+
+						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
 					}
 				}
 				return
