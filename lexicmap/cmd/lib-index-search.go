@@ -751,6 +751,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	minPrefix := idx.opt.MinPrefix
 	// maxMismatch := idx.opt.MaxMismatch
 
+	// 	tries := 0
+	// TRY_WITH_SHORTER_PREFIX:
+
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int) // later, we will reuse this
 
@@ -903,6 +906,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	<-done
 
 	if len(*m) == 0 { // no results
+		// if tries == 0 {
+		// 	tries++
+		// 	minPrefix -= 5
+		// 	goto TRY_WITH_SHORTER_PREFIX
+		// }
 		poolSearchResultsMap.Put(m)
 		return nil, nil
 	}
