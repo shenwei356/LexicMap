@@ -336,8 +336,8 @@ Important parameters:
 		}
 		if len(files) < 1 {
 			checkError(fmt.Errorf("FASTA/Q files needed"))
-		} else if len(files) > 17179869184 { // 1<< 34
-			checkError(fmt.Errorf("at most 17179869184 files supported, given: %d", len(files)))
+		} else if len(files) > 1<<BITS_IDX { // 1<< 34
+			checkError(fmt.Errorf("at most %d files supported, given: %d", 1<<BITS_IDX, len(files)))
 		} else if opt.Verbose || opt.Log2File {
 			log.Infof("  %d input file(s) given", len(files))
 		}
@@ -484,7 +484,7 @@ func init() {
 	// -----------------------------  genome batches   -----------------------------
 
 	indexCmd.Flags().IntP("batch-size", "b", 10000,
-		formatFlagUsage(`Maximum number of genomes in each batch (maximum value: 131072)`))
+		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
 
 	// indexCmd.Flags().IntP("contig-interval", "", 1000,
 	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))

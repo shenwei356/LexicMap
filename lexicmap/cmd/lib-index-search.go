@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/shenwei356/wfa"
@@ -120,6 +122,8 @@ type Index struct {
 	Searchers         []*kv.Searcher
 	InMemorySearchers []*kv.InMemorySearcher
 	searcherTokens    []chan int // make sure one seachers is only used by one query
+	poolKmers         *sync.Pool // for suffix index
+	poolLocses        *sync.Pool // for suffix index
 
 	// general options, and some for seed searching
 	opt *IndexSearchingOptions
@@ -236,6 +240,21 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	for i := range idx.searcherTokens {
 		idx.searcherTokens[i] = make(chan int, 1)
 	}
+	idx.poolKmers = &sync.Pool{New: func() interface{} {
+		tmp := make([]*[]uint64, len(idx.lh.Masks))
+		for i := range tmp {
+			tmp[i] = &[]uint64{}
+		}
+		return &tmp
+	}}
+
+	idx.poolLocses = &sync.Pool{New: func() interface{} {
+		tmp := make([]*[]int, len(idx.lh.Masks))
+		for i := range tmp {
+			tmp[i] = &[]int{}
+		}
+		return &tmp
+	}}
 
 	// check options again
 	if opt.MaxOpenFiles < len(fileSeeds) {
@@ -751,11 +770,101 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	minPrefix := idx.opt.MinPrefix
 	// maxMismatch := idx.opt.MaxMismatch
 
-	// 	tries := 0
-	// TRY_WITH_SHORTER_PREFIX:
-
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int) // later, we will reuse this
+	var wg sync.WaitGroup
+	var beginM, endM int // range of mask of a chunk
+
+	// -----------------------
+	// reverse k-mers
+	_kmersR := idx.poolKmers.Get().(*[]*[]uint64)
+	_locsesR := idx.poolLocses.Get().(*[]*[]int)
+
+	chR := make(chan [3]uint64, nSearchers)
+	doneR := make(chan int)
+	go func() {
+		var v *[]uint64
+		for _, v = range *_kmersR {
+			*v = (*v)[:0]
+		}
+
+		var vl *[]int
+		for _, vl = range *_locsesR {
+			*vl = (*vl)[:0]
+		}
+
+		var _kmer, _v, newMask, oldMask uint64
+		var existed bool
+
+		for i2k := range chR {
+			// multiple oldMask might points to the same newMask
+			newMask, _kmer, oldMask = i2k[0], i2k[1], i2k[2]
+			v = (*_kmersR)[newMask]
+			vl = (*_locsesR)[newMask]
+
+			existed = false
+			for _, _v = range *v {
+				if _kmer == _v {
+					existed = true
+					break
+				}
+			}
+			if !existed {
+				*v = append(*v, _kmer)
+				*vl = append(*vl, int(oldMask))
+			}
+		}
+
+		doneR <- 1
+	}()
+	for iS := 0; iS < nSearchers; iS++ {
+		if inMemorySearch {
+			beginM = searchersIM[iS].ChunkIndex
+			endM = searchersIM[iS].ChunkIndex + searchersIM[iS].ChunkSize
+		} else {
+			beginM = searchers[iS].ChunkIndex
+			endM = searchers[iS].ChunkIndex + searchers[iS].ChunkSize
+		}
+
+		wg.Add(1)
+		go func(iS, beginM, endM int) {
+			var iMasks *[]int
+			var j int
+			var minj int
+			var mask, h, minh uint64
+			k := idx.lh.K
+			lh := idx.lh
+
+			for i, kmer := range (*_kmers)[beginM:endM] {
+				if kmer == 0 {
+					continue
+				}
+				// fmt.Printf("mask: %d, %s\n", i+1, kmers.MustDecode(kmer, k))
+				kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+				iMasks = lh.MaskKmer(kmer)
+				minh = math.MaxUint64
+				for _, j = range *iMasks {
+					mask = lh.Masks[j]
+					h = mask ^ kmer
+					if h < minh {
+						minj, minh = j, h
+					}
+				}
+				// fmt.Printf("mask: %d, kmer: %s, locs: %d,  new mask: %d\n",
+				// 	beginM+i, kmers.MustDecode(kmer, k), (*_locses)[beginM+i], minj)
+
+				// multiple beginM + i will points to the same minj
+				chR <- [3]uint64{uint64(minj), kmer, uint64(beginM + i)}
+				lh.RecycleMaskKmerResult(iMasks)
+			}
+
+			wg.Done()
+		}(iS, beginM, endM)
+	}
+	wg.Wait()
+	close(chR)
+	<-doneR
+	// -----------------------
 
 	// 2.2) collect search results, they will be kept in RAM.
 	// For quries with a lot of hits, the memory would be high.
@@ -774,6 +883,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		var refBatchAndIdx, posT, beginT int
 		// var mismatch uint8
 		var rcT bool
+		var rvT bool
 
 		K := idx.k
 		// K8 := idx.k8
@@ -786,17 +896,23 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			// most of cases, there are more than one
 			for _, sr = range *srs {
 				// matched length
-				kPrefix = int(sr.LenPrefix)
+				kPrefix = int(sr.Len)
 				// mismatch = sr.Mismatch
 				// qCode = (*_kmers)[sr.IQuery]
 
 				// locations in the query
 				// multiple locations for each QUERY k-mer,
 				// but most of cases, there's only one.
-				locs = (*_locses)[sr.IQuery] // the mask is unknown
+				if !sr.IsSuffix {
+					locs = (*_locses)[sr.IQuery] // the mask is unknown
+				} else {
+					locs = (*_locses)[(*(*_locsesR)[sr.IQuery])[sr.IQuery2]] // the mask is unknown
+					// fmt.Println(sr.IQuery, (*_locsesR)[sr.IQuery], locs)
+				}
 				for _, posQ = range locs {
-					rcQ = posQ&1 > 0 // if on the reverse complement sequence
-					posQ >>= 1
+					// query k-mers do not have the reverse flag !!!!
+					rcQ = posQ&BITS_STRAND > 0 // if on the reverse complement sequence
+					posQ >>= BITS_STRAND
 
 					// query location
 					if rcQ { // on the negative strand
@@ -812,15 +928,26 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					// multiple locations for each MATCHED k-mer
 					// but most of cases, there's only one.
 					for _, refpos = range sr.Values {
-						refBatchAndIdx = int(refpos >> 30) // batch+refIdx
-						posT = int(refpos << 34 >> 35)
-						rcT = refpos&1 > 0
+						// refBatchAndIdx = int(refpos >> 30) // batch+refIdx
+						refBatchAndIdx = int(refpos >> BITS_NONE_IDX) // batch+refIdx
+						// posT = int(refpos << 34 >> 35)
+						posT = int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
+						rvT = refpos&BITS_REVERSE > 0
+						rcT = refpos>>BITS_REVERSE&BITS_REVERSE > 0
 
 						// subject location
-						if rcT {
-							beginT = posT + K - kPrefix
+						if !rvT {
+							if rcT {
+								beginT = posT + K - kPrefix
+							} else {
+								beginT = posT
+							}
 						} else {
-							beginT = posT
+							if rcT {
+								beginT = posT
+							} else {
+								beginT = posT + K - kPrefix
+							}
 						}
 
 						_sub2 := poolSub.Get().(*SubstrPair)
@@ -864,8 +991,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 	// 2.1) search with multiple searchers
 
-	var wg sync.WaitGroup
-	var beginM, endM int // range of mask of a chunk
 	for iS := 0; iS < nSearchers; iS++ {
 		if inMemorySearch {
 			beginM = searchersIM[iS].ChunkIndex
@@ -879,13 +1004,34 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		go func(iS, beginM, endM int) {
 			idx.searcherTokens[iS] <- 1 // get the access to the searcher
 			var srs *[]*kv.SearchResult
+			var srs2 *[]*kv.SearchResult
 			var err error
 			if inMemorySearch {
 				// srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
-				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix)
+				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
+				if err != nil {
+					checkError(err)
+				}
+
+				srs2, err = searchersIM[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
+				if len(*srs2) > 0 {
+					*srs = append(*srs, (*srs2)...)
+					*srs2 = (*srs2)[:0]
+				}
+				kv.RecycleSearchResults(srs2)
 			} else {
 				// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
-				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix)
+				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
+				if err != nil {
+					checkError(err)
+				}
+
+				srs2, err = searchers[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
+				if len(*srs2) > 0 {
+					*srs = append(*srs, (*srs2)...)
+					*srs2 = (*srs2)[:0]
+				}
+				kv.RecycleSearchResults(srs2)
 			}
 			if err != nil {
 				checkError(err)
@@ -905,12 +1051,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	close(ch)
 	<-done
 
+	idx.poolKmers.Put(_kmersR)
+	idx.poolLocses.Put(_locsesR)
+
 	if len(*m) == 0 { // no results
-		// if tries == 0 {
-		// 	tries++
-		// 	minPrefix -= 5
-		// 	goto TRY_WITH_SHORTER_PREFIX
-		// }
 		poolSearchResultsMap.Put(m)
 		return nil, nil
 	}
@@ -1169,6 +1313,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				// ------------------------------------------------------------------------
 				// comparing the two sequences with pseudo-alignment
 
+				// fmt.Printf("qBegin: %d, qEnd: %d, len(tseq): %d\n", qBegin, qEnd, len(tSeq.Seq))
 				cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
 				if err != nil {
 					checkError(err)
@@ -1779,11 +1924,11 @@ var poolHashes = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-func parseKmerValue(v uint64) (int, int, int, int) {
-	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), int(v & 1)
-}
+// func parseKmerValue(v uint64) (int, int, int, int) {
+// 	return int(v >> 47), int(v << 17 >> 47), int(v << 34 >> 35), int(v & 1)
+// }
 
-func kmerValueString(v uint64) string {
-	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
-		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
-}
+// func kmerValueString(v uint64) string {
+// 	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
+// 		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
+// }

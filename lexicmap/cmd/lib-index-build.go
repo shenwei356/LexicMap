@@ -26,6 +26,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -38,6 +39,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seqio/fastx"
+	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/twotwotwo/sorts/sortutil"
@@ -50,10 +52,10 @@ import (
 var be = binary.BigEndian
 
 // MainVersion is use for checking compatibility
-var MainVersion uint8 = 1
+var MainVersion uint8 = 2
 
 // MinorVersion is less important
-var MinorVersion uint8 = 1
+var MinorVersion uint8 = 0
 
 // ExtTmpDir is the path extension for temporary files
 const ExtTmpDir = ".tmp"
@@ -168,7 +170,7 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	}
 
 	if opt.GenomeBatchSize < 1 || opt.GenomeBatchSize > 1<<17 {
-		return fmt.Errorf("invalid genome batch size: %d, valid range: [1, 131072]", opt.GenomeBatchSize)
+		return fmt.Errorf("invalid genome batch size: %d, valid range: [1, %d]", opt.GenomeBatchSize, 1<<BITS_BATCH_IDX)
 	}
 
 	// ------------------------
@@ -282,8 +284,8 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		if err != nil {
 			checkError(fmt.Errorf("failed to create dir: %s", err))
 		}
-	} else if nBatches > 131072 { // 1<<17
-		checkError(fmt.Errorf("at most 131072 batches supported. current: %d", nBatches))
+	} else if nBatches > 1<<BITS_BATCH_IDX { // 1<<17
+		checkError(fmt.Errorf("at most %d batches supported. current: %d", 1<<BITS_BATCH_IDX, nBatches))
 	}
 
 	var begin, end int
@@ -336,6 +338,49 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	return err
 }
+
+// ----------------------------------
+
+// BITS_BATCH_IDX is the number of bits to store the genome batch index.
+const BITS_BATCH_IDX = 17
+
+// BITS_GENOME_IDX is the number of bits to store the genome index.
+const BITS_GENOME_IDX = 17
+
+// MASK_GENOME_IDX is the mask of genome index.
+const MASK_GENOME_IDX = (1 << BITS_GENOME_IDX) - 1
+
+// BITS_POSITION is the number of bits to store the k-mer position/coordinate.
+const BITS_POSITION = 28
+
+// BITS_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
+const BITS_STRAND = 1
+
+// BITS_SUFFIX_IDX is the flag to indicate if the k-mer is reversed.
+const BITS_REVERSE = 1
+
+// MASK_REVERSE is the mask of reversed flag
+const MASK_REVERSE = 1
+
+// BITS_IDX is the number of bits to strore batch index and genome index.
+const BITS_IDX = BITS_BATCH_IDX + BITS_BATCH_IDX
+
+// BITS_NONE_POS is the number of bits except for position
+const BITS_NONE_POS = 64 - BITS_POSITION
+
+// BITS_NONE_IDX is the number of bits to store data except for batch index and genome index.
+const BITS_NONE_IDX = 64 - BITS_BATCH_IDX - BITS_GENOME_IDX
+
+// MASK_NONE_IDX is the mask of non-index data
+const MASK_NONE_IDX = (1 << BITS_NONE_IDX) - 1
+
+// BITS_FLAGS is the number of bits to store two bits
+const BITS_FLAGS = BITS_STRAND + BITS_REVERSE
+
+// BITS_IDX_FLAGS is the sum of BITS_IDX and BITS_FLAGS
+const BITS_IDX_FLAGS = BITS_IDX + BITS_FLAGS
+
+// ----------------------------------
 
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
@@ -493,6 +538,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 		var batchIDAndRefID, batchIDAndRefIDShift, refIdx uint64 // genome number
 		buf := make([]byte, 8)
 
+		lockers := make([]sync.Mutex, len(lh.Masks)) // to avoid concurrent data writes
+
 		for refseq := range genomes { // each genome
 			genomesW <- refseq // send to save to file, asynchronously writing
 
@@ -501,14 +548,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			extraKmers := refseq.ExtraKmers
 
 			// refseq id -> this
-			batchIDAndRefID = uint64(batch)<<17 | (refIdx & 131071)
+			batchIDAndRefID = uint64(batch)<<BITS_GENOME_IDX | (refIdx & MASK_GENOME_IDX)
 			be.PutUint16(buf[:2], uint16(len(refseq.ID)))
 			bw.Write(buf[:2])
 			bw.Write(refseq.ID)
 			be.PutUint64(buf, batchIDAndRefID)
 			bw.Write(buf)
 
-			batchIDAndRefIDShift = batchIDAndRefID << 30
+			batchIDAndRefIDShift = batchIDAndRefID << BITS_NONE_IDX
 
 			// save k-mer data into all masks by chunks
 			for j = 0; j < threads; j++ { // each chunk for storing kmer-value data
@@ -528,8 +575,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					var values *[]uint64
 					var knl *[]uint64
 					var _j, _end int
+
+					var data *map[uint64]*[]uint64
+
+					// normal k-mers
 					for i := begin; i < end; i++ {
-						data := (*datas)[i] // the map to save into
+						data = (*datas)[i] // the map to save into
 
 						kmer = (*_kmers)[i]       // captured k-mer by the mask
 						if len((*loces)[i]) > 0 { // locations from from MaskKnownPrefixes might be empty.
@@ -540,11 +591,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							for _, loc = range (*loces)[i] { // position information of the captured k-mer
 								//  batch idx: 17 bits
 								//  ref idx:   17 bits
-								//  pos:       29 bits
+								//  pos:       28 bits
 								//  strand:     1 bits
+								//  reverse:    1 bits
 								// here, the position from Mask() already contains the strand information.
 								// value = uint64(batch)<<47 | ((refIdx & 131071) << 30) |
-								value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
+								// value = batchIDAndRefIDShift | (uint64(loc) & 1073741823)
+								value = batchIDAndRefIDShift | ((uint64(loc) << BITS_REVERSE) & MASK_NONE_IDX)
 								// fmt.Printf("%s, batch: %d, refIdx: %d, value: %064b\n", refseq.ID, batch, refIdx, value)
 
 								*values = append(*values, value)
@@ -565,11 +618,121 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 								(*data)[kmer] = values
 							}
 
-							value = batchIDAndRefIDShift | ((*knl)[_j+1] & 1073741823)
+							// value = batchIDAndRefIDShift | ((*knl)[_j+1] & 1073741823)
+							value = batchIDAndRefIDShift | (((*knl)[_j+1] << BITS_REVERSE) & MASK_NONE_IDX)
 							*values = append(*values, value)
 						}
-
 					}
+
+					wg.Done()
+					<-tokens
+				}(begin, end)
+			}
+
+			wg.Wait() // wait all mask chunks
+
+			// ---------------------------------------------------------
+			// another round for reversed k-mers
+			for j = 0; j < threads; j++ { // each chunk for storing kmer-value data
+				begin = j * chunkSize
+				end = begin + chunkSize
+				if end > nMasks {
+					end = nMasks
+				}
+
+				wg.Add(1)
+				tokens <- 1
+				go func(begin, end int) { // a chunk of masks
+					var kmer uint64
+					var loc int
+					var value uint64
+					var ok bool
+					var values *[]uint64
+					var knl *[]uint64
+					var _j, _end int
+
+					var iMasks *[]int
+					var j int
+					var minj int
+					var mask, h, minh uint64
+					k := lh.K
+
+					var data *map[uint64]*[]uint64
+
+					// reversed k-mers
+					for i := begin; i < end; i++ {
+
+						kmer = (*_kmers)[i]       // captured k-mer by the mask
+						if len((*loces)[i]) > 0 { // locations from from MaskKnownPrefixes might be empty.
+
+							// ----------------------------------------------------
+							// save reversed k-mer to another mask. (suffix index)
+							kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+							iMasks = lh.MaskKmer(kmer)
+							minh = math.MaxUint64
+							for _, j = range *iMasks {
+								mask = lh.Masks[j]
+								h = mask ^ kmer
+								if h < minh {
+									minj, minh = j, h
+								}
+							}
+							// mask = lh.Masks[minj]
+							// fmt.Printf("%s -> %s, %d\n", kmers.MustDecode(kmer, k), kmers.MustDecode(mask, k), len(*iMasks))
+
+							lockers[minj].Lock()
+							data = (*datas)[minj] // the map to save into
+							if values, ok = (*data)[kmer]; !ok {
+								values = &[]uint64{}
+								(*data)[kmer] = values
+							}
+							for _, loc = range (*loces)[i] {
+								value = batchIDAndRefIDShift | ((uint64(loc)<<BITS_REVERSE | MASK_REVERSE) & MASK_NONE_IDX)
+								*values = append(*values, value)
+							}
+							lockers[minj].Unlock()
+
+							lh.RecycleMaskKmerResult(iMasks)
+						}
+
+						// -----------------------------
+						// extra k-mers
+						knl = (*extraKmers)[i]
+						if knl == nil {
+							continue
+						}
+						_end = len(*knl) - 2
+						for _j = 0; _j <= _end; _j += 2 {
+							kmer = (*knl)[_j]
+
+							// ----------------------------------------------------
+							// save reversed k-mer to another mask. (suffix index)
+							kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+							iMasks = lh.MaskKmer(kmer)
+							minh = math.MaxUint64
+							for _, j = range *iMasks {
+								mask = lh.Masks[j]
+								h = mask ^ kmer
+								if h < minh {
+									minj, minh = j, h
+								}
+							}
+							// mask = lh.Masks[minj]
+							// fmt.Printf("%s -> %s, %d\n", kmers.MustDecode(kmer, k), kmers.MustDecode(mask, k), len(*iMasks))
+							lockers[minj].Lock()
+							data = (*datas)[minj] // the map to save into
+							if values, ok = (*data)[kmer]; !ok {
+								values = &[]uint64{}
+								(*data)[kmer] = values
+							}
+							value = batchIDAndRefIDShift | (((*knl)[_j+1]<<BITS_REVERSE | MASK_REVERSE) & MASK_NONE_IDX)
+							*values = append(*values, value)
+							lockers[minj].Unlock()
+
+							lh.RecycleMaskKmerResult(iMasks)
+						}
+					}
+
 					wg.Done()
 					<-tokens
 				}(begin, end)

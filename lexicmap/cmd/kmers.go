@@ -137,7 +137,7 @@ Attention:
 
 		decoder := lexichash.MustDecoder()
 
-		fmt.Fprintf(outfh, "mask\tkmer\tprefix\tnumber\tref\tpos\tstrand\n")
+		fmt.Fprintf(outfh, "mask\tkmer\tprefix\tnumber\tref\tpos\tstrand\treversed\n")
 
 		// ---------------------------------------------------------------
 
@@ -206,6 +206,7 @@ Attention:
 		var v, batchIDAndRefID uint64
 		var pos, rc int
 		var maskCode uint64
+		var rvFlag int
 
 		// compute the chunk
 		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
@@ -322,11 +323,13 @@ Attention:
 					}
 
 					v = be.Uint64(buf8)
-					pos, rc = int(v<<34>>35), int(v&1)
-					batchIDAndRefID = v >> 30
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\n",
+					// pos, rc = int(v<<34>>35), int(v&1)
+					// batchIDAndRefID = v >> 30
+					pos, rc, rvFlag = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND), int(v&BITS_REVERSE)
+					batchIDAndRefID = v >> BITS_NONE_IDX
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer1, k), util.MustKmerLongestPrefix(kmer1, maskCode, k8, k8),
-						lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
+						lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc], reversedStr[rvFlag])
 				}
 
 				if lastPair && !hasKmer2 {
@@ -343,11 +346,13 @@ Attention:
 					}
 
 					v = be.Uint64(buf8)
-					pos, rc = int(v<<34>>35), int(v&1)
-					batchIDAndRefID = v >> 30
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\n",
+					// pos, rc = int(v<<34>>35), int(v&1)
+					// batchIDAndRefID = v >> 30
+					pos, rc, rvFlag = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND), int(v&BITS_REVERSE)
+					batchIDAndRefID = v >> BITS_NONE_IDX
+					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer2, k), util.MustKmerLongestPrefix(kmer2, maskCode, k8, k8),
-						lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc])
+						lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc], reversedStr[rvFlag])
 				}
 
 				if lastPair {
@@ -386,3 +391,5 @@ func init() {
 
 	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> [-m <mask index>] [-o out.tsv.gz]"))
 }
+
+var reversedStr = []string{"no", "yes"}
