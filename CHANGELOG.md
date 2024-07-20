@@ -1,9 +1,10 @@
 # Changelog
 
 
-### v0.4.0 - 2024-06-xx
+### v0.4.0 - 2024-07-xx
 
 - `lexicmap index`:
+    - **Support suffix matching of seeds, now it's immune to any single SNPs!!!**
     - **Better sketching desert filling for highly-repetitive regions**.
     - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**,
       at the cost of slower indexing speed.

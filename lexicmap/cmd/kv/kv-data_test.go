@@ -164,7 +164,7 @@ func TestKVData(t *testing.T) {
 				kmers[j] = i
 			}
 			// results, err := scr.Search(kmers, mPrefix, maxMismatch)
-			results, err := scr.Search(kmers, mPrefix)
+			results, err := scr.Search(kmers, mPrefix, false, false)
 			if err != nil {
 				t.Errorf("%s", err)
 				return
@@ -187,7 +187,7 @@ func TestKVData(t *testing.T) {
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
 						// t.Logf("  %s, prefix:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
-						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.Len, v)
 					}
 				}
 			}
@@ -195,7 +195,7 @@ func TestKVData(t *testing.T) {
 			hit = false
 			for _, r := range *results {
 				// if r.Kmer == i {
-				if r.LenPrefix == k {
+				if r.Len == k {
 					hit = true
 					if r.Values[0] != i+(i<<30) {
 						// t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
@@ -212,7 +212,7 @@ func TestKVData(t *testing.T) {
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, r.Mismatch, v)
 						// t.Logf("  %s, prefix:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
-						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.Len, v)
 					}
 				}
 				return
@@ -238,7 +238,7 @@ func TestKVData(t *testing.T) {
 				kmers[j] = i
 			}
 			// results, err := scr2.Search(kmers, mPrefix, maxMismatch)
-			results, err := scr2.Search(kmers, mPrefix)
+			results, err := scr2.Search(kmers, mPrefix, false, false)
 			if err != nil {
 				t.Errorf("%s", err)
 				return
@@ -261,7 +261,7 @@ func TestKVData(t *testing.T) {
 						// 	lexichash.MustDecode(r.Kmer, scr2.K), r.LenPrefix, r.Mismatch, v)
 						// t.Logf("  %s, prefix:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
-						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.Len, v)
 					}
 				}
 			}
@@ -269,7 +269,7 @@ func TestKVData(t *testing.T) {
 			hit = false
 			for _, r := range *results {
 				// if r.Kmer == i {
-				if r.LenPrefix == k {
+				if r.Len == k {
 					hit = true
 					if r.Values[0] != i+(i<<30) {
 						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
@@ -286,7 +286,7 @@ func TestKVData(t *testing.T) {
 						// t.Logf("  %s, prefix:%d %d\n",
 						// 	lexichash.MustDecode(r.Kmer, scr.K), r.LenPrefix, v)
 
-						t.Logf("  prefix:%d %d\n", r.LenPrefix, v)
+						t.Logf("  prefix:%d %d\n", r.Len, v)
 					}
 				}
 				return
