@@ -310,7 +310,7 @@ Important parameters:
 		// input files
 
 		if opt.Verbose || opt.Log2File {
-			log.Infof("LexicMap v%s", VERSION)
+			log.Infof("LexicMap v%s (%s)", VERSION, COMMIT)
 			log.Info("  https://github.com/shenwei356/LexicMap")
 			log.Info()
 
@@ -452,9 +452,9 @@ func init() {
 
 	indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
-	indexCmd.Flags().IntP("seed-max-desert", "", 450,
+	indexCmd.Flags().IntP("seed-max-desert", "", 200,
 		formatFlagUsage(`Maximum length of sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
-	indexCmd.Flags().IntP("seed-in-desert-dist", "", 150,
+	indexCmd.Flags().IntP("seed-in-desert-dist", "", 50,
 		formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	// ------  generate mask from the top N biggest genomes

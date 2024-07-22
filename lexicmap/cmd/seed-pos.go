@@ -323,7 +323,7 @@ Figures:
 
 			seqRegions := poolSkipRegions.Get().(*[][2]int)
 			var interval int
-			var _n int // len of concatenated seqs
+			var _n, _n2 int // len of concatenated seqs
 			var slen int
 			var ri, rs int
 			var sseqid []byte
@@ -378,13 +378,15 @@ Figures:
 				ri = 0                    // index of seq region
 				rs = (*seqRegions)[ri][0] // end of that region
 				sseqid = *ref2locs.Genome.SeqIDs[ri]
+				_n2 = ref2locs.Genome.SeqSizes[ri] + interval
 				for _, pos2str = range *ref2locs.Locs {
 					pos = pos2str >> 2
 
-					if pos2str&1 > 0 { // this is the first pos after an interval region
+					if pos2str&1 > 0 && int(pos) > _n2 { // this is the first pos after an interval region
 						ri++
 						rs = (*seqRegions)[ri][0] // end of that region
 						sseqid = *ref2locs.Genome.SeqIDs[ri]
+						_n2 += ref2locs.Genome.SeqSizes[ri] + interval
 
 						pre = uint32(rs)
 					}

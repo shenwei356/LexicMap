@@ -4,10 +4,11 @@
 ### v0.4.0 - 2024-07-xx
 
 - `lexicmap index`:
-    - **Support suffix matching of seeds, now it's immune to any single SNPs!!!**
+    - **Support suffix matching of seeds, now seeds are immune to any single SNPs!!!**
     - **Better sketching desert filling for highly-repetitive regions**.
     - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**,
-      at the cost of slower indexing speed.
+      at the cost of a slower indexing speed and a bigger index size.
+    - Mask gap regions (N's).
     - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Fix a bug in indexing small genomes.
     - Improve lexichash data structure.
@@ -27,6 +28,7 @@
     - Fix the progress bar.
     - Fix a bug where some masks do not have any k-mer.
     - Add a new column `prefix` to show the length of common prefix between the seed and the probe.
+    - Add a new column `reversed` to indicate if the k-mer is reversed.
 - `lexicmap utils masks`:
     - Add the support of only outputting a specific mask.
 - `lexicmap utils seed-pos`:
