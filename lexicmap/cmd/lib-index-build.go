@@ -254,6 +254,10 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	if err != nil {
 		checkError(fmt.Errorf("indexing masks: %s", err))
 	}
+	err = lh.IndexMasksWithDistinctPrefixes(lenPrefix + 1)
+	if err != nil {
+		checkError(fmt.Errorf("indexing masks for distinct prefixes: %s", err))
+	}
 
 	// save mask later
 
@@ -958,7 +962,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// } else {
 			// 	_kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
 			// }
-			_kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, _skipRegions)
+			// _kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, _skipRegions)
+			_kmers, locses, err = lh.MaskKnownDistinctPrefixes(refseq.Seq, _skipRegions, true)
 
 			if err != nil {
 				panic(err)
@@ -1103,7 +1108,10 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 
 				// masks this region, just treat it as a query sequence
-				_kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
+				// _kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
+				// here, checkShorterPrefix can be false, as we do not need all probes to capture there k-mers,
+				// we only need a few.
+				_kmers2, _locses2, _ = lh.MaskKnownDistinctPrefixes(refseq.Seq[start:end], nil, false)
 
 				// clear(*kmer2maskidx)
 				// for _i, kmer = range *_kmers2 {

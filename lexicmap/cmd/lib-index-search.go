@@ -205,6 +205,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if err != nil {
 		return nil, err
 	}
+	err = idx.lh.IndexMasksWithDistinctPrefixes(lenPrefix + 1)
+	if err != nil {
+		return nil, err
+	}
 
 	idx.k8 = uint8(idx.lh.K)
 	idx.k = idx.lh.K
@@ -740,7 +744,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// 1) mask the query sequence
 
 	// _kmers, _locses, err := idx.lh.Mask(s, nil)
-	_kmers, _locses, err := idx.lh.MaskKnownPrefixes(s, nil)
+	// _kmers, _locses, err := idx.lh.MaskKnownPrefixes(s, nil)
+	_kmers, _locses, err := idx.lh.MaskKnownDistinctPrefixes(s, nil, true)
 	if err != nil {
 		return nil, err
 	}

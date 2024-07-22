@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -52,14 +53,8 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 	var j, begin, end int
 	tmpIndexes := make([]string, 0, 8)
 
-	var rdr *kv.Reader
-	var m, m1 *map[uint64]*[]uint64
-	var i int
-	var kmer uint64
-	var values, values1 *[]uint64
-	var ok bool
-
-	m = kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
+	tokens := make(chan int, opt.NumCPUs)
+	var wg sync.WaitGroup
 
 	var pathB []string
 
@@ -105,71 +100,88 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 		// kmer-value data
 
 		for chunk := 0; chunk < kvChunks; chunk++ {
-			// read information from an existing index file
-			fileIdx := filepath.Join(pathB[0], DirSeeds, chunkFile(chunk)+kv.KVIndexFileExt)
-			rdrIdx, err := kv.NewIndexReader(fileIdx)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read info from an index file: %s", err))
-			}
+			tokens <- 1
+			wg.Add(1)
 
-			// outfile
-			file := filepath.Join(dirSeeds, chunkFile(chunk))
-			wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file)
-			if err != nil {
-				checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
-			}
+			go func(chunk int) {
+				defer func() {
+					wg.Done()
+					<-tokens
+				}()
 
-			rdrs := make([]*kv.Reader, len(pathB))
-			for i, db := range pathB {
-				rdrs[i], err = kv.NewReader(filepath.Join(db, DirSeeds, chunkFile(chunk)))
+				var rdr *kv.Reader
+				var i int
+				var kmer uint64
+				var values, values1 *[]uint64
+				var ok bool
+
+				// read information from an existing index file
+				fileIdx := filepath.Join(pathB[0], DirSeeds, chunkFile(chunk)+kv.KVIndexFileExt)
+				rdrIdx, err := kv.NewIndexReader(fileIdx)
 				if err != nil {
-					checkError(fmt.Errorf("failed to read kv-data file: %s", err))
+					checkError(fmt.Errorf("failed to read info from an index file: %s", err))
 				}
-			}
 
-			for c := 0; c < rdrIdx.ChunkSize; c++ { // for all mask
-				clear(*m)
+				// outfile
+				file := filepath.Join(dirSeeds, chunkFile(chunk))
+				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file)
+				if err != nil {
+					checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
+				}
 
-				for i, rdr = range rdrs {
-					m1, err = rdr.ReadDataOfAMaskAsMap()
+				rdrs := make([]*kv.Reader, len(pathB))
+				for i, db := range pathB {
+					rdrs[i], err = kv.NewReader(filepath.Join(db, DirSeeds, chunkFile(chunk)))
 					if err != nil {
-						checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
-							c+rdr.ChunkIndex, pathB[i], err))
+						checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 					}
+				}
 
-					for kmer, values1 = range *m1 {
-						if values, ok = (*m)[kmer]; !ok {
-							values = &[]uint64{}
-							(*m)[kmer] = values
+				m := kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
+				for c := 0; c < rdrIdx.ChunkSize; c++ { // for all mask
+					clear(*m)
+
+					for i, rdr = range rdrs {
+						m1, err := rdr.ReadDataOfAMaskAsMap()
+						if err != nil {
+							checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
+								c+rdr.ChunkIndex, pathB[i], err))
 						}
-						*values = append(*values, (*values1)...)
+
+						for kmer, values1 = range *m1 {
+							if values, ok = (*m)[kmer]; !ok {
+								values = &[]uint64{}
+								(*m)[kmer] = values
+							}
+							*values = append(*values, (*values1)...)
+						}
+						kv.RecycleKmerData(m1)
 					}
-					kv.RecycleKmerData(m1)
+
+					err = wtr.WriteDataOfAMask(*m, opt.Partitions)
+					if err != nil {
+						checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
+					}
+				}
+				kv.RecycleKmerData(m)
+
+				for _, rdr = range rdrs {
+					err = rdr.Close()
+					if err != nil {
+						checkError(fmt.Errorf("failed to close kv-data file: %s", err))
+					}
 				}
 
-				err = wtr.WriteDataOfAMask(*m, opt.Partitions)
-				if err != nil {
-					checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
-				}
+				rdrIdx.Close()
 
-			}
-
-			for _, rdr = range rdrs {
-				err = rdr.Close()
+				err = wtr.Close()
 				if err != nil {
 					checkError(fmt.Errorf("failed to close kv-data file: %s", err))
 				}
-			}
 
-			rdrIdx.Close()
-
-			err = wtr.Close()
-			if err != nil {
-				checkError(fmt.Errorf("failed to close kv-data file: %s", err))
-			}
+			}(chunk)
 		}
-
-		kv.RecycleKmerData(m)
+		wg.Wait()
 
 		// -------------------------------------------------------------------
 		// genomes/, just move
