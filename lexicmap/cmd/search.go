@@ -426,7 +426,7 @@ Output format:
 				if len(record.Seq.Seq) < K {
 					query.result = nil
 					ch <- query
-					return
+					continue
 				}
 
 				tokens <- 1

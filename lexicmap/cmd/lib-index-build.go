@@ -1317,14 +1317,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				// add an extra flag so we can skip these seed pairs accrossing interval regions.
 
 				var nRegions int
-				checkRegion := len(refseq.SeqSizes) > 1
+				checkRegion := skipRegions != nil
 				var _i, _j, _ri, _rs int
 				var _loc uint32
 				if checkRegion {
 					nRegions = len(*skipRegions)
 
 					_ri = 0
-					_rs = (*skipRegions)[_ri][1] // start  of a interval region
+					_rs = (*skipRegions)[_ri][1] // end position of a interval region
 				}
 
 				if !checkRegion {
@@ -1335,12 +1335,25 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					for _i, _loc = range *locs {
 						_j = int(_loc >> 1)
 
+						// fmt.Printf("checkregion: %v, _j:%d, _rs: %d, nRegions: %d\n", checkRegion, _j, _rs, nRegions)
+
 						if checkRegion && _j >= _rs { // this is the first pos after an interval region
 							(*locs)[_i] = _loc<<1 | 1 // add a flag
 
-							// fmt.Printf("the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[_ri][1])
+							// fmt.Printf("  the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[_ri][1])
 
 							_ri++
+
+							// some short contigs might do not have seeds
+							for _ri+1 < nRegions && _j > (*skipRegions)[_ri+1][1] {
+								_rs += (*skipRegions)[_ri+1][1]
+								_ri++
+								if _ri == nRegions-1 {
+									checkRegion = false
+									break
+								}
+							}
+
 							if _ri == nRegions { // this is already the last one
 								checkRegion = false
 							} else {
@@ -1348,6 +1361,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							}
 						} else {
 							(*locs)[_i] = _loc << 1
+							// fmt.Printf("  %d do not have the flag\n", _j)
 						}
 					}
 				}

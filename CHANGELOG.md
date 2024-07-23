@@ -3,14 +3,16 @@
 
 ### v0.4.0 - 2024-07-xx
 
+- New commands:
+    - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 - `lexicmap index`:
-    - **Support suffix matching of seeds, now seeds are immune to any single SNPs!!!**
+    - **Support suffix matching of seeds, now seeds are immune to any single SNPs!!!**, at the cost of doubled seed data.
     - **Better sketching desert filling for highly-repetitive regions**.
-    - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**,
-      at the cost of a slower indexing speed and a bigger index size.
-    - Mask gap regions (N's).
+    - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**.
+    - **Mask gap regions (N's)**.
     - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Fix a bug in indexing small genomes.
+    - Change the default value of `-b, --batch-size` from 10,000 to 5,000.
     - Improve lexichash data structure.
     - Merge seed data in parallel, new flag `-J/--batch-merge-threads`.
 - `lexicmap search`:
@@ -18,6 +20,7 @@
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
     - Fix object recycling and reduce memory usage.
     - Fix alignment against genomes with many short contigs.
+    - Fix early quit when meeting a sequence shorter than k.
     - Add a new option `-J/--max-query-conc` to limit the miximum number of concurrent queries,
       with a default valule of 8 instead of the number of CPUs, which reduce the memory usage
       in batch searching.
@@ -29,7 +32,7 @@
     - Fix the progress bar.
     - Fix a bug where some masks do not have any k-mer.
     - Add a new column `prefix` to show the length of common prefix between the seed and the probe.
-    - Add a new column `reversed` to indicate if the k-mer is reversed.
+    - Add a new column `reversed` to indicate if the k-mer is reversed for suffix matching.
 - `lexicmap utils masks`:
     - Add the support of only outputting a specific mask.
 - `lexicmap utils seed-pos`:
@@ -39,8 +42,6 @@
 - `lexicmap utils subseq`:
     - Fix a bug when the given end position is larger than the sequence length.
     - Add the strand ("+" or "-") in the sequence header.
-- New commands:
-    - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 
 ### v0.3.0 - 2024-05-14
 

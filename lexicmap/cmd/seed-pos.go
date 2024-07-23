@@ -332,6 +332,7 @@ Figures:
 			var ws, we, end uint32 // start position of current window
 			var nSeeds int
 			var locs *[]uint32
+			var nSeqs int
 			var nPos, pi, ps int
 			k32p1 := uint32(info.K) - 1
 			var first bool
@@ -372,21 +373,36 @@ Figures:
 					_n += slen + interval
 				}
 
+				nSeqs = ref2locs.Genome.NumSeqs
+
 				v = v[:0]
 				pre = 0
 
 				ri = 0                    // index of seq region
-				rs = (*seqRegions)[ri][0] // end of that region
+				rs = (*seqRegions)[ri][0] // start of a seq region
 				sseqid = *ref2locs.Genome.SeqIDs[ri]
-				_n2 = ref2locs.Genome.SeqSizes[ri]
+				_n2 = ref2locs.Genome.SeqSizes[ri] + interval
 				for _, pos2str = range *ref2locs.Locs {
 					pos = pos2str >> 2
 
-					if pos2str&1 > 0 && int(pos) > _n2 { // this is the first pos after an interval region
+					// this is the first pos after an interval region, and it's a new seq
+					if pos2str&1 > 0 && int(pos) >= _n2 {
 						ri++
-						rs = (*seqRegions)[ri][0] // end of that region
+
+						// some short contigs might do not have seeds
+						for int(pos) > _n2+ref2locs.Genome.SeqSizes[ri] {
+							_n2 += ref2locs.Genome.SeqSizes[ri] + interval
+							ri++
+
+							if ri >= nSeqs {
+								ri = nSeqs - 1
+								break
+							}
+						}
+
+						rs = (*seqRegions)[ri][0]
 						sseqid = *ref2locs.Genome.SeqIDs[ri]
-						_n2 += interval + ref2locs.Genome.SeqSizes[ri]
+						_n2 += ref2locs.Genome.SeqSizes[ri] + interval
 
 						pre = uint32(rs)
 					}

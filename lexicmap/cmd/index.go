@@ -110,7 +110,7 @@ Important parameters:
                             ► Smaller values improve the search sensitivity and increase the index size.
                             Large regions with no seeds are called sketching deserts. Deserts with seed distance
                             larger than this value will be filled by choosing k-mers roughly every
-                            --seed-in-desert-dist (200 by default) bases.
+                            --seed-in-desert-dist (150 by default) bases.
   2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
@@ -460,9 +460,9 @@ func init() {
 
 	indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
-	indexCmd.Flags().IntP("seed-max-desert", "", 200,
+	indexCmd.Flags().IntP("seed-max-desert", "", 450,
 		formatFlagUsage(`Maximum length of sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
-	indexCmd.Flags().IntP("seed-in-desert-dist", "", 50,
+	indexCmd.Flags().IntP("seed-in-desert-dist", "", 150,
 		formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	// ------  generate mask from the top N biggest genomes
