@@ -102,6 +102,7 @@ type IndexBuildingOptions struct {
 	Log2File     bool // log file
 	Force        bool // force overwrite existed index
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
+	MergeThreads int  // Maximum Concurrent Merge Jobs
 
 	// skipping extremely large genome
 	MaxGenomeSize int    // Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped
@@ -177,6 +178,9 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 
 	if opt.NumCPUs < 1 {
 		return fmt.Errorf("invalid number of CPUs: %d, should be >= 1", opt.NumCPUs)
+	}
+	if opt.MergeThreads < 1 {
+		return fmt.Errorf("invalid number of merge threads: %d, should be >= 1", opt.MergeThreads)
 	}
 	openFiles := opt.Chunks + 2
 	if opt.MaxOpenFiles < openFiles {
@@ -589,7 +593,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 						kmer = (*_kmers)[i]       // captured k-mer by the mask
 						if len((*loces)[i]) > 0 { // locations from from MaskKnownPrefixes might be empty.
 							if values, ok = (*data)[kmer]; !ok {
-								values = &[]uint64{}
+								// values = &[]uint64{}
+								tmp := make([]uint64, 0, len((*loces)[i]))
+								values = &tmp
 								(*data)[kmer] = values
 							}
 							for _, loc = range (*loces)[i] { // position information of the captured k-mer
@@ -687,7 +693,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 							lockers[minj].Lock()
 							data = (*datas)[minj] // the map to save into
 							if values, ok = (*data)[kmer]; !ok {
-								values = &[]uint64{}
+								// values = &[]uint64{}
+								tmp := make([]uint64, 0, len((*loces)[i]))
+								values = &tmp
 								(*data)[kmer] = values
 							}
 							for _, loc = range (*loces)[i] {

@@ -53,7 +53,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 	var j, begin, end int
 	tmpIndexes := make([]string, 0, 8)
 
-	tokens := make(chan int, opt.NumCPUs)
+	tokens := make(chan int, opt.MergeThreads)
 	var wg sync.WaitGroup
 
 	var pathB []string
@@ -150,7 +150,8 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 
 						for kmer, values1 = range *m1 {
 							if values, ok = (*m)[kmer]; !ok {
-								values = &[]uint64{}
+								tmp := make([]uint64, 0, len(*values1))
+								values = &tmp
 								(*m)[kmer] = values
 							}
 							*values = append(*values, (*values1)...)

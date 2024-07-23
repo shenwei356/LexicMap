@@ -84,11 +84,13 @@ Input:
 Important parameters:
 
   --- Genome data (Memory control) ---
- *1. -b/--batch-size,       ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
-                            ► If the number of input files exceeds this number, input files are split into multiple
-                            batches and indexes are built for all batches. In the end, seed files are merged, while
-                            genome data files are kept unchanged and collected.
-                            ► Bigger values increase indexing memory occupation.
+ *1. -b/--batch-size,          ► Maximum number of genomes in each batch (maximum: 131072, default: 5000).
+                               ► If the number of input files exceeds this number, input files are split into multiple
+                               batches and indexes are built for all batches. In the end, seed files are merged, while
+                               genome data files are kept unchanged and collected.
+                               ► Bigger values increase indexing memory occupation.
+ *2. -J/--batch-merge-threads  ► Number of threads for merging seed chunks from all batches (range: [1, -c/--chunks]).
+                               ► Bigger values increase indexing speed at the cost of a higher memory occupation.
 
   --- LexicHash mask generation ---
   0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly
@@ -105,7 +107,7 @@ Important parameters:
   --- Seeds data (k-mer-value data) ---
  *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 450).
                             The default value of 450 guarantees queries >450 bp would match at least one seed.
-                            ► Smaller values improve the search sensitivity and slightly increase the index size.
+                            ► Smaller values improve the search sensitivity and increase the index size.
                             Large regions with no seeds are called sketching deserts. Deserts with seed distance
                             larger than this value will be filled by choosing k-mers roughly every
                             --seed-in-desert-dist (200 by default) bases.
@@ -154,6 +156,10 @@ Important parameters:
 		seed := getFlagPositiveInt(cmd, "rand-seed")
 		maskFile := getFlagString(cmd, "mask-file")
 		chunks := getFlagPositiveInt(cmd, "chunks")
+		mergeThreads := getFlagPositiveInt(cmd, "batch-merge-threads")
+		if mergeThreads > chunks {
+			mergeThreads = chunks
+		}
 		partitions := getFlagPositiveInt(cmd, "partitions")
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -257,6 +263,7 @@ Important parameters:
 			Log2File:     opt.Log2File,
 			Force:        force,
 			MaxOpenFiles: maxOpenFiles,
+			MergeThreads: mergeThreads,
 
 			// skip extremely large genomes
 			MaxGenomeSize: maxGenomeSize,
@@ -380,6 +387,7 @@ Important parameters:
 			log.Info()
 			log.Info("general:")
 			log.Infof("  genome batch size: %d", batchSize)
+			log.Infof("  batch merge threads: %d", mergeThreads)
 			log.Info()
 		}
 
@@ -483,8 +491,11 @@ func init() {
 
 	// -----------------------------  genome batches   -----------------------------
 
-	indexCmd.Flags().IntP("batch-size", "b", 10000,
+	indexCmd.Flags().IntP("batch-size", "b", 5000,
 		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
+
+	indexCmd.Flags().IntP("batch-merge-threads", "J", 8,
+		formatFlagUsage(`Number of threads for merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]`))
 
 	// indexCmd.Flags().IntP("contig-interval", "", 1000,
 	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))

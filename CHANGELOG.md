@@ -12,6 +12,7 @@
     - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Fix a bug in indexing small genomes.
     - Improve lexichash data structure.
+    - Merge seed data in parallel, new flag `-J/--batch-merge-threads`.
 - `lexicmap search`:
     - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.

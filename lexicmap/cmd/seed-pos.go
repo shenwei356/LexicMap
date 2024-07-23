@@ -378,7 +378,7 @@ Figures:
 				ri = 0                    // index of seq region
 				rs = (*seqRegions)[ri][0] // end of that region
 				sseqid = *ref2locs.Genome.SeqIDs[ri]
-				_n2 = ref2locs.Genome.SeqSizes[ri] + interval
+				_n2 = ref2locs.Genome.SeqSizes[ri]
 				for _, pos2str = range *ref2locs.Locs {
 					pos = pos2str >> 2
 
@@ -386,7 +386,7 @@ Figures:
 						ri++
 						rs = (*seqRegions)[ri][0] // end of that region
 						sseqid = *ref2locs.Genome.SeqIDs[ri]
-						_n2 += ref2locs.Genome.SeqSizes[ri] + interval
+						_n2 += interval + ref2locs.Genome.SeqSizes[ri]
 
 						pre = uint32(rs)
 					}
