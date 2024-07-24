@@ -12,8 +12,8 @@ For shorter queries like 200 bp, just build an index with smaller `-D/--seed-max
 
     --seed-max-desert 200 --seed-in-desert-dist 50
 
-which would generate densers seeds and provide more sensitive results for less similar targets.
-The costs are slower (~3X) indexing speed, higher (~2X) indexing memory and bigger (~50%) index size.
+which would generate densers seeds and provide more sensitive results for distant targets.
+The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
 
 
 ### Does LexicMap support fungi genomes?

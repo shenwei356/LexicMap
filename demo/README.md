@@ -104,12 +104,12 @@ Overview
     14:07:49.585 [INFO]
     14:07:49.585 [INFO] --------------------- [ building index ] ---------------------
     14:07:49.747 [INFO]
-    14:07:49.747 [INFO]   ------------------------[ batch 0 ]------------------------
-    14:07:49.747 [INFO]   building index for batch 0 with 15 files...
+    14:07:49.747 [INFO]   ------------------------[ batch 1/1 ]------------------------
+    14:07:49.747 [INFO]   building index for batch 1 with 15 files...
     processed files:  15 / 15 [======================================] ETA: 0s. done
     14:07:51.756 [INFO]   writing seeds...
     14:07:51.908 [INFO]   finished writing seeds in 151.955899ms
-    14:07:51.908 [INFO]   finished building index for batch 0 in: 2.161576605s
+    14:07:51.908 [INFO]   finished building index for batch 1 in: 2.161576605s
     14:07:51.909 [INFO]
     14:07:51.909 [INFO] finished building LexicMap index from 15 files with 40000 masks in 2.749631711s
     14:07:51.909 [INFO] LexicMap index saved: demo.lmi

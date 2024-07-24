@@ -248,26 +248,26 @@ We use a small dataset for demonstration.
         16:22:50.180 [INFO]
         16:22:50.180 [INFO] --------------------- [ building index ] ---------------------
         16:22:50.328 [INFO]
-        16:22:50.328 [INFO]   ------------------------[ batch 0 ]------------------------
-        16:22:50.328 [INFO]   building index for batch 0 with 5 files...
+        16:22:50.328 [INFO]   ------------------------[ batch 1/3 ]------------------------
+        16:22:50.328 [INFO]   building index for batch 1 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
         16:22:51.192 [INFO]   writing seeds...
         16:22:51.264 [INFO]   finished writing seeds in 71.756662ms
-        16:22:51.264 [INFO]   finished building index for batch 0 in: 935.464336ms
+        16:22:51.264 [INFO]   finished building index for batch 1 in: 935.464336ms
         16:22:51.264 [INFO]
-        16:22:51.264 [INFO]   ------------------------[ batch 1 ]------------------------
-        16:22:51.264 [INFO]   building index for batch 1 with 5 files...
+        16:22:51.264 [INFO]   ------------------------[ batch 2/3 ]------------------------
+        16:22:51.264 [INFO]   building index for batch 2 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
         16:22:53.126 [INFO]   writing seeds...
         16:22:53.212 [INFO]   finished writing seeds in 86.823785ms
-        16:22:53.212 [INFO]   finished building index for batch 1 in: 1.948770015s
+        16:22:53.212 [INFO]   finished building index for batch 2 in: 1.948770015s
         16:22:53.212 [INFO]
-        16:22:53.212 [INFO]   ------------------------[ batch 2 ]------------------------
-        16:22:53.212 [INFO]   building index for batch 2 with 5 files...
+        16:22:53.212 [INFO]   ------------------------[ batch 3/3 ]------------------------
+        16:22:53.212 [INFO]   building index for batch 3 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
         16:22:54.350 [INFO]   writing seeds...
         16:22:54.437 [INFO]   finished writing seeds in 87.058101ms
-        16:22:54.437 [INFO]   finished building index for batch 2 in: 1.224414126s
+        16:22:54.437 [INFO]   finished building index for batch 3 in: 1.224414126s
         16:22:54.437 [INFO]
         16:22:54.437 [INFO] merging 3 indexes...
         16:22:54.437 [INFO]   [round 1]

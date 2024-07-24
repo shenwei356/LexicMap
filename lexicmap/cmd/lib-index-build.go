@@ -317,7 +317,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch)
+		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch, nBatches)
 	}
 
 	for _, data := range datas {
@@ -396,16 +396,16 @@ const BITS_IDX_FLAGS = BITS_IDX + BITS_FLAGS
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	datas *[]*map[uint64]*[]uint64,
-	outdir string, files []string, batch int) int {
+	outdir string, files []string, batch int, nbatches int) int {
 
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
 		timeStart = time.Now()
 		log.Info()
-		log.Infof("  ------------------------[ batch %d ]------------------------", batch)
-		log.Infof("  building index for batch %d with %d files...", batch, len(files))
+		log.Infof("  ------------------------[ batch %d/%d ]------------------------", batch+1, nbatches)
+		log.Infof("  building index for batch %d with %d files...", batch+1, len(files))
 		defer func() {
-			log.Infof("  finished building index for batch %d in: %s", batch, time.Since(timeStart))
+			log.Infof("  finished building index for batch %d in: %s", batch+1, time.Since(timeStart))
 		}()
 	}
 
