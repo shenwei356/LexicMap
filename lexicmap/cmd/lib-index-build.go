@@ -1444,7 +1444,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	chunkSize := (nMasks + chunks - 1) / opt.Chunks
 	var j, begin, end int
 	k8 := uint8(lh.K)
-	tokens = make(chan int, 1)   // hope it reduces memory
+	tokens = make(chan int, opt.MergeThreads)
+
 	for j = 0; j < chunks; j++ { // each chunk
 		begin = j * chunkSize
 		end = begin + chunkSize

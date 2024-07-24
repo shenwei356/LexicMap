@@ -14,7 +14,7 @@
     - Fix a bug in indexing small genomes.
     - Change the default value of `-b, --batch-size` from 10,000 to 5,000.
     - Improve lexichash data structure.
-    - Merge seed data in parallel, new flag `-J/--batch-merge-threads`.
+    - Write and merge seed data in parallel, new flag `-J/--seed-data-threads`.
 - `lexicmap search`:
     - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.

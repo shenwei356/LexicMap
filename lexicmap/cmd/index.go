@@ -84,13 +84,11 @@ Input:
 Important parameters:
 
   --- Genome data (Memory control) ---
- *1. -b/--batch-size,          ► Maximum number of genomes in each batch (maximum: 131072, default: 5000).
-                               ► If the number of input files exceeds this number, input files are split into multiple
-                               batches and indexes are built for all batches. In the end, seed files are merged, while
-                               genome data files are kept unchanged and collected.
-                               ► Bigger values increase indexing memory occupation.
- *2. -J/--batch-merge-threads  ► Number of threads for merging seed chunks from all batches (range: [1, -c/--chunks]).
-                               ► Bigger values increase indexing speed at the cost of a higher memory occupation.
+ *1. -b/--batch-size,       ► Maximum number of genomes in each batch (maximum: 131072, default: 5000).
+                            ► If the number of input files exceeds this number, input files are split into multiple
+                            batches and indexes are built for all batches. In the end, seed files are merged, while
+                            genome data files are kept unchanged and collected.
+                            ► Bigger values increase indexing memory occupation.
 
   --- LexicHash mask generation ---
   0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly
@@ -115,12 +113,15 @@ Important parameters:
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
                             operating systems.
-  3. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
+ *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
+                           (range: [1, -c/--chunks]).
+                            ► Bigger values increase indexing speed at the cost of slightly higher memory occupation.
+  4. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
                             ► Bigger values bring a little higher memory occupation. 512 is a good value with high
                             searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-  4. --max-open-files,      ► Maximum number of open files (default: 512).
+  5. --max-open-files,      ► Maximum number of open files (default: 512).
                             ► It's only used in merging indexes of multiple genome batches.
 
 `,
@@ -156,7 +157,7 @@ Important parameters:
 		seed := getFlagPositiveInt(cmd, "rand-seed")
 		maskFile := getFlagString(cmd, "mask-file")
 		chunks := getFlagPositiveInt(cmd, "chunks")
-		mergeThreads := getFlagPositiveInt(cmd, "batch-merge-threads")
+		mergeThreads := getFlagPositiveInt(cmd, "seed-data-threads")
 		if mergeThreads > chunks {
 			mergeThreads = chunks
 		}
@@ -494,8 +495,8 @@ func init() {
 	indexCmd.Flags().IntP("batch-size", "b", 5000,
 		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
 
-	indexCmd.Flags().IntP("batch-merge-threads", "J", 8,
-		formatFlagUsage(`Number of threads for merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]`))
+	indexCmd.Flags().IntP("seed-data-threads", "J", 8,
+		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]`))
 
 	// indexCmd.Flags().IntP("contig-interval", "", 1000,
 	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
