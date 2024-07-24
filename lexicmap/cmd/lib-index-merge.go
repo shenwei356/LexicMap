@@ -53,7 +53,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 	var j, begin, end int
 	tmpIndexes := make([]string, 0, 8)
 
-	tokens := make(chan int, opt.MergeThreads)
+	var mergeThreads int
 	var wg sync.WaitGroup
 
 	var pathB []string
@@ -66,10 +66,19 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 		}
 		pathB = paths[begin:end]
 
+		mergeThreads = opt.MergeThreads
+		for mergeThreads*(len(pathB)+2) > opt.MaxOpenFiles { // 2 is for output file and index file
+			mergeThreads--
+		}
+		if mergeThreads < 1 {
+			mergeThreads = 1
+		}
+		tokens := make(chan int, mergeThreads)
+
 		outdir1 := filepath.Join(tmpDir, fmt.Sprintf("r%d_b%d", round, j+1))
 
 		if opt.Verbose || opt.Log2File {
-			log.Infof("    batch %d/%d, merging %d indexes to %s", j+1, batches, end-begin, outdir1)
+			log.Infof("    batch %d/%d, merging %d indexes to %s with %d threads...", j+1, batches, end-begin, outdir1, mergeThreads)
 		}
 
 		tmpIndexes = append(tmpIndexes, outdir1)

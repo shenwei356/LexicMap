@@ -271,7 +271,7 @@ We use a small dataset for demonstration.
         16:22:54.437 [INFO]
         16:22:54.437 [INFO] merging 3 indexes...
         16:22:54.437 [INFO]   [round 1]
-        16:22:54.437 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1
+        16:22:54.437 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
         16:22:54.613 [INFO]   [round 1] finished in 175.640164ms
         16:22:54.613 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
         16:22:54.620 [INFO]
