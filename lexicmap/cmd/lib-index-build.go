@@ -361,6 +361,9 @@ const MASK_GENOME_IDX = (1 << BITS_GENOME_IDX) - 1
 // BITS_POSITION is the number of bits to store the k-mer position/coordinate.
 const BITS_POSITION = 28
 
+// MAX_GENOME_SIZE is the maximum genome size, 268435456
+const MAX_GENOME_SIZE = 1 << BITS_POSITION
+
 // BITS_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
 const BITS_STRAND = 1
 
@@ -875,6 +878,20 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				if opt.Verbose || opt.Log2File {
 					log.Warningf("skipping %s: no valid sequences", file)
 					log.Info()
+				}
+				if opt.Verbose {
+					chDuration <- time.Microsecond // important, or the progress bar will get hung
+				}
+				return
+			}
+
+			if len(refseq.Seq) > MAX_GENOME_SIZE {
+				genome.PoolGenome.Put(refseq) // important
+				if opt.Verbose || opt.Log2File {
+					log.Warningf("skipping unsupported huge genome (%d bp): %s", refseq.GenomeSize, file)
+					if !opt.Log2File {
+						log.Info()
+					}
 				}
 				if opt.Verbose {
 					chDuration <- time.Microsecond // important, or the progress bar will get hung

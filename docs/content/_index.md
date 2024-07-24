@@ -64,7 +64,7 @@ Step 2: searching
 
 ### Efficient search
 
-Using LexicMap to searching in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
+Using LexicMap to search in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
 
 |Query                   |Genome hits|Time    |RAM    |
 |:-----------------------|----------:|-------:|------:|

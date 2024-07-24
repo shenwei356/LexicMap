@@ -1012,12 +1012,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			var srs2 *[]*kv.SearchResult
 			var err error
 			if inMemorySearch {
+				// prefix search
 				// srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
 				if err != nil {
 					checkError(err)
 				}
 
+				// suffix search
 				srs2, err = searchersIM[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)
@@ -1025,12 +1027,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 				kv.RecycleSearchResults(srs2)
 			} else {
+				// prefix search
 				// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
 				if err != nil {
 					checkError(err)
 				}
 
+				// suffix search
 				srs2, err = searchers[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)

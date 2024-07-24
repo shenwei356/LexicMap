@@ -27,8 +27,15 @@ weight: 10
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap only supports long (>=500 bp) reads or gene/genome/virus/plasmid/phage sequences.\
+LexicMap only supports long (>=500 bp, by default) reads or gene/genome/virus/plasmid/phage sequences.
 However, some short queries can also be aligned.
+
+For shorter queries like 200 bp, just build an index with smaller `-D/--seed-max-desert`, e.g.,
+
+    --seed-max-desert 200 --seed-in-desert-dist 50
+
+which would generate densers seeds and provide more sensitive results for less similar targets.
+The costs are slower (~3X) indexing speed, higher (~2X) indexing memory and bigger (~50%) index size.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
@@ -60,15 +67,18 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 1. **Masking:**
    Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.
 1. **Seeding:**
-   For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least *p* bases.
-    1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
-       For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
-    2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is loaded in RAM.
-       The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the figure), and the offset is returned as the start position in traversing the seed data file.
-    3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
+   For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing **prefixes or suffixes** of at least *p* bases.
+    1. Prefix matching
+        1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
+        For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
+        2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is loaded in RAM.
+        The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the figure), and the offset is returned as the start position in traversing the seed data file.
+        3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
+    1. Suffix matching
+        1. Reversing the query k-mer and performing prefix matching, returning seeds of reversed k-mers (see indexing algorithm).
 1. **Chaining:**
     1. Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.
-    2. Performing chaining.
+    2. Performing chaining (see the paper).
 1. **Alignment** for each chain.
     1. Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 2 kb in upstream and downstream of anchor region.
     1. Performing pseudo-alignment with extended query and subject sequences, for find similar regions.
@@ -276,7 +286,7 @@ Tab-delimited format with 17+ columns, with 1-based positions.
     4.  sgenome,  Subject genome ID.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    7.  hsp,      Nth HSP in the genome.
+    7.  hsp,      Nth HSP in the genome. (just for improving readability)
     8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     9.  alenHSP,  Aligned length in the current HSP.
     10. pident,   Percentage of identical matches in the current HSP.

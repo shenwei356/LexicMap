@@ -60,7 +60,7 @@ Attention:
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
   2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
-	
+
 Extra columns:
   Using -v/--verbose will output more columns:
      len_aaa,  length of consecutive A's.
@@ -69,7 +69,7 @@ Extra columns:
 Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
-	- Histograms of numbers of seeds in sliding windows.
+    - Histograms of numbers of seeds in sliding windows.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

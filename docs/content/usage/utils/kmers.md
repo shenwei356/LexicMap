@@ -13,6 +13,7 @@ Attention:
   3. K-mer positions (column pos) are 1-based.
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
+  4. Reversed means if the k-mer is reversed for suffix matching.
 
 Usage:
   lexicmap utils kmers [flags] -d <index path> [-m <mask index>] [-o out.tsv.gz]
@@ -38,49 +39,67 @@ Global Flags:
 
 1. The default output is captured k-mers of the first mask.
 
-        $ lexicmap utils kmers --quiet -d demo.lmi/ | csvtk pretty -t
-        mask   kmer                              prefix   number   ref               pos       strand
-        ----   -------------------------------   ------   ------   ---------------   -------   ------
-        1      AAAACACATGCTTTCACTGACTTGGAATGCA   10       1        GCF_001457655.1   389653    +
-        1      AAAACACATGGATTGTTAAAAGGTAGTTGGC   10       1        GCF_900638025.1   2061446   -
-        1      AAAACACATGTAAGCCCCAACCAGGCGGCTT   11       1        GCF_000742135.1   2569538   -
-        1      AAAACACATGTCTAAAATTATCGGTATTGAC   11       2        GCF_000148585.2   326139    +
-        1      AAAACACATGTCTAAAATTATCGGTATTGAC   11       2        GCF_001096185.1   34675     -
-        1      AAAACACATGTGAGGCAGGCGCTCGCCTGTC   12       1        GCF_001544255.1   938768    -
-        1      AAAACACATGTGCAAATCCATATGTGTTTAG   12       1        GCF_002950215.1   2793719   +
-        1      AAAACACATGTGTTGTTTAAATCAAATTATG   12       1        GCF_001027105.1   1413381   +
-        1      AAAACACATGTGTTTAATCACCTTAATTCAA   12       1        GCF_006742205.1   729899    +
-        1      AAAACACATGTTCACGGCGGCAGGCTGCAAT   11       1        GCF_003697165.2   1581455   +
-        1      AAAACACATGTTCTCAATACTCGCCTGACGC   11       1        GCF_000006945.2   1274137   -
-        1      AAAACACATGTTGATCATCATAAATACAGCG   11       1        GCF_002949675.1   3925773   -
-        1      AAAACACATGTTGATCTATTCTTATAGCTCA   11       1        GCF_009759685.1   3295037   -
-        1      AAAACACATGTTTCAAACATTTTAGCAAAAC   11       1        GCF_000392875.1   2491283   -
-        1      AAAACACATGTTTCACACAACTTCACCCAAT   11       1        GCF_000017205.1   4394137   +
+        $ lexicmap utils kmers --quiet -d demo.lmi/ | head -n 20 | csvtk pretty -t
+        mask   kmer                              prefix   number   ref               pos       strand   reversed
+        ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
+        1      AAAAAAAAAATACTAAGAGGTGACAAAAGAG   4        1        GCF_001544255.1   2142679   +        yes
+        1      AAAAAAAAACCAGTAAAAAAAGGGGAGTAGA   4        1        GCF_000392875.1   771896    +        yes
+        1      AAAAAAAAACTAGGGTTAAATGCCTTATGTT   4        1        GCF_009759685.1   442423    +        yes
+        1      AAAAAAAAAGAGATGAAAAAGGGTGTATTCG   4        1        GCF_001544255.1   1493451   -        yes
+        1      AAAAAAAAATAAAATATCTAACGAGCAAATT   4        1        GCF_001096185.1   2065540   +        yes
+        1      AAAAAAAAATACCATAGACTATGCTCTTAGT   4        1        GCF_000392875.1   134079    -        yes
+        1      AAAAAAAAATGTTAACAGAAGGTCCCTACCT   4        1        GCF_002950215.1   2765957   +        yes
+        1      AAAAAAAACAAAAGCTATACTGGTCATGTTC   4        1        GCF_000006945.2   3635995   +        yes
+        1      AAAAAAAACAGGGTGTCGTGCCCTTGTCAGT   4        1        GCF_003697165.2   627153    -        yes
+        1      AAAAAAAACATATAGTTGTGAAGGCATTGGA   4        1        GCF_001027105.1   2508079   -        yes
+        1      AAAAAAAACCAGTAAAAAAAGGGGAGTAGAA   4        1        GCF_000392875.1   771895    +        yes
+        1      AAAAAAAACCATATTATGTCCGATCCTCACA   4        1        GCF_000392875.1   1060650   +        yes
+        1      AAAAAAAACCCTTCGTCAAGCATTATGGAAT   4        1        GCF_000392875.1   1139573   -        yes
+        1      AAAAAAAACCGCCCACCGCCGACACGGAATG   4        1        GCF_000742135.1   1651877   -        yes
+        1      AAAAAAAACGAAAAAGATTTTCCCTCATACG   4        1        GCF_000392875.1   2088529   +        yes
+        1      AAAAAAAACGTCAAATAACCGATAACGTATC   4        1        GCF_000006945.2   4010490   -        yes
+        1      AAAAAAAACGTCAAATACCAGATAACGTATC   4        3        GCF_002950215.1   3051923   +        yes
+        1      AAAAAAAACGTCAAATACCAGATAACGTATC   4        3        GCF_002949675.1   2356784   +        yes
+        1      AAAAAAAACGTCAAATACCAGATAACGTATC   4        3        GCF_003697165.2   16133     +        yes
 
 
 1. Specify the mask.
 
         $ lexicmap utils kmers --quiet -d demo.lmi/ --mask 12345 | csvtk pretty -t
-        mask    kmer                              prefix   number   ref               pos       strand
-        -----   -------------------------------   ------   ------   ---------------   -------   ------
-        12345   CATGTTACGGTATTGATTTTATTCGCACGGG   7        1        GCF_009759685.1   3015441   +
-        12345   CATGTTATAGAAGGACGTCGACATCTTGTGG   10       1        GCF_000017205.1   3140677   +
-        12345   CATGTTATAGAATTACATACATTGTAACATG   10       1        GCF_006742205.1   704431    -
-        12345   CATGTTATAGCACGCTTAATCGCTTGATCCC   13       1        GCF_001027105.1   2655846   +
-        12345   CATGTTATAGCATCCTTTTACGTGAAAAGGT   12       1        GCF_000742135.1   4136093   +
-        12345   CATGTTATAGCCAGCAAATGGAAGCATCGCG   11       1        GCF_009759685.1   492828    -
-        12345   CATGTTATAGCCATTGATGGTAACTTTGATG   11       1        GCF_001096185.1   536843    +
-        12345   CATGTTATAGCCTGAAAGGTGCTAAACAACT   11       1        GCF_000006945.2   4876155   +
-        12345   CATGTTATAGCCTTCTCCAAGACCAATCAAA   11       1        GCF_000148585.2   1667015   +
-        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002950215.1   2326544   +
-        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002949675.1   1871326   +
-        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_003697165.2   3996124   +
-        12345   CATGTTATAGCTAACTGCGACTTGTGGCACA   11       1        GCF_900638025.1   991007    -
-        12345   CATGTTATAGTAAACAAAAGTAGTGACGAAT   10       1        GCF_000392875.1   1539455   -
-        12345   CATGTTATAGTCGTGAGGTTCTAAAAAAACT   10       1        GCF_001544255.1   1091256   -
-        12345   CATGTTATAGTCTTTATACATAAGGCACCTC   10       1        GCF_006742205.1   553275    +
-        12345   CATGTTATATGAACCTTCAACCTTATTTGAC   9        1        GCF_001457655.1   1510084   +
-        12345   CATGTTATTCGCGCTAACCACGTCGGCGACT   8        1        GCF_000006945.2   2003047   +
+        mask    kmer                              prefix   number   ref               pos       strand   reversed
+        -----   -------------------------------   ------   ------   ---------------   -------   ------   --------
+        12345   CATGTTACAAAAGGTGGGTCAGGCAACGTAT   7        1        GCF_001457655.1   335112    -        yes
+        12345   CATGTTACCAAGGTTAGTCGTATGGCGCTAC   7        1        GCF_001457655.1   23755     -        yes
+        12345   CATGTTATACGTTGAAACTGTCTTGTTAATA   9        1        GCF_001096185.1   1142460   +        yes
+        12345   CATGTTATAGAAGGACGTCGACATCTTGTGG   10       1        GCF_000017205.1   3140677   +        no
+        12345   CATGTTATAGAATTACATACATTGTAACATG   10       1        GCF_006742205.1   704431    -        no
+        12345   CATGTTATAGCACGCTTAATCGCTTGATCCC   13       1        GCF_001027105.1   2655846   +        no
+        12345   CATGTTATAGCATCCTTTTACGTGAAAAGGT   12       1        GCF_000742135.1   4136093   +        no
+        12345   CATGTTATAGCCAGCAAATGGAAGCATCGCG   11       1        GCF_009759685.1   492828    -        no
+        12345   CATGTTATAGCCATTGATGGTAACTTTGATG   11       1        GCF_001096185.1   536843    +        no
+        12345   CATGTTATAGCCTGAAAGGTGCTAAACAACT   11       1        GCF_000006945.2   4876155   +        no
+        12345   CATGTTATAGCCTTCTCCAAGACCAATCAAA   11       1        GCF_000148585.2   1667015   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002950215.1   2326544   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002949675.1   1871326   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_003697165.2   3996124   +        no
+        12345   CATGTTATAGCTAACTGCGACTTGTGGCACA   11       1        GCF_900638025.1   991007    -        no
+        12345   CATGTTATAGTCGTGAGGTTCTAAAAAAACT   10       1        GCF_001544255.1   1091256   -        no
+        12345   CATGTTATAGTTTGTCTTACCGCTACTGAAA   10       1        GCF_002950215.1   1457055   +        yes
+        12345   CATGTTATATCCTTCTTGAATACGAGCAATA   9        1        GCF_000392875.1   1963573   +        no
+        12345   CATGTTATATGAACCTTCAACCTTATTTGAC   9        1        GCF_001457655.1   1510084   +        no
+        12345   CATGTTATCGAATATTATAACATCGGCTCCC   8        1        GCF_000148585.2   1372855   +        yes
+        12345   CATGTTATCGCAGGACATCACGGTAAATGCC   8        1        GCF_000006945.2   1586586   -        no
+        12345   CATGTTATCGCTCAGGGTCTGCGGGTATATC   8        1        GCF_002950215.1   1880029   +        yes
+        12345   CATGTTATGCTGGGACATTTAGCACCGCTAC   8        1        GCF_000006945.2   1988134   +        yes
+
+    "reversed" means means if the k-mer is reversed for suffix matching.
+    E.g., `CATGTTACAAAAGGTGGGTCAGGCAACGTAT` is reversed, so you need to reverse it before searching in the genome.
+
+
+        $ seqkit locate -p $(echo CATGTTACAAAAGGTGGGTCAGGCAACGTAT | rev) refs/GCF_001457655.1.fa.gz -M | csvtk pretty -t
+        seqID           patternName                       pattern                           strand   start    end
+        -------------   -------------------------------   -------------------------------   ------   ------   ------
+        NZ_LN831035.1   TATGCAACGGACTGGGTGGAAAACATTGTAC   TATGCAACGGACTGGGTGGAAAACATTGTAC   -        335112   335142
 
 
 1. For all masks. The result might be very big, therefore, writing to gzip format is recommended.
@@ -88,44 +107,48 @@ Global Flags:
 
         $ lexicmap utils kmers -d demo.lmi/ --mask 0 -o kmers.tsv.gz
 
-        $ zcat kmers.tsv.gz | csvtk freq -t -f 1 -nr | head -n 10
+        $ zcat kmers.tsv.gz | csvtk freq -t -f mask -nr | head -n 10
         mask    frequency
-        38388   142
-        38030   138
-        35924   134
-        31609   131
-        15643   130
-        35160   92
-        8960    91
-        19132   90
-        36439   86
+        1       383
+        40000   355
+        31      283
+        30018   262
+        30027   260
+        10000   259
+        20      257
+        28      256
+        79      256
 
-        $ lexicmap utils kmers -d demo.lmi/ -m 38388 | head -n 20 | csvtk pretty -t
-        mask    kmer                              number   ref               pos       strand
-        -----   -------------------------------   ------   ---------------   -------   ------
-        38388   TTCCATCAGATATTGCAGTTGCCGCGCCAGC   1        GCF_000017205.1   2157565   -
-        38388   TTCCATCAGATCCTCCTACTTCAAAGACCAG   1        GCF_001096185.1   1159072   +
-        38388   TTCCATCAGATCCTTTGTCACTACCTGAAGC   1        GCF_001027105.1   1108238   -
-        38388   TTCCATCAGATGATGACCGGTGGACGAACAC   1        GCF_001544255.1   1315664   -
-        38388   TTCCATCAGATGCTTCTGGTTCTTTATTTAA   1        GCF_000392875.1   503146    -
-        38388   TTCCATCAGATGGAAGGTCTGATTGTTGATA   1        GCF_000006945.2   1416284   +
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   38864     -
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   818406    +
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   1622053   -
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   2064518   +
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   2227218   -
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   3381540   -
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5301234   +
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5431183   -
-        38388   TTCCATCAGATGTCCCACTTGTTCAGCTACC   9        GCF_000742135.1   5433483   -
-        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   17655     +
-        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   70503     -
-        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   81837     +
-        38388   TTCCATCAGATGTCCTTCCTGCTCCGCTACT   122      GCF_002950215.1   83307     +
+1. K-mers of a specific mask
+
+        $ lexicmap utils kmers -d demo.lmi/ -m 12345 | head -n 20 | csvtk pretty -t
+        mask    kmer                              prefix   number   ref               pos       strand   reversed
+        -----   -------------------------------   ------   ------   ---------------   -------   ------   --------
+        12345   CATGTTACAAAAGGTGGGTCAGGCAACGTAT   7        1        GCF_001457655.1   335112    -        yes
+        12345   CATGTTACCAAGGTTAGTCGTATGGCGCTAC   7        1        GCF_001457655.1   23755     -        yes
+        12345   CATGTTATACGTTGAAACTGTCTTGTTAATA   9        1        GCF_001096185.1   1142460   +        yes
+        12345   CATGTTATAGAAGGACGTCGACATCTTGTGG   10       1        GCF_000017205.1   3140677   +        no
+        12345   CATGTTATAGAATTACATACATTGTAACATG   10       1        GCF_006742205.1   704431    -        no
+        12345   CATGTTATAGCACGCTTAATCGCTTGATCCC   13       1        GCF_001027105.1   2655846   +        no
+        12345   CATGTTATAGCATCCTTTTACGTGAAAAGGT   12       1        GCF_000742135.1   4136093   +        no
+        12345   CATGTTATAGCCAGCAAATGGAAGCATCGCG   11       1        GCF_009759685.1   492828    -        no
+        12345   CATGTTATAGCCATTGATGGTAACTTTGATG   11       1        GCF_001096185.1   536843    +        no
+        12345   CATGTTATAGCCTGAAAGGTGCTAAACAACT   11       1        GCF_000006945.2   4876155   +        no
+        12345   CATGTTATAGCCTTCTCCAAGACCAATCAAA   11       1        GCF_000148585.2   1667015   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002950215.1   2326544   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_002949675.1   1871326   +        no
+        12345   CATGTTATAGCGTAAATCAGCACCGCGCGCC   11       3        GCF_003697165.2   3996124   +        no
+        12345   CATGTTATAGCTAACTGCGACTTGTGGCACA   11       1        GCF_900638025.1   991007    -        no
+        12345   CATGTTATAGTCGTGAGGTTCTAAAAAAACT   10       1        GCF_001544255.1   1091256   -        no
+        12345   CATGTTATAGTTTGTCTTACCGCTACTGAAA   10       1        GCF_002950215.1   1457055   +        yes
+        12345   CATGTTATATCCTTCTTGAATACGAGCAATA   9        1        GCF_000392875.1   1963573   +        no
+        12345   CATGTTATATGAACCTTCAACCTTATTTGAC   9        1        GCF_001457655.1   1510084   +        no
 
     Lengths of shared prefixes between probes and captured k-mers.
 
-        zcat kmers.tsv.gz | csvtk plot hist -t kmers.tsv.gz -f 3 -o prefix.hist.png
+        zcat kmers.tsv.gz \
+          | csvtk filter2 -t -f '$reversed == "no"'\
+          | csvtk plot hist -t -f prefix -o prefix.hist.png
 
 
     <img src="/LexicMap/prefix.hist.png" alt="" width="400"/>

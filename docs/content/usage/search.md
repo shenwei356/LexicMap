@@ -11,12 +11,25 @@ Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
   2. For multiple queries, the order of queries might be different from the input.
 
+Tips:
+  1. When using -a/--all, the search result would be formatted to Blast-style format
+     with 'lexicmap utils 2blast'. And the search speed would be slightly slowed down.
+  2. Alignment result filtering is performed in the final phase, so stricter filtering criteria,
+     including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
+     do not significantly accelerate the search speed. Hence, you can search with default
+     parameters and then filter the result with tools like awk or csvtk.
+
 Alignment result relationship:
 
   Query
   ├── Subject genome
       ├── Subject sequence
           ├── High-Scoring segment Pair (HSP)
+
+  Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
+
+  > A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the
+  > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
   Tab-delimited format with 17+ columns, with 1-based positions.
@@ -27,7 +40,7 @@ Output format:
     4.  sgenome,  Subject genome ID.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    7.  hsp,      Nth HSP in the genome.
+    7.  hsp,      Nth HSP in the genome. (just for improving readability)
     8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     9.  alenHSP,  Aligned length in the current HSP.
     10. pident,   Percentage of identical matches in the current HSP.
@@ -38,7 +51,7 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
     21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)

@@ -157,7 +157,7 @@ func init() {
 	masksCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	masksCmd.Flags().IntP("masks", "m", 1000,
+	masksCmd.Flags().IntP("masks", "m", 40000,
 		formatFlagUsage(`Number of masks.`))
 
 	masksCmd.Flags().IntP("seed", "s", 1,

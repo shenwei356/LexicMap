@@ -213,7 +213,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 			}
 
 			saveKmer = false
-			if found && kmer1 >= leftBound && (!checkFlag || data[i+1]&MASK_REVERSE == rvflag) {
+			if found && kmer1 >= leftBound {
 				// if checkMismatch {
 				// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
 				// 	if mismatch <= m8 {
@@ -244,7 +244,9 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 					first = false
 				}
 
-				sr1.Values = append(sr1.Values, data[i+1])
+				if !checkFlag || data[i+1]&MASK_REVERSE == rvflag {
+					sr1.Values = append(sr1.Values, data[i+1])
+				}
 
 				kmer0 = kmer1
 			} else {
@@ -406,7 +408,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 				}
 
 				saveKmer = false
-				if found && kmer1 >= leftBound && (!checkFlag || data[i+1]&MASK_REVERSE == rvflag) {
+				if found && kmer1 >= leftBound {
 					// if checkMismatch {
 					// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
 					// 	if mismatch <= m8 {
@@ -437,8 +439,10 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 						first = false
 					}
 
-					// fmt.Printf("  save: %s, %d\n", lexichash.MustDecode(kmer1, k), data[i+1])
-					sr1.Values = append(sr1.Values, data[i+1])
+					if !checkFlag || data[i+1]&MASK_REVERSE == rvflag {
+						// fmt.Printf("  save: %s, %d\n", lexichash.MustDecode(kmer1, k), data[i+1])
+						sr1.Values = append(sr1.Values, data[i+1])
+					}
 
 					kmer0 = kmer1
 				} else {

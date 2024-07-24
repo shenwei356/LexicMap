@@ -27,7 +27,7 @@ Extra columns:
 Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
-        - Histograms of numbers of seeds in sliding windows.
+    - Histograms of numbers of seeds in sliding windows.
 
 Usage:
   lexicmap utils seed-pos [flags]
@@ -81,14 +81,14 @@ Global Flags:
         $ head -n 10 seed_distance.tsv | csvtk pretty -t
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   2         2         +        1
-        GCF_000017205.1   NC_009656.1   41        41        -        39
-        GCF_000017205.1   NC_009656.1   45        45        +        4
-        GCF_000017205.1   NC_009656.1   74        74        -        29
-        GCF_000017205.1   NC_009656.1   85        85        -        11
-        GCF_000017205.1   NC_009656.1   119       119       -        34
-        GCF_000017205.1   NC_009656.1   130       130       -        11
-        GCF_000017205.1   NC_009656.1   185       185       +        55
+        GCF_000017205.1   NC_009656.1   16        16        +        15
+        GCF_000017205.1   NC_009656.1   18        18        +        2
+        GCF_000017205.1   NC_009656.1   71        71        +        53
+        GCF_000017205.1   NC_009656.1   74        74        -        3
+        GCF_000017205.1   NC_009656.1   119       119       -        45
+        GCF_000017205.1   NC_009656.1   123       123       +        4
+        GCF_000017205.1   NC_009656.1   154       154       +        31
+        GCF_000017205.1   NC_009656.1   185       185       +        31
         GCF_000017205.1   NC_009656.1   269       269       -        84
 
     Check the biggest seed distances.
@@ -100,15 +100,15 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        449        9
-        448        7
-        447        8
-        446        13
-        445        14
-        444        14
-        443        17
-        442        11
-        441        15
+        449        14
+        448        17
+        447        12
+        446        15
+        445        13
+        444        17
+        443        15
+        442        18
+        441        13
 
     Or only list records with seed distances longer than a threshold.
 
@@ -116,9 +116,9 @@ Global Flags:
             | csvtk pretty -t | head -n 5
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   26578     26578     -        403
-        GCF_000017205.1   NC_009656.1   32937     32937     +        413
-        GCF_000017205.1   NC_009656.1   37656     37656     -        438
+        GCF_000017205.1   NC_009656.1   2347      2347      -        402
+        GCF_000017205.1   NC_009656.1   13158     13158     +        400
+        GCF_000017205.1   NC_009656.1   28894     28894     -        418
 
     Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
 
@@ -133,10 +133,10 @@ Global Flags:
         $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
             | head -n4 | csvtk pretty -t -W 40 --clip
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
-        ---------------   -----------   -------   -------   ------   --------   -------   ---------------------------------------
-        GCF_000017205.1   NC_009656.1   2         2         +        1          0         T
-        GCF_000017205.1   NC_009656.1   41        41        -        39         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
-        GCF_000017205.1   NC_009656.1   45        45        +        4          1         TCAA
+        ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
+        GCF_000017205.1   NC_009656.1   16        16        +        15         2         TTAAAGAGACCGGCG
+        GCF_000017205.1   NC_009656.1   18        18        +        2          0         AT
+        GCF_000017205.1   NC_009656.1   71        71        +        53         6         TCTAGTGAAATCGAACGGGCAGGTCAATTTCCAACCA...
 
     Or only list records with seed distance longer than a threshold.
 
@@ -145,7 +145,7 @@ Global Flags:
             | csvtk pretty -t -W 40 --clip
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
-        GCF_000017205.1   NC_009656.1   26578     26578     -        403        8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCT...
+        GCF_000017205.1   NC_009656.1   2347      2347      -        402        18        TCGTAAGATCGCTCAACTTAGGGAATCCGACGCGGAT..
 
 
 3. Listing seed position of all genomes.
@@ -158,21 +158,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   58958
-        GCF_000742135.1   48041
-        GCF_002950215.1   47010
-        GCF_002949675.1   46932
-        GCF_003697165.2   45483
-        GCF_000006945.2   45300
-        GCF_009759685.1   43059
-        GCF_001027105.1   42429
-        GCF_006742205.1   42428
-        GCF_001457655.1   42167
-        GCF_900638025.1   42046
-        GCF_000392875.1   41826
-        GCF_000148585.2   41118
-        GCF_001544255.1   40443
-        GCF_001096185.1   40356
+        GCF_000017205.1   58502
+        GCF_000742135.1   47997
+        GCF_002950215.1   47088
+        GCF_002949675.1   46650
+        GCF_003697165.2   45156
+        GCF_000006945.2   45044
+        GCF_009759685.1   42902
+        GCF_006742205.1   42151
+        GCF_001027105.1   42121
+        GCF_001457655.1   41790
+        GCF_900638025.1   41684
+        GCF_000392875.1   41605
+        GCF_000148585.2   41158
+        GCF_001544255.1   40351
+        GCF_001096185.1   40285
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -224,7 +224,53 @@ Global Flags:
     $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
     ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
     ---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
-    GCF_000392875.1   NZ_KB944589.1   503144    227382    -        1274       1136      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAA
+    GCF_000392875.1   NZ_KB944589.1   503030    227268    +        1179       1118      CGCTCTGACGCTGATAAATATGAGCCAACAGTAGAAGGTGAAAAAGTAGA
+                                                                                        AATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAGGTGTCA
+    GCF_000392875.1   NZ_KB944590.1   1923642   964454    -        1054       896       ATCCATGCTTCGATGAAACTGCTACATCGCCAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAACTTTGGTTCGCATATTTATCTCCCATACC
+                                                                                        GATATTAACGATTCCAGGAGCTGTATTCATAATCCCATTAAACACGCCGT
+                                                                                        GTTTTCCTGATTCAGCTGCTGGTTTTACCCTTGCCGTGTAATCATATTGT
+                                                                                        TTTT
+    GCF_000392875.1   NZ_KB944590.1   2639993   1680805   +        1190       1144      TATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -247,48 +293,21 @@ Global Flags:
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAGGTGTCATTGAAGTAACGTATCCAGATGGTACAAAAGATACAGTAAA
-                                                                                        AGTTCCAGTAGAAGTAACAGACAATCGCTCTGACGCTGATAAATATACAC
-                                                                                        CTAAAGGTCAAAAAGTAACTACTG
-    GCF_000392875.1   NZ_KB944590.1   2640014   1680826   +        1280       1146      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGC
-                                                                                        TCCTTTTTATTTTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTT
-                                                                                        CAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTC
     ```
 
-    Long gap regions (>=1000 bp) of the genome, which are excatly the regions in the table above.
+    Long gap regions (>=890 bp) of the genome, which are excatly the regions in the table above.
 
     ```
     $ zcat refs/GCF_000392875.1.fa.gz \
         | seqkit locate -G -r -p '"N{20,}"' -P -M \
-        | csvtk filter2 -t -f '$end - $start + 1 >=1000' \
+        | csvtk filter2 -t -f '$end - $start + 1 >=890' \
         | csvtk pretty -t
 
     seqID           patternName   pattern   strand   start     end
     -------------   -----------   -------   ------   -------   -------
     NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
+    NZ_KB944590.1   N{20,}        N{20,}    +        963431    964320
     NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
     ```
 
