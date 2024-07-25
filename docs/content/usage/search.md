@@ -74,7 +74,8 @@ Flags:
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
       --max-open-files int             ► Maximum opened files. (default 512)
   -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
-                                       improve the batch searching speed and consume much memory. (default 8)
+                                       improve the batch searching speed and consume much memory.
+                                       (default 12)
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")

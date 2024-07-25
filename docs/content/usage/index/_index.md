@@ -75,13 +75,14 @@ Important parameters:
                             ► This value is used to remove masks with a prefix of low-complexity.
 
   --- Seeds data (k-mer-value data) ---
- *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 450).
-                            The default value of 450 guarantees queries >450 bp would match at least one seed.
+ *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
+                            The default value of 200 guarantees queries >=200 bp would match at least one seed.
                             ► Large regions with no seeds are called sketching deserts. Deserts with seed distance
                             larger than this value will be filled by choosing k-mers roughly every
-                            --seed-in-desert-dist (150 by default) bases.
-                            ■ Smaller values improve the search sensitivity, slow down the indexing speed, increase
-                            the indexing memory occupation and increase the index size.
+                            --seed-in-desert-dist (50 by default) bases.
+                            ■ Big values decrease the search sensitivity for distant targets, speed up the indexing
+                            speed, decrease the indexing memory occupation and decrease the index size. While the
+                            alignment speed is almost not affected.
   2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
@@ -133,10 +134,10 @@ Flags:
   -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
                                   from all batches, the value should be in range of [1, -c/--chunks]
                                   (default 8)
-  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 150)
-  -D, --seed-max-desert int       ► Maximum length of sketching deserts. Deserts with seed distance
-                                  larger than this value will be filled by choosing k-mers roughly every
-                                  --seed-in-desert-dist bases. (default 450)
+  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
+  -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
+                                  Deserts with seed distance larger than this value will be filled by
+                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 200)
   -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
                                   this value is used to remove low-complexity masks and choose k-mers to
                                   fill sketching deserts. (default 15)

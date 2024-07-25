@@ -92,7 +92,7 @@ func checkFileSuffix(suffix string, files ...string) {
 	}
 }
 
-func makeOutDir(outDir string, force bool, logname string) {
+func makeOutDir(outDir string, force bool, logname string, verbose bool) {
 	pwd, _ := os.Getwd()
 	if outDir != "./" && outDir != "." && pwd != filepath.Clean(outDir) {
 		existed, err := pathutil.DirExists(outDir)
@@ -102,7 +102,9 @@ func makeOutDir(outDir string, force bool, logname string) {
 			checkError(errors.Wrap(err, outDir))
 			if !empty {
 				if force {
-					log.Infof("removing old output directory: %s", outDir)
+					if verbose {
+						log.Infof("removing old output directory: %s", outDir)
+					}
 					checkError(os.RemoveAll(outDir))
 				} else {
 					checkError(fmt.Errorf("%s not empty: %s, use --force to overwrite", logname, outDir))

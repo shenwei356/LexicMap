@@ -8,13 +8,14 @@
 - `lexicmap index`:
     - **Support suffix matching of seeds, now seeds are immune to any single SNPs!!!**, at the cost of doubled seed data.
     - **Better sketching desert filling for highly-repetitive regions**.
-    - **Change the default value of `--seed-max-desert` from 900 to 450 to support queries >= 500bp**.
+    - **Change the default value of `--seed-max-desert` from 900 to 200 to increase alignment sensitivity**.
     - **Mask gap regions (N's)**.
     - Fix skipping interval regions by further including the last k-1 bases of contigs.
     - Fix a bug in indexing small genomes.
     - Change the default value of `-b, --batch-size` from 10,000 to 5,000.
     - Improve lexichash data structure.
     - Write and merge seed data in parallel, new flag `-J/--seed-data-threads`.
+    - Improve the log.
 - `lexicmap search`:
     - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
@@ -22,7 +23,7 @@
     - Fix alignment against genomes with many short contigs.
     - Fix early quit when meeting a sequence shorter than k.
     - Add a new option `-J/--max-query-conc` to limit the miximum number of concurrent queries,
-      with a default valule of 8 instead of the number of CPUs, which reduce the memory usage
+      with a default valule of 12 instead of the number of CPUs, which reduces the memory usage
       in batch searching.
     - Result format:
         - Cluster alignments of each target sequence.

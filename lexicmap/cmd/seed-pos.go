@@ -106,7 +106,7 @@ Figures:
 
 		outputPlotDir := plotDir != ""
 		if outputPlotDir {
-			makeOutDir(plotDir, force, "plot-dir")
+			makeOutDir(plotDir, force, "plot-dir", opt.Verbose)
 		}
 
 		bins := getFlagPositiveInt(cmd, "bins")

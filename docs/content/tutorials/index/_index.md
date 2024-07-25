@@ -87,6 +87,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). This is the main parameter to adjust memory usage.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 450).
           Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.
+          While the alignment speed is almost not affected.
     - **If the RAM is not sufficient (< 50 GB)**. Please:
         1. **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
         2. Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (>= 2kb), there's little affection for the alignment results.
@@ -137,16 +138,16 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
-However, some short queries can also be aligned.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+However, short queries can also be aligned.
 
-For shorter queries like 100-200 bp, just build an index with a smaller `-D/--seed-max-desert`, e.g.,
+If you just want to search long (>1kb) queries for highy similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (200 by default), e.g.,
 
-    --seed-max-desert 200 --seed-in-desert-dist 50
+    --seed-max-desert 450 --seed-in-desert-dist 150
 
-which generates denser seeds and provides more sensitive results for distant targets.
-The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
-While the alignment speed is almost not affected.
+Bigger values decrease the search sensitivity for distant targets, speed up the indexing
+speed, decrease the indexing memory occupation and decrease the index size. While the
+alignment speed is almost not affected.
 {{< /hint >}}
 
 **Flags in bold text** are important and frequently used.
@@ -176,13 +177,13 @@ While the alignment speed is almost not affected.
 
 {{< tab "Seeds (k-mer-value) data" >}}
 
-|Flag                        |Value                           |Function                                                                        |Comment                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-|:---------------------------|:-------------------------------|:-------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|**`--seed-max-desert`**     |Default: 450                    |Maximum length of distances between seeds                                       |The default value of 450 guarantees queries >450 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist (150 by default) bases. ■ Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.    |
-|`-c/--chunks`               |Maximum: 128, default: #CPUs    |Number of seed file chunks                                                      |Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.                                                                                                                                                                                                                                                                |
-|**`-J/--seed-data-threads`**|Maximum: -c/--chunks, default: 8|Number of threads for writing seed data and merging seed chunks from all batches|■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.                                                                                                                                                                                                                                                                                                                                                             |
-|`-p/--partitions`           |Default: 512                    |Number of partitions for indexing each seed file                                |Bigger values bring a little higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in `lexicmap search`. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.                                                                                                                                                |
-|`--max-open-files`          |Default: 512                    |Maximum number of open files                                                    |It's only used in merging indexes of multiple genome batches.                                                                                                                                                                                                                                                                                                                                                                                         |
+|Flag                        |Value                           |Function                                                                        |Comment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|:---------------------------|:-------------------------------|:-------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`--seed-max-desert`**     |Default: 200                    |Maximum length of distances between seeds                                       |The default value of 200 guarantees queries >200 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.    |
+|`-c/--chunks`               |Maximum: 128, default: #CPUs    |Number of seed file chunks                                                      |Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.                                                                                                                                                                                                                                                                                                                                    |
+|**`-J/--seed-data-threads`**|Maximum: -c/--chunks, default: 8|Number of threads for writing seed data and merging seed chunks from all batches|■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|`-p/--partitions`           |Default: 512                    |Number of partitions for indexing each seed file                                |Bigger values bring a little higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in `lexicmap search`. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.                                                                                                                                                                                                                    |
+|`--max-open-files`          |Default: 512                    |Maximum number of open files                                                    |It's only used in merging indexes of multiple genome batches.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 {{< /tab>}}
 
@@ -329,8 +330,8 @@ The LexicMap index is a directory with multiple files.
 {{< tab "Demo data" >}}
 
     # 15 genomes
-    demo.lmi/: 42.10 MB
-      28.87 MB      seeds
+    demo.lmi/: 59.55 MB
+      46.31 MB      seeds
       12.93 MB      genomes
      312.53 KB      masks.bin
       375.00 B      genomes.map.bin
@@ -341,24 +342,24 @@ The LexicMap index is a directory with multiple files.
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes/
-    gtdb_repr.lmi: 160.16 GB
-      93.37 GB      seeds
+    gtdb_repr.lmi: 212.58 GB
+     145.79 GB      seeds
       66.78 GB      genomes
        2.03 MB      genomes.map.bin
      312.53 KB      masks.bin
-      329.00 B      info.toml
+      328.00 B      info.toml
 
 {{< /tab>}}
 
 {{< tab "GTDB complete" >}}
 
     # 402,538 genomes
-    gtdb_complete.lmi: 685.33 GB
+    gtdb_complete.lmi: 905.95 GB
+     542.97 GB      seeds
      362.98 GB      genomes
-     322.35 GB      seeds
        9.60 MB      genomes.map.bin
      312.53 KB      masks.bin
-      330.00 B      info.toml
+      329.00 B      info.toml
 
 {{< /tab>}}
 
@@ -379,14 +380,13 @@ The LexicMap index is a directory with multiple files.
 
 {{< tab "AllTheBacteria HQ" >}}
 
-    (TODO: to be updated)
     # 1,858,610 genomes
-    atb_hq.lmi: 2.37 TB
+    atb_hq.lmi: 3.88 TB
+       2.11 TB      seeds
        1.77 TB      genomes
-     614.45 GB      seeds
       39.22 MB      genomes.map.bin
      312.53 KB      masks.bin
-      332.00 B      info.toml
+      331.00 B      info.toml
 
 {{< /tab>}}
 

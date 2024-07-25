@@ -27,16 +27,8 @@ weight: 10
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
-However, some short queries can also be aligned.
-
-For shorter queries like 100-200 bp, just build an index with a smaller `-D/--seed-max-desert`, e.g.,
-
-    --seed-max-desert 200 --seed-in-desert-dist 50
-
-which generates denser seeds and provides more sensitive results for distant targets.
-The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
-While the alignment speed is almost not affected.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+However, short queries can also be aligned.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
@@ -96,12 +88,12 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< tab "General" >}}
 
-|Flag                       |Value               |Function                                                   |Comment                                                                                                                                          |
-|:--------------------------|:-------------------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
-|**`-w/--load-whole-seeds`**|                    |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                          |
-|**`-n/--top-n-genomes`**   |Default 0, 0 for all|Keep top N genome matches for a query in the chaining phase|The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
-|**`-a/--all`**             |                    |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                                   |
-|-J/--max-query-conc        |Default 8, 0 for all|Maximum number of concurrent queries                       |Bigger values do not improve the batch searching speed and consume much memory                                                                   |
+|Flag                       |Value                |Function                                                   |Comment                                                                                                                                          |
+|:--------------------------|:--------------------|:----------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-w/--load-whole-seeds`**|                     |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                          |
+|**`-n/--top-n-genomes`**   |Default 0, 0 for all |Keep top N genome matches for a query in the chaining phase|The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
+|**`-a/--all`**             |                     |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                                   |
+|-J/--max-query-conc        |Default 12, 0 for all|Maximum number of concurrent queries                       |Bigger values do not improve the batch searching speed and consume much memory                                                                   |
 
 {{< /tab>}}
 

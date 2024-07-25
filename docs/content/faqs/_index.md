@@ -5,23 +5,23 @@ weight: 60
 
 ### Does LexicMap support short reads?
 
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
-However, some short queries can also be aligned.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+However, short queries can also be aligned.
 
-For shorter queries like 100-200 bp, just build an index with a smaller `-D/--seed-max-desert`, e.g.,
+If you just want to search long (>1kb) queries for highy similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (200 by default), e.g.,
 
-    --seed-max-desert 200 --seed-in-desert-dist 50
+    --seed-max-desert 450 --seed-in-desert-dist 150
 
-which generates denser seeds and provides more sensitive results for distant targets.
-The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
-While the alignment speed is almost not affected.
+Bigger values decrease the search sensitivity for distant targets, speed up the indexing
+speed, decrease the indexing memory occupation and decrease the index size. While the
+alignment speed is almost not affected.
 
 
 ### Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-Fungi can also be supported, just remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
-which is used to skip genomes larger than 15Mb by default.
+**Fungi can also be supported, just remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
+which is used to skip genomes larger than 15Mb by default**.
 
 ```
   -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
@@ -85,7 +85,7 @@ While for the query sequences, we don't convert them.
 
 - `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
 faster search.
-    - For example, for ~85,000 GTDB representative genomes, the memory would be ~170 GB with default parameters.
+    - For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 - `lexicmap search` also has a flag `--pseudo-align` to only perform pseudo alignment, which is slightly faster and uses less memory.
 It can be used in searching with long and divergent query sequences like nanopore long-reads.
 

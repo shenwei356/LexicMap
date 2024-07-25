@@ -9,7 +9,7 @@ LexicMap is a **nucleotide sequence alignment** tool for efficiently querying ge
 ## Features
 
 1. **LexicMap is scalable to up to millions of prokaryotic genomes**.
-1. **The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn**.
+1. **The sensitivity of LexicMap is comparable with Blastn**.
 1. **The alignment is [fast and memory-efficient](https://bioinf.shenwei.me/LexicMap/introduction/#searching)**.
 1. LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
    we provide [binary files](https://github.com/shenwei356/LexicMap/releases/) with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).

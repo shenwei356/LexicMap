@@ -100,31 +100,31 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        449        14
-        448        17
-        447        12
-        446        15
-        445        13
-        444        17
-        443        15
-        442        18
-        441        13
+        199        49
+        198        47
+        197        40
+        196        38
+        195        54
+        194        36
+        193        38
+        192        55
+        191        40
 
     Or only list records with seed distances longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 400 \
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 190 \
             | csvtk pretty -t | head -n 5
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   2347      2347      -        402
-        GCF_000017205.1   NC_009656.1   13158     13158     +        400
-        GCF_000017205.1   NC_009656.1   28894     28894     -        418
+        GCF_000017205.1   NC_009656.1   13549     13549     +        196
+        GCF_000017205.1   NC_009656.1   27667     27667     -        190
+        GCF_000017205.1   NC_009656.1   65318     65318     +        197
 
     Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
 
-    In the plot below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default.
+    In the plot below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default.
 
     <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
 
@@ -140,13 +140,16 @@ Global Flags:
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 400 \
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 190 \
             | head -n 2 \
-            | csvtk pretty -t -W 40 --clip
+            | csvtk pretty -t -W 40
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
-        GCF_000017205.1   NC_009656.1   2347      2347      -        402        18        TCGTAAGATCGCTCAACTTAGGGAATCCGACGCGGAT..
-
+        GCF_000017205.1   NC_009656.1   13549     13549     +        196        15        CGAAGCGGCGCCGGCGGACATGTACGACAAGGACCTGGAT
+                                                                                          GTCTCGGTGGCCGCCATGAGCCGCGAACTGGCCAAGTATG
+                                                                                          TACGGGCCTATCCGAGCCAGTACATGTGGAGCATGAAGCG
+                                                                                          CTTCAAGAACCGCCCGGACGGCGAGAAGAAGTGGTACTGA
+                                                                                          AAAAAGGCGTCGGAAGACGCCTTTTTCATATCCGGG
 
 3. Listing seed position of all genomes.
 
@@ -158,21 +161,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   58502
-        GCF_000742135.1   47997
-        GCF_002950215.1   47088
-        GCF_002949675.1   46650
-        GCF_003697165.2   45156
-        GCF_000006945.2   45044
-        GCF_009759685.1   42902
-        GCF_006742205.1   42151
-        GCF_001027105.1   42121
-        GCF_001457655.1   41790
-        GCF_900638025.1   41684
-        GCF_000392875.1   41605
-        GCF_000148585.2   41158
-        GCF_001544255.1   40351
-        GCF_001096185.1   40285
+        GCF_000017205.1   134541
+        GCF_000742135.1   103771
+        GCF_003697165.2   92087
+        GCF_000006945.2   90683
+        GCF_002950215.1   89638
+        GCF_002949675.1   84337
+        GCF_009759685.1   72711
+        GCF_001027105.1   56737
+        GCF_000392875.1   55772
+        GCF_006742205.1   52699
+        GCF_001544255.1   50000
+        GCF_900638025.1   46638
+        GCF_001096185.1   46195
+        GCF_001457655.1   45822
+        GCF_000148585.2   44982
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -224,8 +227,7 @@ Global Flags:
     $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
     ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
     ---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
-    GCF_000392875.1   NZ_KB944589.1   503030    227268    +        1179       1118      CGCTCTGACGCTGATAAATATGAGCCAACAGTAGAAGGTGAAAAAGTAGA
-                                                                                        AATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    GCF_000392875.1   NZ_KB944589.1   503021    227259    +        1136       1113      AAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -247,29 +249,7 @@ Global Flags:
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAGGTGTCA
-    GCF_000392875.1   NZ_KB944590.1   1923642   964454    -        1054       896       ATCCATGCTTCGATGAAACTGCTACATCGCCAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAACTTTGGTTCGCATATTTATCTCCCATACC
-                                                                                        GATATTAACGATTCCAGGAGCTGTATTCATAATCCCATTAAACACGCCGT
-                                                                                        GTTTTCCTGATTCAGCTGCTGGTTTTACCCTTGCCGTGTAATCATATTGT
-                                                                                        TTTT
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     GCF_000392875.1   NZ_KB944590.1   2639993   1680805   +        1190       1144      TATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -296,18 +276,17 @@ Global Flags:
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTC
     ```
 
-    Long gap regions (>=890 bp) of the genome, which are excatly the regions in the table above.
+    Long gap regions (>=1000 bp) of the genome, which are excatly the regions in the table above.
 
     ```
     $ zcat refs/GCF_000392875.1.fa.gz \
         | seqkit locate -G -r -p '"N{20,}"' -P -M \
-        | csvtk filter2 -t -f '$end - $start + 1 >=890' \
+        | csvtk filter2 -t -f '$end - $start + 1 >=1000' \
         | csvtk pretty -t
 
     seqID           patternName   pattern   strand   start     end
     -------------   -----------   -------   ------   -------   -------
     NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
-    NZ_KB944590.1   N{20,}        N{20,}    +        963431    964320
     NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
     ```
 
