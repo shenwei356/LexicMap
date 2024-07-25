@@ -27,15 +27,16 @@ weight: 10
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap only supports long (>=500 bp, by default) reads or gene/genome/virus/plasmid/phage sequences.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
 However, some short queries can also be aligned.
 
-For shorter queries like 200 bp, just build an index with smaller `-D/--seed-max-desert`, e.g.,
+For shorter queries like 100-200 bp, just build an index with a smaller `-D/--seed-max-desert`, e.g.,
 
     --seed-max-desert 200 --seed-in-desert-dist 50
 
-which would generate densers seeds and provide more sensitive results for distant targets.
+which generates denser seeds and provides more sensitive results for distant targets.
 The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
+While the alignment speed is almost not affected.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.

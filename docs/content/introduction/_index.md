@@ -10,6 +10,22 @@ weight: 10
 
 LexicMap is a **nucleotide sequence alignment** tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to **millions of prokaryotic genomes**.
 
+## Table of contents
+
+{{< toc format=html >}}
+
+## Features
+
+1. **LexicMap is scalable to up to millions of prokaryotic genomes**.
+1. **The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn**.
+1. **The alignment is [fast and memory-efficient](https://bioinf.shenwei.me/LexicMap/introduction/#searching)**.
+1. LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
+   we provide [binary files](https://github.com/shenwei356/LexicMap/releases/) with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
+2. LexicMap is easy to use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
+3. Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
+
+## Introduction
+
 **Motivation**: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
 However, given the increasing rate at which genomes are sequenced, **existing tools struggle to scale**.
 
@@ -20,8 +36,9 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 
 **Methods**: ([algorithm overview](#algorithm-overview))
 
-1. A [modified version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to efficiently compute alignment seeds.
-   And we solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to satisfy the [window guarantee](https://doi.org/10.1093/bioinformatics/btab790).
+1. An [improved version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds accurately and efficiently.
+    1. **We solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to provide a [window guarantee](https://doi.org/10.1093/bioinformatics/btab790)**.
+    2. **We added the support of suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched, which means **seeds are immune to any single SNP**.
 2. A multi-level index enables fast and low-memory variable-length seed matching and chaining.
 3. A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.
 4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
@@ -41,12 +58,6 @@ Running at this scale has previously only been achieved by [Phylign](https://git
     |One 1.5-kb 16S rRNA gene|1,923,014  |7 m 32 s|12.3 GB|
     |1003 AMR genes          |18,181,903 |1 h 28 m|20.0 GB|
 
-**Features**:
-
-1. LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
-   we provide [binary files](https://bioinf.shenwei.me/LexicMap/installation/) with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
-2. LexicMap is easy to use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
-3. Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
 
 ## Quick start
 

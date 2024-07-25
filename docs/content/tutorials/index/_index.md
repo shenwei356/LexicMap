@@ -36,6 +36,7 @@ More precisely:
 as we insert 1000-bp intervals of N's between contigs to reduce the sequence scale to index.
 {{< /hint >}}
 
+
 **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.Click to show
 
 - **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
@@ -133,6 +134,20 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     4. Update the index summary file.
 
 ## Parameters
+
+{{< hint type=note >}}
+**Query length**\
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
+However, some short queries can also be aligned.
+
+For shorter queries like 100-200 bp, just build an index with a smaller `-D/--seed-max-desert`, e.g.,
+
+    --seed-max-desert 200 --seed-in-desert-dist 50
+
+which generates denser seeds and provides more sensitive results for distant targets.
+The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
+While the alignment speed is almost not affected.
+{{< /hint >}}
 
 **Flags in bold text** are important and frequently used.
 
