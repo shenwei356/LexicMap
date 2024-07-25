@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
   <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2568",
+      "wordCount" : "2663",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1274,50 +1274,6 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1551,9 +1507,16 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 
 <blockquote class="gdoc-hint note">
   <div class="gdoc-hint__title flex align-center"><i class="fa note" title="Note"></i></div>
-  <div class="gdoc-hint__text"><strong>Query length</strong><br>
-LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences.<br>
-However, some short queries can also be aligned.</div>
+  <div class="gdoc-hint__text"><p><strong>Query length</strong><br>
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
+However, some short queries can also be aligned.</p>
+<p>For shorter queries like 100-200 bp, just build an index with a smaller <code>-D/--seed-max-desert</code>, e.g.,</p>
+<pre><code>--seed-max-desert 200 --seed-in-desert-dist 50
+</code></pre>
+<p>which generates denser seeds and provides more sensitive results for distant targets.
+The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
+While the alignment speed is almost not affected.</p>
+</div>
 </blockquote>
 
 <p>Input should be (gzipped) FASTA or FASTQ records from files or STDIN.</p>
@@ -1611,7 +1574,9 @@ However, some short queries can also be aligned.</div>
 <li><strong>Masking:</strong>
 Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.</li>
 <li><strong>Seeding:</strong>
-For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing prefixes of at least <em>p</em> bases.
+For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing <strong>prefixes or suffixes</strong> of at least <em>p</em> bases.
+<ol>
+<li>Prefix matching
 <ol>
 <li><strong>Setting the search range</strong>: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
 For example, for a query <code>CATGCT</code> requiring matching at least 4-bp prefix is equal to extract k-mers ranging from <code>CATGAA</code>, <code>CATGAC</code>, <code>CATGAG</code>, &hellip;,  to <code>CATGTT</code>.</li>
@@ -1620,10 +1585,17 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 <li><strong>Retrieving seed data</strong>: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).</li>
 </ol>
 </li>
+<li>Suffix matching
+<ol>
+<li>Reversing the query k-mer and performing prefix matching, returning seeds of reversed k-mers (see indexing algorithm).</li>
+</ol>
+</li>
+</ol>
+</li>
 <li><strong>Chaining:</strong>
 <ol>
 <li>Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.</li>
-<li>Performing chaining.</li>
+<li>Performing chaining (see the paper).</li>
 </ol>
 </li>
 <li><strong>Alignment</strong> for each chain.
@@ -2006,7 +1978,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 4.  sgenome,  Subject genome ID.
 5.  sseqid,   Subject sequence ID.
 6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-7.  hsp,      Nth HSP in the genome.
+7.  hsp,      Nth HSP in the genome. (just for improving readability)
 8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
 9.  alenHSP,  Aligned length in the current HSP.
 10. pident,   Percentage of identical matches in the current HSP.
@@ -2859,39 +2831,6 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

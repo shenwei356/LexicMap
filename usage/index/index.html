@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
   <meta name="description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1093",
+      "wordCount" : "1218",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1262,50 +1262,6 @@
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1476,6 +1432,10 @@
 </span></span><span class="line"><span class="cl">  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, &gt;150 mb).
 </span></span><span class="line"><span class="cl">     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
 </span></span><span class="line"><span class="cl">     (-G/--big-genomes).
+</span></span><span class="line"><span class="cl">     You need to increase the value for indexing fungi genomes.
+</span></span><span class="line"><span class="cl">  5. Maximum genome size: 268,435,456.
+</span></span><span class="line"><span class="cl">     More precisely: $total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456, as we insert 1000-bp intervals
+</span></span><span class="line"><span class="cl">     of N&#39;s between contigs to reduce the sequence scale to index.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  Attention:
 </span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -1508,21 +1468,21 @@
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Important parameters:
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  --- Genome data (Memory control) ---
-</span></span><span class="line"><span class="cl"> *1. -b/--batch-size,       ► Maximum number of genomes in each batch (maximum: 131072, default: 10000).
+</span></span><span class="line"><span class="cl">  --- Genome data ---
+</span></span><span class="line"><span class="cl"> *1. -b/--batch-size,       ► Maximum number of genomes in each batch (maximum: 131072, default: 5000).
 </span></span><span class="line"><span class="cl">                            ► If the number of input files exceeds this number, input files are split into multiple
 </span></span><span class="line"><span class="cl">                            batches and indexes are built for all batches. In the end, seed files are merged, while
 </span></span><span class="line"><span class="cl">                            genome data files are kept unchanged and collected.
-</span></span><span class="line"><span class="cl">                            ► Bigger values increase indexing memory occupation.
+</span></span><span class="line"><span class="cl">                            ■ Bigger values increase indexing memory occupation.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  --- LexicHash mask generation ---
 </span></span><span class="line"><span class="cl">  0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly
 </span></span><span class="line"><span class="cl">                            generated by &#34;lexicmap utils masks&#34;.
-</span></span><span class="line"><span class="cl">                            This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, et al.
+</span></span><span class="line"><span class="cl">                            This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, etc.
 </span></span><span class="line"><span class="cl"> *1. -k/--kmer,             ► K-mer size (maximum: 32, default: 31).
-</span></span><span class="line"><span class="cl">                            ► Bigger values improve the search specificity and do not increase the index size.
+</span></span><span class="line"><span class="cl">                            ■ Bigger values improve the search specificity and do not increase the index size.
 </span></span><span class="line"><span class="cl"> *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
-</span></span><span class="line"><span class="cl">                            ► Bigger values improve the search sensitivity, increase the index size, and slow down
+</span></span><span class="line"><span class="cl">                            ■ Bigger values improve the search sensitivity, increase the index size, and slow down
 </span></span><span class="line"><span class="cl">                            the search speed.
 </span></span><span class="line"><span class="cl">  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
 </span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity.
@@ -1530,20 +1490,24 @@
 </span></span><span class="line"><span class="cl">  --- Seeds data (k-mer-value data) ---
 </span></span><span class="line"><span class="cl"> *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 450).
 </span></span><span class="line"><span class="cl">                            The default value of 450 guarantees queries &gt;450 bp would match at least one seed.
-</span></span><span class="line"><span class="cl">                            ► Smaller values improve the search sensitivity and slightly increase the index size.
-</span></span><span class="line"><span class="cl">                            Large regions with no seeds are called sketching deserts. Deserts with seed distance
+</span></span><span class="line"><span class="cl">                            ► Large regions with no seeds are called sketching deserts. Deserts with seed distance
 </span></span><span class="line"><span class="cl">                            larger than this value will be filled by choosing k-mers roughly every
-</span></span><span class="line"><span class="cl">                            --seed-in-desert-dist (200 by default) bases.
+</span></span><span class="line"><span class="cl">                            --seed-in-desert-dist (150 by default) bases.
+</span></span><span class="line"><span class="cl">                            ■ Smaller values improve the search sensitivity, slow down the indexing speed, increase
+</span></span><span class="line"><span class="cl">                            the indexing memory occupation and increase the index size.
 </span></span><span class="line"><span class="cl">  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
 </span></span><span class="line"><span class="cl">                            ► Bigger values accelerate the search speed at the cost of a high disk reading load.
 </span></span><span class="line"><span class="cl">                            The maximum number should not exceed the maximum number of open files set by the
 </span></span><span class="line"><span class="cl">                            operating systems.
-</span></span><span class="line"><span class="cl">  3. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
+</span></span><span class="line"><span class="cl"> *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
+</span></span><span class="line"><span class="cl">                            (maximum: -c/--chunks, default: 8).
+</span></span><span class="line"><span class="cl">                            ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
+</span></span><span class="line"><span class="cl">  4. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
 </span></span><span class="line"><span class="cl">                            ► Bigger values bring a little higher memory occupation. 512 is a good value with high
 </span></span><span class="line"><span class="cl">                            searching speed, Larger or smaller values would decrease the speed in &#34;lexicmap search&#34;.
 </span></span><span class="line"><span class="cl">                            ► After indexing, &#34;lexicmap utils reindex-seeds&#34; can be used to reindex the seeds data
 </span></span><span class="line"><span class="cl">                            with another value of this flag.
-</span></span><span class="line"><span class="cl">  4. --max-open-files,      ► Maximum number of open files (default: 512).
+</span></span><span class="line"><span class="cl">  5. --max-open-files,      ► Maximum number of open files (default: 512).
 </span></span><span class="line"><span class="cl">                            ► It&#39;s only used in merging indexes of multiple genome batches.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
@@ -1551,7 +1515,7 @@
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">  -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
-</span></span><span class="line"><span class="cl">                                  (default 10000)
+</span></span><span class="line"><span class="cl">                                  (default 5000)
 </span></span><span class="line"><span class="cl">  -G, --big-genomes string        ► Out file of skipped files with genomes &gt;= -g/--max-genome
 </span></span><span class="line"><span class="cl">  -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  (default 16)
@@ -1564,10 +1528,11 @@
 </span></span><span class="line"><span class="cl">                                  symlinks are followed.
 </span></span><span class="line"><span class="cl">  -k, --kmer int                  ► Maximum k-mer size. K needs to be &lt;= 32. (default 31)
 </span></span><span class="line"><span class="cl">  -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
-</span></span><span class="line"><span class="cl">                                  -s/--rand-seed, -p/--seed-min-prefix, et al.
+</span></span><span class="line"><span class="cl">                                  -s/--rand-seed, -p/--seed-min-prefix, etc.
 </span></span><span class="line"><span class="cl">  -m, --masks int                 ► Number of LexicHash masks. (default 40000)
 </span></span><span class="line"><span class="cl">  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
-</span></span><span class="line"><span class="cl">                                  assemblies from Genbank) will be skipped. (default 15000000)
+</span></span><span class="line"><span class="cl">                                  assemblies from Genbank) will be skipped. Need to be smaller than the
+</span></span><span class="line"><span class="cl">                                  maximum supported genome size: 268435456 (default 15000000)
 </span></span><span class="line"><span class="cl">      --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
 </span></span><span class="line"><span class="cl">  -O, --out-dir string            ► Output LexicMap index directory.
 </span></span><span class="line"><span class="cl">      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
@@ -1578,8 +1543,11 @@
 </span></span><span class="line"><span class="cl">                                  &#34;(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
 </span></span><span class="line"><span class="cl">      --save-seed-pos             ► Save seed positions, which can be inspected with &#34;lexicmap utils
 </span></span><span class="line"><span class="cl">                                  seed-pos&#34;.
-</span></span><span class="line"><span class="cl">      --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 150)
-</span></span><span class="line"><span class="cl">      --seed-max-desert int       ► Maximum length of sketching deserts. Deserts with seed distance
+</span></span><span class="line"><span class="cl">  -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
+</span></span><span class="line"><span class="cl">                                  from all batches, the value should be in range of [1, -c/--chunks]
+</span></span><span class="line"><span class="cl">                                  (default 8)
+</span></span><span class="line"><span class="cl">  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 150)
+</span></span><span class="line"><span class="cl">  -D, --seed-max-desert int       ► Maximum length of sketching deserts. Deserts with seed distance
 </span></span><span class="line"><span class="cl">                                  larger than this value will be filled by choosing k-mers roughly every
 </span></span><span class="line"><span class="cl">                                  --seed-in-desert-dist bases. (default 450)
 </span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
@@ -2318,39 +2286,6 @@
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

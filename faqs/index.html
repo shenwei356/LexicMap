@@ -9,11 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
-  <meta name="description" content="Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported, just remember to increase the value of -g/--max-genome when running lexicmap index, which is used to skip genomes larger than 15Mb by default." />
+  <meta name="description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default. However, some short queries can also be aligned.
+For shorter queries like 100-200 bp, just build an index with a smaller -D/--seed-max-desert, e.g.,
+--seed-max-desert 200 --seed-in-desert-dist 50 which generates denser seeds and provides more sensitive results for distant targets. The costs are longer (2-3X) indexing time, higher (1." />
 
     <title>FAQs | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -39,8 +40,9 @@ Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes
     content="FAQs"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported, just remember to increase the value of -g/--max-genome when running lexicmap index, which is used to skip genomes larger than 15Mb by default." />
+  <meta property="og:description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default. However, some short queries can also be aligned.
+For shorter queries like 100-200 bp, just build an index with a smaller -D/--seed-max-desert, e.g.,
+--seed-max-desert 200 --seed-in-desert-dist 50 which generates denser seeds and provides more sensitive results for distant targets. The costs are longer (2-3X) indexing time, higher (1." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/faqs/" />
 
@@ -49,8 +51,9 @@ Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="FAQs" />
-  <meta name="twitter:description" content="Does LexicMap support short reads? No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences. However, some short queries can also be aligned.
-Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported, just remember to increase the value of -g/--max-genome when running lexicmap index, which is used to skip genomes larger than 15Mb by default." />
+  <meta name="twitter:description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default. However, some short queries can also be aligned.
+For shorter queries like 100-200 bp, just build an index with a smaller -D/--seed-max-desert, e.g.,
+--seed-max-desert 200 --seed-in-desert-dist 50 which generates denser seeds and provides more sensitive results for distant targets. The costs are longer (2-3X) indexing time, higher (1." />
 
 
   <script type="application/ld+json">
@@ -61,8 +64,8 @@ Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes
       "name": "FAQs",
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
-      "description": "Does LexicMap support short reads? No. LexicMap only supports long (\u003e=500 bp) reads or gene\/genome\/virus\/plasmid\/phage sequences. However, some short queries can also be aligned.\nDoes LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes. Fungi can also be supported, just remember to increase the value of -g\/--max-genome when running lexicmap index, which is used to skip genomes larger than 15Mb by default.",
-      "wordCount" : "412",
+      "description": "Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 500 bp by default. However, some short queries can also be aligned.\nFor shorter queries like 100-200 bp, just build an index with a smaller -D\/--seed-max-desert, e.g.,\n--seed-max-desert 200 --seed-in-desert-dist 50 which generates denser seeds and provides more sensitive results for distant targets. The costs are longer (2-3X) indexing time, higher (1.",
+      "wordCount" : "545",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1265,50 +1268,6 @@ Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1465,8 +1424,14 @@ Does LexicMap support fungi genomes? Yes. LexicMap mainly supports small genomes
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>No. LexicMap only supports long (&gt;=500 bp) reads or gene/genome/virus/plasmid/phage sequences.
+<p>LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
 However, some short queries can also be aligned.</p>
+<p>For shorter queries like 100-200 bp, just build an index with a smaller <code>-D/--seed-max-desert</code>, e.g.,</p>
+<pre><code>--seed-max-desert 200 --seed-in-desert-dist 50
+</code></pre>
+<p>which generates denser seeds and provides more sensitive results for distant targets.
+The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
+While the alignment speed is almost not affected.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="does-lexicmap-support-fungi-genomes"
     >
@@ -1481,7 +1446,11 @@ Fungi can also be supported, just remember to increase the value of <code>-g/--m
 which is used to skip genomes larger than 15Mb by default.</p>
 <pre tabindex="0"><code>  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
                                   assemblies from Genbank) will be skipped. (default 15000000)
-</code></pre><p>For big and complex genomes, like the human genome which has many repetitive sequences, LexicMap would be slow to align.</p>
+</code></pre><p>Maximum genome size is about 268 Mb (268,435,456). More precisely:</p>
+<pre><code>$total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456
+</code></pre>
+<p>as we insert 1000-bp intervals of N’s between contigs to reduce the sequence scale to index.</p>
+<p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="hows-the-hardware-requirement"
     >
@@ -1511,13 +1480,19 @@ which is used to skip genomes larger than 15Mb by default.</p>
     </a>
 </div>
 <p>Yes, <code>lexicmap search</code> has a flag</p>
-<pre tabindex="0"><code>  -a, --all                            ► Output more columns, e.g., matched sequences.
+<pre tabindex="0"><code>  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
+                                       want to output blast-style format with &#34;lexicmap utils 2blast&#34;.
 </code></pre><p>to output CIGAR string, aligned query and subject sequences.</p>
 <pre tabindex="0"><code>18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
 19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
 20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
 21. align,    Alignment text (&#34;|&#34; and &#34; &#34;) between qseq and sseq. (optional with -a/--all)
-</code></pre><div class="flex align-center gdoc-page__anchorwrap">
+</code></pre><p>And <code>lexicmap util 2blast</code> can help to convert the tabular format to Blast-style format,
+see <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/#examples"
+>examples</a>.</p>
+<div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="how-can-i-extract-the-upstream-and-downstream-flanking-sequences-of-matched-regions"
     >
         How can I extract the upstream and downstream flanking sequences of matched regions?
@@ -1561,7 +1536,7 @@ While for the query sequences, we don&rsquo;t convert them.</p>
 <p><code>lexicmap search</code> has a flag <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for
 faster search.</p>
 <ul>
-<li>For example, for ~85,000 GTDB representative genomes, the memory would be ~150 GB with default parameters.</li>
+<li>For example, for ~85,000 GTDB representative genomes, the memory would be ~170 GB with default parameters.</li>
 </ul>
 </li>
 <li>
@@ -2303,39 +2278,6 @@ It can be used in searching with long and divergent query sequences like nanopor
             
             
           
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
         
 
         

@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
-  <meta name="description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp, at the cost of slower indexing speed. Fix skipping interval regions by further including the last k-1 bases of contigs. Fix a bug in indexing small genomes. Improve lexichash data structure. lexicmap search: Fix chaining for highly-repetitive regions. Perform more accurate alignment with WFA." />
+  <meta name="description" content="Latest version v0.4.0 v0.4.0 - 2024-07-xx New commands: lexicmap utils 2blast: Convert the default search output to blast-style format. lexicmap index: Support suffix matching of seeds, now seeds are immune to any single SNPs!!!, at the cost of doubled seed data. Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp. Mask gap regions (N&rsquo;s). Fix skipping interval regions by further including the last k-1 bases of contigs." />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp, at the cost of slower indexing speed. Fix skipping interval regions by further including the last k-1 bases of contigs. Fix a bug in indexing small genomes. Improve lexichash data structure. lexicmap search: Fix chaining for highly-repetitive regions. Perform more accurate alignment with WFA." />
+  <meta property="og:description" content="Latest version v0.4.0 v0.4.0 - 2024-07-xx New commands: lexicmap utils 2blast: Convert the default search output to blast-style format. lexicmap index: Support suffix matching of seeds, now seeds are immune to any single SNPs!!!, at the cost of doubled seed data. Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp. Mask gap regions (N’s). Fix skipping interval regions by further including the last k-1 bases of contigs." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content="Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp, at the cost of slower indexing speed. Fix skipping interval regions by further including the last k-1 bases of contigs. Fix a bug in indexing small genomes. Improve lexichash data structure. lexicmap search: Fix chaining for highly-repetitive regions. Perform more accurate alignment with WFA." />
+  <meta name="twitter:description" content="Latest version v0.4.0 v0.4.0 - 2024-07-xx New commands: lexicmap utils 2blast: Convert the default search output to blast-style format. lexicmap index: Support suffix matching of seeds, now seeds are immune to any single SNPs!!!, at the cost of doubled seed data. Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries &gt;= 500bp. Mask gap regions (N’s). Fix skipping interval regions by further including the last k-1 bases of contigs." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": "Latest version v0.4.0 v0.4.0 - 2024-06-xx lexicmap index: Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries \u003e= 500bp, at the cost of slower indexing speed. Fix skipping interval regions by further including the last k-1 bases of contigs. Fix a bug in indexing small genomes. Improve lexichash data structure. lexicmap search: Fix chaining for highly-repetitive regions. Perform more accurate alignment with WFA.",
-      "wordCount" : "544",
+      "description": "Latest version v0.4.0 v0.4.0 - 2024-07-xx New commands: lexicmap utils 2blast: Convert the default search output to blast-style format. lexicmap index: Support suffix matching of seeds, now seeds are immune to any single SNPs!!!, at the cost of doubled seed data. Better sketching desert filling for highly-repetitive regions. Change the default value of --seed-max-desert from 900 to 450 to support queries \u003e= 500bp. Mask gap regions (N’s). Fix skipping interval regions by further including the last k-1 bases of contigs.",
+      "wordCount" : "607",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1262,50 +1262,6 @@
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1474,7 +1430,7 @@
 <p><a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0"
->v0.4.0</a> - 2024-06-xx <a
+>v0.4.0</a> - 2024-07-xx <a
   class="gdoc-markdown__link--raw"
   href="https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0"
 ><img
@@ -1483,14 +1439,22 @@
   
 /></a></p>
 <ul>
+<li>New commands:
+<ul>
+<li><strong><code>lexicmap utils 2blast</code>: Convert the default search output to blast-style format</strong>.</li>
+</ul>
+</li>
 <li><code>lexicmap index</code>:
 <ul>
+<li><strong>Support suffix matching of seeds, now seeds are immune to any single SNPs!!!</strong>, at the cost of doubled seed data.</li>
 <li><strong>Better sketching desert filling for highly-repetitive regions</strong>.</li>
-<li><strong>Change the default value of <code>--seed-max-desert</code> from 900 to 450 to support queries &gt;= 500bp</strong>,
-at the cost of slower indexing speed.</li>
+<li><strong>Change the default value of <code>--seed-max-desert</code> from 900 to 450 to support queries &gt;= 500bp</strong>.</li>
+<li><strong>Mask gap regions (N&rsquo;s)</strong>.</li>
 <li>Fix skipping interval regions by further including the last k-1 bases of contigs.</li>
 <li>Fix a bug in indexing small genomes.</li>
+<li>Change the default value of <code>-b, --batch-size</code> from 10,000 to 5,000.</li>
 <li>Improve lexichash data structure.</li>
+<li>Write and merge seed data in parallel, new flag <code>-J/--seed-data-threads</code>.</li>
 </ul>
 </li>
 <li><code>lexicmap search</code>:
@@ -1502,6 +1466,7 @@ at the cost of slower indexing speed.</li>
 >WFA</a></strong>.</li>
 <li>Fix object recycling and reduce memory usage.</li>
 <li>Fix alignment against genomes with many short contigs.</li>
+<li>Fix early quit when meeting a sequence shorter than k.</li>
 <li>Add a new option <code>-J/--max-query-conc</code> to limit the miximum number of concurrent queries,
 with a default valule of 8 instead of the number of CPUs, which reduce the memory usage
 in batch searching.</li>
@@ -1519,6 +1484,7 @@ in batch searching.</li>
 <li>Fix the progress bar.</li>
 <li>Fix a bug where some masks do not have any k-mer.</li>
 <li>Add a new column <code>prefix</code> to show the length of common prefix between the seed and the probe.</li>
+<li>Add a new column <code>reversed</code> to indicate if the k-mer is reversed for suffix matching.</li>
 </ul>
 </li>
 <li><code>lexicmap utils masks</code>:
@@ -1537,11 +1503,6 @@ in batch searching.</li>
 <ul>
 <li>Fix a bug when the given end position is larger than the sequence length.</li>
 <li>Add the strand (&quot;+&quot; or &ldquo;-&rdquo;) in the sequence header.</li>
-</ul>
-</li>
-<li>New commands:
-<ul>
-<li><strong><code>lexicmap utils 2blast</code>: Convert the default search output to blast-style format</strong>.</li>
 </ul>
 </li>
 </ul>
@@ -2379,39 +2340,6 @@ in batch searching.</li>
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

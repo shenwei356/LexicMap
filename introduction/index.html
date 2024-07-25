@@ -9,12 +9,11 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
   <meta name="description" content="LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
-Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.
-Existing full alignment tools face challenges of high memory consumption and slow speeds. Alignment-free large-scale sequence searching tools only return the matched genomes, without the vital positional information for downstream analysis." />
+Table of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn." />
 
     <title>Introduction | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -41,8 +40,7 @@ Existing full alignment tools face challenges of high memory consumption and slo
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content="LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
-Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.
-Existing full alignment tools face challenges of high memory consumption and slow speeds. Alignment-free large-scale sequence searching tools only return the matched genomes, without the vital positional information for downstream analysis." />
+Table of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/introduction/" />
 
@@ -52,8 +50,7 @@ Existing full alignment tools face challenges of high memory consumption and slo
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Introduction" />
   <meta name="twitter:description" content="LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.
-Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.
-Existing full alignment tools face challenges of high memory consumption and slow speeds. Alignment-free large-scale sequence searching tools only return the matched genomes, without the vital positional information for downstream analysis." />
+Table of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn." />
 
 
   <script type="application/ld+json">
@@ -64,8 +61,8 @@ Existing full alignment tools face challenges of high memory consumption and slo
       "name": "Introduction",
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
-      "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nMotivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.\nExisting full alignment tools face challenges of high memory consumption and slow speeds. Alignment-free large-scale sequence searching tools only return the matched genomes, without the vital positional information for downstream analysis.",
-      "wordCount" : "1530",
+      "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nTable of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn.",
+      "wordCount" : "1624",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1268,50 +1265,6 @@ Existing full alignment tools face challenges of high memory consumption and slo
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1484,6 +1437,80 @@ Existing full alignment tools face challenges of high memory consumption and slo
   
 /></a></p>
 <p>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to <strong>millions of prokaryotic genomes</strong>.</p>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="table-of-contents"
+    >
+        Table of contents
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/introduction/#table-of-contents" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Table of contents" aria-label="Anchor to: Table of contents" href="#table-of-contents">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="gdoc-toc gdoc-toc__level--3">
+      <nav id="TableOfContents"><ul>
+        <li><a href="#table-of-contents">Table of contents</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#quick-start">Quick start</a></li>
+        <li><a href="#performance">Performance</a>
+          <ul>
+            <li><a href="#indexing">Indexing</a></li>
+            <li><a href="#searching">Searching</a></li>
+          </ul>
+        </li>
+        <li><a href="#installation">Installation</a></li>
+        <li><a href="#algorithm-overview">Algorithm overview</a></li>
+        <li><a href="#related-projects">Related projects</a></li>
+        <li><a href="#support">Support</a></li>
+        <li><a href="#license">License</a></li>
+      </ul></nav>
+      <hr />
+    </div>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="features"
+    >
+        Features
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/introduction/#features" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Features" aria-label="Anchor to: Features" href="#features">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<ol>
+<li><strong>LexicMap is scalable to up to millions of prokaryotic genomes</strong>.</li>
+<li><strong>The sensitivity of LexicMap is comparable with Blastn, and the sensitive mode is more sensitive than Blastn</strong>.</li>
+<li><strong>The alignment is <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/introduction/#searching"
+>fast and memory-efficient</a></strong>.</li>
+<li>LexicMap is easy to <a
+  class="gdoc-markdown__link"
+  href="http://bioinf.shenwei.me/LexicMap/installation/"
+>install</a>,
+we provide <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap/releases/"
+>binary files</a> with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).</li>
+<li>LexicMap is easy to use (<a
+  class="gdoc-markdown__link"
+  href="http://bioinf.shenwei.me/LexicMap/tutorials/index/"
+>tutorials</a> and <a
+  class="gdoc-markdown__link"
+  href="http://bioinf.shenwei.me/LexicMap/usage/lexicmap/"
+>usages</a>). Both tabular and Blast-style output formats are available.</li>
+<li>Besides, we provide <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/"
+>several commands</a> to explore the index data and extract indexed subsequences.</li>
+</ol>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="introduction"
+    >
+        Introduction
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/introduction/#introduction" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Introduction" aria-label="Anchor to: Introduction" href="#introduction">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
 <p><strong>Motivation</strong>: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST.
 However, given the increasing rate at which genomes are sequenced, <strong>existing tools struggle to scale</strong>.</p>
 <ol>
@@ -1497,20 +1524,24 @@ without the vital positional information for downstream analysis.</li>
   href="#algorithm-overview"
 >algorithm overview</a>)</p>
 <ol>
-<li>A <a
+<li>An <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/lexichash"
->modified version</a> of the sequence sketching method <a
+>improved version</a> of the sequence sketching method <a
   class="gdoc-markdown__link"
   href="https://doi.org/10.1093/bioinformatics/btad652"
->LexicHash</a> is adopted to efficiently compute alignment seeds.
-And we solved the <a
+>LexicHash</a> is adopted to compute alignment seeds accurately and efficiently.
+<ol>
+<li><strong>We solved the <a
   class="gdoc-markdown__link"
   href="https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1"
->sketching deserts</a> problem of LexicHash seeds to satisfy the <a
+>sketching deserts</a> problem of LexicHash seeds to provide a <a
   class="gdoc-markdown__link"
   href="https://doi.org/10.1093/bioinformatics/btab790"
->window guarantee</a>.</li>
+>window guarantee</a></strong>.</li>
+<li><strong>We added the support of suffix matching of seeds, making seeds much more tolerant to mutations</strong>. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched, which means <strong>seeds are immune to any single SNP</strong>.</li>
+</ol>
+</li>
 <li>A multi-level index enables fast and low-memory variable-length seed matching and chaining.</li>
 <li>A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.</li>
 <li>A <a
@@ -1576,28 +1607,6 @@ Running at this scale has previously only been achieved by <a
 </tbody>
 </table> </div>
 </li>
-</ol>
-<p><strong>Features</strong>:</p>
-<ol>
-<li>LexicMap is easy to <a
-  class="gdoc-markdown__link"
-  href="http://bioinf.shenwei.me/LexicMap/installation/"
->install</a>,
-we provide <a
-  class="gdoc-markdown__link"
-  href="https://bioinf.shenwei.me/LexicMap/installation/"
->binary files</a> with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).</li>
-<li>LexicMap is easy to use (<a
-  class="gdoc-markdown__link"
-  href="http://bioinf.shenwei.me/LexicMap/tutorials/index/"
->tutorials</a> and <a
-  class="gdoc-markdown__link"
-  href="http://bioinf.shenwei.me/LexicMap/usage/lexicmap/"
->usages</a>). Both tabular and Blast-style output formats are available.</li>
-<li>Besides, we provide <a
-  class="gdoc-markdown__link"
-  href="https://bioinf.shenwei.me/LexicMap/usage/utils/"
->several commands</a> to explore the index data and extract indexed subsequences.</li>
 </ol>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="quick-start"
@@ -2885,39 +2894,6 @@ propose new functions or ask for help.</p>
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

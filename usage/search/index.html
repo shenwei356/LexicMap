@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
-  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
+  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
 
     <title>search | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="search"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
+  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/search/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="search" />
-  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17&#43; columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length." />
+  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "search",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
-      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Alignment result relationship: Query ├── Subject genome ├── Subject sequence ├── High-Scoring segment Pair (HSP) Output format: Tab-delimited format with 17\u002b columns, with 1-based positions. 1. query, Query sequence ID. 2. qlen, Query sequence length.",
-      "wordCount" : "593",
+      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a\/--all, the search result would be formatted to Blast-style format with \u0027lexicmap utils 2blast\u0027. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q\/--min-qcov-per-hsp, -Q\/--min-qcov-per-genome, and -i\/--align-min-match-pident, do not significantly accelerate the search speed.",
+      "wordCount" : "713",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1262,50 +1262,6 @@
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1468,12 +1424,25 @@
 </span></span><span class="line"><span class="cl">  1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
 </span></span><span class="line"><span class="cl">  2. For multiple queries, the order of queries might be different from the input.
 </span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Tips:
+</span></span><span class="line"><span class="cl">  1. When using -a/--all, the search result would be formatted to Blast-style format
+</span></span><span class="line"><span class="cl">     with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down.
+</span></span><span class="line"><span class="cl">  2. Alignment result filtering is performed in the final phase, so stricter filtering criteria,
+</span></span><span class="line"><span class="cl">     including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
+</span></span><span class="line"><span class="cl">     do not significantly accelerate the search speed. Hence, you can search with default
+</span></span><span class="line"><span class="cl">     parameters and then filter the result with tools like awk or csvtk.
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Alignment result relationship:
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  Query
 </span></span><span class="line"><span class="cl">  ├── Subject genome
 </span></span><span class="line"><span class="cl">      ├── Subject sequence
 </span></span><span class="line"><span class="cl">          ├── High-Scoring segment Pair (HSP)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  &gt; A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the
+</span></span><span class="line"><span class="cl">  &gt; highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Output format:
 </span></span><span class="line"><span class="cl">  Tab-delimited format with 17+ columns, with 1-based positions.
@@ -1484,7 +1453,7 @@
 </span></span><span class="line"><span class="cl">    4.  sgenome,  Subject genome ID.
 </span></span><span class="line"><span class="cl">    5.  sseqid,   Subject sequence ID.
 </span></span><span class="line"><span class="cl">    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-</span></span><span class="line"><span class="cl">    7.  hsp,      Nth HSP in the genome.
+</span></span><span class="line"><span class="cl">    7.  hsp,      Nth HSP in the genome. (just for improving readability)
 </span></span><span class="line"><span class="cl">    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
 </span></span><span class="line"><span class="cl">    9.  alenHSP,  Aligned length in the current HSP.
 </span></span><span class="line"><span class="cl">    10. pident,   Percentage of identical matches in the current HSP.
@@ -1495,7 +1464,7 @@
 </span></span><span class="line"><span class="cl">    15. send,     End of alignment in subject sequence.
 </span></span><span class="line"><span class="cl">    16. sstr,     Subject strand.
 </span></span><span class="line"><span class="cl">    17. slen,     Subject sequence length.
-</span></span><span class="line"><span class="cl">    18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
+</span></span><span class="line"><span class="cl">    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
 </span></span><span class="line"><span class="cl">    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
 </span></span><span class="line"><span class="cl">    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
 </span></span><span class="line"><span class="cl">    21. align,    Alignment text (&#34;|&#34; and &#34; &#34;) between qseq and sseq. (optional with -a/--all)
@@ -2261,39 +2230,6 @@
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

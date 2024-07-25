@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
   <meta name="description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks." />
@@ -1262,50 +1262,6 @@
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1479,7 +1435,7 @@
 </span></span><span class="line"><span class="cl">  -h, --help              help for masks
 </span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -k, --kmer int          ► Maximum k-mer size. K needs to be &lt;= 32. (default 31)
-</span></span><span class="line"><span class="cl">  -m, --masks int         ► Number of masks. (default 1000)
+</span></span><span class="line"><span class="cl">  -m, --masks int         ► Number of masks. (default 40000)
 </span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                          (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">  -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no
@@ -1504,28 +1460,28 @@
     </a>
 </div>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10
-</span></span><span class="line"><span class="cl">1       AAAACACATGTGGCCGTTCCGATAATGATCC
+</span></span><span class="line"><span class="cl">1       AAAACACCATGGAGCCTTGTGGAACCTTGGC
 </span></span><span class="line"><span class="cl">2       AAAACACGCGATCAGGTCGTCCGTCCCAGTG
 </span></span><span class="line"><span class="cl">3       AAAACACTATGGCCTGATTACCCCATCCCGA
 </span></span><span class="line"><span class="cl">4       AAAACAGGACCGTCCTAGGGTCAATGGTTCG
 </span></span><span class="line"><span class="cl">5       AAAACAGTCTTGTATTATGTACTTCACATTC
-</span></span><span class="line"><span class="cl">6       AAAACATTCTTTCAGATCCATGCACGAGCAG
+</span></span><span class="line"><span class="cl">6       AAAACATGTTACTACGGTTTTCCGCAATTGG
 </span></span><span class="line"><span class="cl">7       AAAACATTGGTCCTATTGGCGTCACTCGATA
-</span></span><span class="line"><span class="cl">8       AAAACCAGCTCTGTAAGCACTAACAACGCTA
-</span></span><span class="line"><span class="cl">9       AAAACCAGTTACTACGGTTTTCCGCAATTGG
-</span></span><span class="line"><span class="cl">10      AAAACCATGTGCGGCCCATAACTGGTGGTAA
+</span></span><span class="line"><span class="cl">8       AAAACCACTGTGCATATCTCGAATCCCGCTC
+</span></span><span class="line"><span class="cl">9       AAAACCAGCTCTGTAAGCACTAACAACGCTA
+</span></span><span class="line"><span class="cl">10      AAAACCATGGTGCCGTGCATTTGCGCACCTA
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
 </span></span><span class="line"><span class="cl">39991   TTTTGGTCTACAGAAAGTGCGTTATAGATTT
-</span></span><span class="line"><span class="cl">39992   TTTTGGTGCTCATACAGTACCGCTGTCTCCA
-</span></span><span class="line"><span class="cl">39993   TTTTGTAGCGCCATACCGGAGTTCACGGGTC
+</span></span><span class="line"><span class="cl">39992   TTTTGGTGTGGAGAAGGACCTCACTGTTAAT
+</span></span><span class="line"><span class="cl">39993   TTTTGTAGACCGAGGTTTTAAGTCCAGGGGG
 </span></span><span class="line"><span class="cl">39994   TTTTGTATGGAATACTTTACAGTCATCAGTT
-</span></span><span class="line"><span class="cl">39995   TTTTGTCATACAGGAAGCACGGTCGAACGTT
-</span></span><span class="line"><span class="cl">39996   TTTTGTCATCAGTCGGCACTTAGGGGAACCG
-</span></span><span class="line"><span class="cl">39997   TTTTGTCCACCCTATTGAAGATGGAGTCCCA
+</span></span><span class="line"><span class="cl">39995   TTTTGTCATCAGTCGGCACTTAGGGGAACCG
+</span></span><span class="line"><span class="cl">39996   TTTTGTCCCAGTGACCAATCACAGTTCGGGA
+</span></span><span class="line"><span class="cl">39997   TTTTGTCGATAATCCTGCCTCGATTTCTCTT
 </span></span><span class="line"><span class="cl">39998   TTTTGTGAATAAGAGATCCTGTCGCAGGAAA
-</span></span><span class="line"><span class="cl">39999   TTTTGTGGACGGTAGAACCCCGTGGTCACCA
-</span></span><span class="line"><span class="cl">40000   TTTTGTGTAGCATAAAGGGCTGGCGACCTGT
+</span></span><span class="line"><span class="cl">39999   TTTTGTGCACGACGCTCCTGGTGTATCGCCT
+</span></span><span class="line"><span class="cl">40000   TTTTGTGGCGACGGCGTACCCCGTCTAGGAG
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"># check a specific mask
 </span></span><span class="line"><span class="cl">
@@ -2232,39 +2188,6 @@
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 

@@ -19,7 +19,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</guid>
-      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.</description>
+      <description>$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&amp;#39;s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d &amp;lt;index path&amp;gt; [-m &amp;lt;mask index&amp;gt;] [-o out.</description>
     </item>
     <item>
       <title>genomes</title>

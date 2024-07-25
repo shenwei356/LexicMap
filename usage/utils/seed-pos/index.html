@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.126.3">
+<meta name="generator" content="Hugo 0.128.2">
 
 
   <meta name="description" content="Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;." />
@@ -1262,50 +1262,6 @@
         
       
     
-      
-
-      
-        
-      
-
-      
-        
-          
-          
-          
-          
-          
-          
-
-
-          <li>
-            <input
-              type="checkbox"
-              
-                class="hidden"
-              
-            />
-            <label
-              
-            >
-              
-                <span class="flex">
-                  <a
-                    href="/LexicMap/notes/stories/"
-                    class="gdoc-nav__entry"
-                  >
-                    Project stories
-                  </a>
-                </span>
-              
-              
-            </label>
-
-            
-          </li>
-        
-      
-    
   </ul>
 
             
@@ -1499,7 +1455,7 @@
 </span></span><span class="line"><span class="cl">Figures:
 </span></span><span class="line"><span class="cl">  Using -O/--plot-dir will write plots into given directory:
 </span></span><span class="line"><span class="cl">    - Histograms of seed distances.
-</span></span><span class="line"><span class="cl">        - Histograms of numbers of seeds in sliding windows.
+</span></span><span class="line"><span class="cl">    - Histograms of numbers of seeds in sliding windows.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils seed-pos [flags]
@@ -1560,14 +1516,14 @@
  $ head -n 10 seed_distance.tsv | csvtk pretty -t
  ref               seqid         pos_gnm   pos_seq   strand   distance
  ---------------   -----------   -------   -------   ------   --------
- GCF_000017205.1   NC_009656.1   2         2         +        1
- GCF_000017205.1   NC_009656.1   41        41        -        39
- GCF_000017205.1   NC_009656.1   45        45        +        4
- GCF_000017205.1   NC_009656.1   74        74        -        29
- GCF_000017205.1   NC_009656.1   85        85        -        11
- GCF_000017205.1   NC_009656.1   119       119       -        34
- GCF_000017205.1   NC_009656.1   130       130       -        11
- GCF_000017205.1   NC_009656.1   185       185       +        55
+ GCF_000017205.1   NC_009656.1   16        16        +        15
+ GCF_000017205.1   NC_009656.1   18        18        +        2
+ GCF_000017205.1   NC_009656.1   71        71        +        53
+ GCF_000017205.1   NC_009656.1   74        74        -        3
+ GCF_000017205.1   NC_009656.1   119       119       -        45
+ GCF_000017205.1   NC_009656.1   123       123       +        4
+ GCF_000017205.1   NC_009656.1   154       154       +        31
+ GCF_000017205.1   NC_009656.1   185       185       +        31
  GCF_000017205.1   NC_009656.1   269       269       -        84
 </code></pre>
 <p>Check the biggest seed distances.</p>
@@ -1578,24 +1534,24 @@
 
  distance   frequency
  --------   ---------
- 449        9
- 448        7
- 447        8
- 446        13
- 445        14
- 444        14
- 443        17
- 442        11
- 441        15
+ 449        14
+ 448        17
+ 447        12
+ 446        15
+ 445        13
+ 444        17
+ 443        15
+ 442        18
+ 441        13
 </code></pre>
 <p>Or only list records with seed distances longer than a threshold.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 400 \
      | csvtk pretty -t | head -n 5
  ref               seqid         pos_gnm   pos_seq   strand   distance
  ---------------   -----------   -------   -------   ------   --------
- GCF_000017205.1   NC_009656.1   26578     26578     -        403
- GCF_000017205.1   NC_009656.1   32937     32937     +        413
- GCF_000017205.1   NC_009656.1   37656     37656     -        438
+ GCF_000017205.1   NC_009656.1   2347      2347      -        402
+ GCF_000017205.1   NC_009656.1   13158     13158     +        400
+ GCF_000017205.1   NC_009656.1   28894     28894     -        418
 </code></pre>
 <p>Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
@@ -1608,10 +1564,10 @@
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
      | head -n4 | csvtk pretty -t -W 40 --clip
  ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
- ---------------   -----------   -------   -------   ------   --------   -------   ---------------------------------------
- GCF_000017205.1   NC_009656.1   2         2         +        1          0         T
- GCF_000017205.1   NC_009656.1   41        41        -        39         5         TAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGCAGG
- GCF_000017205.1   NC_009656.1   45        45        +        4          1         TCAA
+ ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
+ GCF_000017205.1   NC_009656.1   16        16        +        15         2         TTAAAGAGACCGGCG
+ GCF_000017205.1   NC_009656.1   18        18        +        2          0         AT
+ GCF_000017205.1   NC_009656.1   71        71        +        53         6         TCTAGTGAAATCGAACGGGCAGGTCAATTTCCAACCA...
 </code></pre>
 <p>Or only list records with seed distance longer than a threshold.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 400 \
@@ -1619,7 +1575,7 @@
      | csvtk pretty -t -W 40 --clip
  ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
  ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
- GCF_000017205.1   NC_009656.1   26578     26578     -        403        8         TTCGACGACCTCAACCAGTGGGACTTCGATACCTGCT...
+ GCF_000017205.1   NC_009656.1   2347      2347      -        402        18        TCGTAAGATCGCTCAACTTAGGGAATCCGACGCGGAT..
 </code></pre>
 </li>
 <li>
@@ -1631,21 +1587,21 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
 <pre><code> $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
  ref               frequency
  ---------------   ---------
- GCF_000017205.1   58958
- GCF_000742135.1   48041
- GCF_002950215.1   47010
- GCF_002949675.1   46932
- GCF_003697165.2   45483
- GCF_000006945.2   45300
- GCF_009759685.1   43059
- GCF_001027105.1   42429
- GCF_006742205.1   42428
- GCF_001457655.1   42167
- GCF_900638025.1   42046
- GCF_000392875.1   41826
- GCF_000148585.2   41118
- GCF_001544255.1   40443
- GCF_001096185.1   40356
+ GCF_000017205.1   58502
+ GCF_000742135.1   47997
+ GCF_002950215.1   47088
+ GCF_002949675.1   46650
+ GCF_003697165.2   45156
+ GCF_000006945.2   45044
+ GCF_009759685.1   42902
+ GCF_006742205.1   42151
+ GCF_001027105.1   42121
+ GCF_001457655.1   41790
+ GCF_900638025.1   41684
+ GCF_000392875.1   41605
+ GCF_000148585.2   41158
+ GCF_001544255.1   40351
+ GCF_001096185.1   40285
 </code></pre>
 <p>Plot the histograms of distances between seeds for all genomes.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz \
@@ -1692,7 +1648,53 @@ This also explain why there are a few sliding windows has zero seeds in the figu
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
 </span></span><span class="line"><span class="cl">ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
 </span></span><span class="line"><span class="cl">---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
-</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944589.1   503144    227382    -        1274       1136      ATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAA
+</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944589.1   503030    227268    +        1179       1118      CGCTCTGACGCTGATAAATATGAGCCAACAGTAGAAGGTGAAAAAGTAGA
+</span></span><span class="line"><span class="cl">                                                                                    AATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAGGTGTCA
+</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944590.1   1923642   964454    -        1054       896       ATCCATGCTTCGATGAAACTGCTACATCGCCAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAACTTTGGTTCGCATATTTATCTCCCATACC
+</span></span><span class="line"><span class="cl">                                                                                    GATATTAACGATTCCAGGAGCTGTATTCATAATCCCATTAAACACGCCGT
+</span></span><span class="line"><span class="cl">                                                                                    GTTTTCCTGATTCAGCTGCTGGTTTTACCCTTGCCGTGTAATCATATTGT
+</span></span><span class="line"><span class="cl">                                                                                    TTTT
+</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944590.1   2639993   1680805   +        1190       1144      TATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAA
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -1715,44 +1717,17 @@ This also explain why there are a few sliding windows has zero seeds in the figu
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 </span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAGGTGTCATTGAAGTAACGTATCCAGATGGTACAAAAGATACAGTAAA
-</span></span><span class="line"><span class="cl">                                                                                    AGTTCCAGTAGAAGTAACAGACAATCGCTCTGACGCTGATAAATATACAC
-</span></span><span class="line"><span class="cl">                                                                                    CTAAAGGTCAAAAAGTAACTACTG
-</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944590.1   2640014   1680826   +        1280       1146      CAACTCCTGTACTAGTATTTAAGTGTCCATTATTCCCCCCATTTTTTTGC
-</span></span><span class="line"><span class="cl">                                                                                    TCCTTTTTATTTTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTT
-</span></span><span class="line"><span class="cl">                                                                                    CAGTGCTTCGCTGTAGGCTTTCCAGCTGCT
-</span></span></code></pre></div><p>Long gap regions (&gt;=1000 bp) of the genome, which are excatly the regions in the table above.</p>
+</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTC
+</span></span></code></pre></div><p>Long gap regions (&gt;=890 bp) of the genome, which are excatly the regions in the table above.</p>
 <pre tabindex="0"><code>$ zcat refs/GCF_000392875.1.fa.gz \
     | seqkit locate -G -r -p &#39;&#34;N{20,}&#34;&#39; -P -M \
-    | csvtk filter2 -t -f &#39;$end - $start + 1 &gt;=1000&#39; \
+    | csvtk filter2 -t -f &#39;$end - $start + 1 &gt;=890&#39; \
     | csvtk pretty -t
 
 seqID           patternName   pattern   strand   start     end
 -------------   -----------   -------   ------   -------   -------
 NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
+NZ_KB944590.1   N{20,}        N{20,}    +        963431    964320
 NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
 </code></pre></li>
 </ol>
@@ -2469,39 +2444,6 @@ NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
   
 
   
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
   
     
 
