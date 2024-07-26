@@ -14,6 +14,8 @@ Besides, it supports [shell completion](#shell-completion), which could help acc
 
     conda install -c bioconda lexicmap
 
+Linux and MacOS (both x86 and arm CPUs) are supported.
+
 ## Binary files
 
 {{< tabs "uniqueid" >}}

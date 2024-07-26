@@ -680,7 +680,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 							// ----------------------------------------------------
 							// save reversed k-mer to another mask. (suffix index)
-							kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+							kmer = kmers.MustReverse(kmer, k) // reverse the k-mer
 							iMasks = lh.MaskKmer(kmer)
 							minh = math.MaxUint64
 							for _, j = range *iMasks {
@@ -722,7 +722,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 							// ----------------------------------------------------
 							// save reversed k-mer to another mask. (suffix index)
-							kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+							kmer = kmers.MustReverse(kmer, k) // reverse the k-mer
 							iMasks = lh.MaskKmer(kmer)
 							minh = math.MaxUint64
 							for _, j = range *iMasks {

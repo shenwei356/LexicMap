@@ -845,7 +845,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					continue
 				}
 				// fmt.Printf("mask: %d, %s\n", i+1, kmers.MustDecode(kmer, k))
-				kmer = kmers.Reverse(kmer, k) // reverse the k-mer
+				kmer = kmers.MustReverse(kmer, k) // reverse the k-mer
 				iMasks = lh.MaskKmer(kmer)
 				minh = math.MaxUint64
 				for _, j = range *iMasks {

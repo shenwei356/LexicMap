@@ -14,7 +14,7 @@ weight: 30
 - New commands:
     - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
 - `lexicmap index`:
-    - **Support suffix matching of seeds, now seeds are immune to any single SNPs!!!**, at the cost of doubled seed data.
+    - **Support suffix matching of seeds, now seeds are immune to any single SNP!!!**, at the cost of doubled seed data.
     - **Better sketching desert filling for highly-repetitive regions**.
     - **Change the default value of `--seed-max-desert` from 900 to 200 to increase alignment sensitivity**.
     - **Mask gap regions (N's)**.
