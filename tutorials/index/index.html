@@ -65,7 +65,7 @@ lexicmap index -X files." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
-      "wordCount" : "2609",
+      "wordCount" : "2631",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1592,7 +1592,8 @@ It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it t
 <li>The divergence between genome sequences. Diverse genomes consume more memory.</li>
 <li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). This is the main parameter to adjust memory usage.</li>
 <li><strong>The maximum seed distance</strong> or <strong>the maximum sketching desert size</strong> (<code>-D/--seed-max-desert</code>, default 450).
-Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.</li>
+Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.
+While the alignment speed is almost not affected.</li>
 </ul>
 </li>
 <li><strong>If the RAM is not sufficient (&lt; 50 GB)</strong>. Please:
@@ -1699,14 +1700,14 @@ merging them and writting to a new file.</li>
 <blockquote class="gdoc-hint note">
   <div class="gdoc-hint__title flex align-center"><i class="fa note" title="Note"></i></div>
   <div class="gdoc-hint__text"><p><strong>Query length</strong><br>
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
-However, some short queries can also be aligned.</p>
-<p>For shorter queries like 100-200 bp, just build an index with a smaller <code>-D/--seed-max-desert</code>, e.g.,</p>
-<pre><code>--seed-max-desert 200 --seed-in-desert-dist 50
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+However, short queries can also be aligned.</p>
+<p>If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) targets, you can build an index with a bigger <code>-D/--seed-max-desert</code> (200 by default), e.g.,</p>
+<pre><code>--seed-max-desert 450 --seed-in-desert-dist 150
 </code></pre>
-<p>which generates denser seeds and provides more sensitive results for distant targets.
-The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
-While the alignment speed is almost not affected.</p>
+<p>Bigger values decrease the search sensitivity for distant targets, speed up the indexing
+speed, decrease the indexing memory occupation and decrease the index size. While the
+alignment speed is almost not affected.</p>
 </div>
 </blockquote>
 
@@ -1818,9 +1819,9 @@ While the alignment speed is almost not affected.</p>
 <tbody>
 <tr>
 <td style="text-align:left"><strong><code>--seed-max-desert</code></strong></td>
-<td style="text-align:left">Default: 450</td>
+<td style="text-align:left">Default: 200</td>
 <td style="text-align:left">Maximum length of distances between seeds</td>
-<td style="text-align:left">The default value of 450 guarantees queries &gt;450 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every &ndash;seed-in-desert-dist (150 by default) bases. ■ Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.</td>
+<td style="text-align:left">The default value of 200 guarantees queries &gt;200 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every &ndash;seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.</td>
 </tr>
 <tr>
 <td style="text-align:left"><code>-c/--chunks</code></td>
@@ -2039,8 +2040,8 @@ demo.lmi/                    # the index directory
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 15 genomes
-demo.lmi/: 42.10 MB
-  28.87 MB      seeds
+demo.lmi/: 59.55 MB
+  46.31 MB      seeds
   12.93 MB      genomes
  312.53 KB      masks.bin
   375.00 B      genomes.map.bin
@@ -2060,12 +2061,12 @@ demo.lmi/: 42.10 MB
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 85,205 genomes/
-gtdb_repr.lmi: 160.16 GB
-  93.37 GB      seeds
+gtdb_repr.lmi: 212.58 GB
+ 145.79 GB      seeds
   66.78 GB      genomes
    2.03 MB      genomes.map.bin
  312.53 KB      masks.bin
-  329.00 B      info.toml
+  328.00 B      info.toml
 </code></pre>
 
     </div>
@@ -2081,12 +2082,12 @@ gtdb_repr.lmi: 160.16 GB
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <pre><code># 402,538 genomes
-gtdb_complete.lmi: 685.33 GB
+gtdb_complete.lmi: 905.95 GB
+ 542.97 GB      seeds
  362.98 GB      genomes
- 322.35 GB      seeds
    9.60 MB      genomes.map.bin
  312.53 KB      masks.bin
-  330.00 B      info.toml
+  329.00 B      info.toml
 </code></pre>
 
     </div>
@@ -2123,14 +2124,13 @@ genbank_refseq.lmi: 2.97 TB
       AllTheBacteria HQ
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code>(TODO: to be updated)
-# 1,858,610 genomes
-atb_hq.lmi: 2.37 TB
+      <pre><code># 1,858,610 genomes
+atb_hq.lmi: 3.88 TB
+   2.11 TB      seeds
    1.77 TB      genomes
- 614.45 GB      seeds
   39.22 MB      genomes.map.bin
  312.53 KB      masks.bin
-  332.00 B      info.toml
+  331.00 B      info.toml
 </code></pre>
 
     </div>

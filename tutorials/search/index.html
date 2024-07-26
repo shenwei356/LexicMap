@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2663",
+      "wordCount" : "2607",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1507,16 +1507,9 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 
 <blockquote class="gdoc-hint note">
   <div class="gdoc-hint__title flex align-center"><i class="fa note" title="Note"></i></div>
-  <div class="gdoc-hint__text"><p><strong>Query length</strong><br>
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 500 bp by default.
-However, some short queries can also be aligned.</p>
-<p>For shorter queries like 100-200 bp, just build an index with a smaller <code>-D/--seed-max-desert</code>, e.g.,</p>
-<pre><code>--seed-max-desert 200 --seed-in-desert-dist 50
-</code></pre>
-<p>which generates denser seeds and provides more sensitive results for distant targets.
-The costs are longer (2-3X) indexing time, higher (1.5-2X) indexing memory and bigger (~1.5X) index size.
-While the alignment speed is almost not affected.</p>
-</div>
+  <div class="gdoc-hint__text"><strong>Query length</strong><br>
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+However, short queries can also be aligned.</div>
 </blockquote>
 
 <p>Input should be (gzipped) FASTA or FASTQ records from files or STDIN.</p>
@@ -1672,7 +1665,7 @@ The nearest k-mer smaller than the range start k-mer (<code>CATGAA</code>) is fo
 </tr>
 <tr>
 <td style="text-align:left">-J/&ndash;max-query-conc</td>
-<td style="text-align:left">Default 8, 0 for all</td>
+<td style="text-align:left">Default 12, 0 for all</td>
 <td style="text-align:left">Maximum number of concurrent queries</td>
 <td style="text-align:left">Bigger values do not improve the batch searching speed and consume much memory</td>
 </tr>

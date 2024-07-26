@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1218",
+      "wordCount" : "1233",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1488,13 +1488,14 @@
 </span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  --- Seeds data (k-mer-value data) ---
-</span></span><span class="line"><span class="cl"> *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 450).
-</span></span><span class="line"><span class="cl">                            The default value of 450 guarantees queries &gt;450 bp would match at least one seed.
+</span></span><span class="line"><span class="cl"> *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
+</span></span><span class="line"><span class="cl">                            The default value of 200 guarantees queries &gt;=200 bp would match at least one seed.
 </span></span><span class="line"><span class="cl">                            ► Large regions with no seeds are called sketching deserts. Deserts with seed distance
 </span></span><span class="line"><span class="cl">                            larger than this value will be filled by choosing k-mers roughly every
-</span></span><span class="line"><span class="cl">                            --seed-in-desert-dist (150 by default) bases.
-</span></span><span class="line"><span class="cl">                            ■ Smaller values improve the search sensitivity, slow down the indexing speed, increase
-</span></span><span class="line"><span class="cl">                            the indexing memory occupation and increase the index size.
+</span></span><span class="line"><span class="cl">                            --seed-in-desert-dist (50 by default) bases.
+</span></span><span class="line"><span class="cl">                            ■ Big values decrease the search sensitivity for distant targets, speed up the indexing
+</span></span><span class="line"><span class="cl">                            speed, decrease the indexing memory occupation and decrease the index size. While the
+</span></span><span class="line"><span class="cl">                            alignment speed is almost not affected.
 </span></span><span class="line"><span class="cl">  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
 </span></span><span class="line"><span class="cl">                            ► Bigger values accelerate the search speed at the cost of a high disk reading load.
 </span></span><span class="line"><span class="cl">                            The maximum number should not exceed the maximum number of open files set by the
@@ -1546,10 +1547,10 @@
 </span></span><span class="line"><span class="cl">  -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
 </span></span><span class="line"><span class="cl">                                  from all batches, the value should be in range of [1, -c/--chunks]
 </span></span><span class="line"><span class="cl">                                  (default 8)
-</span></span><span class="line"><span class="cl">  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 150)
-</span></span><span class="line"><span class="cl">  -D, --seed-max-desert int       ► Maximum length of sketching deserts. Deserts with seed distance
-</span></span><span class="line"><span class="cl">                                  larger than this value will be filled by choosing k-mers roughly every
-</span></span><span class="line"><span class="cl">                                  --seed-in-desert-dist bases. (default 450)
+</span></span><span class="line"><span class="cl">  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
+</span></span><span class="line"><span class="cl">  -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
+</span></span><span class="line"><span class="cl">                                  Deserts with seed distance larger than this value will be filled by
+</span></span><span class="line"><span class="cl">                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 200)
 </span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
 </span></span><span class="line"><span class="cl">                                  this value is used to remove low-complexity masks and choose k-mers to
 </span></span><span class="line"><span class="cl">                                  fill sketching deserts. (default 15)
