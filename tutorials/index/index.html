@@ -65,7 +65,7 @@ lexicmap index -X files." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
-      "wordCount" : "2631",
+      "wordCount" : "2735",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1585,18 +1585,19 @@ It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it t
 </li>
 <li><strong>RAM</strong>
 <ul>
-<li>More RAM (&gt; 50 GB) is preferred. The memory usage in index building is mainly related to:
+<li>More RAM (&gt; 100 GB) is preferred. The memory usage in index building is mainly related to:
 <ul>
 <li>The number of masks (<code>-m/--masks</code>, default 40,000).</li>
 <li>The number of genomes.</li>
 <li>The divergence between genome sequences. Diverse genomes consume more memory.</li>
-<li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). This is the main parameter to adjust memory usage.</li>
-<li><strong>The maximum seed distance</strong> or <strong>the maximum sketching desert size</strong> (<code>-D/--seed-max-desert</code>, default 450).
-Smaller values improve the search sensitivity, slow down the indexing speed, increase the indexing memory occupation and increase the index size.
-While the alignment speed is almost not affected.</li>
+<li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). <strong>This is the main parameter to adjust memory usage</strong>.</li>
+<li><strong>The maximum seed distance</strong> or <strong>the maximum sketching desert size</strong> (<code>-D/--seed-max-desert</code>, default 200),
+and the distance of k-mers to fill deserts (<code>-d/--seed-in-desert-dist</code>, default 50).
+Bigger <code>-D/--seed-max-desert</code> values decrease the search sensitivity for distant targets, speed up the indexing speed,
+decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.</li>
 </ul>
 </li>
-<li><strong>If the RAM is not sufficient (&lt; 50 GB)</strong>. Please:
+<li><strong>If the RAM is not sufficient</strong>. Please:
 <ol>
 <li><strong>Use a smaller genome batch size</strong>. It decreases indexing memory occupation and has little affection on searching performance.</li>
 <li>Use a smaller number of masks, e.g., 20,000 performs well for small genomes (&lt;=5 Mb). And if the queries are long (&gt;= 2kb), there&rsquo;s little affection for the alignment results.</li>
@@ -1606,10 +1607,14 @@ While the alignment speed is almost not affected.</li>
 </li>
 <li><strong>Disk</strong>
 <ul>
-<li>More (&gt;2 TB) is better. The index size is related to the input genomes, the number of masks, and the maximum seed distance. See <a
+<li>More (&gt;2 TB) is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See <a
   class="gdoc-markdown__link"
   href="#index-size"
->some examples</a>.</li>
+>some examples</a>.
+<ul>
+<li><strong>Note that the index size is not linear with the number of genomes, it&rsquo;s sublinear</strong>. Because the seed data are compressed with VARINT-GB algorithm, more genome bring higher compression rates.</li>
+</ul>
+</li>
 <li>SSD disks are preferred, while HDD disks are also fast enough.</li>
 </ul>
 </li>
@@ -2024,6 +2029,8 @@ demo.lmi/                    # the index directory
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p>LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance.</p>
+<p><strong>Note that the index size is not linear with the number of genomes, it&rsquo;s sublinear</strong>. Because the seed data are compressed with VARINT-GB algorithm, more genome bring higher compression rates.</p>
 
 
 
