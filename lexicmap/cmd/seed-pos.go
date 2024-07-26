@@ -323,9 +323,9 @@ Figures:
 
 			seqRegions := poolSkipRegions.Get().(*[][2]int)
 			var interval int
-			var _n, _n2 int // len of concatenated seqs
+			var _n int // len of concatenated seqs
 			var slen int
-			var ri, rs int
+			var ri, rs, rs_next int
 			var sseqid []byte
 
 			var seqRegion [2]int
@@ -369,6 +369,7 @@ Figures:
 				}
 				_n = 0
 				for _, slen = range ref2locs.Genome.SeqSizes {
+					// fmt.Printf("region: %d-%d\n", _n, _n+slen-1)
 					*seqRegions = append(*seqRegions, [2]int{_n, _n + slen - 1})
 					_n += slen + interval
 				}
@@ -381,32 +382,41 @@ Figures:
 				ri = 0                    // index of seq region
 				rs = (*seqRegions)[ri][0] // start of a seq region
 				sseqid = *ref2locs.Genome.SeqIDs[ri]
-				_n2 = ref2locs.Genome.SeqSizes[ri] + interval
+				rs_next = ref2locs.Genome.SeqSizes[ri] + interval
 				for _, pos2str = range *ref2locs.Locs {
 					pos = pos2str >> 2
 
+					// fmt.Printf("pos: %d, ri:%d, rs:%d, rs_next:%d\n", pos, ri, rs, rs_next)
+					// fmt.Printf("  pos2str&1>0:%v, int(pos) >= rs_next:%v\n", pos2str&1 > 0, int(pos) >= rs_next)
+
 					// this is the first pos after an interval region, and it's a new seq
-					if pos2str&1 > 0 && int(pos) >= _n2 {
+					if pos2str&1 > 0 && int(pos) >= rs_next {
 						ri++
+						// fmt.Printf("    ri++%d\n", ri)
 
 						// some short contigs might do not have seeds
-						for int(pos) > _n2+ref2locs.Genome.SeqSizes[ri] {
-							_n2 += ref2locs.Genome.SeqSizes[ri] + interval
+						for int(pos) > rs_next+ref2locs.Genome.SeqSizes[ri] {
+							rs_next += ref2locs.Genome.SeqSizes[ri] + interval
 							ri++
+
+							// fmt.Printf("      ri++%d, rs_next:%d\n", ri, rs_next)
 
 							if ri >= nSeqs {
 								ri = nSeqs - 1
 								break
 							}
 						}
+						// fmt.Printf("    ri:%d, nSeqs:%d\n", ri, nSeqs)
 
 						rs = (*seqRegions)[ri][0]
 						sseqid = *ref2locs.Genome.SeqIDs[ri]
-						_n2 += ref2locs.Genome.SeqSizes[ri] + interval
+						rs_next += ref2locs.Genome.SeqSizes[ri] + interval
 
 						pre = uint32(rs)
 					}
 					dist = int(pos - pre)
+
+					// fmt.Printf("  dist:%d, dist < minDist:%v\n", dist, dist < minDist)
 
 					if dist < minDist {
 						pre = pos
@@ -433,45 +443,6 @@ Figures:
 					fmt.Fprintln(outfh)
 
 					pre = pos
-				}
-
-				// sliding window
-				v2 = v2[:0]
-				locs = ref2locs.Locs
-				nPos = len(*locs)
-				ps = 0
-				for _, seqRegion = range *seqRegions { // each sequence
-					end = uint32(seqRegion[1]) - window
-					// fmt.Printf("seq: %d-%d\n", seqRegion[0], end)
-
-					nSeeds = 0
-					first = true
-					for ws = uint32(seqRegion[0]); ws <= end; ws += step { // each window
-						we = ws + window - k32p1
-						// fmt.Printf("  window: %d-%d\n", ws, we)
-
-						for pi = ps; pi < nPos; pi++ {
-							pos = (*locs)[pi] >> 2
-							// fmt.Printf("    pi:%d, pos:%d\n", pi, pos)
-
-							if first && pos >= ws+step {
-								first = false
-								ps = pi // start index of next window
-								// fmt.Printf("      next ps:%d\n", ps)
-							}
-
-							if pos < we {
-								nSeeds++
-								// fmt.Printf("      in range. nSeeds:%d\n", nSeeds)
-							} else { // out of current window
-								v2 = append(v2, float64(nSeeds))
-								// fmt.Printf("      out range. nSeeds:%d\n", nSeeds)
-								nSeeds = 0
-								first = true
-								break
-							}
-						}
-					}
 				}
 
 				if !outputPlotDir || len(v) == 0 { // no distance > -D
@@ -534,6 +505,49 @@ Figures:
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// -------------------------------------------------------------
+
+				// sliding window
+				v2 = v2[:0]
+				locs = ref2locs.Locs
+				nPos = len(*locs)
+				ps = 0
+				for _, seqRegion = range *seqRegions { // each sequence
+					// fmt.Printf("seq region: %d\n", seqRegion)
+					if uint32(seqRegion[1]-seqRegion[0]+1) < window { // the sequence is shorter than the window
+						continue
+					}
+					end = uint32(seqRegion[1]+1) - window
+					// fmt.Printf("start:%d, end:%d\n", seqRegion[0], end)
+
+					nSeeds = 0
+					first = true
+					for ws = uint32(seqRegion[0]); ws <= end; ws += step { // each window
+						we = ws + window - k32p1
+						// fmt.Printf("  window: %d-%d\n", ws, we)
+
+						for pi = ps; pi < nPos; pi++ {
+							pos = (*locs)[pi] >> 2
+							// fmt.Printf("    pi:%d, pos:%d\n", pi, pos)
+
+							if first && pos >= ws+step {
+								first = false
+								ps = pi // start index of next window
+								// fmt.Printf("      next ps:%d\n", ps)
+							}
+
+							if pos >= ws && pos <= we {
+								nSeeds++
+								// fmt.Printf("      in range. nSeeds:%d\n", nSeeds)
+							} else if nSeeds > 0 { // out of current window
+								v2 = append(v2, float64(nSeeds))
+								// fmt.Printf("      out range. nSeeds:%d\n", nSeeds)
+								nSeeds = 0
+								first = true
+								break
+							}
+						}
+					}
+				}
 
 				p = plot.New()
 
