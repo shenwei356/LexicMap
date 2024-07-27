@@ -62,16 +62,16 @@ Step 2: searching
 
 <--->
 
-### Efficient search
+### Accurate and efficient alignment
 
 Using LexicMap to search in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
 
-|Query                   |Genome hits|Time    |RAM    |
-|:-----------------------|----------:|-------:|------:|
-|One 1.3-kb  gene        |16,832     |6.1 s   |1.5 GB |
-|One 52.8-kb plasmid     |508,230    |6 m 50 s|17.6 GB|
-|One 16S rRNA gene       |1,923,014  |7 m 32 s|12.3 GB|
-|1003 AMR genes          |18,181,903 |1 h 28 m|20.0 GB|
+|Query               |Genome hits|Time |RAM    |
+|:-------------------|----------:|----:|------:|
+|A 1.3-kb marker gene|36,633     |21s  |3.4 GB |
+|A 1.5-kb 16S rRNA   |1,928,372  |6m40s|16.7 GB|
+|A 52.8-kb plasmid   |551,264    |8m54s|20.1 GB|
+|1003 AMR genes      |27,577,060 |5h18m|41.3 GB|
 
 
 ***Blastn** is unable to run with the same dataset on common servers as it requires >2000 GB RAM*.

@@ -60,7 +60,8 @@ Important parameters:
                             ► If the number of input files exceeds this number, input files are split into multiple
                             batches and indexes are built for all batches. In the end, seed files are merged, while
                             genome data files are kept unchanged and collected.
-                            ■ Bigger values increase indexing memory occupation.
+                            ■ Bigger values increase indexing memory occupation and increase batch searching speed,
+                            while single query searching speed is not affected.
 
   --- LexicHash mask generation ---
   0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly

@@ -158,9 +158,9 @@ alignment speed is almost not affected.
 
 {{< tab "Genome batches" >}}
 
-|Flag                 |Value                     |Function                               |Comment                                                                                                                                                                                                                                                                                |
-|:--------------------|:-------------------------|:--------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|**`-b/--batch-size`**|Max: 131072, default: 5000|Maximum number of genomes in each batch|If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation  |
+|Flag                 |Value                     |Function                               |Comment                                                                                                                                                                                                                                                                                                                                                                        |
+|:--------------------|:-------------------------|:--------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-b/--batch-size`**|Max: 131072, default: 5000|Maximum number of genomes in each batch|If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation and increase batch searching speed, while single query searching speed is not affected.  |
 
 {{< /tab>}}
 
@@ -371,14 +371,13 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "Genbank+RefSeq" >}}
 
-    (TODO: to be updated)
     # 2,340,672 genomes
-    genbank_refseq.lmi: 2.97 TB
+    genbank_refseq.lmi: 4.94 TB
+       2.77 TB      seeds
        2.17 TB      genomes
-     824.38 GB      seeds
       55.81 MB      genomes.map.bin
      312.53 KB      masks.bin
-      332.00 B      info.toml
+      331.00 B      info.toml
 
 {{< /tab>}}
 
