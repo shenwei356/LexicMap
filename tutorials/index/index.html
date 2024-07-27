@@ -65,7 +65,7 @@ lexicmap index -X files." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
-      "wordCount" : "2735",
+      "wordCount" : "2744",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1746,7 +1746,7 @@ alignment speed is almost not affected.</p>
 <td style="text-align:left"><strong><code>-b/--batch-size</code></strong></td>
 <td style="text-align:left">Max: 131072, default: 5000</td>
 <td style="text-align:left">Maximum number of genomes in each batch</td>
-<td style="text-align:left">If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation</td>
+<td style="text-align:left">If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation and increase batch searching speed, while single query searching speed is not affected.</td>
 </tr>
 </tbody>
 </table> </div>
@@ -2109,14 +2109,13 @@ gtdb_complete.lmi: 905.95 GB
       Genbank&#43;RefSeq
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code>(TODO: to be updated)
-# 2,340,672 genomes
-genbank_refseq.lmi: 2.97 TB
+      <pre><code># 2,340,672 genomes
+genbank_refseq.lmi: 4.94 TB
+   2.77 TB      seeds
    2.17 TB      genomes
- 824.38 GB      seeds
   55.81 MB      genomes.map.bin
  312.53 KB      masks.bin
-  332.00 B      info.toml
+  331.00 B      info.toml
 </code></pre>
 
     </div>

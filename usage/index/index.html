@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1233",
+      "wordCount" : "1246",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1473,7 +1473,8 @@
 </span></span><span class="line"><span class="cl">                            ► If the number of input files exceeds this number, input files are split into multiple
 </span></span><span class="line"><span class="cl">                            batches and indexes are built for all batches. In the end, seed files are merged, while
 </span></span><span class="line"><span class="cl">                            genome data files are kept unchanged and collected.
-</span></span><span class="line"><span class="cl">                            ■ Bigger values increase indexing memory occupation.
+</span></span><span class="line"><span class="cl">                            ■ Bigger values increase indexing memory occupation and increase batch searching speed,
+</span></span><span class="line"><span class="cl">                            while single query searching speed is not affected.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  --- LexicHash mask generation ---
 </span></span><span class="line"><span class="cl">  0. -M/--mask-file,        ► File with custom masks, which could be exported from an existing index or newly

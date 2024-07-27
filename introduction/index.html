@@ -62,7 +62,7 @@ Table of contents Table of contents Features Introduction Quick start Performanc
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
       "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nTable of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn. The alignment is fast and memory-efficient. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).",
-      "wordCount" : "1615",
+      "wordCount" : "1604",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1581,28 +1581,28 @@ Running at this scale has previously only been achieved by <a
 </thead>
 <tbody>
 <tr>
-<td style="text-align:left">One 1.3-kb marker gene</td>
-<td style="text-align:right">16,832</td>
-<td style="text-align:right">6.1 s</td>
-<td style="text-align:right">1.5 GB</td>
+<td style="text-align:left">A 1.3-kb marker gene</td>
+<td style="text-align:right">36,633</td>
+<td style="text-align:right">21s</td>
+<td style="text-align:right">3.4 GB</td>
 </tr>
 <tr>
-<td style="text-align:left">One 52.8-kb plasmid</td>
-<td style="text-align:right">508,230</td>
-<td style="text-align:right">6 m 50 s</td>
-<td style="text-align:right">17.6 GB</td>
+<td style="text-align:left">A 1.5-kb 16S rRNA</td>
+<td style="text-align:right">1,928,372</td>
+<td style="text-align:right">6m40s</td>
+<td style="text-align:right">16.7 GB</td>
 </tr>
 <tr>
-<td style="text-align:left">One 1.5-kb 16S rRNA gene</td>
-<td style="text-align:right">1,923,014</td>
-<td style="text-align:right">7 m 32 s</td>
-<td style="text-align:right">12.3 GB</td>
+<td style="text-align:left">A 52.8-kb plasmid</td>
+<td style="text-align:right">551,264</td>
+<td style="text-align:right">8m54s</td>
+<td style="text-align:right">20.1 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">1003 AMR genes</td>
-<td style="text-align:right">18,181,903</td>
-<td style="text-align:right">1 h 28 m</td>
-<td style="text-align:right">20.0 GB</td>
+<td style="text-align:right">27,577,060</td>
+<td style="text-align:right">5h18m</td>
+<td style="text-align:right">41.3 GB</td>
 </tr>
 </tbody>
 </table> </div>
@@ -1763,9 +1763,9 @@ Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
 <td style="text-align:right">402,538</td>
 <td style="text-align:right">578 GB</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">523 GB</td>
-<td style="text-align:right">6 h 34 m</td>
-<td style="text-align:right">30.9 GB</td>
+<td style="text-align:right">906 GB</td>
+<td style="text-align:right">8 h 21 m</td>
+<td style="text-align:right">71.1 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1777,31 +1777,13 @@ Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
 <td style="text-align:right">718 MB</td>
 </tr>
 <tr>
-<td style="text-align:left">Genbank+RefSeq</td>
-<td style="text-align:right">2,340,672</td>
-<td style="text-align:right">3.5 TB</td>
-<td style="text-align:left">LexicMap</td>
-<td style="text-align:right">2.97 TB</td>
-<td style="text-align:right">27 h 26 m</td>
-<td style="text-align:right">91.2 GB</td>
-</tr>
-<tr>
-<td style="text-align:left"></td>
-<td style="text-align:right"></td>
-<td style="text-align:right"></td>
-<td style="text-align:left">Blastn</td>
-<td style="text-align:right">2.15 TB</td>
-<td style="text-align:right">14 h 04 m</td>
-<td style="text-align:right">4.3 GB</td>
-</tr>
-<tr>
 <td style="text-align:left">AllTheBacteria HQ</td>
 <td style="text-align:right">1,858,610</td>
 <td style="text-align:right">3.1 TB</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">2.37 TB</td>
-<td style="text-align:right">23 h 34 m</td>
-<td style="text-align:right">41.0 GB</td>
+<td style="text-align:right">3.88 TB</td>
+<td style="text-align:right">48 h 08 m</td>
+<td style="text-align:right">82.7 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1821,13 +1803,31 @@ Sbjct  4867278  TGCGGCTGTGGACCCCCATGGTCAGGCCGAAACCGGTGGCGTT  4867320
 <td style="text-align:right">/</td>
 <td style="text-align:right">/</td>
 </tr>
+<tr>
+<td style="text-align:left">Genbank+RefSeq</td>
+<td style="text-align:right">2,340,672</td>
+<td style="text-align:right">3.5 TB</td>
+<td style="text-align:left">LexicMap</td>
+<td style="text-align:right">4.94 TB</td>
+<td style="text-align:right">52 h 03 m</td>
+<td style="text-align:right">188.6 GB</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:right"></td>
+<td style="text-align:right"></td>
+<td style="text-align:left">Blastn</td>
+<td style="text-align:right">2.15 TB</td>
+<td style="text-align:right">14 h 04 m</td>
+<td style="text-align:right">4.3 GB</td>
+</tr>
 </tbody>
 </table> </div>
 <p>Notes:</p>
 <ul>
 <li>All files are stored on a server with HDD disks. No files are cached in memory.</li>
 <li>Tests are performed in a single cluster node with 48 CPU cores (Intel Xeon Gold 6336Y CPU @ 2.40 GHz).</li>
-<li>LexicMap index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 10000</code> for GTDB datasets, <code>-b 50000</code> for others.</li>
+<li>LexicMap index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 5000</code> for GTDB datasets, <code>-b 25000</code> for others.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="searching"
@@ -1858,10 +1858,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">3,669</td>
-<td style="text-align:right">3,662</td>
-<td style="text-align:right">1.9 s</td>
-<td style="text-align:right">0.7 GB</td>
+<td style="text-align:right">5,249</td>
+<td style="text-align:right">5,234</td>
+<td style="text-align:right">2.2 s</td>
+<td style="text-align:right">1.0 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1876,10 +1876,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">297,765</td>
-<td style="text-align:right">276,244</td>
-<td style="text-align:right">113 s</td>
-<td style="text-align:right">3.3 GB</td>
+<td style="text-align:right">302,096</td>
+<td style="text-align:right">278,023</td>
+<td style="text-align:right">73 s</td>
+<td style="text-align:right">4.1 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1894,10 +1894,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">60,499</td>
+<td style="text-align:right">63,820</td>
 <td style="text-align:right">1,188</td>
-<td style="text-align:right">63 s</td>
-<td style="text-align:right">4.1 GB</td>
+<td style="text-align:right">58 s</td>
+<td style="text-align:right">4.7 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1912,10 +1912,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">1033 AMR genes</td>
 <td style="text-align:right">1 kb (median)</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">2,803,798</td>
-<td style="text-align:right">1,886,841</td>
-<td style="text-align:right">1,086 s</td>
-<td style="text-align:right">6.8 GB</td>
+<td style="text-align:right">4,132,990</td>
+<td style="text-align:right">2,255,347</td>
+<td style="text-align:right">1,165 s</td>
+<td style="text-align:right">20.2 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1946,10 +1946,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">11,227</td>
-<td style="text-align:right">11,210</td>
-<td style="text-align:right">7.3 s</td>
-<td style="text-align:right">1.3 GB</td>
+<td style="text-align:right">33,795</td>
+<td style="text-align:right">33,786</td>
+<td style="text-align:right">19 s</td>
+<td style="text-align:right">2.5 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -1973,10 +1973,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">1,855,197</td>
-<td style="text-align:right">1,738,085</td>
-<td style="text-align:right">9 m 57 s</td>
-<td style="text-align:right">13.4 GB</td>
+<td style="text-align:right">1,857,641</td>
+<td style="text-align:right">1,739,767</td>
+<td style="text-align:right">7 m 50 s</td>
+<td style="text-align:right">18.2 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -2000,10 +2000,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">438,640</td>
-<td style="text-align:right">11,103</td>
-<td style="text-align:right">7 m 23 s</td>
-<td style="text-align:right">14.3 GB</td>
+<td style="text-align:right">480,008</td>
+<td style="text-align:right">3,620</td>
+<td style="text-align:right">8 m 16 s</td>
+<td style="text-align:right">15.7 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -2027,10 +2027,10 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">1033 AMR genes</td>
 <td style="text-align:right">1 kb (median)</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">15,118,773</td>
-<td style="text-align:right">10,630,977</td>
-<td style="text-align:right">75 m 27 s</td>
-<td style="text-align:right">16.9 GB</td>
+<td style="text-align:right">22,995,817</td>
+<td style="text-align:right">12,347,425</td>
+<td style="text-align:right">185 m 25 s</td>
+<td style="text-align:right">45.1 GB</td>
 </tr>
 <tr>
 <td style="text-align:left"></td>
@@ -2070,37 +2070,37 @@ Phylign only has the index for AllTheBacteria HQ dataset.</p>
 <td style="text-align:left">a marker gene</td>
 <td style="text-align:right">1,299 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">16,832</td>
-<td style="text-align:right">16,794</td>
-<td style="text-align:right">6.1 s</td>
-<td style="text-align:right">1.5 GB</td>
+<td style="text-align:right">36,633</td>
+<td style="text-align:right">36,578</td>
+<td style="text-align:right">21 s</td>
+<td style="text-align:right">3.4 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">a 16S rRNA gene</td>
 <td style="text-align:right">1,542 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">1,923,014</td>
-<td style="text-align:right">1,377,586</td>
-<td style="text-align:right">7 m 32 s</td>
-<td style="text-align:right">12.3 GB</td>
+<td style="text-align:right">1,928,372</td>
+<td style="text-align:right">1,381,723</td>
+<td style="text-align:right">6 m 40 s</td>
+<td style="text-align:right">16.7 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">a plasmid</td>
 <td style="text-align:right">52,830 bp</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">508,230</td>
-<td style="text-align:right">6,561</td>
-<td style="text-align:right">6 m 50 s</td>
-<td style="text-align:right">17.6 GB</td>
+<td style="text-align:right">551,264</td>
+<td style="text-align:right">6,559</td>
+<td style="text-align:right">8 m 54 s</td>
+<td style="text-align:right">20.1 GB</td>
 </tr>
 <tr>
 <td style="text-align:left">1033 AMR genes</td>
 <td style="text-align:right">1 kb (median)</td>
 <td style="text-align:left">LexicMap</td>
-<td style="text-align:right">18,181,903</td>
-<td style="text-align:right">12,675,869</td>
-<td style="text-align:right">88 m 10 s</td>
-<td style="text-align:right">20.0 GB</td>
+<td style="text-align:right">27,577,060</td>
+<td style="text-align:right">14,798,129</td>
+<td style="text-align:right">318 m 28 s</td>
+<td style="text-align:right">41.3 GB</td>
 </tr>
 </tbody>
 </table> </div>
