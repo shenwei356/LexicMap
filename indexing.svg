@@ -4,7 +4,7 @@
    height="237"
    overflow="hidden"
    version="1.1"
-   id="svg59"
+   id="svg56"
    sodipodi:docname="indexing.svg"
    inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -12,9 +12,9 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs59" />
+     id="defs56" />
   <sodipodi:namedview
-     id="namedview59"
+     id="namedview56"
      pagecolor="#ffffff"
      bordercolor="#000000"
      borderopacity="0.25"
@@ -22,17 +22,17 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="1.0617188"
-     inkscape:cx="477.99853"
-     inkscape:cy="308.4621"
-     inkscape:window-width="2560"
-     inkscape:window-height="1366"
+     inkscape:zoom="0.684375"
+     inkscape:cx="477.80822"
+     inkscape:cy="307.57991"
+     inkscape:window-width="1600"
+     inkscape:window-height="928"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g59" />
+     inkscape:current-layer="g56" />
   <g
-     id="g59"
+     id="g56"
      transform="translate(-162,-52)">
     <rect
        x="0"
@@ -198,25 +198,19 @@
        font-weight="400"
        font-size="14px"
        transform="translate(381.128,109)"
-       id="text18">Build an</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(435.794,109)"
-       id="text19">index</text>
+       id="text18">Build an index</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="15px"
        transform="translate(207.279,168)"
-       id="text20">Genome</text>
+       id="text19">Genome</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="15px"
        transform="translate(209.699,181)"
-       id="text21">batches</text>
+       id="text20">batches</text>
     <path
        d="m 279.5,210.5 c -2.761,0 -5,-0.373 -5,-0.833 v -38.334 c 0,-0.46 -2.239,-0.833 -5,-0.833 2.761,0 5,-0.373 5,-0.833 v -38.334 c 0,-0.46 2.239,-0.833 5,-0.833"
        stroke="#000000"
@@ -224,13 +218,13 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path21" />
+       id="path20" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(563.732,141)"
-       id="text22">Merge indexes</text>
+       id="text21">Merge indexes</text>
     <path
        d="m 738.5,274.5 c -2.761,0 -5,-0.373 -5,-0.833 V 172.333 c 0,-0.46 -2.239,-0.833 -5,-0.833 2.761,0 5,-0.373 5,-0.833 V 69.3334 c 0,-0.4603 2.239,-0.8333 5,-0.8333"
        stroke="#000000"
@@ -238,7 +232,7 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path22" />
+       id="path21" />
     <path
        d="m 823.5,70.5001 h 58 v 19.2466 c -29,0 -29,7.3334 -58,3.1667 z"
        stroke="#000000"
@@ -246,13 +240,19 @@
        stroke-miterlimit="8"
        fill="#94cc99"
        fill-rule="evenodd"
-       id="path23" />
+       id="path22" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(828.04,83)"
-       id="text23">Index file</text>
+       transform="translate(831.374,83)"
+       id="text22">ToC</text>
+    <text
+       font-family="Arial, Arial_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="12px"
+       transform="translate(857.374,83)"
+       id="text23">file</text>
     <path
        d="M 0,0 14.9508,0.225617"
        stroke="#000000"
@@ -261,7 +261,7 @@
        fill="none"
        fill-rule="evenodd"
        transform="matrix(1,0,0,-1,808.5,82.7257)"
-       id="path24" />
+       id="path23" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
@@ -366,35 +366,22 @@
        id="path35" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
-       font-style="italic"
        font-weight="400"
        font-size="12px"
-       transform="translate(759.337,70)"
-       id="text36">k</text>
+       transform="translate(764.67,70)"
+       id="text36">Seed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(765.337,70)"
-       id="text37">-</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="12px"
-       transform="translate(769.337,70)"
-       id="text38">mer&amp;</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="12px"
-       transform="translate(761.337,82)"
-       id="text39">values</text>
+       transform="translate(767.004,82)"
+       id="text37">data</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(757.67,94)"
-       id="text40">chunk 1</text>
+       id="text38">chunk 1</text>
     <path
        d="m 823.5,140.5 h 58 v 19.247 c -29,0 -29,7.333 -58,3.166 z"
        stroke="#000000"
@@ -402,13 +389,19 @@
        stroke-miterlimit="8"
        fill="#94cc99"
        fill-rule="evenodd"
-       id="path40" />
+       id="path38" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(828.04,153)"
-       id="text41">Index file</text>
+       transform="translate(831.374,153)"
+       id="text39">ToC</text>
+    <text
+       font-family="Arial, Arial_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="12px"
+       transform="translate(857.374,153)"
+       id="text40">file</text>
     <path
        d="M 0,0 14.6677,1.04987e-4"
        stroke="#000000"
@@ -417,7 +410,7 @@
        fill="none"
        fill-rule="evenodd"
        transform="matrix(1,0,0,-1,808.5,152.5)"
-       id="path41" />
+       id="path40" />
     <path
        d="m 750.5,127.5 h 58 v 40.097 c -29,0 -29,15.278 -58,6.597 z"
        stroke="#000000"
@@ -425,56 +418,37 @@
        stroke-miterlimit="8"
        fill="#ffc000"
        fill-rule="evenodd"
-       id="path42" />
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-style="italic"
-       font-weight="400"
-       font-size="12px"
-       transform="translate(759.62,140)"
-       id="text42">k</text>
+       id="path41" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(765.62,140)"
-       id="text43">-</text>
+       transform="translate(764.953,140)"
+       id="text41">Seed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
-       transform="translate(769.62,140)"
-       id="text44">mer&amp;</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="12px"
-       transform="translate(761.62,152)"
-       id="text45">values</text>
+       transform="translate(767.287,152)"
+       id="text42">data</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(758.287,164)"
-       id="text46">chunk</text>
+       id="text43">chunk</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(793.62,164)"
-       id="text47">c</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="24px"
-       transform="translate(166.48,86)"
-       id="text48">Indexing</text>
+       id="text44">c</text>
     <path
        d="m 748.5,281.947 c 61.987,5.239 61.987,-5.239 123.967,-5.239 V 249.476 H 748.5 Z m 10.213,-32.471 v -3.531 h 123.12 v 27.404 c -4.68,0 -9.366,0.19 -9.366,0.19 v -24.063 z m 9.6,-3.531 V 242.5 H 892.5 v 27.318 c -5.333,0 -10.667,0.143 -10.667,0.143 v -24.016 z"
        fill="#d9d9d9"
        fill-rule="evenodd"
-       id="path48" />
+       id="path44" />
     <path
        d="m 748.5,249.476 h 123.967 v 27.232 c -61.98,0 -61.98,10.478 -123.967,5.239 z m 10.213,0 v -3.531 h 123.12 v 27.404 c -4.68,0 -9.366,0.19 -9.366,0.19 M 768.313,245.945 V 242.5 H 892.5 v 27.318 c -5.333,0 -10.667,0.143 -10.667,0.143"
        stroke="#000000"
@@ -482,44 +456,44 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path49" />
+       id="path45" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(781.751,262)"
-       id="text49">Bit</text>
+       id="text45">Bit</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(795.751,262)"
-       id="text50">-</text>
+       id="text46">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(799.751,262)"
-       id="text51">packed</text>
+       id="text47">packed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(762.751,275)"
-       id="text52">Genomes batch</text>
+       id="text48">Genomes batch</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(850.751,275)"
-       id="text53">b</text>
+       id="text49">b</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="15px"
        transform="translate(807.02,241)"
-       id="text54">···</text>
+       id="text50">···</text>
     <path
        d="m 902.5,189.5 c 2.762,0 5,0.373 5,0.833 v 42.334 c 0,0.46 2.239,0.833 5,0.833 -2.761,0 -5,0.373 -5,0.833 v 42.334 c 0,0.46 -2.239,0.833 -5,0.833"
        stroke="#000000"
@@ -527,36 +501,42 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path54" />
+       id="path50" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(914.95,229)"
-       id="text55">Bit</text>
+       id="text51">Bit</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(931.283,229)"
-       id="text56">-</text>
+       id="text52">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(935.95,229)"
-       id="text57">packed</text>
+       id="text53">packed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(922.703,242)"
-       id="text58">genome</text>
+       id="text54">genome</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(923.536,256)"
-       id="text59">batches</text>
+       id="text55">batches</text>
+    <text
+       font-family="Arial, Arial_MSFontService, sans-serif"
+       font-weight="400"
+       font-size="24px"
+       transform="translate(166.48,79)"
+       id="text56">Indexing</text>
   </g>
 </svg>
