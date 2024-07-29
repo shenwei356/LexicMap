@@ -217,7 +217,7 @@ AllTheBacteria HQ (1,858,610 genomes):
 |a marker gene  |1,299 bp     |LexicMap       |33,795     |33,786              |19 s      |2.5 GB  |
 |               |             |Phylign_local  |7,936      |                    |30 m 48 s |77.6 GB |
 |               |             |Phylign_cluster|7,936      |                    |28 m 33 s |        |
-|a 16S rRNA gene|1,542 bp     |LexicMap       |1,857,641  |1,739,767           |7 m 50 s  |18.2 GB |
+|a 16S rRNA gene|1,542 bp     |LexicMap       |1,857,641  |1,739,767           |7 m 50 s  |18.2 GB |
 |               |             |Phylign_local  |1,017,765  |                    |130 m 33 s|77.0 GB |
 |               |             |Phylign_cluster|1,017,765  |                    |86 m 41 s |        |
 |a plasmid      |52,830 bp    |LexicMap       |480,008    |3,620               |8 m 16 s  |15.7 GB |
