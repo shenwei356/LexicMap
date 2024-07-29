@@ -36,9 +36,19 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         sudo cp lexicmap /usr/local/bin/
 
-   Or copy to anywhere in the environment variable `PATH`:
+4. If you don't have the root privilege, copy it to any directory in the environment variable `PATH`:
 
         mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
+
+   And optionally add the directory into the environment variable `PATH` if it's not in.
+
+        # bash
+        echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
+        source $HOME/.bash # apply the configuration
+
+        # zsh
+        echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.zshrc
+        source $HOME/.zshrc # apply the configuration
 
 
 {{< /tab >}}
@@ -51,6 +61,20 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
     |:------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
     |macOS  |**64-bit**|[**lexicmap_darwin_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_amd64.tar.gz)               |
     |macOS  |arm64     |[**lexicmap_darwin_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_arm64.tar.gz)               |
+
+2. Copy it to any directory in the environment variable `PATH`:
+
+        mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
+
+   And optionally add the directory into the environment variable `PATH` if it's not in.
+
+        # bash
+        echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
+        source $HOME/.bash # apply the configuration
+
+        # zsh
+        echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.zshrc
+        source $HOME/.zshrc # apply the configuration
 
 
 {{< /tab >}}
