@@ -869,6 +869,9 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 
 	// -----------------------------------------------------------
 
+	start0, end0 := start, end // copy for checking seq len later
+	endR := end                // returned end, user might give a end longer than the seq len
+
 	if start < 0 {
 		start = 0
 	}
@@ -938,6 +941,8 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	var seqLen int
 	// --------------------------------------------------
 
+	var endS int
+
 	for i := 0; i < g.NumSeqs; i++ {
 		n, err = io.ReadFull(r.fhData, buf[:4])
 		if err != nil {
@@ -986,6 +991,9 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 			seqLen = seqSize
 			start += lenSum
 			end += lenSum
+
+			endS = lenSum + seqLen - 1 // for end positions > seq len
+			// can't break
 		} else {
 			lenSum += seqSize
 			lenSum += interval
@@ -1000,8 +1008,12 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 
 	// get sequence
 
-	if end >= seqLen {
-		end = seqLen - 1
+	if end0 >= seqLen {
+		end = endS
+		endR = seqLen - 1
+	}
+	if start0 > seqLen {
+		return g, endR, nil
 	}
 
 	// start of byte, 8 is #bytes+#bases
@@ -1011,7 +1023,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 		return nil, -1, err
 	}
 
-	nBytes := end>>2 - start>>2 + 1
+	nBytes := (end >> 2) - (start >> 2) + 1
 
 	// prepair the buf
 	if nBytes <= len(r.buf) {
@@ -1069,7 +1081,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	*s = (*s)[:j]
 	if j >= l {
 		*s = (*s)[:l]
-		return g, end, nil
+		return g, endR, nil
 	}
 
 	// -- middle byte --
@@ -1106,7 +1118,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 
 	*s = (*s)[:l]
 	g.Len = len(g.Seq)
-	return g, end, nil
+	return g, endR, nil
 }
 
 var base2bit = [256]uint8{
