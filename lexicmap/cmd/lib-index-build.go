@@ -220,32 +220,36 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 			return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
 		}
 		opt.K = lh.K
-		// } else {
-		// 	masks, skippedFiles, err := GenerateMasks(infiles, opt, "")
-		// 	checkError(err)
-
-		// 	lh, err = lexichash.NewWithMasks(opt.K, masks)
-		// 	checkError(err)
-
-		// 	if opt.BigGenomeFile != "" {
-		// 		outfh2, err := os.Create(opt.BigGenomeFile)
-		// 		if err != nil {
-		// 			checkError(fmt.Errorf("failed to write file: %s", opt.BigGenomeFile))
-		// 		}
-		// 		for _, file := range skippedFiles {
-		// 			fmt.Fprintf(outfh2, "%s\n", file)
-		// 		}
-		// 		outfh2.Close()
-		// 		if opt.Verbose || opt.Log2File {
-		// 			log.Infof("  finished saving skipped genome files: %s", opt.BigGenomeFile)
-		// 		}
-		// 	}
-		// }
 	} else {
 		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.Prefix)
 		if err != nil {
 			return err
 		}
+	}
+
+	// output failed genome
+	outputBigGenomes := opt.BigGenomeFile != ""
+	var outfhBG *os.File
+	var chBG chan string
+	var doneBG chan int
+	var nBG int
+	if outputBigGenomes {
+		outfhBG, err = os.Create(opt.BigGenomeFile)
+		if err != nil {
+			checkError(fmt.Errorf("failed to write file: %s", opt.BigGenomeFile))
+		}
+
+		chBG = make(chan string, opt.NumCPUs)
+		doneBG = make(chan int)
+
+		go func() {
+			for r := range chBG {
+				nBG++
+				outfhBG.WriteString(r)
+			}
+
+			doneBG <- 1
+		}()
 	}
 
 	// create a lookup table for faster masking
@@ -317,7 +321,16 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch, nBatches)
+		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
+	}
+
+	if outputBigGenomes {
+		close(chBG)
+		<-doneBG
+		outfhBG.Close()
+		if opt.Verbose || opt.Log2File {
+			log.Infof("  finished saving %d skipped genome files: %s", nBG, opt.BigGenomeFile)
+		}
 	}
 
 	for _, data := range datas {
@@ -393,10 +406,19 @@ const BITS_IDX_FLAGS = BITS_IDX + BITS_FLAGS
 
 // ----------------------------------
 
+// NO_VALID_SEQS means there are no valid sequences in a genome file.
+const NO_VALID_SEQS = "no_valid_seqs"
+
+// TOO_LARGE_GENOME means the genome is too big to index.
+const TOO_LARGE_GENOME = "too_large_genome"
+
+// TOO_MANY_SEQS means there are too many sequences, as we require: $total_bases + ($num_contigs - 1) * $interval_size <= 268,435,456
+const TOO_MANY_SEQS = "too_many_seqs"
+
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	datas *[]*map[uint64]*[]uint64,
-	outdir string, files []string, batch int, nbatches int) int {
+	outdir string, files []string, batch int, nbatches int, outputBigGenomes bool, chBG chan string) int {
 
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
@@ -874,6 +896,9 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			refseq.NumSeqs = i
 
 			if len(refseq.Seq) == 0 {
+				if outputBigGenomes {
+					chBG <- file + "\t" + NO_VALID_SEQS + "\n"
+				}
 				genome.PoolGenome.Put(refseq) // important
 				if opt.Verbose || opt.Log2File {
 					log.Warningf("skipping %s: no valid sequences", file)
@@ -885,10 +910,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				return
 			}
 
-			if len(refseq.Seq) > MAX_GENOME_SIZE {
+			if refseq.GenomeSize > opt.MaxGenomeSize {
+				if outputBigGenomes {
+					chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
+				}
 				genome.PoolGenome.Put(refseq) // important
 				if opt.Verbose || opt.Log2File {
-					log.Warningf("skipping unsupported huge genome (%d bp): %s", refseq.GenomeSize, file)
+					log.Warningf("skipping big genome (%d bp, %d sequences): %s", refseq.GenomeSize, refseq.NumSeqs, file)
 					if !opt.Log2File {
 						log.Info()
 					}
@@ -899,10 +927,13 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				return
 			}
 
-			if refseq.GenomeSize > opt.MaxGenomeSize {
+			if len(refseq.Seq) > MAX_GENOME_SIZE {
+				if outputBigGenomes {
+					chBG <- file + "\t" + TOO_MANY_SEQS + "\n"
+				}
 				genome.PoolGenome.Put(refseq) // important
 				if opt.Verbose || opt.Log2File {
-					log.Warningf("skipping big genome (%d bp): %s", refseq.GenomeSize, file)
+					log.Warningf("skipping genome with lots of sequences (%d bp, %d sequences): %s", refseq.GenomeSize, refseq.NumSeqs, file)
 					if !opt.Log2File {
 						log.Info()
 					}

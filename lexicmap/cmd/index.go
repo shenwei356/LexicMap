@@ -260,10 +260,10 @@ Important parameters:
 			reSeqNames = append(reSeqNames, re)
 		}
 
-		// contigInterval := getFlagPositiveInt(cmd, "contig-interval")
-		// if contigInterval <= k-1 {
-		// 	checkError(fmt.Errorf("the value of --contig-interval should be >= k-1"))
-		// }
+		contigInterval := getFlagPositiveInt(cmd, "contig-interval")
+		if contigInterval <= 200 {
+			checkError(fmt.Errorf("the value of --contig-interval should be >= 200"))
+		}
 
 		// ---------------------------------------------------------------
 		// options for building index
@@ -309,7 +309,7 @@ Important parameters:
 			ReRefName:    reRefName,
 			ReSeqExclude: reSeqNames,
 
-			ContigInterval: 1000,
+			ContigInterval: contigInterval,
 
 			SaveSeedPositions: getFlagBool(cmd, "save-seed-pos"),
 		}
@@ -448,7 +448,7 @@ func init() {
 		formatFlagUsage(`Output LexicMap index directory.`))
 
 	indexCmd.Flags().StringP("big-genomes", "G", "",
-		formatFlagUsage(`Out file of skipped files with genomes >= -g/--max-genome`))
+		formatFlagUsage(`Out file of skipped files with $total_bases + ($num_contigs - 1) * $contig_interval >= -g/--max-genome. The second column is one of the skip types: no_valid_seqs, too_large_genome, too_many_seqs.`))
 
 	indexCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existing output directory.`))
@@ -508,8 +508,8 @@ func init() {
 	indexCmd.Flags().IntP("seed-data-threads", "J", 8,
 		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]`))
 
-	// indexCmd.Flags().IntP("contig-interval", "", 1000,
-	// 	formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
+	indexCmd.Flags().IntP("contig-interval", "", 1000,
+		formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
 
 	// ----------------------------------------------------------
 

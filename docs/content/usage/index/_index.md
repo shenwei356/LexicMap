@@ -105,9 +105,12 @@ Usage:
 Flags:
   -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
                                   (default 5000)
-  -G, --big-genomes string        ► Out file of skipped files with genomes >= -g/--max-genome
+  -G, --big-genomes string        ► Out file of skipped files with $total_bases + ($num_contigs - 1) *
+                                  $contig_interval >= -g/--max-genome. The second column is one of the
+                                  skip types: no_valid_seqs, too_large_genome, too_many_seqs.
   -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
                                   (default 16)
+      --contig-interval int       ► Length of interval (N's) between contigs in a genome. (default 1000)
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
                                   case ignored. (default
                                   "\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
