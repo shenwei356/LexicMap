@@ -261,7 +261,7 @@ Important parameters:
 		}
 
 		contigInterval := getFlagPositiveInt(cmd, "contig-interval")
-		if contigInterval <= 200 {
+		if contigInterval < 200 {
 			checkError(fmt.Errorf("the value of --contig-interval should be >= 200"))
 		}
 
