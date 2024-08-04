@@ -21,8 +21,8 @@ Input:
      (-G/--big-genomes).
      You need to increase the value for indexing fungi genomes.
   5. Maximum genome size: 268,435,456.
-     More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we insert 1000-bp intervals
-     of N's between contigs to reduce the sequence scale to index.
+     More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
+     1000-bp intervals of N’s to reduce the sequence scale to index.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
