@@ -86,6 +86,8 @@ Attention:
 
 		mask := getFlagNonNegativeInt(cmd, "mask")
 
+		onlyFwd := getFlagBool(cmd, "only-forward")
+
 		// ---------------------------------------------------------------
 		// checking index
 
@@ -326,7 +328,11 @@ Attention:
 					v = be.Uint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
-					pos, rc, rvFlag = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND), int(v&BITS_REVERSE)
+					rvFlag = int(v & BITS_REVERSE)
+					if onlyFwd && rvFlag == 1 {
+						continue
+					}
+					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND)
 					batchIDAndRefID = v >> BITS_NONE_IDX
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer1, k), util.MustKmerLongestPrefix(kmer1, maskCode, k8, k8),
@@ -349,7 +355,11 @@ Attention:
 					v = be.Uint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
-					pos, rc, rvFlag = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND), int(v&BITS_REVERSE)
+					rvFlag = int(v & BITS_REVERSE)
+					if onlyFwd && rvFlag == 1 {
+						continue
+					}
+					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND)
 					batchIDAndRefID = v >> BITS_NONE_IDX
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer2, k), util.MustKmerLongestPrefix(kmer2, maskCode, k8, k8),
@@ -389,6 +399,9 @@ func init() {
 
 	kmersCmd.Flags().IntP("mask", "m", 1,
 		formatFlagUsage(`View k-mers captured by Xth mask. (0 for all)`))
+
+	kmersCmd.Flags().BoolP("only-forward", "f", false,
+		formatFlagUsage(`Only output forward k-mers.`))
 
 	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> [-m <mask index>] [-o out.tsv.gz]"))
 }

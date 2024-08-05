@@ -22,6 +22,7 @@ Flags:
   -h, --help              help for kmers
   -d, --index string      ► Index directory created by "lexicmap index".
   -m, --mask int          ► View k-mers captured by Xth mask. (0 for all) (default 1)
+  -f, --only-forward      ► Only output forward k-mers.
   -o, --out-file string   ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                           (default "-")
 
@@ -61,6 +62,31 @@ Global Flags:
         1      AAAAAAAACCAGTAAAAAAAGGGGAGTAGAA   4        1        GCF_000392875.1   771895    +        yes
         1      AAAAAAAACCATATTATGTCCGATCCTCACA   4        1        GCF_000392875.1   1060650   +        yes
         1      AAAAAAAACCCTTCGTCAAGCATTATGGAAT   4        1        GCF_000392875.1   1139573   -        yes
+
+    Only forward k-mers.
+
+        $ lexicmap utils kmers --quiet -d demo.lmi/ -f | head -n 20 | csvtk pretty -t
+        mask   kmer                              prefix   number   ref               pos       strand   reversed
+        ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
+        1      AAAACACCAAAAGCCTCTCCGATAACACCAG   9        1        GCF_002949675.1   2046311   +        no
+        1      AAAACACCAAAGTTAAAGTGCCGTTTAGCGT   9        1        GCF_003697165.2   1085073   +        no
+        1      AAAACACCAATTAGTGATTGTGTTTCCTCAA   9        1        GCF_000392875.1   2785764   -        no
+        1      AAAACACCACAGTGAAAGACAACATTTAATA   9        1        GCF_000392875.1   1132052   -        no
+        1      AAAACACCACCACAAATGCATAAGAAAACTT   9        1        GCF_003697165.2   2862670   +        no
+        1      AAAACACCACTCAATCCTTTAAATAAAAACA   9        1        GCF_002949675.1   2467828   -        no
+        1      AAAACACCACTTTACGGGCGTTTTGTGCAAT   9        1        GCF_003697165.2   4241904   -        no
+        1      AAAACACCAGCACGTTCAGCACCGCCACCAG   9        1        GCF_000017205.1   4399207   -        no
+        1      AAAACACCAGCGAACGGAAGAACATCGCGAT   9        1        GCF_003697165.2   248663    +        no
+        1      AAAACACCAGGCCGGAGCAGAAGGTTATTCT   9        1        GCF_003697165.2   4139632   +        no
+        1      AAAACACCATAAACGATTGTTGGAATACCCG   10       1        GCF_009759685.1   268158    +        no
+        1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   496925    +        no
+        1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   2254974   +        no
+        1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   2495183   +        no
+        1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   4009312   +        no
+        1      AAAACACCATGAACGCCAACGCCGCCGAGCT   11       1        GCF_000742135.1   2707622   +        no
+        1      AAAACACCATGAGCAAACTCCAGCATATCGG   11       1        GCF_000017205.1   2490011   -        no
+        1      AAAACACCATGCAAAAAACTTCTTTTAGAAA   11       1        GCF_000006945.2   1324151   -        no
+        1      AAAACACCATGCAGCATGTCATAGCGCTGGA   11       1        GCF_003697165.2   422685    +        no
 
 
 1. Specify the mask.
