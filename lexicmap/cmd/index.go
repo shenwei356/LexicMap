@@ -393,8 +393,12 @@ Important parameters:
 
 			log.Info()
 			log.Info("seed data:")
-			log.Infof("  maximum sketching desert length: %d", maxDesert)
-			log.Infof("  distance of k-mers to fill deserts: %d", seedInDesertDist)
+			if noDesertFilling {
+				log.Infof("  disable desert filling: %v", noDesertFilling)
+			} else {
+				log.Infof("  maximum sketching desert length: %d", maxDesert)
+				log.Infof("  distance of k-mers to fill deserts: %d", seedInDesertDist)
+			}
 			log.Infof("  seeds data chunks: %d", chunks)
 			log.Infof("  seeds data indexing partitions: %d", partitions)
 			log.Info()
