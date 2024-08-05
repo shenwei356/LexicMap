@@ -126,6 +126,7 @@ Flags:
                                   assemblies from Genbank) will be skipped. Need to be smaller than the
                                   maximum supported genome size: 268435456 (default 15000000)
       --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
+      --no-desert-filling         ► Disable sketching desert filling (only for debug).
   -O, --out-dir string            ► Output LexicMap index directory.
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
                                   (default 512)

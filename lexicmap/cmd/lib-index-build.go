@@ -119,6 +119,7 @@ type IndexBuildingOptions struct {
 	Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
 
 	// filling sketching deserts
+	DisableDesertFilling   bool   // disable desert filling (just for analysis index)
 	DesertMaxLen           uint32 // maxi length of sketching deserts
 	DesertExpectedSeedDist int    // expected distance between seeds
 	DesertSeedPosRange     int    // the upstream and down stream region for adding a seeds
@@ -641,6 +642,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// -----------------------------
 						// extra k-mers
+
+						if extraKmers == nil {
+							continue
+						}
+
 						knl = (*extraKmers)[i]
 						if knl == nil {
 							continue
@@ -734,6 +740,11 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 
 						// -----------------------------
 						// extra k-mers
+
+						if extraKmers == nil {
+							continue
+						}
+
 						knl = (*extraKmers)[i]
 						if knl == nil {
 							continue
@@ -1031,8 +1042,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// bit-packed sequences
 			refseq.TwoBit = genome.Seq2TwoBit(refseq.Seq)
 
-			// ----------------------------------------------------------------
-			// fill sketching deserts
+			// --------------------------------
+			// locations
 
 			if refseq.Locs == nil { // existing positions, will be updated with new k-mers
 				tmp := make([]uint32, 0, 40<<10)
@@ -1040,6 +1051,14 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			}
 			locs := refseq.Locs
 			*locs = (*locs)[:0]
+
+			var loc int
+			for _, _locs := range *locses { // insert positions
+				for _, loc = range _locs {
+					*locs = append(*locs, uint32(loc&4294967295)) // only posision | strand flag
+				}
+			}
+			sortutil.Uint32s(*locs)
 
 			if refseq.ExtraKmers == nil { // extra k-mers
 				tmp := make([]*[]uint64, opt.Masks)
@@ -1053,314 +1072,319 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 			}
 
-			var loc int
-			for _, _locs := range *locses { // insert positions
-				for _, loc = range _locs {
-					*locs = append(*locs, uint32(loc&4294967295)) // only posision | strand flag
-				}
-			}
-			sortutil.Uint32s(*locs)
+			// ----------------------------------------------------------------
+			// fill sketching deserts
 
-			var pos2str, pos, pre, d uint32
-			maxDesert := opt.DesertMaxLen
-			seedDist := opt.DesertExpectedSeedDist
-			seedPosR := opt.DesertSeedPosRange
+			var extraLocs *[]int
+			var loc2maskidx *[]int
+			var loc2maskidxRC *[]int
+			var kmerList *[]uint64
 
-			lenSeq := len(refseq.Seq)
-			var start, end int
-			var _kmers2 *[]uint64
-			var _locses2 *[][]int
-			var _locs []int
-			var _i int
-			// kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
-			loc2maskidx := poolLoc2MaskIdx.Get().(*[]int)
-			loc2maskidxRC := poolLoc2MaskIdx.Get().(*[]int)
-			kmerList := poolKmerKmerRC.Get().(*[]uint64)
+			if !opt.DisableDesertFilling {
+				var pos2str, pos, pre, d uint32
+				maxDesert := opt.DesertMaxLen
+				seedDist := opt.DesertExpectedSeedDist
+				seedPosR := opt.DesertSeedPosRange
 
-			var iter *iterator.Iterator
-			var kmer, kmerRC, kmerPos uint64
-			var ok bool
-			var _j, posOfPre, posOfCur, _start, _end int
+				lenSeq := len(refseq.Seq)
+				var start, end int
+				var _kmers2 *[]uint64
+				var _locses2 *[][]int
+				var _locs []int
+				var _i int
+				// kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
+				loc2maskidx = poolLoc2MaskIdx.Get().(*[]int)
+				loc2maskidxRC = poolLoc2MaskIdx.Get().(*[]int)
+				kmerList = poolKmerKmerRC.Get().(*[]uint64)
 
-			var _im int
-			var knl *[]uint64
+				var iter *iterator.Iterator
+				var kmer, kmerRC, kmerPos uint64
+				var ok bool
+				var _j, posOfPre, posOfCur, _start, _end int
 
-			var inIntervalRegion bool
+				var _im int
+				var knl *[]uint64
 
-			// solved by adding gap regions into the skip regions and the interval tree.
-			//
-			// it's hard to skip k-mers at the edge of a gap
-			//       ACCAAAAAAAA      AAAAAAGCCAGA
-			// ----------AAAAAAAAAAAAAAAAAAA-------
-			// ----------TTTTTTTTTTTTTTTTTTT-------
-			//      TTTTTTAC         ACGTTTTTTT
-			// so we just detect these k-mers by it's suffix
-			// var lenSuffix uint8 = 5
-			// var lenPrefix uint8 = 3                          // that means the firt n base can't be As, just in case.
-			// tttPrefix := uint64((1 << (lenPrefix << 1)) - 1) // for k-mer on the negative strand
-			// tttSuffix := uint64((1 << (lenSuffix << 1)) - 1) // for k-mer on the negative strand
+				var inIntervalRegion bool
 
-			extraLocs := poolInts.Get().(*[]int) // extra positions
-			*extraLocs = (*extraLocs)[:0]
+				// solved by adding gap regions into the skip regions and the interval tree.
+				//
+				// it's hard to skip k-mers at the edge of a gap
+				//       ACCAAAAAAAA      AAAAAAGCCAGA
+				// ----------AAAAAAAAAAAAAAAAAAA-------
+				// ----------TTTTTTTTTTTTTTTTTTT-------
+				//      TTTTTTAC         ACGTTTTTTT
+				// so we just detect these k-mers by it's suffix
+				// var lenSuffix uint8 = 5
+				// var lenPrefix uint8 = 3                          // that means the firt n base can't be As, just in case.
+				// tttPrefix := uint64((1 << (lenPrefix << 1)) - 1) // for k-mer on the negative strand
+				// tttSuffix := uint64((1 << (lenSuffix << 1)) - 1) // for k-mer on the negative strand
 
-			pre = 0
-			var iD int
-			for _, pos2str = range *locs {
-				pos = pos2str >> 1
-				d = pos - pre
+				extraLocs = poolInts.Get().(*[]int) // extra positions
+				*extraLocs = (*extraLocs)[:0]
 
-				if d < maxDesert { // small distance, cool
-					pre = pos
-					continue
-				}
+				pre = 0
+				var iD int
+				for _, pos2str = range *locs {
+					pos = pos2str >> 1
+					d = pos - pre
 
-				// there's a really big gap in it, it might be the interval between contigs or a assembly gap
-				if float64(lengthAAs(refseq.Seq[pre:pos]))/float64(d) >= 0.7 {
-					pre = pos
-					continue
-				}
-
-				// range of desert region +- 1000 bp,
-				// as we don't want other kmers with the same prefix exist around.
-				start = int(pre) - 1000 // start position in the sequence
-				posOfPre = 1000         // the location of previous seed in the list
-				if start < 0 {
-					posOfPre += start
-					start = 0
-				}
-				end = int(pos) + 1000 + k // end position in the sequence
-				if end > lenSeq {
-					end = lenSeq
-				}
-
-				iD++
-				// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
-				// 	iD, pre, pos, d, start, end, end-start+1)
-
-				posOfCur = posOfPre + int(d) // their distance keeps the same
-
-				// .                       desert
-				// .                 -------------------
-				// 0123      start                             end
-				// ----o-----[-o-----o------------------o---o--]----o-------
-				//           0123    posOfPre           posOfCur
-
-				// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
-
-				// iterate k-mers
-				iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
-				if err != nil {
-					checkError(err)
-				}
-
-				*kmerList = (*kmerList)[:0]
-				for {
-					kmer, kmerRC, ok, _ = iter.NextKmer()
-					if !ok {
-						break
-					}
-					*kmerList = append(*kmerList, kmer)
-					*kmerList = append(*kmerList, kmerRC)
-				}
-
-				// masks this region, just treat it as a query sequence
-				// _kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
-				// here, checkShorterPrefix can be false, as we do not need all probes to capture there k-mers,
-				// we only need a few.
-				_kmers2, _locses2, _ = lh.MaskKnownDistinctPrefixes(refseq.Seq[start:end], nil, false)
-
-				// clear(*kmer2maskidx)
-				// for _i, kmer = range *_kmers2 {
-				// 	// mulitple masks probably capture more than one k-mer in such a short sequence,
-				// 	// we just record the last mask.
-				// 	(*kmer2maskidx)[kmer] = _i
-				// }
-
-				*loc2maskidx = (*loc2maskidx)[:0]
-				*loc2maskidxRC = (*loc2maskidxRC)[:0]
-				for _i = start; _i < end; _i++ {
-					*loc2maskidx = append(*loc2maskidx, -1)
-					*loc2maskidxRC = append(*loc2maskidxRC, -1)
-				}
-				for _i, _locs = range *_locses2 {
-					for _, loc = range _locs {
-						if loc&1 == 0 {
-							(*loc2maskidx)[loc>>1] = _i
-						} else {
-							(*loc2maskidxRC)[loc>>1] = _i
-						}
-					}
-				}
-
-				lh.RecycleMaskResult(_kmers2, _locses2)
-
-				// start from the previous seed
-				_j = posOfPre + seedDist
-				for {
-					if _j >= posOfCur {
-						break
-					}
-
-					// upstream scan range: _j-seedPosR, _j
-					_start = _j + 1 // start of downstream scan range
-					_end = _j - seedPosR
-
-					// fmt.Printf("  check %d, <-end: %d, ->start: %d\n", _j, _end, _start)
-
-					ok = false
-					for ; _j > _end; _j-- {
-						// fmt.Printf("    test u %d\n", _j)
-
-						if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
-							continue
-						}
-
-						// strand +
-						kmer = (*kmerList)[_j<<1]
-						// if kmer != 0 &&
-						// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
-						// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
-						if kmer != 0 {
-							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
-							// 	kmerPos = uint64(start+_j) << 1
-							// 	break
-							// }
-							_im = (*loc2maskidx)[_j]
-							if _im >= 0 {
-								kmerPos = uint64(start+_j) << 1
-								ok = true
-								break
-							}
-						}
-
-						// strand -
-						kmer = (*kmerList)[(_j<<1)+1]
-						// if kmer != 0 &&
-						// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
-						// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
-						if kmer != 0 {
-							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
-							// 	kmerPos = uint64(start+_j)<<1 | 1
-							// 	break
-							// }
-							_im = (*loc2maskidxRC)[_j]
-							if _im >= 0 {
-								kmerPos = uint64(start+_j)<<1 | 1
-								ok = true
-								break
-							}
-						}
-					}
-					if ok {
-						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
-
-						knl = (*extraKmers)[_im]
-						if knl == nil {
-							knl = poolKmerAndLocs.Get().(*[]uint64)
-							*knl = (*knl)[:0]
-							(*extraKmers)[_im] = knl
-						}
-						*knl = append(*knl, kmer)
-						*knl = append(*knl, kmerPos)
-
-						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
-
-						*extraLocs = append(*extraLocs, int(kmerPos))
-
-						_j += seedDist
+					if d < maxDesert { // small distance, cool
+						pre = pos
 						continue
 					}
 
-					if _start >= posOfCur {
-						break
-					}
-
-					// downstream scan range: _j+1, _j+seedpoR
-					_end = _start + seedPosR
-					if _end >= posOfCur {
-						_end = posOfCur - 1
-					}
-					for _j = _start; _j < _end; _j++ {
-						// fmt.Printf("    test d %d\n", _j)
-
-						if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
-							continue
-						}
-
-						// strand +
-						kmer = (*kmerList)[_j<<1]
-						// if kmer != 0 &&
-						// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
-						// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
-						if kmer != 0 {
-							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
-							// 	kmerPos = uint64(start+_j) << 1
-							// 	break
-							// }
-							_im = (*loc2maskidx)[_j]
-							if _im >= 0 {
-								kmerPos = uint64(start+_j) << 1
-								ok = true
-								break
-							}
-						}
-
-						// strand -
-						kmer = (*kmerList)[(_j<<1)+1]
-						// if kmer != 0 &&
-						// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
-						// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
-						if kmer != 0 {
-							// if _im, ok = (*kmer2maskidx)[kmer]; ok {
-							// 	kmerPos = uint64(start+_j)<<1 | 1
-							// 	break
-							// }
-							_im = (*loc2maskidxRC)[_j]
-							if _im >= 0 {
-								kmerPos = uint64(start+_j)<<1 | 1
-								ok = true
-								break
-							}
-						}
-					}
-					if ok {
-						// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
-						knl = (*extraKmers)[_im]
-						if knl == nil {
-							knl = poolKmerAndLocs.Get().(*[]uint64)
-							*knl = (*knl)[:0]
-							(*extraKmers)[_im] = knl
-						}
-						*knl = append(*knl, kmer)
-						*knl = append(*knl, kmerPos)
-
-						// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
-
-						*extraLocs = append(*extraLocs, int(kmerPos))
-
-						_j += seedDist
+					// there's a really big gap in it, it might be the interval between contigs or a assembly gap
+					if float64(lengthAAs(refseq.Seq[pre:pos]))/float64(d) >= 0.7 {
+						pre = pos
 						continue
 					}
 
-					// it might fail to fill current region of the desert.
-					//   1. there's a gap here.
-					//   2. it's the interval region between two contigs.
+					// range of desert region +- 1000 bp,
+					// as we don't want other kmers with the same prefix exist around.
+					start = int(pre) - 1000 // start position in the sequence
+					posOfPre = 1000         // the location of previous seed in the list
+					if start < 0 {
+						posOfPre += start
+						start = 0
+					}
+					end = int(pos) + 1000 + k // end position in the sequence
+					if end > lenSeq {
+						end = lenSeq
+					}
 
+					iD++
 					// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 					// 	iD, pre, pos, d, start, end, end-start+1)
 
-					_j += seedDist
+					posOfCur = posOfPre + int(d) // their distance keeps the same
+
+					// .                       desert
+					// .                 -------------------
+					// 0123      start                             end
+					// ----o-----[-o-----o------------------o---o--]----o-------
+					//           0123    posOfPre           posOfCur
+
+					// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
+
+					// iterate k-mers
+					iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
+					if err != nil {
+						checkError(err)
+					}
+
+					*kmerList = (*kmerList)[:0]
+					for {
+						kmer, kmerRC, ok, _ = iter.NextKmer()
+						if !ok {
+							break
+						}
+						*kmerList = append(*kmerList, kmer)
+						*kmerList = append(*kmerList, kmerRC)
+					}
+
+					// masks this region, just treat it as a query sequence
+					// _kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
+					// here, checkShorterPrefix can be false, as we do not need all probes to capture there k-mers,
+					// we only need a few.
+					_kmers2, _locses2, _ = lh.MaskKnownDistinctPrefixes(refseq.Seq[start:end], nil, false)
+
+					// clear(*kmer2maskidx)
+					// for _i, kmer = range *_kmers2 {
+					// 	// mulitple masks probably capture more than one k-mer in such a short sequence,
+					// 	// we just record the last mask.
+					// 	(*kmer2maskidx)[kmer] = _i
+					// }
+
+					*loc2maskidx = (*loc2maskidx)[:0]
+					*loc2maskidxRC = (*loc2maskidxRC)[:0]
+					for _i = start; _i < end; _i++ {
+						*loc2maskidx = append(*loc2maskidx, -1)
+						*loc2maskidxRC = append(*loc2maskidxRC, -1)
+					}
+					for _i, _locs = range *_locses2 {
+						for _, loc = range _locs {
+							if loc&1 == 0 {
+								(*loc2maskidx)[loc>>1] = _i
+							} else {
+								(*loc2maskidxRC)[loc>>1] = _i
+							}
+						}
+					}
+
+					lh.RecycleMaskResult(_kmers2, _locses2)
+
+					// start from the previous seed
+					_j = posOfPre + seedDist
+					for {
+						if _j >= posOfCur {
+							break
+						}
+
+						// upstream scan range: _j-seedPosR, _j
+						_start = _j + 1 // start of downstream scan range
+						_end = _j - seedPosR
+
+						// fmt.Printf("  check %d, <-end: %d, ->start: %d\n", _j, _end, _start)
+
+						ok = false
+						for ; _j > _end; _j-- {
+							// fmt.Printf("    test u %d\n", _j)
+
+							if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
+								continue
+							}
+
+							// strand +
+							kmer = (*kmerList)[_j<<1]
+							// if kmer != 0 &&
+							// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
+							// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
+							if kmer != 0 {
+								// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								// 	kmerPos = uint64(start+_j) << 1
+								// 	break
+								// }
+								_im = (*loc2maskidx)[_j]
+								if _im >= 0 {
+									kmerPos = uint64(start+_j) << 1
+									ok = true
+									break
+								}
+							}
+
+							// strand -
+							kmer = (*kmerList)[(_j<<1)+1]
+							// if kmer != 0 &&
+							// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
+							// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
+							if kmer != 0 {
+								// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								// 	kmerPos = uint64(start+_j)<<1 | 1
+								// 	break
+								// }
+								_im = (*loc2maskidxRC)[_j]
+								if _im >= 0 {
+									kmerPos = uint64(start+_j)<<1 | 1
+									ok = true
+									break
+								}
+							}
+						}
+						if ok {
+							// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+
+							knl = (*extraKmers)[_im]
+							if knl == nil {
+								knl = poolKmerAndLocs.Get().(*[]uint64)
+								*knl = (*knl)[:0]
+								(*extraKmers)[_im] = knl
+							}
+							*knl = append(*knl, kmer)
+							*knl = append(*knl, kmerPos)
+
+							// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+
+							*extraLocs = append(*extraLocs, int(kmerPos))
+
+							_j += seedDist
+							continue
+						}
+
+						if _start >= posOfCur {
+							break
+						}
+
+						// downstream scan range: _j+1, _j+seedpoR
+						_end = _start + seedPosR
+						if _end >= posOfCur {
+							_end = posOfCur - 1
+						}
+						for _j = _start; _j < _end; _j++ {
+							// fmt.Printf("    test d %d\n", _j)
+
+							if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
+								continue
+							}
+
+							// strand +
+							kmer = (*kmerList)[_j<<1]
+							// if kmer != 0 &&
+							// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
+							// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
+							if kmer != 0 {
+								// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								// 	kmerPos = uint64(start+_j) << 1
+								// 	break
+								// }
+								_im = (*loc2maskidx)[_j]
+								if _im >= 0 {
+									kmerPos = uint64(start+_j) << 1
+									ok = true
+									break
+								}
+							}
+
+							// strand -
+							kmer = (*kmerList)[(_j<<1)+1]
+							// if kmer != 0 &&
+							// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
+							// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
+							if kmer != 0 {
+								// if _im, ok = (*kmer2maskidx)[kmer]; ok {
+								// 	kmerPos = uint64(start+_j)<<1 | 1
+								// 	break
+								// }
+								_im = (*loc2maskidxRC)[_j]
+								if _im >= 0 {
+									kmerPos = uint64(start+_j)<<1 | 1
+									ok = true
+									break
+								}
+							}
+						}
+						if ok {
+							// fmt.Printf("    uadd: %s at %d (%d)\n", kmers.MustDecode(kmer, k), _j, start+_j)
+							knl = (*extraKmers)[_im]
+							if knl == nil {
+								knl = poolKmerAndLocs.Get().(*[]uint64)
+								*knl = (*knl)[:0]
+								(*extraKmers)[_im] = knl
+							}
+							*knl = append(*knl, kmer)
+							*knl = append(*knl, kmerPos)
+
+							// fmt.Printf("  ADD to mask %d with %s, from %d\n", _im+1, lexichash.MustDecode(kmer, k8), (kmerPos>>1)+1)
+
+							*extraLocs = append(*extraLocs, int(kmerPos))
+
+							_j += seedDist
+							continue
+						}
+
+						// it might fail to fill current region of the desert.
+						//   1. there's a gap here.
+						//   2. it's the interval region between two contigs.
+
+						// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
+						// 	iD, pre, pos, d, start, end, end-start+1)
+
+						_j += seedDist
+					}
+
+					pre = pos
 				}
 
-				pre = pos
 			}
 
 			if opt.SaveSeedPositions {
-				// add extra locs
-				for _, loc = range *extraLocs {
-					*locs = append(*locs, uint32(loc&4294967295))
+				if !opt.DisableDesertFilling {
+					// add extra locs
+					for _, loc = range *extraLocs {
+						*locs = append(*locs, uint32(loc&4294967295))
+					}
+					sortutil.Uint32s(*locs)
 				}
-				sortutil.Uint32s(*locs)
 
 				// add an extra flag so we can skip these seed pairs accrossing interval regions.
 
@@ -1415,13 +1439,15 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 				}
 			}
 
-			poolInts.Put(extraLocs)
+			if !opt.DisableDesertFilling {
+				poolInts.Put(extraLocs)
+				poolKmerKmerRC.Put(kmerList)
+				// poolKmer2MaskIdx.Put(kmer2maskidx)
+				poolLoc2MaskIdx.Put(loc2maskidx)
+				poolLoc2MaskIdx.Put(loc2maskidxRC)
+			}
 
-			poolKmerKmerRC.Put(kmerList)
-			// poolKmer2MaskIdx.Put(kmer2maskidx)
-			poolLoc2MaskIdx.Put(loc2maskidx)
-			poolLoc2MaskIdx.Put(loc2maskidxRC)
-
+			// recycle
 			if skipRegions != nil {
 				poolSkipRegions.Put(skipRegions)
 			}

@@ -187,6 +187,7 @@ Important parameters:
 		if seedInDesertDist > maxDesert/2 {
 			checkError(fmt.Errorf("value of --seed-in-desert-dist should be smaller than 0.5 * --seed-max-desert"))
 		}
+		noDesertFilling := getFlagBool(cmd, "no-desert-filling")
 
 		// topN := getFlagPositiveInt(cmd, "top-n")
 		// prefixExt := getFlagPositiveInt(cmd, "prefix-ext")
@@ -290,6 +291,7 @@ Important parameters:
 			Prefix: minPrefix,
 
 			// filling sketching deserts
+			DisableDesertFilling:   noDesertFilling,      // disable desert filling (just for analysis index)
 			DesertMaxLen:           uint32(maxDesert),    // maxi length of sketching deserts
 			DesertExpectedSeedDist: seedInDesertDist,     // expected distance between seeds
 			DesertSeedPosRange:     seedInDesertDist / 2, // the upstream and down stream region for adding a seeds
@@ -469,6 +471,8 @@ func init() {
 
 	// ------  generate masks randomly
 
+	indexCmd.Flags().BoolP("no-desert-filling", "", false,
+		formatFlagUsage(`Disable sketching desert filling (only for debug).`))
 	indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
 	indexCmd.Flags().IntP("seed-max-desert", "D", 200,
