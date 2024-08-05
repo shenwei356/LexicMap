@@ -1449,7 +1449,7 @@ which is used to skip genomes larger than 15Mb by default</strong>.</p>
 </code></pre><p>Maximum genome size is about 268 Mb (268,435,456). More precisely:</p>
 <pre><code>$total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456
 </code></pre>
-<p>as we insert 1000-bp intervals of N’s between contigs to reduce the sequence scale to index.</p>
+<p>as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.</p>
 <p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="hows-the-hardware-requirement"

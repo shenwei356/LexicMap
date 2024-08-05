@@ -77,7 +77,7 @@ tar -zxvf lexicmap_linux_amd64.tar.gz If you have the root privilege, simply cop
       "url" : "https://bioinf.shenwei.me/LexicMap/installation/",
       "headline": "Installation",
       "description": "LexicMap can be installed via conda, executable binary files, or compiling from the source.\nBesides, it supports shell completion, which could help accelerate typing.\nConda Install conda, then run\nconda install -c bioconda lexicmap Linux and MacOS (both x86 and arm CPUs) are supported.\nBinary files Linux Download the binary file.\nOS Arch File, 中国镜像 Linux 64-bit lexicmap_linux_amd64.tar.gz, 中国镜像 Linux arm64 lexicmap_linux_arm64.tar.gz, 中国镜像 Decompress it:\ntar -zxvf lexicmap_linux_amd64.tar.gz If you have the root privilege, simply copy it to \/usr\/local\/bin:",
-      "wordCount" : "339",
+      "wordCount" : "443",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1528,8 +1528,19 @@ or <a
 <p>If you have the root privilege, simply copy it to <code>/usr/local/bin</code>:</p>
 <pre><code> sudo cp lexicmap /usr/local/bin/
 </code></pre>
-<p>Or copy to anywhere in the environment variable <code>PATH</code>:</p>
+</li>
+<li>
+<p>If you don&rsquo;t have the root privilege, copy it to any directory in the environment variable <code>PATH</code>:</p>
 <pre><code> mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
+</code></pre>
+<p>And optionally add the directory into the environment variable <code>PATH</code> if it&rsquo;s not in.</p>
+<pre><code> # bash
+ echo export PATH=\$PATH:\$HOME/bin/ &gt;&gt; $HOME/.bashrc
+ source $HOME/.bash # apply the configuration
+
+ # zsh
+ echo export PATH=\$PATH:\$HOME/bin/ &gt;&gt; $HOME/.zshrc
+ source $HOME/.zshrc # apply the configuration
 </code></pre>
 </li>
 </ol>
@@ -1547,7 +1558,8 @@ or <a
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <ol>
-<li>Download the binary file.
+<li>
+<p>Download the binary file.</p>
 <div class="table-wrap"> <table>
 <thead>
 <tr>
@@ -1581,6 +1593,20 @@ or <a
 </tr>
 </tbody>
 </table> </div>
+</li>
+<li>
+<p>Copy it to any directory in the environment variable <code>PATH</code>:</p>
+<pre><code> mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
+</code></pre>
+<p>And optionally add the directory into the environment variable <code>PATH</code> if it&rsquo;s not in.</p>
+<pre><code> # bash
+ echo export PATH=\$PATH:\$HOME/bin/ &gt;&gt; $HOME/.bashrc
+ source $HOME/.bash # apply the configuration
+
+ # zsh
+ echo export PATH=\$PATH:\$HOME/bin/ &gt;&gt; $HOME/.zshrc
+ source $HOME/.zshrc # apply the configuration
+</code></pre>
 </li>
 </ol>
 

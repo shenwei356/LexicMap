@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1246",
+      "wordCount" : "1278",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1434,8 +1434,8 @@
 </span></span><span class="line"><span class="cl">     (-G/--big-genomes).
 </span></span><span class="line"><span class="cl">     You need to increase the value for indexing fungi genomes.
 </span></span><span class="line"><span class="cl">  5. Maximum genome size: 268,435,456.
-</span></span><span class="line"><span class="cl">     More precisely: $total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456, as we insert 1000-bp intervals
-</span></span><span class="line"><span class="cl">     of N&#39;s between contigs to reduce the sequence scale to index.
+</span></span><span class="line"><span class="cl">     More precisely: $total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456, as we concatenate contigs with
+</span></span><span class="line"><span class="cl">     1000-bp intervals of N’s to reduce the sequence scale to index.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  Attention:
 </span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -1518,9 +1518,12 @@
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">  -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
 </span></span><span class="line"><span class="cl">                                  (default 5000)
-</span></span><span class="line"><span class="cl">  -G, --big-genomes string        ► Out file of skipped files with genomes &gt;= -g/--max-genome
+</span></span><span class="line"><span class="cl">  -G, --big-genomes string        ► Out file of skipped files with $total_bases + ($num_contigs - 1) *
+</span></span><span class="line"><span class="cl">                                  $contig_interval &gt;= -g/--max-genome. The second column is one of the
+</span></span><span class="line"><span class="cl">                                  skip types: no_valid_seqs, too_large_genome, too_many_seqs.
 </span></span><span class="line"><span class="cl">  -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  (default 16)
+</span></span><span class="line"><span class="cl">      --contig-interval int       ► Length of interval (N&#39;s) between contigs in a genome. (default 1000)
 </span></span><span class="line"><span class="cl">  -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
 </span></span><span class="line"><span class="cl">                                  case ignored. (default
 </span></span><span class="line"><span class="cl">                                  &#34;\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
