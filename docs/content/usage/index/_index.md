@@ -23,6 +23,7 @@ Input:
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
      1000-bp intervals of N’s to reduce the sequence scale to index.
+  6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -126,6 +127,8 @@ Flags:
                                   assemblies from Genbank) will be skipped. Need to be smaller than the
                                   maximum supported genome size: 268435456 (default 15000000)
       --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
+  -l, --min-seq-len int           ► Maximum sequence length to index. The value would be k for values
+                                  <= 0 (default -1)
       --no-desert-filling         ► Disable sketching desert filling (only for debug).
   -O, --out-dir string            ► Output LexicMap index directory.
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.

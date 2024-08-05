@@ -55,6 +55,7 @@ Input:
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
      1000-bp intervals of N’s to reduce the sequence scale to index.
+  6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -159,6 +160,15 @@ Important parameters:
 		if k < minK || k > 32 {
 			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [%d, 32]", minK))
 		}
+		minSeqLen := getFlagInt(cmd, "min-seq-len")
+		if minSeqLen < k {
+			minSeqLen = -1
+			// checkError(fmt.Errorf("the value (%d) of flag -l/--min-seq-len should be >= k (%d)", minSeqLen, k))
+		}
+		if minSeqLen <= 0 {
+			minSeqLen = k
+		}
+		minSeqLen = max(minSeqLen, k)
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
@@ -277,6 +287,8 @@ Important parameters:
 			MaxOpenFiles: maxOpenFiles,
 			MergeThreads: mergeThreads,
 
+			MinSeqLen: minSeqLen,
+
 			// skip extremely large genomes
 			MaxGenomeSize: maxGenomeSize,
 			BigGenomeFile: fileBigGenomes,
@@ -374,6 +386,7 @@ Important parameters:
 			log.Infof("    regular expression of input files: %s", reFileStr)
 			log.Infof("    *regular expression for extracting reference name from file name: %s", reRefNameStr)
 			log.Infof("    *regular expressions for filtering out sequences: %s", reSeqNameStrs)
+			log.Infof("  min sequence length: %d", minSeqLen)
 			log.Infof("  max genome size: %d", maxGenomeSize)
 			log.Infof("  output directory: %s", outDir)
 			if fileBigGenomes != "" {
@@ -444,6 +457,9 @@ func init() {
 
 	indexCmd.Flags().BoolP("skip-file-check", "S", false,
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
+
+	indexCmd.Flags().IntP("min-seq-len", "l", -1,
+		formatFlagUsage(`Maximum sequence length to index. The value would be k for values <= 0`))
 
 	indexCmd.Flags().IntP("max-genome", "g", 15000000,
 		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Extremely large genomes (e.g., non-isolate assemblies from Genbank) will be skipped. Need to be smaller than the maximum supported genome size: %d`, MAX_GENOME_SIZE)))

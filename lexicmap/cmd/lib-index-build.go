@@ -104,6 +104,8 @@ type IndexBuildingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 	MergeThreads int  // Maximum Concurrent Merge Jobs
 
+	MinSeqLen int // minimum sequence length, should be >= k
+
 	// skipping extremely large genome
 	MaxGenomeSize int    // Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped
 	BigGenomeFile string // Out file of skipped files with genomes
@@ -858,6 +860,12 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			refseq := genome.PoolGenome.Get().(*genome.Genome)
 			refseq.Reset()
 
+			minSeqLen := opt.MinSeqLen
+			if minSeqLen <= 0 {
+				minSeqLen = k
+			}
+			minSeqLen = max(minSeqLen, k)
+
 			var i int = 0
 			for {
 				record, err = fastxReader.Read()
@@ -869,8 +877,8 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 					break
 				}
 
-				// filter out sequences shorter than k
-				if len(record.Seq.Seq) < k {
+				// filter out sequences shorter than k or minSeqLen
+				if len(record.Seq.Seq) < minSeqLen {
 					continue
 				}
 
