@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1278",
+      "wordCount" : "1324",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1436,6 +1436,7 @@
 </span></span><span class="line"><span class="cl">  5. Maximum genome size: 268,435,456.
 </span></span><span class="line"><span class="cl">     More precisely: $total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456, as we concatenate contigs with
 </span></span><span class="line"><span class="cl">     1000-bp intervals of N’s to reduce the sequence scale to index.
+</span></span><span class="line"><span class="cl">  6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  Attention:
 </span></span><span class="line"><span class="cl">   *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -1539,6 +1540,9 @@
 </span></span><span class="line"><span class="cl">                                  assemblies from Genbank) will be skipped. Need to be smaller than the
 </span></span><span class="line"><span class="cl">                                  maximum supported genome size: 268435456 (default 15000000)
 </span></span><span class="line"><span class="cl">      --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
+</span></span><span class="line"><span class="cl">  -l, --min-seq-len int           ► Maximum sequence length to index. The value would be k for values
+</span></span><span class="line"><span class="cl">                                  &lt;= 0 (default -1)
+</span></span><span class="line"><span class="cl">      --no-desert-filling         ► Disable sketching desert filling (only for debug).
 </span></span><span class="line"><span class="cl">  -O, --out-dir string            ► Output LexicMap index directory.
 </span></span><span class="line"><span class="cl">      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  (default 512)

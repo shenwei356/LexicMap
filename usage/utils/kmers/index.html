@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/",
       "headline": "kmers",
       "description": "$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d \u003cindex path\u003e [-m \u003cmask index\u003e] [-o out.",
-      "wordCount" : "1003",
+      "wordCount" : "1197",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1443,6 +1443,7 @@
 </span></span><span class="line"><span class="cl">  -h, --help              help for kmers
 </span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -m, --mask int          ► View k-mers captured by Xth mask. (0 for all) (default 1)
+</span></span><span class="line"><span class="cl">  -f, --only-forward      ► Only output forward k-mers.
 </span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                          (default &#34;-&#34;)
 </span></span><span class="line"><span class="cl">
@@ -1488,6 +1489,30 @@
  1      AAAAAAAACCAGTAAAAAAAGGGGAGTAGAA   4        1        GCF_000392875.1   771895    +        yes
  1      AAAAAAAACCATATTATGTCCGATCCTCACA   4        1        GCF_000392875.1   1060650   +        yes
  1      AAAAAAAACCCTTCGTCAAGCATTATGGAAT   4        1        GCF_000392875.1   1139573   -        yes
+</code></pre>
+<p>Only forward k-mers.</p>
+<pre><code> $ lexicmap utils kmers --quiet -d demo.lmi/ -f | head -n 20 | csvtk pretty -t
+ mask   kmer                              prefix   number   ref               pos       strand   reversed
+ ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
+ 1      AAAACACCAAAAGCCTCTCCGATAACACCAG   9        1        GCF_002949675.1   2046311   +        no
+ 1      AAAACACCAAAGTTAAAGTGCCGTTTAGCGT   9        1        GCF_003697165.2   1085073   +        no
+ 1      AAAACACCAATTAGTGATTGTGTTTCCTCAA   9        1        GCF_000392875.1   2785764   -        no
+ 1      AAAACACCACAGTGAAAGACAACATTTAATA   9        1        GCF_000392875.1   1132052   -        no
+ 1      AAAACACCACCACAAATGCATAAGAAAACTT   9        1        GCF_003697165.2   2862670   +        no
+ 1      AAAACACCACTCAATCCTTTAAATAAAAACA   9        1        GCF_002949675.1   2467828   -        no
+ 1      AAAACACCACTTTACGGGCGTTTTGTGCAAT   9        1        GCF_003697165.2   4241904   -        no
+ 1      AAAACACCAGCACGTTCAGCACCGCCACCAG   9        1        GCF_000017205.1   4399207   -        no
+ 1      AAAACACCAGCGAACGGAAGAACATCGCGAT   9        1        GCF_003697165.2   248663    +        no
+ 1      AAAACACCAGGCCGGAGCAGAAGGTTATTCT   9        1        GCF_003697165.2   4139632   +        no
+ 1      AAAACACCATAAACGATTGTTGGAATACCCG   10       1        GCF_009759685.1   268158    +        no
+ 1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   496925    +        no
+ 1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   2254974   +        no
+ 1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   2495183   +        no
+ 1      AAAACACCATCATACACTAAATCAGTAAGTT   10       4        GCF_002949675.1   4009312   +        no
+ 1      AAAACACCATGAACGCCAACGCCGCCGAGCT   11       1        GCF_000742135.1   2707622   +        no
+ 1      AAAACACCATGAGCAAACTCCAGCATATCGG   11       1        GCF_000017205.1   2490011   -        no
+ 1      AAAACACCATGCAAAAAACTTCTTTTAGAAA   11       1        GCF_000006945.2   1324151   -        no
+ 1      AAAACACCATGCAGCATGTCATAGCGCTGGA   11       1        GCF_003697165.2   422685    +        no
 </code></pre>
 </li>
 <li>

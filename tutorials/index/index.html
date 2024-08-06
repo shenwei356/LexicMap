@@ -65,7 +65,7 @@ lexicmap index -X files." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Building an index",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
-      "wordCount" : "2744",
+      "wordCount" : "2763",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1545,6 +1545,7 @@ The default value supports common sequence file extentions, e.g., <code>.fa</cod
 >GCA_000765055.1</a> has &gt;150 Mb.
 The flag <code>-g/--max-genome</code> (default 15 Mb) is used to skip these input files, and the file list would be written to a file
 via the flag <code>-G/--big-genomes</code>.</li>
+<li><strong>Minimum sequence length</strong>. A flag <code>-l/--min-seq-len</code> can filter out sequences shorter than the threshold (default is the <code>k</code> value).</li>
 </ul>
 </li>
 <li><strong>At most 17,179,869,184 (2<sup>34</sup>) genomes are supported</strong>. For more genomes, just build multiple indexes.</li>
