@@ -919,13 +919,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					rcQ = posQ&BITS_STRAND > 0 // if on the reverse complement sequence
 					posQ >>= BITS_STRAND
 
-					// query location
-					if rcQ { // on the negative strand
-						beginQ = posQ + K - kPrefix
-					} else {
-						beginQ = posQ
-					}
-
 					// matched
 					// code = util.KmerPrefix(sr.Kmer, K8, sr.LenPrefix)
 					// tCode = sr.Kmer
@@ -940,14 +933,29 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						rvT = refpos&BITS_REVERSE > 0
 						rcT = refpos>>BITS_REVERSE&BITS_REVERSE > 0
 
-						// subject location
 						if !rvT {
+							// query location
+							if rcQ { // on the negative strand
+								beginQ = posQ + K - kPrefix
+							} else {
+								beginQ = posQ
+							}
+
+							// subject location
 							if rcT {
 								beginT = posT + K - kPrefix
 							} else {
 								beginT = posT
 							}
 						} else {
+							// query location
+							if rcQ { // on the negative strand
+								beginQ = posQ
+							} else {
+								beginQ = posQ + K - kPrefix
+							}
+
+							// subject location
 							if rcT {
 								beginT = posT
 							} else {
@@ -1301,8 +1309,6 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				qBegin = qb - min(qb, extLen)
 				qEnd = qe + min(qlen-qe-1, extLen)
 
-				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v\n", i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc)
-
 				// extract target sequence for comparison.
 				// Right now, we fetch seq from disk for each seq,
 				// In the future, we might buffer frequently accessed references for improving speed.
@@ -1318,6 +1324,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				if rc { // reverse complement
 					RC(tSeq.Seq)
 				}
+
+				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, %s\n",
+				// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, tSeq.ID)
 
 				// ------------------------------------------------------------------------
 				// comparing the two sequences with pseudo-alignment
@@ -1414,6 +1423,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						if iSeqPre >= 0 && iSeq != iSeqPre { // two HSP fragments belong to different sequences ~~~~~
 							// fmt.Printf("  %d != %d\n", iSeq, iSeqPre)
 
+							iSeq0 := iSeq // used to restore the value later
+
+							iSeq = iSeqPre // do not want to change iSeq below to iSeqPre
+
 							// ------------------------------------------------------------
 							// convert the positions
 
@@ -1451,7 +1464,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									c.TEnd = tSeq.SeqSizes[iSeq] - 1
 								}
 							}
-							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, iSeq: %d, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq, *tSeq.SeqIDs[iSeq])
 
 							// ------------------------------------------------------------
 
@@ -1559,6 +1572,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									sd.Similarity = r2
 									sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
 									sd.SeqID = sd.SeqID[:0]
+									// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 									sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 									sd.SeqLen = tSeq.SeqSizes[iSeq]
 
@@ -1585,6 +1599,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								(*hashes)[hash] = struct{}{}
 							}
 
+							iSeq = iSeq0
 							continue
 						}
 					}
@@ -1625,7 +1640,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							c.TEnd = tSeq.SeqSizes[iSeq] - 1
 						}
 					}
-					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, *tSeq.SeqIDs[iSeq])
 
 					// ------------------------------------------------------------
 					// remove duplicated alignments
@@ -1750,6 +1765,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							sd.Similarity = r2
 							sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
 							sd.SeqID = sd.SeqID[:0]
+							// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
 							sd.SeqLen = tSeq.SeqSizes[iSeq]
 
