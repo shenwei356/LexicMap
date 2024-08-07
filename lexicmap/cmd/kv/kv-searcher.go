@@ -368,15 +368,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				*results = append(*results, sr1)
 			} else {
-				for j = 0; j < lenVal1; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
-					if err != nil {
-						return nil, err
-					}
-					if nReaded < 8 {
-						return nil, ErrBrokenFile
-					}
-				}
+				// for j = 0; j < lenVal1; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return nil, err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return nil, ErrBrokenFile
+				// 	}
+				// }
+				r.Seek(int64(lenVal1*8), 1)
 			}
 
 			if kmer2 > rightBound { // only record kmer1
@@ -428,15 +429,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				*results = append(*results, sr2)
 			} else {
-				for j = 0; j < lenVal2; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
-					if err != nil {
-						return nil, err
-					}
-					if nReaded < 8 {
-						return nil, ErrBrokenFile
-					}
-				}
+				// for j = 0; j < lenVal2; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return nil, err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return nil, ErrBrokenFile
+				// 	}
+				// }
+				r.Seek(int64(lenVal2*8), 1)
 			}
 
 			if lastPair {

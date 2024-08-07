@@ -336,7 +336,6 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
 	if n < 2 {
 	} else {
-		n >>= 1
 		if n > opt.NumCPUs {
 			n = opt.NumCPUs
 		}
@@ -1326,8 +1325,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					RC(tSeq.Seq)
 				}
 
-				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, %s\n",
-				// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, tSeq.ID)
+				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, genome:%s, seq:%s\n",
+				// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, r.ID, tSeq.ID)
 				// fmt.Printf("%s\n", tSeq.Seq)
 
 				// ------------------------------------------------------------------------
