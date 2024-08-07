@@ -1328,6 +1328,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, %s\n",
 				// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, tSeq.ID)
+				// fmt.Printf("%s\n", tSeq.Seq)
 
 				// ------------------------------------------------------------------------
 				// comparing the two sequences with pseudo-alignment

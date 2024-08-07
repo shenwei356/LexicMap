@@ -271,6 +271,9 @@ Output format:
 		if extLen > idx.contigInterval {
 			checkError(fmt.Errorf("the value of flag --align-ext-len (%d) should be <= contig interval length in database (%d)", extLen, idx.contigInterval))
 		}
+		if maxDist > idx.contigInterval {
+			checkError(fmt.Errorf("the value of flag --seed-max-dist (%d) should be <= contig interval length in database (%d)", maxDist, idx.contigInterval))
+		}
 
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))
@@ -523,10 +526,10 @@ func init() {
 	// mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
 	// 	formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
 
-	mapCmd.Flags().IntP("seed-max-gap", "", 500,
+	mapCmd.Flags().IntP("seed-max-gap", "", 200,
 		formatFlagUsage(`Max gap in seed chaining.`))
-	mapCmd.Flags().IntP("seed-max-dist", "", 10000,
-		formatFlagUsage(`Max distance between seeds in seed chaining.`))
+	mapCmd.Flags().IntP("seed-max-dist", "", 1000,
+		formatFlagUsage(`Max distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
 		formatFlagUsage(`Keep top N genome matches for a query (0 for all) in chaining phase.`))

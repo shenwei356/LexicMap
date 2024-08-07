@@ -1,7 +1,7 @@
 # Changelog
 
 
-### v0.4.0 - 2024-07-xx
+### v0.4.0 - 2024-08-xx
 
 - New commands:
     - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.

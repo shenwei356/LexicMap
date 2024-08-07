@@ -99,26 +99,27 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< tab "Chaining" >}}
 
-|Flag                              |Value        |Function                                                                           |Comment                                                       |
-|:---------------------------------|:------------|:----------------------------------------------------------------------------------|:-------------------------------------------------------------|
-|**`-p, --seed-min-prefix`**       |Default 15   |Minimum (prefix) length of matched seeds.                                          |Smaller values produce more results at the cost of slow speed.|
-|**`-P, --seed-min-single-prefix`**|Default 17   |Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.|Smaller values produce more results at the cost of slow speed.|
-|`--seed-max-dist`                 |Default 10000|Max distance between seeds in seed chaining.                                       |                                                              |
-|`--seed-max-gap`                  |Default 500  |Max gap in seed chaining.                                                          |                                                              |
+|Flag                              |Value       |Function                                                                                        |Comment                                                       |
+|:---------------------------------|:-----------|:-----------------------------------------------------------------------------------------------|:-------------------------------------------------------------|
+|**`-p, --seed-min-prefix`**       |Default 15  |Minimum (prefix) length of matched seeds.                                                       |Smaller values produce more results at the cost of slow speed.|
+|**`-P, --seed-min-single-prefix`**|Default 17  |Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.             |Smaller values produce more results at the cost of slow speed.|
+|`--seed-max-dist`                 |Default 1000|Max distance between seeds in seed chaining. It should be <= contig interval length in database.|                                                              |
+|`--seed-max-gap`                  |Default 200 |Max gap in seed chaining.                                                                       |                                                              |
+                                                 |
 
 {{< /tab>}}
 
 {{< tab "Alignment" >}}
 
-|Flag                             |Value       |Function                                                                                                          |Comment|
-|:--------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------|:------|
-|**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                   |       |
-|**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                      |       |
-|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                          |       |
-|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                              |       |
-|`--align-band`                   |Default 50  |Band size in backtracking the score matrix.                                                                       |       |
-|`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.|       |
-|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                     |       |
+|Flag                             |Value       |Function                                                                                                                                                              |Comment|
+|:--------------------------------|:-----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------|
+|**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                                                                       |       |
+|**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                                                                          |       |
+|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                                                                              |       |
+|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                                                                                  |       |
+|`--align-band`                   |Default 50  |Band size in backtracking the score matrix.                                                                                                                           |       |
+|`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.|       |
+|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                                                                         |       |
 
 
 {{< /tab>}}
