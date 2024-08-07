@@ -467,7 +467,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			*_nAlignedBasesT += nAlignedBasesT
 			*_nMatchedBases += nMatchedBases
 
-			// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+			// fmt.Printf("chain a %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
 			// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
 
 			firstAnchorOfAChain = true
@@ -506,7 +506,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 					*_nAlignedBasesT += nAlignedBasesT
 					*_nMatchedBases += nMatchedBases
 
-					// fmt.Printf("chain %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
+					// fmt.Printf("chain b %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
 					// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
 				}
 			}

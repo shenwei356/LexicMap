@@ -272,8 +272,8 @@ Important parameters:
 		}
 
 		contigInterval := getFlagPositiveInt(cmd, "contig-interval")
-		if contigInterval < 200 {
-			checkError(fmt.Errorf("the value of --contig-interval should be >= 200"))
+		if contigInterval < maxDesert {
+			checkError(fmt.Errorf("the value of --contig-interval (%d) should be >= -D/--seed-max-desert (%d)", contigInterval, maxDesert))
 		}
 
 		// ---------------------------------------------------------------

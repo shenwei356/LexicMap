@@ -378,6 +378,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// other resources
 	co := &ChainingOptions{
 		MaxGap:   opt.MaxGap,
+		MinLen:   opt.MinSinglePrefix,
 		MinScore: seedWeight(float64(opt.MinSinglePrefix)),
 		// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
 		MaxDistance: opt.MaxDistance,

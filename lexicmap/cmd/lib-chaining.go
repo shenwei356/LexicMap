@@ -28,6 +28,7 @@ import (
 // ChainingOptions contains all options in chaining.
 type ChainingOptions struct {
 	MaxGap      float64
+	MinLen      uint8
 	MinScore    float64
 	MaxDistance float64
 }
@@ -107,6 +108,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		return paths, w
 	}
 
+	minLen := ce.options.MinLen
 	minScore := ce.options.MinScore
 
 	var i, j, mj int
@@ -245,7 +247,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
 			if (*visited)[j] { // current anchor is abandoned
-				if len(*path) == 0 && !(*visited)[i] {
+				if len(*path) == 0 && !(*visited)[i] && (*subs)[i].Len >= minLen {
 					*path = append(*path, i) // record the anchor
 					// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
 				}

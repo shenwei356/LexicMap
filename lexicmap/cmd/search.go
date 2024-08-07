@@ -150,9 +150,9 @@ Output format:
 		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
 		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
 		extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
-		if extLen < 1000 {
-			checkError(fmt.Errorf("the value of flag --align-ext-len should be >= 1000"))
-		}
+		// if extLen < 1000 {
+		// 	checkError(fmt.Errorf("the value of flag --align-ext-len should be >= 1000"))
+		// }
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
@@ -267,6 +267,10 @@ Output format:
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
+
+		if extLen > idx.contigInterval {
+			checkError(fmt.Errorf("the value of flag --align-ext-len (%d) should be <= contig interval length in database (%d)", extLen, idx.contigInterval))
+		}
 
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))
@@ -534,8 +538,8 @@ func init() {
 	mapCmd.Flags().BoolP("pseudo-align", "", false,
 		formatFlagUsage(`Only perform pseudo alignment, alignment metrics, including qcovGnm, qcovSHP and pident, will be less accurate.`))
 
-	mapCmd.Flags().IntP("align-ext-len", "", 2000,
-		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment.`))
+	mapCmd.Flags().IntP("align-ext-len", "", 1000,
+		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
 	mapCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))

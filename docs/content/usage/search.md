@@ -63,7 +63,8 @@ Flags:
       --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
                                        phase). (default 50)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-                                       extracting query and target sequences for alignment. (default 2000)
+                                       extracting query and target sequences for alignment. It should be
+                                       <= contig interval length in database. (default 1000)
       --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
   -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
   -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
