@@ -31,6 +31,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	// "github.com/shenwei356/lexichash"
 )
 
 // MASK_REVERSE is the mask of reversed flag
@@ -46,7 +47,8 @@ type Searcher struct {
 
 	// indexes of the ChunkSize masks.
 	// A list of k-mer and offset pairs are intermittently saved in a []uint64
-	Indexes [][]uint64
+	Indexes   [][]uint64
+	getAnchor func(uint64) uint64
 
 	maxKmer uint64
 	buf     []byte
@@ -55,7 +57,7 @@ type Searcher struct {
 
 // NewSearcher creates a new Searcher for the given kv-data file.
 func NewSearcher(file string) (*Searcher, error) {
-	k, chunkIndex, indexes, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
+	k, chunkIndex, indexes, maskPrefix, anchorPrefix, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data index file")
 	}
@@ -70,6 +72,7 @@ func NewSearcher(file string) (*Searcher, error) {
 		ChunkIndex: chunkIndex,
 		ChunkSize:  len(indexes),
 		Indexes:    indexes,
+		getAnchor:  AnchorExtracter(k, maskPrefix, anchorPrefix),
 		fh:         fh,
 
 		maxKmer: 1<<(k<<1) - 1,
@@ -144,7 +147,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last, begin, middle, end int
+	// var last, begin, middle, end int
 	var i int
 	var offset uint64 // offset in kv-data file
 
@@ -176,6 +179,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	chunkIndex := scr.ChunkIndex
 	ttt := (uint64(1) << (k << 1)) - 1
 
+	getAnchor := scr.getAnchor
+	var is2ndKmer bool
+
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
 			continue
@@ -194,54 +200,66 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			suffix2 = (k - p) << 1
 			mask = (1 << suffix2) - 1                  // 1111
 			leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
-			rightBound = kmer>>suffix2<<suffix2 + mask // kmer with last 4bits being 1
+			rightBound = kmer>>suffix2<<suffix2 | mask // kmer with last 4bits being 1
 		} else {
 			leftBound = kmer
 			rightBound = kmer
 		}
 
-		// fmt.Printf("k:%d, m:%d\n", k, m)
-		// fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
-		// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
-		// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
+		// if iQ+chunkIndex == 19333 {
+		// 	fmt.Printf("k:%d, p:%d\n", k, p)
+		// 	fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
+		// 	fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
+		// 	fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
+		// }
 
 		// -----------------------------------------------------
-		// find the nearest anchor
+		// // find the nearest anchor
 
-		if len(index) == 2 {
-			i = 0
-			offset = index[1]
-		} else {
-			last = len(index) - 2
-			// fmt.Printf("len: %d, last: %d\n", len(index), last)
-			begin, end = 0, last
-			for {
-				middle = begin + (end-begin)>>1
-				if middle&1 > 0 {
-					middle--
-				}
-				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-					i = begin
-					break
-				}
-				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-				// 	index[middle], lexichash.MustDecode(index[middle], k))
-				if leftBound <= index[middle] { // when they are equal, we still need to check
-					// fmt.Printf(" left\n")
-					end = middle // new end
-				} else {
-					// fmt.Printf(" right\n")
-					begin = middle // new start
-				}
-				if begin+2 == end { // next to each other
-					i = begin
-					break
-				}
-			}
-			offset = index[i+1]
+		// if len(index) == 2 {
+		// 	i = 0
+		// 	offset = index[1]
+		// } else {
+		// 	last = len(index) - 2
+		// 	// fmt.Printf("len: %d, last: %d\n", len(index), last)
+		// 	begin, end = 0, last
+		// 	for {
+		// 		middle = begin + (end-begin)>>1
+		// 		if middle&1 > 0 {
+		// 			middle--
+		// 		}
+		// 		if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+		// 			i = begin
+		// 			break
+		// 		}
+		// 		// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
+		// 		// 	index[middle], lexichash.MustDecode(index[middle], k))
+		// 		if leftBound <= index[middle] { // when they are equal, we still need to check
+		// 			// fmt.Printf(" left\n")
+		// 			end = middle // new end
+		// 		} else {
+		// 			// fmt.Printf(" right\n")
+		// 			begin = middle // new start
+		// 		}
+		// 		if begin+2 == end { // next to each other
+		// 			i = begin
+		// 			break
+		// 		}
+		// 	}
+		// 	offset = index[i+1]
+		// }
+
+		i = int(getAnchor(leftBound)<<1) + 2
+		offset = index[i+1]
+		is2ndKmer = offset&1 == 1
+		offset >>= 1
+		if offset == 0 {
+			continue
 		}
 
-		// fmt.Printf("i: %d, kmer:%s, offset: %d\n", i, lexichash.MustDecode(index[i], k), offset)
+		// if iQ+chunkIndex == 19333 {
+		// 	fmt.Printf("i: %d, kmer:%s, offset: %d\n", i, lexichash.MustDecode(index[i], k), offset)
+		// }
 
 		// -----------------------------------------------------
 		// check one by one
@@ -285,21 +303,37 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			}
 
 			if first {
-				kmer1 = index[i] // from the index
 				first = false
+
+				if !is2ndKmer {
+					kmer1 = index[i] // from the index
+					kmer2 = kmer1 + v2
+				} else {
+					kmer1 = 0
+					kmer2 = index[i] // from the index
+				}
 			} else {
 				kmer1 = v1 + _offset
+				kmer2 = kmer1 + v2
 			}
-			kmer2 = kmer1 + v2
+
 			_offset = kmer2
 
+			// if iQ+chunkIndex == 19333 {
+			// 	fmt.Printf("  kmer1: %s, kmer2: %s\n", lexichash.MustDecode(kmer1, k), lexichash.MustDecode(kmer2, k))
+			// }
+
 			if kmer1 > rightBound { // finished
-				// fmt.Printf("  kmer1 out of scope: %s\n", lexichash.MustDecode(kmer1, k))
+				// if iQ+chunkIndex == 19333 {
+				// 	fmt.Printf("  kmer1 out of scope: %s\n", lexichash.MustDecode(kmer1, k))
+				// }
 				break
 			}
 
 			if kmer1 >= leftBound || kmer2 >= leftBound {
-				// fmt.Printf("  found: %v, %v\n", kmer1 >= leftBound, kmer2 >= leftBound)
+				// if iQ+chunkIndex == 19333 {
+				// 	fmt.Printf("  found: %v, %v\n", kmer1 >= leftBound, kmer2 >= leftBound)
+				// }
 				found = true
 			}
 
@@ -361,7 +395,14 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					}
 
 					v = be.Uint64(buf8)
+
+					// if iQ+chunkIndex == 19333 {
+					// 	fmt.Println(!checkFlag, v&MASK_REVERSE == rvflag, v, v&MASK_REVERSE, rvflag)
+					// }
 					if !checkFlag || v&MASK_REVERSE == rvflag {
+						// if iQ+chunkIndex == 19333 {
+						// 	fmt.Printf("  save: %s, v:%d\n", lexichash.MustDecode(kmer1, k), v)
+						// }
 						sr1.Values = append(sr1.Values, v)
 					}
 				}
@@ -377,7 +418,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// 		return nil, ErrBrokenFile
 				// 	}
 				// }
-				r.Seek(int64(lenVal1*8), 1)
+				r.Seek(int64(lenVal1<<3), 1)
 			}
 
 			if kmer2 > rightBound { // only record kmer1
@@ -423,6 +464,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 					v = be.Uint64(buf8)
 					if !checkFlag || v&MASK_REVERSE == rvflag {
+						// if iQ+chunkIndex == 19333 {
+						// 	fmt.Printf("  save: %s, v:%d\n", lexichash.MustDecode(kmer2, k), v)
+						// }
 						sr2.Values = append(sr2.Values, v)
 					}
 				}
@@ -438,7 +482,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// 		return nil, ErrBrokenFile
 				// 	}
 				// }
-				r.Seek(int64(lenVal2*8), 1)
+				r.Seek(int64(lenVal2<<3), 1)
 			}
 
 			if lastPair {
@@ -481,7 +525,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last, begin, middle, end int
+	// var last, begin, middle, end int
 	var i int
 	var offset uint64 // offset in kv-data file
 
@@ -515,6 +559,9 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 	var iKmer int
 
+	getAnchor := scr.getAnchor
+	var is2ndKmer bool
+
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
 			continue
@@ -534,51 +581,59 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				suffix2 = (k - p) << 1
 				mask = (1 << suffix2) - 1                  // 1111
 				leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
-				rightBound = kmer>>suffix2<<suffix2 + mask // kmer with last 4bits being 1
+				rightBound = kmer>>suffix2<<suffix2 | mask // kmer with last 4bits being 1
 			} else {
 				leftBound = kmer
 				rightBound = kmer
 			}
 
-			// fmt.Printf("k:%d, m:%d\n", k, m)
+			// fmt.Printf("k:%d, p:%d\n", k, p)
 			// fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
 			// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
 			// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
 
 			// -----------------------------------------------------
-			// find the nearest anchor
+			// // find the nearest anchor
 
-			if len(index) == 2 {
-				i = 0
-				offset = index[1]
-			} else {
-				last = len(index) - 2
-				// fmt.Printf("len: %d, last: %d\n", len(index), last)
-				begin, end = 0, last
-				for {
-					middle = begin + (end-begin)>>1
-					if middle&1 > 0 {
-						middle--
-					}
-					if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-						i = begin
-						break
-					}
-					// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-					// 	index[middle], lexichash.MustDecode(index[middle], k))
-					if leftBound <= index[middle] { // when they are equal, we still need to check
-						// fmt.Printf(" left\n")
-						end = middle // new end
-					} else {
-						// fmt.Printf(" right\n")
-						begin = middle // new start
-					}
-					if begin+2 == end { // next to each other
-						i = begin
-						break
-					}
-				}
-				offset = index[i+1]
+			// if len(index) == 2 {
+			// 	i = 0
+			// 	offset = index[1]
+			// } else {
+			// 	last = len(index) - 2
+			// 	// fmt.Printf("len: %d, last: %d\n", len(index), last)
+			// 	begin, end = 0, last
+			// 	for {
+			// 		middle = begin + (end-begin)>>1
+			// 		if middle&1 > 0 {
+			// 			middle--
+			// 		}
+			// 		if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+			// 			i = begin
+			// 			break
+			// 		}
+			// 		// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
+			// 		// 	index[middle], lexichash.MustDecode(index[middle], k))
+			// 		if leftBound <= index[middle] { // when they are equal, we still need to check
+			// 			// fmt.Printf(" left\n")
+			// 			end = middle // new end
+			// 		} else {
+			// 			// fmt.Printf(" right\n")
+			// 			begin = middle // new start
+			// 		}
+			// 		if begin+2 == end { // next to each other
+			// 			i = begin
+			// 			break
+			// 		}
+			// 	}
+			// 	offset = index[i+1]
+			// }
+
+			i = int(getAnchor(leftBound)<<1) + 2
+			offset = index[i+1]
+			is2ndKmer = offset&1 == 1
+			offset >>= 1
+			if offset == 0 {
+				continue
 			}
 
 			// fmt.Printf("i: %d, kmer:%s, offset: %d\n", i, lexichash.MustDecode(index[i], k), offset)
@@ -625,12 +680,20 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				}
 
 				if first {
-					kmer1 = index[i] // from the index
 					first = false
+
+					if !is2ndKmer {
+						kmer1 = index[i] // from the index
+						kmer2 = kmer1 + v2
+					} else {
+						kmer1 = 0
+						kmer2 = index[i] // from the index
+					}
 				} else {
 					kmer1 = v1 + _offset
+					kmer2 = kmer1 + v2
 				}
-				kmer2 = kmer1 + v2
+
 				_offset = kmer2
 
 				if kmer1 > rightBound { // finished
@@ -709,15 +772,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 					*results = append(*results, sr1)
 				} else {
-					for j = 0; j < lenVal1; j++ {
-						nReaded, err = io.ReadFull(r, buf8)
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 8 {
-							return nil, ErrBrokenFile
-						}
-					}
+					// for j = 0; j < lenVal1; j++ {
+					// 	nReaded, err = io.ReadFull(r, buf8)
+					// 	if err != nil {
+					// 		return nil, err
+					// 	}
+					// 	if nReaded < 8 {
+					// 		return nil, ErrBrokenFile
+					// 	}
+					// }
+					r.Seek(int64(lenVal1<<3), 1)
 				}
 
 				if kmer2 > rightBound { // only record kmer1
@@ -770,15 +834,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 					*results = append(*results, sr2)
 				} else {
-					for j = 0; j < lenVal2; j++ {
-						nReaded, err = io.ReadFull(r, buf8)
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 8 {
-							return nil, ErrBrokenFile
-						}
-					}
+					// for j = 0; j < lenVal2; j++ {
+					// 	nReaded, err = io.ReadFull(r, buf8)
+					// 	if err != nil {
+					// 		return nil, err
+					// 	}
+					// 	if nReaded < 8 {
+					// 		return nil, ErrBrokenFile
+					// 	}
+					// }
+					r.Seek(int64(lenVal2<<3), 1)
 				}
 
 				if lastPair {

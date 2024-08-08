@@ -155,8 +155,8 @@ func init() {
 
 	reindexSeedsCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
-	reindexSeedsCmd.Flags().IntP("partitions", "", 512,
-		formatFlagUsage(`Number of partitions for re-indexing seeds (k-mer-value data) files.`))
+	reindexSeedsCmd.Flags().IntP("partitions", "", 1024,
+		formatFlagUsage(`Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
 
 	reindexSeedsCmd.SetUsageTemplate(usageTemplate(""))
 }

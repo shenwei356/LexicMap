@@ -52,7 +52,7 @@ import (
 var be = binary.BigEndian
 
 // MainVersion is use for checking compatibility
-var MainVersion uint8 = 2
+var MainVersion uint8 = 3
 
 // MinorVersion is less important
 var MinorVersion uint8 = 0
@@ -118,7 +118,7 @@ type IndexBuildingOptions struct {
 	RandSeed int64 // random seed
 
 	// generate mask randomly
-	Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
+	// Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
 
 	// filling sketching deserts
 	DisableDesertFilling   bool   // disable desert filling (just for analysis index)
@@ -151,15 +151,15 @@ type IndexBuildingOptions struct {
 
 // CheckIndexBuildingOptions checks some important options
 func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
-	if opt.K < 3 || opt.K > 32 {
-		return fmt.Errorf("invalid k value: %d, valid range: [3, 32]", opt.K)
+	if opt.K < minK || opt.K > 32 {
+		return fmt.Errorf("invalid k value: %d, valid range: [%d, 32]", opt.K, minK)
 	}
 	if opt.Masks < 64 {
 		return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
 	}
-	if opt.Prefix > opt.K {
-		return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.Prefix)
-	}
+	// if opt.Prefix > opt.K {
+	// 	return fmt.Errorf("invalid prefix: %d, valid range: [0, k], 0 for no checking", opt.Prefix)
+	// }
 
 	if opt.Chunks < 1 || opt.Chunks > 128 {
 		return fmt.Errorf("invalid chunks: %d, valid range: [1, 128]", opt.Chunks)
@@ -224,10 +224,32 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 		opt.K = lh.K
 	} else {
-		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, opt.Prefix)
+		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, 0)
 		if err != nil {
 			return err
 		}
+	}
+
+	// ----------------------------------
+	// mask prefix length
+	maskPrefix := 1
+	for 1<<(maskPrefix<<1) <= len(lh.Masks) {
+		maskPrefix++
+	}
+	maskPrefix--
+	if maskPrefix < 1 {
+		maskPrefix = 1
+	}
+
+	anchorPrefix := 0
+	partitions := opt.Partitions
+	for partitions > 0 {
+		partitions >>= 2
+		anchorPrefix++
+	}
+	anchorPrefix--
+	if anchorPrefix < 1 {
+		anchorPrefix = 1
 	}
 
 	// output failed genome
@@ -324,7 +346,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		kvChunks = buildAnIndex(lh, opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
+		kvChunks = buildAnIndex(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
 	}
 
 	if outputBigGenomes {
@@ -349,7 +371,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		log.Info()
 		log.Infof("merging %d indexes...", len(tmpIndexes))
 	}
-	err = mergeIndexes(lh, opt, kvChunks, outdir, tmpIndexes, tmpDir, 1)
+	err = mergeIndexes(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, kvChunks, outdir, tmpIndexes, tmpDir, 1)
 	if err != nil {
 		return fmt.Errorf("failed to merge indexes: %s", err)
 	}
@@ -419,7 +441,7 @@ const TOO_LARGE_GENOME = "too_large_genome"
 const TOO_MANY_SEQS = "too_many_seqs"
 
 // build an index for the files of one batch
-func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
+func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8, opt *IndexBuildingOptions,
 	datas *[]*map[uint64]*[]uint64,
 	outdir string, files []string, batch int, nbatches int, outputBigGenomes bool, chBG chan string) int {
 
@@ -822,7 +844,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 	extractRefName := reRefName != nil
 	filterNames := len(opt.ReSeqExclude) > 0
 
-	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, opt.Prefix))
+	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))
 
 	var wg sync.WaitGroup                 // ensure all jobs done
 	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
@@ -1549,7 +1571,7 @@ func buildAnIndex(lh *lexichash.LexicHash, opt *IndexBuildingOptions,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, opt.Partitions)
+			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix))
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}

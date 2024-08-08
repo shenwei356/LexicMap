@@ -36,7 +36,7 @@ import (
 )
 
 // mergeIndexes merge multiple indexes to a big one
-func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks int,
+func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8, opt *IndexBuildingOptions, kvChunks int,
 	outdir string, paths []string, tmpDir string, round int) error {
 	timeStart := time.Now()
 	if opt.Verbose || opt.Log2File {
@@ -133,7 +133,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 
 				// outfile
 				file := filepath.Join(dirSeeds, chunkFile(chunk))
-				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file)
+				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, maskPrefix, anchorPrefix)
 				if err != nil {
 					checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
 				}
@@ -168,7 +168,7 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 						kv.RecycleKmerData(m1)
 					}
 
-					err = wtr.WriteDataOfAMask(*m, opt.Partitions)
+					err = wtr.WriteDataOfAMask(*m)
 					if err != nil {
 						checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
 					}
@@ -298,6 +298,6 @@ func mergeIndexes(lh *lexichash.LexicHash, opt *IndexBuildingOptions, kvChunks i
 		return nil
 	}
 
-	mergeIndexes(lh, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
+	mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
 	return nil
 }
