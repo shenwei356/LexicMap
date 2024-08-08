@@ -26,6 +26,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -38,11 +39,17 @@ type Reader struct {
 	ChunkIndex int   // index of the first mask in this chunk
 	ChunkSize  int   // the number of masks in this chunk
 
-	fh *os.File // file handler of the kv-data file
-	r  *bufio.Reader
+	file string
+	fh   *os.File // file handler of the kv-data file
+	r    *bufio.Reader
 
 	buf  []byte
 	buf8 []uint8
+
+	// index of seed data
+	readIndexInfo bool
+	maskPrefix    uint8
+	anchorPrefix  uint8
 }
 
 // NewReader creates a reader.
@@ -55,6 +62,7 @@ func NewReader(file string) (*Reader, error) {
 	r := bufio.NewReader(fh)
 
 	rdr := &Reader{
+		file: file,
 		fh:   fh,
 		r:    r,
 		buf:  make([]byte, 64),
@@ -442,7 +450,16 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 // ReadDataOfAMaskAsListAndCreateIndex reads data of a mask,
 // and create a new index with n anchors.
 // Returned: a list of k-mer and value pairs are intermittently saved in a []uint64.
-func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, []uint64, error) {
+func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8, uint8, error) {
+	if !rdr.readIndexInfo {
+		var err error
+		_, _, _, rdr.maskPrefix, rdr.anchorPrefix, err = ReadKVIndexInfo(filepath.Clean(rdr.file) + KVIndexFileExt)
+		if err != nil {
+			return nil, nil, 0, 0, errors.Wrapf(err, "reading kv-data index file")
+		}
+		rdr.readIndexInfo = true
+	}
+
 	buf := rdr.buf
 	buf8 := rdr.buf8
 	r := rdr.r
@@ -464,12 +481,16 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 	// 8-byte the number of k-mers
 	nReaded, err = io.ReadFull(r, buf8)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, 0, err
 	}
 	if nReaded < 8 {
-		return nil, nil, ErrBrokenFile
+		return nil, nil, 0, 0, ErrBrokenFile
 	}
 	nKmers := int(be.Uint64(buf8))
+
+	if nKmers == 0 { // this hapens when no captured k-mer for a mask
+		return make([]uint64, 0), nil, 0, 0, nil
+	}
 
 	// A list of k-mer and value pairs are intermittently saved in a []uint64
 	m := make([]uint64, 0, nKmers<<1)
@@ -477,35 +498,21 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 	// it help to reduce slice growing, but it's slightly slower in batch querying, interesting.
 	// m := make([]uint64, 0, int(float64(nKmers)*2.2))
 
-	var _nAnchors, idxChunkSize int
-	var recordedAnchors, _j int
 	var iOffset uint64 // offset of kmer
 
-	// compute nAnchors for this mask
-	_nAnchors = nAnchors
-	if _nAnchors <= 0 {
-		_nAnchors = int(math.Sqrt(float64(nKmers)))
+	index := make([]int, int(math.Pow(4, float64(rdr.anchorPrefix))))
+	for i := range index {
+		index[i] = -1
 	}
-	if _nAnchors == 0 {
-		_nAnchors = 1
-	}
-
-	idxChunkSize = (nKmers / _nAnchors) >> 1 // need to recompute for each data
-	if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
-		idxChunkSize = 1        // idxChunkSize should be at least be 1
-		_nAnchors = nKmers >> 1 // then nkmers = 50
-	}
-	if _nAnchors == 0 { // have to check again, this happens for nKmers == 1
-		_nAnchors = 1
-	}
-
-	index := make([]uint64, 0, _nAnchors<<1)
+	getAnchor := AnchorExtracter(rdr.K, rdr.maskPrefix, rdr.anchorPrefix)
+	var prefix, prefixPre uint64
+	first := true
 
 	for {
 		// read the control byte
 		_, err = io.ReadFull(r, buf[:1])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, 0, err
 		}
 		ctrlByte = buf[0]
 
@@ -520,15 +527,15 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 		// read encoded bytes
 		nReaded, err = io.ReadFull(r, buf[:nBytes])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, 0, err
 		}
 		if nReaded < nBytes {
-			return nil, nil, ErrBrokenFile
+			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
 		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 		if nDecoded == 0 {
-			return nil, nil, ErrBrokenFile
+			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
 		kmer1 = v1 + _offset
@@ -537,18 +544,16 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 
 		// ------------------------------------------------------------------------
 		// index anchor
-		if idxChunkSize == 1 || _j%idxChunkSize == 0 {
-			if recordedAnchors < _nAnchors {
-				recordedAnchors++
-				// fmt.Printf("[%d] %d, %d, %d, len(m): %d\n", recordedAnchors, _j, kmer1, iOffset, len(m))
-				// record kmer1 and iOffset
-				index = append(index, kmer1)
-				index = append(index, iOffset)
-			}
 
-			_j = 0
+		// key 1
+		prefix = getAnchor(kmer1)
+		if first || prefix != prefixPre { // the first new prefix
+			first = false
+
+			index[prefix] = int(iOffset)
+
+			prefixPre = prefix
 		}
-		_j++
 
 		// fmt.Printf("%s, %s\n", lexichash.MustDecode(kmer1, rdr.K), lexichash.MustDecode(kmer2, rdr.K))
 
@@ -557,7 +562,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 		// read the control byte
 		_, err = io.ReadFull(r, buf[:1])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, 0, err
 		}
 		ctrlByte = buf[0]
 
@@ -567,15 +572,15 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 		// read encoded bytes
 		nReaded, err = io.ReadFull(r, buf[:nBytes])
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, 0, 0, err
 		}
 		if nReaded < nBytes {
-			return nil, nil, ErrBrokenFile
+			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
 		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
 		if nDecoded == 0 {
-			return nil, nil, ErrBrokenFile
+			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
 		// ------------------ values -------------------
@@ -583,10 +588,10 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 		for j = 0; j < lenVal1; j++ {
 			nReaded, err = io.ReadFull(r, buf8)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, 0, 0, err
 			}
 			if nReaded < 8 {
-				return nil, nil, ErrBrokenFile
+				return nil, nil, 0, 0, ErrBrokenFile
 			}
 
 			v = be.Uint64(buf8)
@@ -600,13 +605,21 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 			break
 		}
 
+		// key 2
+		prefix = getAnchor(kmer2)
+		if prefix != prefixPre { // the first new prefix
+			index[prefix] = int(iOffset)
+
+			prefixPre = prefix
+		}
+
 		for j = 0; j < lenVal2; j++ {
 			nReaded, err = io.ReadFull(r, buf8)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, 0, 0, err
 			}
 			if nReaded < 8 {
-				return nil, nil, ErrBrokenFile
+				return nil, nil, 0, 0, ErrBrokenFile
 			}
 
 			v = be.Uint64(buf8)
@@ -622,13 +635,13 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex(nAnchors int) ([]uint64, 
 	}
 
 	if len(m)>>1 < nKmers {
-		return m, nil, fmt.Errorf("number of k-mers mismatch. expected: >=%d, got: %d", nKmers, len(m)>>1)
+		return m, nil, 0, 0, fmt.Errorf("number of k-mers mismatch. expected: >=%d, got: %d", nKmers, len(m)>>1)
 	}
 	// if int(index[len(index)-1]) >= len(m) {
 	// 	fmt.Println(_nAnchors, len(m), len(index), index)
 	// }
 
-	return m, index, nil
+	return m, index, rdr.maskPrefix, rdr.anchorPrefix, nil
 }
 
 // --------------------------------------------------------------------

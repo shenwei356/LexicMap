@@ -48,10 +48,10 @@ var MagicIdx = [8]byte{'.', 'k', 'v', 'i', 'n', 'd', 'e', 'x'}
 var KVIndexFileExt = ".idx"
 
 // MainVersion is use for checking compatibility
-var MainVersion uint8 = 0
+var MainVersion uint8 = 1
 
 // MinorVersion is less important
-var MinorVersion uint8 = 1
+var MinorVersion uint8 = 0
 
 // ErrInvalidFileFormat means invalid file format.
 var ErrInvalidFileFormat = errors.New("k-mer-value data: invalid binary format")
@@ -88,20 +88,26 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //		Numbers of values of the 2 k-mers, 2-16 bytes, 2 bytes for most cases.
 //		Values of the 2 k-mers, 8*n bytes, 16 bytes for most cases.
 //
-// Index file stores a fix number of k-mers (anchors) and their offsets in
-// the kv-data file for fast access.
+// Index file stores 4^p' k-mers (anchors) and their offsets in
+// the kv-data file for fast access, the time complexity would be O(1) instead of previous O(log2N)
 //
-// Locations of these anchors, e.g., 5 anchors.
+//	AAAAAAA CCCCC NNNNNNNN
+//	------- -----
+//	p       p'
+//
+// Locations of these anchors vary, and some of them might not exist.
 //
 //	kkvvkkvvkkvvkkvvkkvvkkvvkkvvkkvvkkvvkkvvkkvv
-//	A       A       A       A       A
+//	AA        AC       AG   AT   CA
 //
 // Header (40 bytes):
 //
 //	Magic number, 8 bytes, ".kvindex".
 //	Main and minor versions, 2 bytes.
 //	K size, 1 byte.
-//	Blank, 5 bytes.
+//	Mask prefix length, 1  byte. e.g., 7
+//	Anchor prefix length, 1 byte. e.g., 5
+//	Blank, 3 bytes.
 //	Mask start index, 8 bytes. The index of the first index.
 //	Mask chunk size, 8 bytes. The number of masks in this file.
 //
@@ -112,7 +118,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
-func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, nAnchors int) (int, error) {
+func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
@@ -123,13 +129,13 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	// 	return 0, errors.New("k-mer-value data: no data given")
 	// }
 
-	wtr, err := NewWriter(k, MaskOffset, len(data), file)
+	wtr, err := NewWriter(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix)
 	if err != nil {
 		return 0, err
 	}
 
 	for _, m := range data {
-		err = wtr.WriteDataOfAMask(*m, nAnchors)
+		err = wtr.WriteDataOfAMask(*m)
 		if err != nil {
 			return 0, err
 		}
@@ -159,8 +165,12 @@ type Writer struct {
 	w  *bufio.Writer
 
 	// for index file
-	fhi *os.File
-	wi  *bufio.Writer
+	fhi          *os.File
+	wi           *bufio.Writer
+	maskPrefix   uint8
+	anchorPrefix uint8
+	poolP2O      *sync.Pool
+	getAnchor    func(uint64) uint64
 }
 
 // Close is very important
@@ -185,7 +195,14 @@ func (wtr *Writer) Close() (err error) {
 }
 
 // NewWriter returns a new writer
-func NewWriter(k uint8, MaskOffset int, chunkSize int, file string) (*Writer, error) {
+func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8) (*Writer, error) {
+	if maskPrefix+anchorPrefix > k {
+		return nil, fmt.Errorf("maskPrefix + anchorPrefix should be <= k")
+	}
+	if anchorPrefix == 0 {
+		return nil, fmt.Errorf("anchorPrefix could not be 0")
+	}
+
 	// file handlers
 	fh, err := os.Create(file)
 	if err != nil {
@@ -206,6 +223,15 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string) (*Writer, er
 		w:          w,
 		fhi:        fhi,
 		wi:         wi,
+
+		maskPrefix:   maskPrefix,
+		anchorPrefix: anchorPrefix,
+		poolP2O: &sync.Pool{New: func() interface{} {
+			// 2 is for recording the offset of the first k-mer whose prefix might not be AA
+			tmp := make([]uint64, 2+int(math.Pow(4, float64(anchorPrefix)))<<1)
+			return &tmp
+		}},
+		getAnchor: AnchorExtracter(k, maskPrefix, anchorPrefix),
 
 		bufVar: make([]byte, 16),
 		buf:    make([]byte, 36),
@@ -246,7 +272,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string) (*Writer, er
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k})
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k, maskPrefix, anchorPrefix})
 	if err != nil {
 		return nil, err
 	}
@@ -263,8 +289,23 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string) (*Writer, er
 	return wtr, nil
 }
 
+// AnchorExtracter returns the function for extracting anchors, i.e., CCCCC below
+//
+//	maskPrefix
+//	-------
+//	AAAAAAA CCCCC NNNNNNNN
+//	        -----
+//	        anchorPrefix
+func AnchorExtracter(k uint8, maskPrefix uint8, anchorPrefix uint8) func(uint64) uint64 {
+	shift := uint64(k-maskPrefix-anchorPrefix) << 1
+	mask := uint64(1<<(anchorPrefix<<1)) - 1
+	return func(kmer uint64) uint64 {
+		return kmer >> shift & mask
+	}
+}
+
 // WriteDataOfAMask writes data of one mask.
-func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err error) {
+func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var hasPrev bool
 	var preKey, key, _v uint64
 	var preVal, v *[]uint64
@@ -279,25 +320,8 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 	var even bool
 	var i, nm1 int
 	var j int
-	var recordedAnchors int
 
-	// compute nAnchors for this mask
 	nKmers := len(m)
-	if nAnchors <= 0 {
-		nAnchors = int(math.Sqrt(float64(nKmers)))
-	}
-	if nAnchors == 0 {
-		nAnchors = 1
-	}
-
-	idxChunkSize := (nKmers / nAnchors) >> 1 // need to recompute for each data
-	if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
-		idxChunkSize = 1       // idxChunkSize should be at least be 1
-		nAnchors = nKmers >> 1 // then nkmers = 50
-	}
-	if nAnchors == 0 { // have to check again, this happens for nKmers == 1
-		nAnchors = 1
-	}
 
 	w := wtr.w
 	wi := wtr.wi
@@ -313,18 +337,18 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 	wtr.N += 8
 
 	if nKmers == 0 { // this hapens when no captured k-mer for a mask
-		nAnchors = 0
-	}
+		// 8-byte the number of anchors
+		err = binary.Write(wi, be, uint64(0))
+		if err != nil {
+			return err
+		}
 
-	// 8-byte the number of anchors
-	err = binary.Write(wi, be, uint64(nAnchors))
-	if err != nil {
-		return err
-	}
-
-	if nKmers == 0 { // this hapens when no captured k-mer for a mask
 		return nil
 	}
+
+	p2o := wtr.poolP2O.Get().(*[]uint64)
+	clear(*p2o)
+	(*p2o)[1] = uint64(wtr.N) << 1 // offset of the first k-mer
 
 	keys := poolUint64s.Get().(*[]uint64)
 	// sort keys
@@ -339,7 +363,10 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 	nm1 = len(*keys) - 1     // idx of the last element
 
 	j = 0
-	recordedAnchors = 0
+
+	getAnchor := wtr.getAnchor
+	var prefix, prefixPre uint64
+	first := true
 
 	for i, key = range *keys {
 		v = m[key]
@@ -354,22 +381,34 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 
 		// ------------------------------------------------------------------------
 		// index anchor
-		if idxChunkSize == 1 || j%idxChunkSize == 0 {
-			if recordedAnchors < nAnchors {
-				recordedAnchors++
 
-				// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, i, preKey, N)
-				be.PutUint64(buf[:8], preKey)          // k-mer
-				be.PutUint64(buf[8:16], uint64(wtr.N)) // offset
-				_, err = wi.Write(buf[:16])
-				if err != nil {
-					return err
-				}
-			}
+		// key 1
+		prefix = getAnchor(preKey)
+		// if preKey == 2233842599699997050 {
+		// 	fmt.Printf("i:%d, key1:%s, prefix:%s, v:%d, offset:%d\n", i, lexichash.MustDecode(preKey, wtr.K), lexichash.MustDecode(prefix, wtr.anchorPrefix), preVal, wtr.N)
+		// }
+		if first || prefix != prefixPre { // the first new prefix
+			first = false
 
-			j = 0
+			j = int(prefix<<1) + 2
+			(*p2o)[j], (*p2o)[j+1] = preKey, uint64(wtr.N)<<1
+			// fmt.Printf("  %d, record %s, %d\n", j, lexichash.MustDecode(preKey, wtr.K), wtr.N)
+
+			prefixPre = prefix
 		}
-		j++
+
+		// key 2
+		prefix = getAnchor(key)
+		// if key == 2233842599699997050 {
+		// 	fmt.Printf("i:%d, key2:%s, prefix:%s, v:%d, offset:%d\n", i, lexichash.MustDecode(key, wtr.K), lexichash.MustDecode(prefix, wtr.anchorPrefix), v, wtr.N)
+		// }
+		if prefix != prefixPre { // the first new prefix
+			j = int(prefix<<1) + 2
+			(*p2o)[j], (*p2o)[j+1] = key, uint64(wtr.N)<<1|1 // add a flag to mark it's the second k-mer
+			// fmt.Printf("  %d, record %s, %d\n", j, lexichash.MustDecode(key, wtr.K), wtr.N)
+
+			prefixPre = prefix
+		}
 
 		// ------------------------------------------------------------------------
 
@@ -425,23 +464,18 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 
 	if hasPrev { // the last single one
 		// ------------------------------------------------------------------------
-		// index anchor. this happened only for len(*kmers) == 1
-		if idxChunkSize == 1 || j%idxChunkSize == 0 {
-			if recordedAnchors < nAnchors {
-				recordedAnchors++
+		// index anchor
 
-				// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, i, preKey, N)
-				be.PutUint64(buf[:8], preKey)          // k-mer
-				be.PutUint64(buf[8:16], uint64(wtr.N)) // offset
-				_, err = wi.Write(buf[:16])
-				if err != nil {
-					return err
-				}
-			}
+		// key 1
+		prefix = getAnchor(preKey)
+		if first || prefix != prefixPre { // the first new prefix
+			first = false
 
-			j = 0
+			j = int(prefix<<1) + 2
+			(*p2o)[j], (*p2o)[j+1] = preKey, uint64(wtr.N)<<1
+
+			prefixPre = prefix
 		}
-		j++
 
 		// ------------------------------------------------------------------------
 
@@ -487,6 +521,40 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 
 	poolUint64s.Put(keys)
 
+	// -----------------------------------------
+	// save index
+
+	var kmer uint64
+	var nAnchors uint64
+	e := len(*p2o) >> 1
+	for i := 0; i < e; i++ {
+		offset = (*p2o)[i<<1+1]
+		if offset > 0 {
+			nAnchors++
+		}
+	}
+	// 8-byte the number of anchors
+	err = binary.Write(wi, be, nAnchors) // including the extra 1
+	if err != nil {
+		return err
+	}
+
+	(*p2o)[0] = nAnchors // might be useful
+
+	// k-mer and offset
+	for i := 0; i < e; i++ {
+		j = i << 1
+		kmer, offset = (*p2o)[j], (*p2o)[j+1]
+		if offset > 0 {
+			be.PutUint64(buf[:8], kmer)     // k-mer
+			be.PutUint64(buf[8:16], offset) // offset
+			_, err = wi.Write(buf[:16])
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -501,10 +569,10 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64, nAnchors int) (err e
 //
 // A list of k-mer and offset pairs are intermittently saved in a []uint64.
 // e.g., [k1, o1, k2, o2].
-func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
+func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	fh, err := os.Open(file)
 	if err != nil {
-		return 0, -1, nil, err
+		return 0, -1, nil, 0, 0, err
 	}
 	r := bufio.NewReader(fh)
 	defer fh.Close()
@@ -518,10 +586,10 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 	// check the magic number
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, err
+		return 0, -1, nil, 0, 0, err
 	}
 	if n < 8 {
-		return 0, -1, nil, ErrBrokenFile
+		return 0, -1, nil, 0, 0, ErrBrokenFile
 	}
 	same := true
 	for i := 0; i < 8; i++ {
@@ -531,27 +599,29 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 		}
 	}
 	if !same {
-		return 0, -1, nil, ErrInvalidFileFormat
+		return 0, -1, nil, 0, 0, ErrInvalidFileFormat
 	}
 	// read version information
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, err
+		return 0, -1, nil, 0, 0, err
 	}
 	if n < 8 {
-		return 0, -1, nil, ErrBrokenFile
+		return 0, -1, nil, 0, 0, ErrBrokenFile
 	}
 	// check compatibility
 	if MainVersion != buf[0] {
-		return 0, -1, nil, ErrVersionMismatch
+		return 0, -1, nil, 0, 0, ErrVersionMismatch
 	}
 	k := buf[2] // k-mer size
+	maskPrefix := buf[3]
+	anchorPrefix := buf[4]
 
 	// index of the first mask in current chunk.
 	var iFirstMask int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, err
+		return 0, -1, nil, 0, 0, err
 	}
 	iFirstMask = int(be.Uint64(buf))
 
@@ -559,7 +629,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 	var nMasks int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, err
+		return 0, -1, nil, 0, 0, err
 	}
 	nMasks = int(be.Uint64(buf))
 
@@ -568,14 +638,19 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 
 	// ---------------------------------------------
 
+	indexSize := 2 + int(math.Pow(4, float64(anchorPrefix)))<<1
+	getAnchor := AnchorExtracter(k, maskPrefix, anchorPrefix)
+
 	data := make([][]uint64, nMasks)
 
 	var kmer, offset uint64
+	var prefix uint64
 	var j int
+	var _j uint64
 	for i := 0; i < nMasks; i++ {
 		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return 0, -1, nil, err
+			return 0, -1, nil, 0, 0, err
 		}
 		nAnchors = int(be.Uint64(buf))
 
@@ -584,27 +659,104 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, error) {
 			continue
 		}
 
-		index := make([]uint64, 0, nAnchors<<1)
+		// index := make([]uint64, 0, nAnchors<<1)
+		index := make([]uint64, indexSize)
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf)
 			if err != nil {
-				return 0, -1, nil, err
+				return 0, -1, nil, 0, 0, err
 			}
 			kmer = be.Uint64(buf)
 
 			_, err = io.ReadFull(r, buf)
 			if err != nil {
-				return 0, -1, nil, err
+				return 0, -1, nil, 0, 0, err
 			}
 			offset = be.Uint64(buf)
 
-			index = append(index, kmer)
-			index = append(index, offset)
+			// index = append(index, kmer)
+			// index = append(index, offset)
+			if j == 0 {
+				_j = 0
+			} else {
+				prefix = getAnchor(kmer)
+				_j = prefix<<1 + 2
+			}
+			index[_j] = kmer
+			index[_j+1] = offset
 		}
 		data[i] = index
 	}
 
-	return k, iFirstMask, data, nil
+	return k, iFirstMask, data, maskPrefix, anchorPrefix, nil
+}
+
+// ReadKVIndexInfo read the information.
+func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	r := bufio.NewReader(fh)
+	defer fh.Close()
+
+	// ---------------------------------------------
+
+	buf := make([]byte, 8)
+
+	var n int
+
+	// check the magic number
+	n, err = io.ReadFull(r, buf)
+	if err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	if n < 8 {
+		return 0, -1, 0, 0, 0, ErrBrokenFile
+	}
+	same := true
+	for i := 0; i < 8; i++ {
+		if MagicIdx[i] != buf[i] {
+			same = false
+			break
+		}
+	}
+	if !same {
+		return 0, -1, 0, 0, 0, ErrInvalidFileFormat
+	}
+	// read version information
+	n, err = io.ReadFull(r, buf)
+	if err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	if n < 8 {
+		return 0, -1, 0, 0, 0, ErrBrokenFile
+	}
+	// check compatibility
+	if MainVersion != buf[0] {
+		return 0, -1, 0, 0, 0, ErrVersionMismatch
+	}
+	k := buf[2] // k-mer size
+	maskPrefix := buf[3]
+	anchorPrefix := buf[4]
+
+	// index of the first mask in current chunk.
+	var iFirstMask int
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	iFirstMask = int(be.Uint64(buf))
+
+	// mask chunk size
+	var nMasks int
+	_, err = io.ReadFull(r, buf)
+	if err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	nMasks = int(be.Uint64(buf))
+
+	return k, iFirstMask, nMasks, maskPrefix, anchorPrefix, nil
 }
 
 var poolBytesBuffer = &sync.Pool{New: func() interface{} {
@@ -690,7 +842,26 @@ func CreateKVIndex(file string, nAnchors int) error {
 	// --------------------------------------------------------------------
 	// writer of kv-index file
 
-	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
+	indexFile := filepath.Clean(file) + KVIndexFileExt
+	_, _, _, maskPrefix, _, err := ReadKVIndexInfo(indexFile)
+	if err != nil {
+		return err
+	}
+
+	anchorPrefix := 0
+	partitions := nAnchors
+	for partitions > 0 {
+		partitions >>= 2
+		anchorPrefix++
+	}
+	anchorPrefix--
+	if anchorPrefix < 1 {
+		anchorPrefix = 1
+	}
+
+	getAnchor := AnchorExtracter(K, maskPrefix, uint8(anchorPrefix))
+
+	fhi, err := os.Create(indexFile)
 	if err != nil {
 		return err
 	}
@@ -703,7 +874,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K})
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, uint8(anchorPrefix)})
 	if err != nil {
 		return err
 	}
@@ -717,8 +888,6 @@ func CreateKVIndex(file string, nAnchors int) error {
 	// --------------------------------------------------------------------
 	// read kv data
 
-	var _nAnchors, idxChunkSize int
-
 	var nKmers int
 	var ctrlByte byte
 	var lastPair bool  // check if this is the last pair
@@ -731,7 +900,12 @@ func CreateKVIndex(file string, nAnchors int) error {
 	var lenVal1, lenVal2 uint64
 	var i, j uint64
 
-	var recordedAnchors, _j int
+	var _j int
+	var prefix, prefixPre uint64
+	var first bool
+
+	p2o := make([]uint64, 2+int(math.Pow(4, float64(anchorPrefix)))<<1)
+	var offset1 uint64
 
 	for i = 0; i < ChunkSize; i++ { // for chunkSize masks
 		// fmt.Printf("chunk: %d/%d\n", i, ChunkSize)
@@ -749,40 +923,19 @@ func CreateKVIndex(file string, nAnchors int) error {
 		nKmers = int(be.Uint64(buf8))
 		offset += 8
 
-		// compute nAnchors for this mask
-		_nAnchors = nAnchors
-		if _nAnchors <= 0 {
-			_nAnchors = int(math.Sqrt(float64(nKmers)))
-		}
-		if _nAnchors == 0 {
-			_nAnchors = 1
-		}
-
-		idxChunkSize = (nKmers / _nAnchors) >> 1 // need to recompute for each data
-		if idxChunkSize == 0 {                   // it happens, e.g., (101/51) >> 1
-			idxChunkSize = 1        // idxChunkSize should be at least be 1
-			_nAnchors = nKmers >> 1 // then nkmers = 50
-		}
-		if _nAnchors == 0 { // have to check again, this happens for nKmers == 1
-			_nAnchors = 1
-		}
-
 		if nKmers == 0 { // this hapens when no captured k-mer for a mask
-			_nAnchors = 0
-		}
+			// 8-byte the number of anchors
+			err = binary.Write(wi, be, uint64(0))
+			if err != nil {
+				return err
+			}
 
-		// 8-byte the number of anchors
-		err = binary.Write(wi, be, uint64(_nAnchors))
-		if err != nil {
-			return err
-		}
-
-		if nKmers == 0 { // this hapens when no captured k-mer for a mask
 			continue
 		}
 
-		_j = 0
-		recordedAnchors = 0
+		first = true
+		clear(p2o)
+		p2o[1] = uint64(offset) << 1 // offset of the first k-mer
 
 		// fmt.Printf("nKmers: %d, nAnchors: %d, offset: %d\n", nKmers, _nAnchors, offset)
 		for {
@@ -823,24 +976,19 @@ func CreateKVIndex(file string, nAnchors int) error {
 
 			// ------------------------------------------------------------------------
 			// index anchor
-			if idxChunkSize == 1 || _j%idxChunkSize == 0 {
-				if recordedAnchors < _nAnchors {
-					recordedAnchors++
 
-					// fmt.Printf("[%d] %d, %d, %d\n", recordedAnchors, _j, kmer1, offset)
-					// fmt.Printf("mask: %d, nkmers: %d, chunkSize: %d, anchor #%d, %s\n",
-					// 	ChunkIndex+i+1, nKmers, idxChunkSize, recordedAnchors, lexichash.MustDecode(kmer1, K))
-					be.PutUint64(buf[:8], kmer1)            // k-mer
-					be.PutUint64(buf[8:16], uint64(offset)) // offset
-					_, err = wi.Write(buf[:16])
-					if err != nil {
-						return err
-					}
-				}
+			// key 1
+			prefix = getAnchor(kmer1)
+			if first || prefix != prefixPre { // the first new prefix
+				first = false
 
-				_j = 0
+				_j = int(prefix<<1) + 2
+				p2o[_j], p2o[_j+1] = kmer1, uint64(offset)<<1
+
+				prefixPre = prefix
 			}
-			_j++
+
+			offset1 = uint64(offset) << 1 // for kmer2, just for keeping compatibility
 
 			// ------------------ lengths of values -------------------
 
@@ -891,6 +1039,15 @@ func CreateKVIndex(file string, nAnchors int) error {
 				break
 			}
 
+			// key 2
+			prefix = getAnchor(kmer2)
+			if prefix != prefixPre { // the first new prefix
+				_j = int(prefix<<1) + 2
+				p2o[_j], p2o[_j+1] = kmer2, offset1|1
+
+				prefixPre = prefix
+			}
+
 			for j = 0; j < lenVal2; j++ {
 				nReaded, err = io.ReadFull(r, buf8)
 				if err != nil {
@@ -909,10 +1066,40 @@ func CreateKVIndex(file string, nAnchors int) error {
 			}
 		}
 
-		if recordedAnchors != _nAnchors {
-			return fmt.Errorf("[mask %d] the number of recorded anchor %d is not equal to %d, nKmers: %d", ChunkIndex+i, recordedAnchors, _nAnchors, nKmers)
+		// -----------------------------------------
+		// save index
+
+		var kmer uint64
+		var nAnchors uint64
+		var offset2 uint64
+		e := len(p2o) >> 1
+		for i := 0; i < e; i++ {
+			offset2 = p2o[i<<1+1]
+			if offset2 > 0 {
+				nAnchors++
+			}
 		}
-		// fmt.Printf("offset: %d\n", offset)
+		// 8-byte the number of anchors
+		err = binary.Write(wi, be, nAnchors) // including the extra 1
+		if err != nil {
+			return err
+		}
+
+		p2o[0] = nAnchors // might be useful
+
+		// k-mer and offset
+		for i := 0; i < e; i++ {
+			_j = i << 1
+			kmer, offset2 = p2o[_j], p2o[_j+1]
+			if offset2 > 0 {
+				be.PutUint64(buf[:8], kmer)      // k-mer
+				be.PutUint64(buf[8:16], offset2) // offset
+				_, err = wi.Write(buf[:16])
+				if err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// --------------------------------------------------------------------

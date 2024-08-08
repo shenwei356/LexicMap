@@ -105,8 +105,6 @@ Important parameters:
  *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
                             ■ Bigger values improve the search sensitivity, increase the index size, and slow down
                             the search speed.
-  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
-                            ► This value is used to remove masks with a prefix of low-complexity.
 
   --- Seeds data (k-mer-value data) ---
  *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
@@ -188,10 +186,10 @@ Important parameters:
 		}
 		fileBigGenomes := getFlagString(cmd, "big-genomes")
 
-		minPrefix := getFlagNonNegativeInt(cmd, "seed-min-prefix")
-		if minPrefix > 32 || minPrefix < 5 {
-			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
-		}
+		// minPrefix := getFlagNonNegativeInt(cmd, "seed-min-prefix")
+		// if minPrefix > 32 || minPrefix < 5 {
+		// 	checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
+		// }
 		maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
 		seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
 		if seedInDesertDist > maxDesert/2 {
@@ -300,7 +298,7 @@ Important parameters:
 			RandSeed: int64(seed),
 
 			// randomly generating
-			Prefix: minPrefix,
+			// Prefix: minPrefix,
 
 			// filling sketching deserts
 			DisableDesertFilling:   noDesertFilling,      // disable desert filling (just for analysis index)
@@ -401,7 +399,7 @@ Important parameters:
 				log.Infof("  k-mer size: %d", k)
 				log.Infof("  number of masks: %d", nMasks)
 				log.Infof("  rand seed: %d", seed)
-				log.Infof("  prefix length for checking low-complexity in mask generation: %d", minPrefix)
+				// log.Infof("  prefix length for checking low-complexity in mask generation: %d", minPrefix)
 			}
 
 			log.Info()
@@ -487,14 +485,15 @@ func init() {
 		formatFlagUsage(`Rand seed for generating random masks.`))
 
 	indexCmd.Flags().StringP("mask-file", "M", "",
-		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -p/--seed-min-prefix, etc.`))
+		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed etc.`))
+	// formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -p/--seed-min-prefix, etc.`))
 
 	// ------  generate masks randomly
 
 	indexCmd.Flags().BoolP("no-desert-filling", "", false,
 		formatFlagUsage(`Disable sketching desert filling (only for debug).`))
-	indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
-		formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
+	// indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
+	// 	formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
 	indexCmd.Flags().IntP("seed-max-desert", "D", 200,
 		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
 	indexCmd.Flags().IntP("seed-in-desert-dist", "d", 50,
@@ -516,8 +515,8 @@ func init() {
 	}
 	indexCmd.Flags().IntP("chunks", "c", defaultChunks,
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files.`))
-	indexCmd.Flags().IntP("partitions", "", 512,
-		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files.`))
+	indexCmd.Flags().IntP("partitions", "", 1024,
+		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
 	indexCmd.Flags().IntP("max-open-files", "", 512,
 		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
 

@@ -38,7 +38,9 @@ type InMemorySearcher struct {
 
 	// kv data of the ChunkSize masks.
 	// A list of k-mer and value pairs are intermittently saved in a []uint64
-	KVdata [][]uint64 // indexes of the ChunkSize masks
+	KVdata    [][]uint64
+	Indexes   [][]int
+	getAnchor func(uint64) uint64
 
 	maxKmer uint64
 }
@@ -51,12 +53,22 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 	}
 
 	kvdata := make([][]uint64, rdr.ChunkSize)
+	indexes := make([][]int, rdr.ChunkSize)
+	var getAnchor func(uint64) uint64
+	once := true
 	for i := 0; i < rdr.ChunkSize; i++ {
-		m, err := rdr.ReadDataOfAMaskAsList()
+		m, index, maskPrefix, anchorPrefix, err := rdr.ReadDataOfAMaskAsListAndCreateIndex()
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading kv-data")
 		}
+
 		kvdata[i] = m
+		indexes[i] = index
+
+		if once {
+			once = false
+			getAnchor = AnchorExtracter(rdr.K, maskPrefix, anchorPrefix)
+		}
 	}
 
 	scr := &InMemorySearcher{
@@ -65,6 +77,8 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		ChunkSize:  rdr.ChunkSize,
 		rdr:        rdr,
 		KVdata:     kvdata,
+		Indexes:    indexes,
+		getAnchor:  getAnchor,
 
 		maxKmer: 1<<(rdr.K<<1) - 1,
 	}
@@ -103,7 +117,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last, begin, middle, end int
+	var last int
 	var i int
 
 	var kmer0 uint64 // previous one
@@ -122,10 +136,16 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	var first bool
 	ttt := (uint64(1) << (k << 1)) - 1
 
+	var index []int
+	getAnchor := scr.getAnchor
+
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
 			continue
 		}
+
+		last = len(data) - 2
+		index = scr.Indexes[iQ]
 
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
@@ -154,41 +174,9 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 		// -----------------------------------------------------
 		// find the nearest anchor
 
-		if len(data) == 2 {
-			i = 0
-			last = 0
-			// fmt.Printf("len: %d\n", len(data))
-		} else {
-			last = len(data) - 2
-			// fmt.Printf("len: %d, last: %d\n", len(data), last)
-			begin, end = 0, last
-			for {
-				middle = begin + (end-begin)>>1
-				if middle&1 > 0 {
-					middle--
-				}
-				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-					i = begin
-					break
-				}
-				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-				// 	data[middle], lexichash.MustDecode(data[middle], k))
-				// we still need to check even if they are equal,
-				// because the k-mer in the middle might be duplicated
-				if leftBound <= data[middle] {
-					// fmt.Printf(" left\n")
-					end = middle // new end
-				} else {
-					// fmt.Printf(" right\n")
-					begin = middle // new start
-				}
-				if begin+2 == end { // next to each other
-					i = begin
-					break
-				}
-			}
-			// i is the target
-
+		i = index[getAnchor(leftBound)]
+		if i < 0 {
+			continue
 		}
 
 		// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
@@ -295,7 +283,8 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last, begin, middle, end int
+	var last int
+	// var begin, middle, end int
 	var i int
 
 	var kmer0 uint64 // previous one
@@ -316,10 +305,16 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 
 	var iKmer int
 
+	var index []int
+	getAnchor := scr.getAnchor
+
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
 			continue
 		}
+
+		last = len(data) - 2
+		index = scr.Indexes[iQ]
 
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
@@ -349,44 +344,10 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 			// -----------------------------------------------------
 			// find the nearest anchor
 
-			if len(data) == 2 {
-				i = 0
-				last = 0
-				// fmt.Printf("len: %d\n", len(data))
-			} else {
-				last = len(data) - 2
-				// fmt.Printf("len: %d, last: %d\n", len(data), last)
-				begin, end = 0, last
-				for {
-					middle = begin + (end-begin)>>1
-					if middle&1 > 0 {
-						middle--
-					}
-					if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-						i = begin
-						break
-					}
-					// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-					// 	data[middle], lexichash.MustDecode(data[middle], k))
-					// we still need to check even if they are equal,
-					// because the k-mer in the middle might be duplicated
-					if leftBound <= data[middle] {
-						// fmt.Printf(" left\n")
-						end = middle // new end
-					} else {
-						// fmt.Printf(" right\n")
-						begin = middle // new start
-					}
-					if begin+2 == end { // next to each other
-						i = begin
-						break
-					}
-				}
-				// i is the target
-
+			i = index[getAnchor(leftBound)]
+			if i < 0 {
+				continue
 			}
-
-			// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
 
 			// -----------------------------------------------------
 			// check one by one

@@ -29,21 +29,23 @@ import (
 )
 
 func TestKVData(t *testing.T) {
+	var lenPrefix uint8 = 2
 	var k uint8 = 5
+	var prefix uint64 = 5 << ((k - lenPrefix) << 1)
 	nMasks := 3
 	// maxMismatch := -1
 
 	// generate data
 
-	data := make([]*map[uint64]*[]uint64, 0, 4)
+	data := make([]*map[uint64]*[]uint64, 0, 8)
 
-	var n uint64 = 1 << (k << 1) // all value for k=5
+	var n uint64 = 1 << ((k - lenPrefix) << 1)
 	var i uint64
 
 	for j := 0; j < nMasks; j++ {
 		m := make(map[uint64]*[]uint64, n)
 		for i = 0; i < n; i++ {
-			m[i] = &[]uint64{i + (i << 30)}
+			m[prefix|i] = &[]uint64{i}
 		}
 		data = append(data, &m)
 	}
@@ -51,9 +53,10 @@ func TestKVData(t *testing.T) {
 	// write data
 
 	file := "t.kv"
-	_, err := WriteKVData(k, 0, data, file, 0)
+	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2)
 	if err != nil {
 		t.Errorf("%s", err)
+		return
 	}
 
 	// -------------------------------------------------------------------
@@ -68,6 +71,7 @@ func TestKVData(t *testing.T) {
 		m1, err := rdr.ReadDataOfAMaskAsMap()
 		if err != nil {
 			t.Errorf("%s", err)
+			return
 		}
 
 		m0 := data[i]
@@ -79,18 +83,18 @@ func TestKVData(t *testing.T) {
 
 		var j uint64
 		for j = 0; j < n; j++ {
-			if values, ok = (*m1)[j]; !ok {
-				t.Errorf("k-mer missing: %d: %s", i, lexichash.MustDecode(j, k))
+			if values, ok = (*m1)[prefix|j]; !ok {
+				t.Errorf("k-mer missing: %d: %s", i, lexichash.MustDecode(prefix|j, k))
 				return
 			}
 			if len(*values) != 1 {
 				t.Errorf("%s: value number mismatch, expected: %d, result: %d, %d",
-					lexichash.MustDecode(j, k), 1, len(*values), *values)
+					lexichash.MustDecode(prefix|j, k), 1, len(*values), *values)
 				return
 			}
-			if (*values)[0] != j+(j<<30) {
+			if (*values)[0] != j {
 				t.Errorf("%s: value mismatch, expected: %d, result: %d",
-					lexichash.MustDecode(j, k), j+(j<<30), (*values)[0])
+					lexichash.MustDecode(prefix|j, k), j, (*values)[0])
 				return
 			}
 		}
@@ -110,7 +114,7 @@ func TestKVData(t *testing.T) {
 		m0 := make(map[uint64]uint64) // input
 		var _i uint64
 		for _i = 0; _i < n; _i++ {
-			m0[_i] = _i + (_i << 30)
+			m0[prefix|_i] = _i
 		}
 
 		m1, err := rdr2.ReadDataOfAMaskAsList()
@@ -125,16 +129,16 @@ func TestKVData(t *testing.T) {
 
 		var j uint64
 		for j = 0; j < n; j++ {
-			if v, ok = m0[j]; !ok {
-				t.Errorf("missing k-mer: %d: %s", i, lexichash.MustDecode(j, k))
+			if v, ok = m0[prefix|j]; !ok {
+				t.Errorf("missing k-mer: %d: %s", i, lexichash.MustDecode(prefix|j, k))
 				return
 			}
-			if v != j+(j<<30) {
+			if v != j {
 				t.Errorf("%s: value mismatch, expected: %d, result: %d",
-					lexichash.MustDecode(j, k), j+(j<<30), (*values)[0])
+					lexichash.MustDecode(prefix|j, k), j, (*values)[0])
 				return
 			}
-			delete(m0, j)
+			delete(m0, prefix|j)
 		}
 		if len(m0) != 0 {
 			t.Errorf("wanted %d k-mer", len(m0))
@@ -157,11 +161,11 @@ func TestKVData(t *testing.T) {
 	var hit bool
 	var nExpectedResults int
 	kmers := make([]uint64, nMasks)
-	for mPrefix = 1; mPrefix <= k; mPrefix++ {
+	for mPrefix = 2; mPrefix <= k; mPrefix++ {
 		for i = 1; i < n-1; i++ { // not from 1 to n, because aaaaa and ttttt is skipped to search
 			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
 			for j := 0; j < nMasks; j++ {
-				kmers[j] = i
+				kmers[j] = prefix | i
 			}
 			// results, err := scr.Search(kmers, mPrefix, maxMismatch)
 			results, err := scr.Search(kmers, mPrefix, false, false)
@@ -179,7 +183,7 @@ func TestKVData(t *testing.T) {
 
 			nExpectedResults = nMasks * (1 << ((k - mPrefix) << 1))
 			if len(*results) != nExpectedResults {
-				t.Logf("query: %s\n", lexichash.MustDecode(i, k))
+				t.Logf("query: %s, mPrefix: %d\n", lexichash.MustDecode(prefix|i, k), mPrefix)
 				t.Errorf("unexpected number of results: %d, expected: %d", len(*results), nExpectedResults)
 				for _, r := range *results {
 					for _, v := range r.Values {
@@ -197,7 +201,7 @@ func TestKVData(t *testing.T) {
 				// if r.Kmer == i {
 				if r.Len == k {
 					hit = true
-					if r.Values[0] != i+(i<<30) {
+					if r.Values[0] != i {
 						// t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
 						// return
 						hit = false
@@ -235,7 +239,7 @@ func TestKVData(t *testing.T) {
 		for i = 1; i < n-1; i++ { // not from 1 to n, because aaaaa and ttttt is skipped to search
 			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
 			for j := 0; j < nMasks; j++ {
-				kmers[j] = i
+				kmers[j] = prefix | i
 			}
 			// results, err := scr2.Search(kmers, mPrefix, maxMismatch)
 			results, err := scr2.Search(kmers, mPrefix, false, false)
@@ -271,7 +275,7 @@ func TestKVData(t *testing.T) {
 				// if r.Kmer == i {
 				if r.Len == k {
 					hit = true
-					if r.Values[0] != i+(i<<30) {
+					if r.Values[0] != i {
 						t.Errorf("unexpected value: %d, expected: %d", r.Values[0], i)
 						return
 					}

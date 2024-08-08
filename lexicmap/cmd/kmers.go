@@ -223,7 +223,7 @@ Attention:
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+			k, _, indexes, _, _, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
 			}
@@ -241,7 +241,7 @@ Attention:
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
-			_, err = r.Seek(int64(indexes[iMask][1]), 0)
+			_, err = r.Seek(int64(indexes[iMask][1])>>1, 0)
 			if err != nil {
 				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))
 			}
