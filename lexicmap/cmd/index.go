@@ -122,9 +122,8 @@ Important parameters:
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
-  4. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
-                            ► Bigger values bring a little higher memory occupation. 512 is a good value with high
-                            searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
+  4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
+                            ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
   5. --max-open-files,      ► Maximum number of open files (default: 512).

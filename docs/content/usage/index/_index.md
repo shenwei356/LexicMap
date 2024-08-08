@@ -73,8 +73,6 @@ Important parameters:
  *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
                             ■ Bigger values improve the search sensitivity, increase the index size, and slow down
                             the search speed.
-  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
-                            ► This value is used to remove masks with a prefix of low-complexity.
 
   --- Seeds data (k-mer-value data) ---
  *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
@@ -92,9 +90,8 @@ Important parameters:
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
-  4. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
-                            ► Bigger values bring a little higher memory occupation. 512 is a good value with high
-                            searching speed, Larger or smaller values would decrease the speed in "lexicmap search".
+  4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
+                            ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
   5. --max-open-files,      ► Maximum number of open files (default: 512).
@@ -121,7 +118,7 @@ Flags:
                                   symlinks are followed.
   -k, --kmer int                  ► Maximum k-mer size. K needs to be <= 32. (default 31)
   -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
-                                  -s/--rand-seed, -p/--seed-min-prefix, etc.
+                                  -s/--rand-seed etc.
   -m, --masks int                 ► Number of LexicHash masks. (default 40000)
   -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
                                   assemblies from Genbank) will be skipped. Need to be smaller than the
@@ -132,7 +129,7 @@ Flags:
       --no-desert-filling         ► Disable sketching desert filling (only for debug).
   -O, --out-dir string            ► Output LexicMap index directory.
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
-                                  (default 512)
+                                  The value needs to be the power of 4. (default 1024)
   -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
   -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
                                   reference name from the filename. (default
@@ -146,9 +143,6 @@ Flags:
   -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
                                   Deserts with seed distance larger than this value will be filled by
                                   choosing k-mers roughly every --seed-in-desert-dist bases. (default 200)
-  -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
-                                  this value is used to remove low-complexity masks and choose k-mers to
-                                  fill sketching deserts. (default 15)
   -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
                                   contents in FASTA/Q header/name, case ignored.
   -S, --skip-file-check           ► Skip input file checking when given files or a file list.

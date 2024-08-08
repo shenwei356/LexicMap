@@ -81,15 +81,15 @@ Global Flags:
         $ head -n 10 seed_distance.tsv | csvtk pretty -t
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   16        16        +        15
-        GCF_000017205.1   NC_009656.1   18        18        +        2
-        GCF_000017205.1   NC_009656.1   71        71        +        53
-        GCF_000017205.1   NC_009656.1   74        74        -        3
-        GCF_000017205.1   NC_009656.1   119       119       -        45
-        GCF_000017205.1   NC_009656.1   123       123       +        4
-        GCF_000017205.1   NC_009656.1   154       154       +        31
-        GCF_000017205.1   NC_009656.1   185       185       +        31
-        GCF_000017205.1   NC_009656.1   269       269       -        84
+        GCF_000017205.1   NC_009656.1   90        90        -        89
+        GCF_000017205.1   NC_009656.1   133       133       +        43
+        GCF_000017205.1   NC_009656.1   137       137       -        4
+        GCF_000017205.1   NC_009656.1   139       139       -        2
+        GCF_000017205.1   NC_009656.1   160       160       -        21
+        GCF_000017205.1   NC_009656.1   300       300       -        140
+        GCF_000017205.1   NC_009656.1   338       338       +        38
+        GCF_000017205.1   NC_009656.1   360       360       +        22
+        GCF_000017205.1   NC_009656.1   361       361       +        1
 
     Check the biggest seed distances.
 
@@ -100,15 +100,15 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        199        49
-        198        47
-        197        40
-        196        38
-        195        54
-        194        36
-        193        38
-        192        55
-        191        40
+        199        43
+        198        49
+        197        52
+        196        43
+        195        44
+        194        47
+        193        43
+        192        53
+        191        38
 
     Or only list records with seed distances longer than a threshold.
 
@@ -116,9 +116,9 @@ Global Flags:
             | csvtk pretty -t | head -n 5
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   13549     13549     +        196
-        GCF_000017205.1   NC_009656.1   27667     27667     -        190
-        GCF_000017205.1   NC_009656.1   65318     65318     +        197
+        GCF_000017205.1   NC_009656.1   13964     13964     -        197
+        GCF_000017205.1   NC_009656.1   27420     27420     +        191
+        GCF_000017205.1   NC_009656.1   30942     30942     +        193
 
     Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
 
@@ -134,9 +134,9 @@ Global Flags:
             | head -n4 | csvtk pretty -t -W 40 --clip
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
-        GCF_000017205.1   NC_009656.1   16        16        +        15         2         TTAAAGAGACCGGCG
-        GCF_000017205.1   NC_009656.1   18        18        +        2          0         AT
-        GCF_000017205.1   NC_009656.1   71        71        +        53         6         TCTAGTGAAATCGAACGGGCAGGTCAATTTCCAACCA...
+        GCF_000017205.1   NC_009656.1   90        90        -        89         9         TTAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGC...
+        GCF_000017205.1   NC_009656.1   133       133       +        43         3         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTCTTGGT...
+        GCF_000017205.1   NC_009656.1   137       137       -        4          0         GGTT
 
     Or only list records with seed distance longer than a threshold.
 
@@ -145,11 +145,11 @@ Global Flags:
             | csvtk pretty -t -W 40
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
-        GCF_000017205.1   NC_009656.1   13549     13549     +        196        15        CGAAGCGGCGCCGGCGGACATGTACGACAAGGACCTGGAT
-                                                                                          GTCTCGGTGGCCGCCATGAGCCGCGAACTGGCCAAGTATG
-                                                                                          TACGGGCCTATCCGAGCCAGTACATGTGGAGCATGAAGCG
-                                                                                          CTTCAAGAACCGCCCGGACGGCGAGAAGAAGTGGTACTGA
-                                                                                          AAAAAGGCGTCGGAAGACGCCTTTTTCATATCCGGG
+        GCF_000017205.1   NC_009656.1   13964     13964     -        197        8         ATTTGCCCATTGAGGCGCCGGTATTGCGCATGGAAGTGGT
+                                                                                          GCGCATCGACGCCGAGGGCGTCGGCCTGCGCTTCCTCGCC
+                                                                                          GATCAATGAAACCCGAGTTCCACGTGGAACCACGGTCCTG
+                                                                                          CCATCGATCAGCGAACGGGCGAATCCGCCGCCCGTTATCG
+                                                                                          GCTAGAATGCGCGCCGCTCGGCATGGGGCCGGGCATG CGGAAGACGCCTTTTTCATATCCGGG
 
 3. Listing seed position of all genomes.
 
@@ -161,21 +161,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   134541
-        GCF_000742135.1   103771
-        GCF_003697165.2   92087
-        GCF_000006945.2   90683
-        GCF_002950215.1   89638
-        GCF_002949675.1   84337
-        GCF_009759685.1   72711
-        GCF_001027105.1   56737
-        GCF_000392875.1   55772
-        GCF_006742205.1   52699
-        GCF_001544255.1   50000
-        GCF_900638025.1   46638
-        GCF_001096185.1   46195
-        GCF_001457655.1   45822
-        GCF_000148585.2   44982
+        GCF_000017205.1   134674
+        GCF_000742135.1   103882
+        GCF_003697165.2   92389
+        GCF_000006945.2   91007
+        GCF_002950215.1   89876
+        GCF_002949675.1   84731
+        GCF_009759685.1   72615
+        GCF_001027105.1   56806
+        GCF_000392875.1   55397
+        GCF_006742205.1   52670
+        GCF_001544255.1   49919
+        GCF_900638025.1   46654
+        GCF_001457655.1   46226
+        GCF_001096185.1   46222
+        GCF_000148585.2   44848
 
     Plot the histograms of distances between seeds for all genomes.
 
@@ -227,30 +227,7 @@ Global Flags:
     $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
     ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
     ---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
-    GCF_000392875.1   NZ_KB944589.1   503021    227259    +        1136       1113      AAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    GCF_000392875.1   NZ_KB944590.1   2639993   1680805   +        1190       1144      TATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAAAAAAAAAA
+    GCF_000392875.1   NZ_KB944589.1   503036    227274    +        1168       1117      ATATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
@@ -273,7 +250,31 @@ Global Flags:
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                                                                                         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                                                                        AAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTCAGTGCTTC
+                                                                                        AAAAAGGTGTCATTGAAG
+    GCF_000392875.1   NZ_KB944590.1   2639985   1680797   +        1190       1144      TTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+                                                                                        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTC
     ```
 
     Long gap regions (>=1000 bp) of the genome, which are excatly the regions in the table above.
