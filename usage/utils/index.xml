@@ -47,7 +47,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/</guid>
-      <description>Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. (default 512) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments.</description>
+      <description>Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &amp;#34;lexicmap index&amp;#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4. (default 1024) Global Flags: -X, --infile-list string ► File of input file list (one file per line).</description>
     </item>
     <item>
       <title>2blast</title>

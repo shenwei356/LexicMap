@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.129.0">
+<meta name="generator" content="Hugo 0.131.0">
 
 
   <meta name="description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/masks/",
       "headline": "masks",
       "description": "$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d \u003cindex path\u003e | [-k \u003ck\u003e] [-n \u003cmasks\u003e] [-s \u003cseed\u003e] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -k, --kmer int ► Maximum k-mer size. K needs to be \u003c= 32. (default 31) -m, --masks int ► Number of masks.",
-      "wordCount" : "267",
+      "wordCount" : "425",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -528,7 +528,7 @@
                     href="/LexicMap/tutorials/index/"
                     class="gdoc-nav__entry"
                   >
-                    Building an index
+                    Step 1. Building a database
                   </a>
                 </span>
               
@@ -572,7 +572,7 @@
                     href="/LexicMap/tutorials/search/"
                     class="gdoc-nav__entry"
                   >
-                    Searching
+                    Step 2. Searching
                   </a>
                 </span>
               
@@ -1460,34 +1460,69 @@
     </a>
 </div>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10
-</span></span><span class="line"><span class="cl">1       AAAACACCATGGAGCCTTGTGGAACCTTGGC
-</span></span><span class="line"><span class="cl">2       AAAACACGCGATCAGGTCGTCCGTCCCAGTG
-</span></span><span class="line"><span class="cl">3       AAAACACTATGGCCTGATTACCCCATCCCGA
-</span></span><span class="line"><span class="cl">4       AAAACAGGACCGTCCTAGGGTCAATGGTTCG
-</span></span><span class="line"><span class="cl">5       AAAACAGTCTTGTATTATGTACTTCACATTC
-</span></span><span class="line"><span class="cl">6       AAAACATGTTACTACGGTTTTCCGCAATTGG
-</span></span><span class="line"><span class="cl">7       AAAACATTGGTCCTATTGGCGTCACTCGATA
-</span></span><span class="line"><span class="cl">8       AAAACCACTGTGCATATCTCGAATCCCGCTC
-</span></span><span class="line"><span class="cl">9       AAAACCAGCTCTGTAAGCACTAACAACGCTA
-</span></span><span class="line"><span class="cl">10      AAAACCATGGTGCCGTGCATTTGCGCACCTA
+</span></span><span class="line"><span class="cl">1       AAAAAAAAGTCACTTGACAATCCACACGGTG
+</span></span><span class="line"><span class="cl">2       AAAAAAACTGCTTGCACCTTTCTCGCCTCTC
+</span></span><span class="line"><span class="cl">3       AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA
+</span></span><span class="line"><span class="cl">4       AAAAAACCCAAGCGCGAAAGCCTGAACAACC
+</span></span><span class="line"><span class="cl">5       AAAAAACGTGGCGTCCCCTGTATAACGGCTA
+</span></span><span class="line"><span class="cl">6       AAAAAAGAGGGGAAGCAAGCTGAAGGATATG
+</span></span><span class="line"><span class="cl">7       AAAAAAGCTTAGTGTGAATGAATGGCTTCCG
+</span></span><span class="line"><span class="cl">8       AAAAAATCCAGGGTTCCGTTAAGGATCTGTC
+</span></span><span class="line"><span class="cl">9       AAAAAATGCCTCGCAGAGCAGGCTATGCTGA
+</span></span><span class="line"><span class="cl">10      AAAAAATTGATTCTTAGAGCGTTCCCGCCCA
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
-</span></span><span class="line"><span class="cl">39991   TTTTGGTCTACAGAAAGTGCGTTATAGATTT
-</span></span><span class="line"><span class="cl">39992   TTTTGGTGTGGAGAAGGACCTCACTGTTAAT
-</span></span><span class="line"><span class="cl">39993   TTTTGTAGACCGAGGTTTTAAGTCCAGGGGG
-</span></span><span class="line"><span class="cl">39994   TTTTGTATGGAATACTTTACAGTCATCAGTT
-</span></span><span class="line"><span class="cl">39995   TTTTGTCATCAGTCGGCACTTAGGGGAACCG
-</span></span><span class="line"><span class="cl">39996   TTTTGTCCCAGTGACCAATCACAGTTCGGGA
-</span></span><span class="line"><span class="cl">39997   TTTTGTCGATAATCCTGCCTCGATTTCTCTT
-</span></span><span class="line"><span class="cl">39998   TTTTGTGAATAAGAGATCCTGTCGCAGGAAA
-</span></span><span class="line"><span class="cl">39999   TTTTGTGCACGACGCTCCTGGTGTATCGCCT
-</span></span><span class="line"><span class="cl">40000   TTTTGTGGCGACGGCGTACCCCGTCTAGGAG
+</span></span><span class="line"><span class="cl">39991   TTTTTTACACGCTGTGACTGCATTACAAAAA
+</span></span><span class="line"><span class="cl">39992   TTTTTTAGCCAGGGTTCACAGCGCCAAAACA
+</span></span><span class="line"><span class="cl">39993   TTTTTTATCGGACGCCAAGTTTGTAATCGTC
+</span></span><span class="line"><span class="cl">39994   TTTTTTCACTCGCATCTAGGAAGGAAGCATA
+</span></span><span class="line"><span class="cl">39995   TTTTTTCTTGCATCGTATTCAGCACGTTCCT
+</span></span><span class="line"><span class="cl">39996   TTTTTTGCCGAGTGACCCCGAAAAGCTCACA
+</span></span><span class="line"><span class="cl">39997   TTTTTTGGCGTGAGGCATTGTTTACTGCCTT
+</span></span><span class="line"><span class="cl">39998   TTTTTTTAAGTGGTCGTGGTAGGAGCCTCAC
+</span></span><span class="line"><span class="cl">39999   TTTTTTTCCGTAACTAGGTTCTGGCGATTCC
+</span></span><span class="line"><span class="cl">40000   TTTTTTTGAGGGTATAAGATAGAGAAAAGCT
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"># check a specific mask
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">$ lexicmap utils masks --quiet -d demo.lmi/ -m 12345
-</span></span><span class="line"><span class="cl">12345   CATGTTATAGCACTGGCGGCTAACGCCTTTG
-</span></span></code></pre></div>
+</span></span><span class="line"><span class="cl">12345   CATTAGTAGAAGAAGGCACAATGTATCGTCG
+</span></span></code></pre></div><p>Freqency of prefixes.</p>
+<pre tabindex="0"><code>$ lexicmap utils masks --quiet -d demo.lmi/ \
+  | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
+  | csvtk freq -Ht -f 3 -nr \
+  | head -n 10
+AAAAAAA 3
+AAAAAAT 3
+AAAAACA 3
+AAAAACC 3
+AAAAACG 3
+AAAAACT 3
+AAAAAGC 3
+AAAAAGG 3
+AAAAAGT 3
+AAAAATT 3
+
+$ lexicmap utils masks --quiet -d demo.lmi/ \
+  | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
+  | csvtk freq -Ht -f 3 -n \
+  | head -n 10
+AAAAAAC 2
+AAAAAAG 2
+AAAAAGA 2
+AAAAATA 2
+AAAAATC 2
+AAAAATG 2
+AAAACAC 2
+AAAACAT 2
+AAAACCG 2
+AAAACGC 2
+</code></pre><p>Frequency of frequencies. i.e., for 40,000 masks, 4<sup><em>7</em></sup> = 16384.
+All 16,384 masks are duplicated twice, and 7,232 of them are duplicated 3 times.</p>
+<pre tabindex="0"><code>$ lexicmap utils masks --quiet -d demo.lmi/ | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; | csvtk freq -Ht -f 3 -n | csvtk freq -Ht -f 2 -k
+2       9152
+3       7232
+</code></pre>
   </article>
 
 

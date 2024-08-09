@@ -9,14 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.129.0">
+<meta name="generator" content="Hugo 0.131.0">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
-lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files." />
+  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish targe genomes." />
 
-    <title>Building an index | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>Step 1. Building a database | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -37,12 +35,10 @@ lexicmap index -X files." />
     
   <meta
     property="og:title"
-    content="Building an index"
+    content="Step 1. Building a database"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
-lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files." />
+  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -50,10 +46,8 @@ lexicmap index -X files." />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Building an index" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:
-lexicmap index -I genomes/ -O db.lmi From a file list with one file per line:
-lexicmap index -X files." />
+<meta name="twitter:title" content="Step 1. Building a database" />
+  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes." />
 
 
   <script type="application/ld+json">
@@ -61,11 +55,11 @@ lexicmap index -X files." />
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Tutorials",
-      "name": "Building an index",
+      "name": "Step 1. Building a database",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
-      "headline": "Building an index",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz Run: From a directory with multiple genome files:\nlexicmap index -I genomes\/ -O db.lmi From a file list with one file per line:\nlexicmap index -X files.",
-      "wordCount" : "2763",
+      "headline": "Step 1. Building a database",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes.",
+      "wordCount" : "2840",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -534,7 +528,7 @@ lexicmap index -X files." />
                     href="/LexicMap/tutorials/index/"
                     class="gdoc-nav__entry is-active"
                   >
-                    Building an index
+                    Step 1. Building a database
                   </a>
                 </span>
               
@@ -578,7 +572,7 @@ lexicmap index -X files." />
                     href="/LexicMap/tutorials/search/"
                     class="gdoc-nav__entry"
                   >
-                    Searching
+                    Step 2. Searching
                   </a>
                 </span>
               
@@ -1404,7 +1398,7 @@ lexicmap index -X files." />
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Building an index</span><meta itemprop='position' content='4' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Step 1. Building a database</span><meta itemprop='position' content='4' /></li>
   
 
   
@@ -1422,7 +1416,7 @@ lexicmap index -X files." />
   <article
     class="gdoc-markdown gdoc-markdown__align--left"
   >
-    <h1>Building an index</h1>
+    <h1>Step 1. Building a database</h1>
     <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="table-of-contents"
     >
@@ -1465,6 +1459,7 @@ lexicmap index -X files." />
 <ul>
 <li><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.
 E.g., GCF_000006945.2.fna.gz</li>
+<li>While if you save <em>a few</em> <strong>small</strong> (viral) <strong>complete</strong> genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish targe genomes.</li>
 </ul>
 </li>
 <li>Run:
@@ -1508,13 +1503,13 @@ More precisely:</p>
 </div>
 </blockquote>
 
-<p><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.Click to show</p>
+<p><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>. While if you save <em>a few</em> <strong>small</strong> (viral) <strong>complete</strong> genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish targe genomes.</p>
 <ul>
 <li><strong>File type</strong>: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.</li>
 <li><strong>File name</strong>: &ldquo;Genome ID&rdquo; + &ldquo;File extention&rdquo;. E.g., <code>GCF_000006945.2.fna.gz</code>.
 <ul>
 <li><strong>Genome ID</strong>: they should be distinct for accurate result interpretation, which will be shown in the search result.</li>
-<li>File extention: a regular expression set by the flag <code>-N/--ref-name-regexp</code> is used to extract genome IDs from the file name.
+<li>File extention: a regular expression set by the flag <code>-N/--ref-name-regexp</code> is used to <strong>extract genome IDs</strong> from the file name.
 The default value supports common sequence file extentions, e.g., <code>.fa</code>, <code>.fasta</code>, <code>.fna</code>, <code>.fa.gz</code>, <code>.fasta.gz</code>, <code>.fna.gz</code>, <code>fasta.xz</code>, <code>fasta.zst</code>, and <code>fasta.bz2</code>.</li>
 <li><a
   class="gdoc-markdown__link"
@@ -1534,7 +1529,7 @@ The default value supports common sequence file extentions, e.g., <code>.fa</cod
 <ul>
 <li><strong>Only DNA or RNA sequences are supported</strong>.</li>
 <li><strong>Sequence IDs</strong> should be distinct for accurate result interpretation, which will be shown in the search result.</li>
-<li>One or more sequences in each file are allowed.
+<li><strong>One or more sequences (contigs) in each file are allowed</strong>.
 <ul>
 <li>Unwanted sequences can be filtered out by regular expressions from the flag <code>-B/--seq-name-filter</code>.</li>
 </ul>
@@ -1544,22 +1539,26 @@ The default value supports common sequence file extentions, e.g., <code>.fa</cod
   href="https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/"
 >GCA_000765055.1</a> has &gt;150 Mb.
 The flag <code>-g/--max-genome</code> (default 15 Mb) is used to skip these input files, and the file list would be written to a file
-via the flag <code>-G/--big-genomes</code>.</li>
+via the flag <code>-G/--big-genomes</code>.
+<ul>
+<li>For fungi genomes, please increase the value.</li>
+</ul>
+</li>
 <li><strong>Minimum sequence length</strong>. A flag <code>-l/--min-seq-len</code> can filter out sequences shorter than the threshold (default is the <code>k</code> value).</li>
 </ul>
 </li>
-<li><strong>At most 17,179,869,184 (2<sup>34</sup>) genomes are supported</strong>. For more genomes, just build multiple indexes.</li>
+<li><strong>At most 17,179,869,184 (2<sup>34</sup>) genomes are supported</strong>. For more genomes, please create a file list and split it into multiple parts, and build an index for each part.</li>
 </ul>
 <p><strong>Input files can be given via one of the following ways:</strong></p>
 <ul>
 <li><strong>Positional arguments</strong>. For a few input files.</li>
 <li>A <strong>file list</strong> via the flag <code>-X/--infile-list</code>  with one file per line.
-It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it to <code>lexicmap index</code>.
+<strong>It can be STDIN (<code>-</code>)</strong>, e.g., you can filter a file list and pass it to <code>lexicmap index</code>.
 <em>The flag <code>-S/--skip-file-check</code> is optional for skiping input file checking if you believe these files do exist</em>.</li>
 <li>A <strong>directory</strong> containing input files via the flag <code>-I/--in-dir</code>.
 <ul>
-<li>Multiple-level directories are supported.</li>
-<li>Directory and file symlinks are followed.</li>
+<li><strong>Multiple-level directories are supported</strong>. So you don&rsquo;t need to saved hundreds of thousand files into one directoy.</li>
+<li><strong>Directory and file symlinks are followed</strong>.</li>
 </ul>
 </li>
 </ul>
@@ -1588,10 +1587,10 @@ It can be STDIN (<code>-</code>), e.g., you can filter a file list and pass it t
 <ul>
 <li>More RAM (&gt; 100 GB) is preferred. The memory usage in index building is mainly related to:
 <ul>
-<li>The number of masks (<code>-m/--masks</code>, default 40,000).</li>
-<li>The number of genomes.</li>
-<li>The divergence between genome sequences. Diverse genomes consume more memory.</li>
-<li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). <strong>This is the main parameter to adjust memory usage</strong>.</li>
+<li><strong>The number of masks</strong> (<code>-m/--masks</code>, default 40,000). Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.</li>
+<li><strong>The number of genomes</strong>. More genome consure more memory.</li>
+<li><strong>The divergence between genome sequences</strong>. Diverse genomes consume more memory.</li>
+<li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). <strong>This is the main parameter to adjust memory usage</strong>. Bigger values increase indexing memory occupation.</li>
 <li><strong>The maximum seed distance</strong> or <strong>the maximum sketching desert size</strong> (<code>-D/--seed-max-desert</code>, default 200),
 and the distance of k-mers to fill deserts (<code>-d/--seed-in-desert-dist</code>, default 50).
 Bigger <code>-D/--seed-max-desert</code> values decrease the search sensitivity for distant targets, speed up the indexing speed,
@@ -1608,7 +1607,7 @@ decrease the indexing memory occupation and decrease the index size. While the a
 </li>
 <li><strong>Disk</strong>
 <ul>
-<li>More (&gt;2 TB) is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See <a
+<li>More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See <a
   class="gdoc-markdown__link"
   href="#index-size"
 >some examples</a>.
@@ -1639,15 +1638,13 @@ decrease the indexing memory occupation and decrease the index size. While the a
 <ol>
 <li>Generate <em>m</em> prefixes.
 <ol>
-<li>Generating all permutations of <em>p</em>-bp prefixes that can cover all possible k-mers, <em>p</em> is the biggest value for 4<sup><em>p</em></sup> &lt;= <em>m</em> (desired number of masks), e.g., <em>p</em>=7 for 40,000 masks.</li>
-<li>Removing low-complexity prefixes. E.g., 16176 out of 16384 (4^7) prefixes are left.</li>
+<li>Generating all permutations of <em>p</em>-bp prefixes that can cover all possible k-mers, <em>p</em> is the biggest value for 4<sup><em>p</em></sup> &lt;= <em>m</em> (desired number of masks), e.g., <em>p</em>=7 for 40,000 masks. (4<sup><em>7</em></sup> = 16384)</li>
 <li>Duplicating these prefixes to <em>m</em> prefixes.</li>
 </ol>
 </li>
 <li>For each prefix,
 <ol>
 <li>Randomly generating left <em>k</em>-<em>p</em> bases.</li>
-<li>If the <em>P</em>-prefix (<code>-p/--seed-min-prefix</code>) is of low-complexity, re-generating. <em>P</em> is the minimum length of substring matches, default 15.</li>
 <li>If the mask is duplicated, re-generating.</li>
 </ol>
 </li>
@@ -1793,10 +1790,10 @@ alignment speed is almost not affected.</p>
 <td style="text-align:left">■  Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.</td>
 </tr>
 <tr>
-<td style="text-align:left"><code>-p/--seed-min-prefix</code></td>
-<td style="text-align:left">Max: 32, Default: 15</td>
-<td style="text-align:left">Minimum length of shared substrings (anchors) in searching</td>
-<td style="text-align:left">This value is used to remove masks with a prefix of low-complexity.</td>
+<td style="text-align:left">[shenwei@mBio index]$</td>
+<td></td>
+<td></td>
+<td></td>
 </tr>
 </tbody>
 </table> </div>
@@ -1843,9 +1840,9 @@ alignment speed is almost not affected.</p>
 </tr>
 <tr>
 <td style="text-align:left"><code>-p/--partitions</code></td>
-<td style="text-align:left">Default: 512</td>
+<td style="text-align:left">Default: 1024</td>
 <td style="text-align:left">Number of partitions for indexing each seed file</td>
-<td style="text-align:left">Bigger values bring a little higher memory occupation. 512 is a good value with high searching speed, larger or smaller values would decrease the speed in <code>lexicmap search</code>. ► After indexing, <code>lexicmap utils reindex-seeds</code> can be used to reindex the seeds data with  another value of this flag.</td>
+<td style="text-align:left">Bigger values bring a little higher memory occupation. ► After indexing, <code>lexicmap utils reindex-seeds</code> can be used to reindex the seeds data with  another value of this flag.</td>
 </tr>
 <tr>
 <td style="text-align:left"><code>--max-open-files</code></td>
@@ -1901,11 +1898,11 @@ alignment speed is almost not affected.</p>
 </code></pre>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="12e84980-4">
+  <label class="gdoc-expand__head flex justify-between" for="454f4346-4">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="12e84980-4" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="454f4346-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code>    # here we set a small --batch-size 5
 
@@ -1936,7 +1933,7 @@ alignment speed is almost not affected.</p>
     16:22:49.745 [INFO]   maximum sketching desert length: 450
     16:22:49.745 [INFO]   distance of k-mers to fill deserts: 150
     16:22:49.745 [INFO]   seeds data chunks: 16
-    16:22:49.745 [INFO]   seeds data indexing partitions: 512
+    16:22:49.745 [INFO]   seeds data indexing partitions: 1024
     16:22:49.745 [INFO]
     16:22:49.745 [INFO] general:
     16:22:49.745 [INFO]   genome batch size: 5
@@ -2147,7 +2144,7 @@ atb_hq.lmi: 3.88 TB
 <li>Directory/file sizes are counted with <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/dirsize"
->https://github.com/shenwei356/dirsize</a>.</li>
+>https://github.com/shenwei356/dirsize</a>. (base: 1024)</li>
 <li>Index building parameters: <code>-k 31 -m 40000</code>. Genome batch size: <code>-b 5000</code> for GTDB datasets, <code>-b 25000</code> for others.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
@@ -2159,6 +2156,7 @@ atb_hq.lmi: 3.88 TB
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p>We provide several commands to explore the index data and extract indexed subsequences:</p>
 <ol>
 <li><code>lexicmap utils genomes</code> can list genome IDs of indexed genomes,
 see the <a
@@ -2170,7 +2168,7 @@ see the <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/masks/"
 >usage and example</a>.</li>
-<li><code>lexicmap utils kmers</code> can list details of all seeds (k-mers), including reference, location(s) and the strand.
+<li><code>lexicmap utils kmers</code> can list details of all seeds (k-mers), including reference, location(s), the strand, and the k-mer direction.
 see the <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/"
@@ -2960,9 +2958,9 @@ see the <a
     <a
       class="gdoc-page__nav--next flex align-center"
       href="/LexicMap/tutorials/search/"
-      title="Searching"
+      title="Step 2. Searching"
     >
-      Searching
+      Step 2. Searching
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

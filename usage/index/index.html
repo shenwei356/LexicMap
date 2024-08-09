@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.129.0">
+<meta name="generator" content="Hugo 0.131.0">
 
 
   <meta name="description" content="$ lexicmap index -h Generate an index from FASTA/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers in the file names. 2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or the flag -X/--infile-list with a list of input files. Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level sub-directories allowed." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "$ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1. Sequences of each reference genome should be saved in separate FASTA\/Q files, with reference identifiers in the file names. 2. Input plain or gzip\/xz\/zstd\/bzip2 compressed FASTA\/Q files can be given via positional arguments or the flag -X\/--infile-list with a list of input files. Flag -S\/--skip-file-check is optional for skipping file checking if you trust the file list. 3. Input can also be a directory containing sequence files via the flag -I\/--in-dir, with multiple-level sub-directories allowed.",
-      "wordCount" : "1324",
+      "wordCount" : "1254",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -528,7 +528,7 @@
                     href="/LexicMap/tutorials/index/"
                     class="gdoc-nav__entry"
                   >
-                    Building an index
+                    Step 1. Building a database
                   </a>
                 </span>
               
@@ -572,7 +572,7 @@
                     href="/LexicMap/tutorials/search/"
                     class="gdoc-nav__entry"
                   >
-                    Searching
+                    Step 2. Searching
                   </a>
                 </span>
               
@@ -1486,8 +1486,6 @@
 </span></span><span class="line"><span class="cl"> *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
 </span></span><span class="line"><span class="cl">                            ■ Bigger values improve the search sensitivity, increase the index size, and slow down
 </span></span><span class="line"><span class="cl">                            the search speed.
-</span></span><span class="line"><span class="cl">  3. -p/--seed-min-prefix,  ► Minimum length of shared substrings (anchors) in searching (maximum: 32, default: 15).
-</span></span><span class="line"><span class="cl">                            ► This value is used to remove masks with a prefix of low-complexity.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  --- Seeds data (k-mer-value data) ---
 </span></span><span class="line"><span class="cl"> *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
@@ -1505,9 +1503,8 @@
 </span></span><span class="line"><span class="cl"> *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
 </span></span><span class="line"><span class="cl">                            (maximum: -c/--chunks, default: 8).
 </span></span><span class="line"><span class="cl">                            ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
-</span></span><span class="line"><span class="cl">  4. --partitions,          ► Number of partitions for indexing each seed file (default: 512).
-</span></span><span class="line"><span class="cl">                            ► Bigger values bring a little higher memory occupation. 512 is a good value with high
-</span></span><span class="line"><span class="cl">                            searching speed, Larger or smaller values would decrease the speed in &#34;lexicmap search&#34;.
+</span></span><span class="line"><span class="cl">  4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
+</span></span><span class="line"><span class="cl">                            ► Bigger values bring a little higher memory occupation.
 </span></span><span class="line"><span class="cl">                            ► After indexing, &#34;lexicmap utils reindex-seeds&#34; can be used to reindex the seeds data
 </span></span><span class="line"><span class="cl">                            with another value of this flag.
 </span></span><span class="line"><span class="cl">  5. --max-open-files,      ► Maximum number of open files (default: 512).
@@ -1534,7 +1531,7 @@
 </span></span><span class="line"><span class="cl">                                  symlinks are followed.
 </span></span><span class="line"><span class="cl">  -k, --kmer int                  ► Maximum k-mer size. K needs to be &lt;= 32. (default 31)
 </span></span><span class="line"><span class="cl">  -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
-</span></span><span class="line"><span class="cl">                                  -s/--rand-seed, -p/--seed-min-prefix, etc.
+</span></span><span class="line"><span class="cl">                                  -s/--rand-seed etc.
 </span></span><span class="line"><span class="cl">  -m, --masks int                 ► Number of LexicHash masks. (default 40000)
 </span></span><span class="line"><span class="cl">  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
 </span></span><span class="line"><span class="cl">                                  assemblies from Genbank) will be skipped. Need to be smaller than the
@@ -1545,7 +1542,7 @@
 </span></span><span class="line"><span class="cl">      --no-desert-filling         ► Disable sketching desert filling (only for debug).
 </span></span><span class="line"><span class="cl">  -O, --out-dir string            ► Output LexicMap index directory.
 </span></span><span class="line"><span class="cl">      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
-</span></span><span class="line"><span class="cl">                                  (default 512)
+</span></span><span class="line"><span class="cl">                                  The value needs to be the power of 4. (default 1024)
 </span></span><span class="line"><span class="cl">  -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
 </span></span><span class="line"><span class="cl">  -N, --ref-name-regexp string    ► Regular expression (must contains &#34;(&#34; and &#34;)&#34;) for extracting the
 </span></span><span class="line"><span class="cl">                                  reference name from the filename. (default
@@ -1559,9 +1556,6 @@
 </span></span><span class="line"><span class="cl">  -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
 </span></span><span class="line"><span class="cl">                                  Deserts with seed distance larger than this value will be filled by
 </span></span><span class="line"><span class="cl">                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 200)
-</span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int       ► Minimum length of shared substrings (anchors) in searching. Here,
-</span></span><span class="line"><span class="cl">                                  this value is used to remove low-complexity masks and choose k-mers to
-</span></span><span class="line"><span class="cl">                                  fill sketching deserts. (default 15)
 </span></span><span class="line"><span class="cl">  -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
 </span></span><span class="line"><span class="cl">                                  contents in FASTA/Q header/name, case ignored.
 </span></span><span class="line"><span class="cl">  -S, --skip-file-check           ► Skip input file checking when given files or a file list.

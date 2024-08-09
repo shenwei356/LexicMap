@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.129.0">
+<meta name="generator" content="Hugo 0.131.0">
 
 
   <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a\/--all, the search result would be formatted to Blast-style format with \u0027lexicmap utils 2blast\u0027. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q\/--min-qcov-per-hsp, -Q\/--min-qcov-per-genome, and -i\/--align-min-match-pident, do not significantly accelerate the search speed.",
-      "wordCount" : "713",
+      "wordCount" : "722",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -528,7 +528,7 @@
                     href="/LexicMap/tutorials/index/"
                     class="gdoc-nav__entry"
                   >
-                    Building an index
+                    Step 1. Building a database
                   </a>
                 </span>
               
@@ -572,7 +572,7 @@
                     href="/LexicMap/tutorials/search/"
                     class="gdoc-nav__entry"
                   >
-                    Searching
+                    Step 2. Searching
                   </a>
                 </span>
               
@@ -1476,7 +1476,8 @@
 </span></span><span class="line"><span class="cl">      --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
 </span></span><span class="line"><span class="cl">                                       phase). (default 50)
 </span></span><span class="line"><span class="cl">      --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-</span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment. (default 2000)
+</span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment. It should be
+</span></span><span class="line"><span class="cl">                                       &lt;= contig interval length in database. (default 1000)
 </span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
 </span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
 </span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
@@ -1509,7 +1510,7 @@
 </span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
 </span></span><span class="line"><span class="cl">                             with --log.
 </span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
-</span></span><span class="line"><span class="cl">                             (default 16)
+</span></span><span class="line"><span class="cl">                             (default 8)
 </span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="examples"
     >
