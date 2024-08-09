@@ -108,7 +108,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		return paths, w
 	}
 
-	minLen := ce.options.MinLen
+	// minLen := ce.options.MinLen
 	minScore := ce.options.MinScore
 
 	var i, j, mj int
@@ -247,20 +247,22 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
 			if (*visited)[j] { // current anchor is abandoned
-				if len(*path) == 0 && !(*visited)[i] && (*subs)[i].Len >= minLen {
-					*path = append(*path, i) // record the anchor
-					// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
-				}
+				// if len(*path) == 0 && !(*visited)[i] && (*subs)[i].Len >= minLen {
+				// 	*path = append(*path, i) // record the anchor
+				// 	// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
+				// }
 
-				if len(*path) > 0 {
-					// but don't forget already added path
-					reverseInts(*path)
-					*paths = append(*paths, path)
-					// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
+				// if len(*path) > 0 {
+				// 	// but don't forget already added path
+				// 	reverseInts(*path)
+				// 	*paths = append(*paths, path)
+				// 	// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
-					path = poolChain.Get().(*[]int)
-					*path = (*path)[:0]
-				}
+				// 	path = poolChain.Get().(*[]int)
+				// 	*path = (*path)[:0]
+				// }
+
+				*path = (*path)[:0]
 				(*visited)[i] = true // do not check it again
 
 				break
