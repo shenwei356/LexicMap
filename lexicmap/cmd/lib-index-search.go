@@ -1173,6 +1173,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		checkError(err)
 	}
 
+	alignOption := &wfa.Options{GlobalAlignment: true}
+
 	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
@@ -1208,7 +1210,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			outSeq := idx.opt.OutputSeq
 			accurateAlign := idx.opt.MoreAccurateAlignment
 
-			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+			algn := wfa.New(wfa.DefaultPenalties, alignOption)
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
 
 			var _qseq, _tseq []byte
