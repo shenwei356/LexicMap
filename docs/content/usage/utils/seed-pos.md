@@ -149,13 +149,13 @@ Global Flags:
                                                                                           GCGCATCGACGCCGAGGGCGTCGGCCTGCGCTTCCTCGCC
                                                                                           GATCAATGAAACCCGAGTTCCACGTGGAACCACGGTCCTG
                                                                                           CCATCGATCAGCGAACGGGCGAATCCGCCGCCCGTTATCG
-                                                                                          GCTAGAATGCGCGCCGCTCGGCATGGGGCCGGGCATG CGGAAGACGCCTTTTTCATATCCGGG
+                                                                                          GCTAGAATGCGCGCCGCTCGGCATGGGGCCGGGCATG
 
 3. Listing seed position of all genomes.
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz
 
-    Show the number of seed positions in each genome.
+    Show the **number of seed** positions in each genome.
     Frequencies larger than 40000 (the number of masks) means some k-mers can be foud in more than one positions in a genome.
 
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t

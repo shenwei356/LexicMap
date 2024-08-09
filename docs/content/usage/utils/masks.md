@@ -62,5 +62,47 @@ $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10
 
 $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345
 12345   CATTAGTAGAAGAAGGCACAATGTATCGTCG
+```
 
+Freqency of prefixes.
+
+```
+$ lexicmap utils masks --quiet -d demo.lmi/ \
+  | csvtk mutate -Ht -f 2 -p '^(.{7})' \
+  | csvtk freq -Ht -f 3 -nr \
+  | head -n 10
+AAAAAAA 3
+AAAAAAT 3
+AAAAACA 3
+AAAAACC 3
+AAAAACG 3
+AAAAACT 3
+AAAAAGC 3
+AAAAAGG 3
+AAAAAGT 3
+AAAAATT 3
+
+$ lexicmap utils masks --quiet -d demo.lmi/ \
+  | csvtk mutate -Ht -f 2 -p '^(.{7})' \
+  | csvtk freq -Ht -f 3 -n \
+  | head -n 10
+AAAAAAC 2
+AAAAAAG 2
+AAAAAGA 2
+AAAAATA 2
+AAAAATC 2
+AAAAATG 2
+AAAACAC 2
+AAAACAT 2
+AAAACCG 2
+AAAACGC 2
+```
+
+Frequency of frequencies. i.e., for 40,000 masks, 4<sup>*7*</sup> = 16384.
+All 16,384 masks are duplicated twice, and 7,232 of them are duplicated 3 times.
+
+```
+$ lexicmap utils masks --quiet -d demo.lmi/ | csvtk mutate -Ht -f 2 -p '^(.{7})' | csvtk freq -Ht -f 3 -n | csvtk freq -Ht -f 2 -k
+2       9152
+3       7232
 ```

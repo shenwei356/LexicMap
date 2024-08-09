@@ -1,5 +1,5 @@
 ---
-title: Searching
+title: Step 2. Searching
 weight: 10
 ---
 
@@ -64,8 +64,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     1. Prefix matching
         1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
         For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
-        2. **Finding the nearest smaller k-mer**: The index file of each seed data file stores a list (default 512) of k-mers and offsets in the data file, and the index is loaded in RAM.
-        The nearest k-mer smaller than the range start k-mer (`CATGAA`) is found by binary search, i.e., `CATCAC` (blue text in the figure), and the offset is returned as the start position in traversing the seed data file.
+        2. **Retrieving search start point**: The index file of each seed data file stores some k-mers' offsets in the data file, and the index is loaded in RAM.
         3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
     1. Suffix matching
         1. Reversing the query k-mer and performing prefix matching, returning seeds of reversed k-mers (see indexing algorithm).
@@ -73,7 +72,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     1. Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.
     2. Performing chaining (see the paper).
 1. **Alignment** for each chain.
-    1. Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 2 kb in upstream and downstream of anchor region.
+    1. Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 1 kb in upstream and downstream of anchor region.
     1. Performing pseudo-alignment with extended query and subject sequences, for find similar regions.
        - For these similar regions that accross more than one reference sequences, splitting them into multiple ones.
     2. Fast alignment of query and subject sequence regions with [our implementation](https://github.com/shenwei356/wfa) of [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
@@ -118,7 +117,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                                                                              |       |
 |**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                                                                                  |       |
 |`--align-band`                   |Default 50  |Band size in backtracking the score matrix.                                                                                                                           |       |
-|`--align-ext-len`                |Default 2000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.|       |
+|`--align-ext-len`                |Default 1000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.|       |
 |`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                                                                         |       |
 
 
