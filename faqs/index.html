@@ -12,9 +12,7 @@
 <meta name="generator" content="Hugo 0.131.0">
 
 
-  <meta name="description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default. However, short queries can also be aligned.
-If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) targets, you can build an index with a bigger -D/--seed-max-desert (200 by default), e.g.,
---seed-max-desert 450 --seed-in-desert-dist 150 Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size." />
+  <meta name="description" content="Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How&rsquo;s the hardware requirement? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default." />
 
     <title>FAQs | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +38,7 @@ If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) ta
     content="FAQs"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default. However, short queries can also be aligned.
-If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) targets, you can build an index with a bigger -D/--seed-max-desert (200 by default), e.g.,
---seed-max-desert 450 --seed-in-desert-dist 150 Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size." />
+  <meta property="og:description" content="Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/faqs/" />
 
@@ -51,9 +47,7 @@ If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) ta
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="FAQs" />
-  <meta name="twitter:description" content="Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default. However, short queries can also be aligned.
-If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) targets, you can build an index with a bigger -D/--seed-max-desert (200 by default), e.g.,
---seed-max-desert 450 --seed-in-desert-dist 150 Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size." />
+  <meta name="twitter:description" content="Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default." />
 
 
   <script type="application/ld+json">
@@ -64,8 +58,8 @@ If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) ta
       "name": "FAQs",
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
-      "description": "Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 200 bp by default. However, short queries can also be aligned.\nIf you just want to search long (\u003e1kb) queries for highy similar (\u003e95%) targets, you can build an index with a bigger -D\/--seed-max-desert (200 by default), e.g.,\n--seed-max-desert 450 --seed-in-desert-dist 150 Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size.",
-      "wordCount" : "552",
+      "description": "Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 200 bp by default.",
+      "wordCount" : "612",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1416,10 +1410,32 @@ If you just want to search long (&gt;1kb) queries for highy similar (&gt;95%) ta
   >
     <h1>FAQs</h1>
     <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="does-lexicmap-support-short-reads"
+    <h2 id="table-of-contents"
+    >
+        Table of contents
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#table-of-contents" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Table of contents" aria-label="Anchor to: Table of contents" href="#table-of-contents">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="gdoc-toc gdoc-toc__level--3">
+      <nav id="TableOfContents"><ul>
+        <li><a href="#table-of-contents">Table of contents</a></li>
+        <li><a href="#does-lexicmap-support-short-reads">Does LexicMap support short reads?</a></li>
+        <li><a href="#does-lexicmap-support-fungi-genomes">Does LexicMap support fungi genomes?</a></li>
+        <li><a href="#hows-the-hardware-requirement">How&rsquo;s the hardware requirement?</a></li>
+        <li><a href="#can-i-extract-the-matched-sequences">Can I extract the matched sequences?</a></li>
+        <li><a href="#how-can-i-extract-the-upstream-and-downstream-flanking-sequences-of-matched-regions">How can I extract the upstream and downstream flanking sequences of matched regions?</a></li>
+        <li><a href="#why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes">Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes?</a></li>
+        <li><a href="#why-is-lexicmap-slow-for-batch-searching">Why is LexicMap slow for batch searching?</a></li>
+      </ul></nav>
+      <hr />
+    </div>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="does-lexicmap-support-short-reads"
     >
         Does LexicMap support short reads?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-short-reads" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Does LexicMap support short reads?" aria-label="Anchor to: Does LexicMap support short reads?" href="#does-lexicmap-support-short-reads">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
@@ -1433,10 +1449,10 @@ However, short queries can also be aligned.</p>
 speed, decrease the indexing memory occupation and decrease the index size. While the
 alignment speed is almost not affected.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="does-lexicmap-support-fungi-genomes"
+    <h2 id="does-lexicmap-support-fungi-genomes"
     >
         Does LexicMap support fungi genomes?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-fungi-genomes" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Does LexicMap support fungi genomes?" aria-label="Anchor to: Does LexicMap support fungi genomes?" href="#does-lexicmap-support-fungi-genomes">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
@@ -1452,10 +1468,10 @@ which is used to skip genomes larger than 15Mb by default</strong>.</p>
 <p>as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.</p>
 <p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="hows-the-hardware-requirement"
+    <h2 id="hows-the-hardware-requirement"
     >
         How&rsquo;s the hardware requirement?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#hows-the-hardware-requirement" class="gdoc-page__anchor clip flex align-center" title="Anchor to: How&rsquo;s the hardware requirement?" aria-label="Anchor to: How&rsquo;s the hardware requirement?" href="#hows-the-hardware-requirement">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
@@ -1471,10 +1487,10 @@ which is used to skip genomes larger than 15Mb by default</strong>.</p>
 >hardware requirement</a>.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="can-i-extract-the-matched-sequences"
+    <h2 id="can-i-extract-the-matched-sequences"
     >
         Can I extract the matched sequences?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#can-i-extract-the-matched-sequences" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Can I extract the matched sequences?" aria-label="Anchor to: Can I extract the matched sequences?" href="#can-i-extract-the-matched-sequences">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
@@ -1508,10 +1524,10 @@ see <a
 can extract subsequencess via genome ID, sequence ID and positions.
 So you can use these information from the search result and expand the region positions to extract flanking sequences.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes"
+    <h2 id="why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes"
     >
         Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes?" aria-label="Anchor to: Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes?" href="#why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
@@ -1520,10 +1536,10 @@ So you can use these information from the search result and expand the region po
 In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., <code>N</code> is converted to <code>A</code>.
 While for the query sequences, we don&rsquo;t convert them.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
-    <h3 id="why-is-lexicmap-slow-for-batch-searching"
+    <h2 id="why-is-lexicmap-slow-for-batch-searching"
     >
         Why is LexicMap slow for batch searching?
-    </h3>
+    </h2>
     <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#why-is-lexicmap-slow-for-batch-searching" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Why is LexicMap slow for batch searching?" aria-label="Anchor to: Why is LexicMap slow for batch searching?" href="#why-is-lexicmap-slow-for-batch-searching">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>

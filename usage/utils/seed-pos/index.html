@@ -1648,69 +1648,7 @@ Frequencies larger than 40000 (the number of masks) means some k-mers can be fou
 </ul>
 <p>Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N&rsquo;s).
 This also explain why there are a few sliding windows has zero seeds in the figure above.</p>
-<p>Let&rsquo;s check the regions with big seed distances. Note that, in LexicMap, the N&rsquo;s are converted to A&rsquo;s.</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000392875.1 -v --min-dist 1000 | csvtk pretty -t -W 50
-</span></span><span class="line"><span class="cl">ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq
-</span></span><span class="line"><span class="cl">---------------   -------------   -------   -------   ------   --------   -------   --------------------------------------------------
-</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944589.1   503036    227274    +        1168       1117      ATATGAGCCAACAGTAGAAGGTGAAAAAGTAGAAATCGGTGGTAAAGTAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAGGTGTCATTGAAG
-</span></span><span class="line"><span class="cl">GCF_000392875.1   NZ_KB944590.1   2639985   1680797   +        1190       1144      TTCCCCACTATTTTTCAATGTTAATTGCTTCACTGCCGAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-</span></span><span class="line"><span class="cl">                                                                                    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGCTTGTTTC
-</span></span></code></pre></div><p>Long gap regions (&gt;=1000 bp) of the genome, which are excatly the regions in the table above.</p>
-<pre tabindex="0"><code>$ zcat refs/GCF_000392875.1.fa.gz \
-    | seqkit locate -G -r -p &#39;&#34;N{20,}&#34;&#39; -P -M \
-    | csvtk filter2 -t -f &#39;$end - $start + 1 &gt;=1000&#39; \
-    | csvtk pretty -t
-
-seqID           patternName   pattern   strand   start     end
--------------   -----------   -------   ------   -------   -------
-NZ_KB944589.1   N{20,}        N{20,}    +        226154    227258
-NZ_KB944590.1   N{20,}        N{20,}    +        1679646   1680787
-</code></pre></li>
+</li>
 </ol>
 <p>The output (TSV format) is formatted with <a
   class="gdoc-markdown__link"
