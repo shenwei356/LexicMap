@@ -200,7 +200,7 @@ Global Flags:
         GCF_000392875.1.seed_number.png  GCF_001457655.1.seed_number.png  GCF_003697165.2.seed_number.png
 
 
-    In the plots below, there's a peak at 150 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 150 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.
+    In the plots below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.
 
     - GCF_000392875.1 (genome size: 2.9 Mb)
 
@@ -216,9 +216,6 @@ Global Flags:
 
         <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
         <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
-
-    Some genomes, e.g., GCF_000392875.1, might have a few big seed distances around gaps (N's).
-    This also explain why there are a few sliding windows has zero seeds in the figure above.
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
 [SeqKit](https://github.com/shenwei356/seqkit) is used to locating subsequences from fasta files.
