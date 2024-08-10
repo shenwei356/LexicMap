@@ -2,8 +2,11 @@
 title: FAQs
 weight: 60
 ---
+## Table of contents
 
-### Does LexicMap support short reads?
+{{< toc format=html >}}
+
+## Does LexicMap support short reads?
 
 LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
 However, short queries can also be aligned.
@@ -17,7 +20,7 @@ speed, decrease the indexing memory occupation and decrease the index size. Whil
 alignment speed is almost not affected.
 
 
-### Does LexicMap support fungi genomes?
+## Does LexicMap support fungi genomes?
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
 **Fungi can also be supported, just remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
@@ -37,13 +40,13 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.
 
 
-### How's the hardware requirement?
+## How's the hardware requirement?
 
 - For index building. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
 - For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 
 
-### Can I extract the matched sequences?
+## Can I extract the matched sequences?
 
 Yes, `lexicmap search` has a flag
 
@@ -72,14 +75,14 @@ So you can use these information from the search result and expand the region po
 
 
 
-### Why isn't the pident 100% when aligning with a sequence from the reference genomes?
+## Why isn't the pident 100% when aligning with a sequence from the reference genomes?
 
 It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
 In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., `N` is converted to `A`.
 While for the query sequences, we don't convert them.
 
 
-### Why is LexicMap slow for batch searching?
+## Why is LexicMap slow for batch searching?
 
 - LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 16 million) of genomes.
 

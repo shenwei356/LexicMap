@@ -336,6 +336,7 @@ Figures:
 			var nPos, pi, ps int
 			k32p1 := uint32(info.K) - 1
 			var first bool
+			var hasGap bool
 
 			// var kp1 int = int(info.K) - 1
 
@@ -389,30 +390,35 @@ Figures:
 					// fmt.Printf("pos: %d, ri:%d, rs:%d, rs_next:%d\n", pos, ri, rs, rs_next)
 					// fmt.Printf("  pos2str&1>0:%v, int(pos) >= rs_next:%v\n", pos2str&1 > 0, int(pos) >= rs_next)
 
-					// this is the first pos after an interval region, and it's a new seq
-					if pos2str&1 > 0 && int(pos) >= rs_next {
-						ri++
-						// fmt.Printf("    ri++%d\n", ri)
-
-						// some short contigs might do not have seeds
-						for int(pos) > rs_next+ref2locs.Genome.SeqSizes[ri] {
-							rs_next += ref2locs.Genome.SeqSizes[ri] + interval
+					// this is the first pos after an interval region
+					if pos2str&1 > 0 {
+						if int(pos) >= rs_next { // it's a new seq
 							ri++
+							// fmt.Printf("    ri++%d\n", ri)
 
-							// fmt.Printf("      ri++%d, rs_next:%d\n", ri, rs_next)
+							// some short contigs might do not have seeds
+							for int(pos) > rs_next+ref2locs.Genome.SeqSizes[ri] {
+								rs_next += ref2locs.Genome.SeqSizes[ri] + interval
+								ri++
 
-							if ri >= nSeqs {
-								ri = nSeqs - 1
-								break
+								// fmt.Printf("      ri++%d, rs_next:%d\n", ri, rs_next)
+
+								if ri >= nSeqs {
+									ri = nSeqs - 1
+									break
+								}
 							}
+							// fmt.Printf("    ri:%d, nSeqs:%d\n", ri, nSeqs)
+
+							rs = (*seqRegions)[ri][0]
+							sseqid = *ref2locs.Genome.SeqIDs[ri]
+							rs_next += ref2locs.Genome.SeqSizes[ri] + interval
+
+							pre = uint32(rs)
+						} else { // a gap
+							pre = pos
+							continue
 						}
-						// fmt.Printf("    ri:%d, nSeqs:%d\n", ri, nSeqs)
-
-						rs = (*seqRegions)[ri][0]
-						sseqid = *ref2locs.Genome.SeqIDs[ri]
-						rs_next += ref2locs.Genome.SeqSizes[ri] + interval
-
-						pre = uint32(rs)
 					}
 					dist = int(pos - pre)
 
@@ -521,12 +527,18 @@ Figures:
 
 					nSeeds = 0
 					first = true
+					hasGap = false
 					for ws = uint32(seqRegion[0]); ws <= end; ws += step { // each window
 						we = ws + window - k32p1
 						// fmt.Printf("  window: %d-%d\n", ws, we)
 
 						for pi = ps; pi < nPos; pi++ {
-							pos = (*locs)[pi] >> 2
+							pos2str = (*locs)[pi]
+							if !hasGap && pos2str&1 > 0 {
+								hasGap = true
+							}
+
+							pos = pos2str >> 2
 							// fmt.Printf("    pi:%d, pos:%d\n", pi, pos)
 
 							if first && pos >= ws+step {
@@ -539,10 +551,13 @@ Figures:
 								nSeeds++
 								// fmt.Printf("      in range. nSeeds:%d\n", nSeeds)
 							} else if nSeeds > 0 { // out of current window
-								v2 = append(v2, float64(nSeeds))
+								if !hasGap {
+									v2 = append(v2, float64(nSeeds))
+								}
 								// fmt.Printf("      out range. nSeeds:%d\n", nSeeds)
 								nSeeds = 0
 								first = true
+								hasGap = false
 								break
 							}
 						}
