@@ -43,12 +43,12 @@ Running at this scale has previously only been achieved by [Phylign](https://git
     
     **With LexicMap** (48 CPUs),
 
-    |Query               |Genome hits|Time |RAM    |
-    |:-------------------|----------:|----:|------:|
-    |A 1.3-kb marker gene|36,633     |21s  |3.4 GB |
-    |A 1.5-kb 16S rRNA   |1,928,372  |6m40s|16.7 GB|
-    |A 52.8-kb plasmid   |551,264    |8m54s|20.1 GB|
-    |1003 AMR genes      |27,577,060 |5h18m|41.3 GB|
+    |Query               |Genome hits|Time  |RAM    |
+    |:-------------------|----------:|-----:|------:|
+    |A 1.3-kb marker gene|37,164     |52s   |4.1 GB |
+    |A 1.5-kb 16S rRNA   |1,949,496  |13m53s|13.1 GB|
+    |A 52.8-kb plasmid   |544,619    |23m30s|17.5 GB|
+    |1003 AMR genes      |25,702,419 |4h02m |41.3 GB|
 
 
 More documents: https://bioinf.shenwei.me/LexicMap.
