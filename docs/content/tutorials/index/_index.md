@@ -337,36 +337,36 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Demo data" >}}
 
     # 15 genomes
-    demo.lmi: 69.89 MB
-      56.65 MB      seeds
-      12.93 MB      genomes
-     312.53 KB      masks.bin
-      375.00 B      genomes.map.bin
-      323.00 B      info.toml
+    demo.lmi: 73.30 MB (73,297,328)
+      59.41 MB      seeds
+      13.57 MB      genomes
+     320.03 kB      masks.bin
+         375 B      genomes.map.bin
+         323 B      info.toml
 
 {{< /tab>}}
 
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes
-    gtdb_repr.lmi: 212.48 GB
-     145.69 GB      seeds
-      66.78 GB      genomes
-       2.03 MB      genomes.map.bin
-     312.53 KB      masks.bin
-      329.00 B      info.toml
+    gtdb_repr.lmi: 228.15 GB (228,149,871,198)
+     156.44 GB      seeds
+      71.71 GB      genomes
+       2.13 MB      genomes.map.bin
+     320.03 kB      masks.bin
+         329 B      info.toml
 
 {{< /tab>}}
 
 {{< tab "GTDB complete" >}}
 
     # 402,538 genomes
-    gtdb_complete.lmi: 906.04 GB
-     543.06 GB      seeds
-     362.98 GB      genomes
-       9.60 MB      genomes.map.bin
-     312.53 KB      masks.bin
-      330.00 B      info.toml
+    gtdb_complete.lmi: 972.85 GB (972,854,821,322)
+     583.10 GB      seeds
+     389.74 GB      genomes
+      10.06 MB      genomes.map.bin
+     320.03 kB      masks.bin
+         330 B      info.toml
 
 {{< /tab>}}
 
@@ -374,12 +374,13 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
-    genbank_refseq.lmi: 4.94 TB
-       2.77 TB      seeds
-       2.17 TB      genomes
-      55.81 MB      genomes.map.bin
-     312.53 KB      masks.bin
-      332.00 B      info.toml
+    genbank_refseq.lmi: 5.43 TB (5,428,824,803,581)
+       3.04 TB      seeds
+       2.38 TB      genomes
+     821.17 MB      kmers-m12345.tsv
+      58.52 MB      genomes.map.bin
+     320.03 kB      masks.bin
+         332 B      info.toml
 
 {{< /tab>}}
 
@@ -387,18 +388,19 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
-    atb_hq.lmi: 3.88 TB
-       2.11 TB      seeds
-       1.77 TB      genomes
-      39.22 MB      genomes.map.bin
-     312.53 KB      masks.bin
-      332.00 B      info.toml
+    atb_hq.lmi: 4.26 TB (4,261,437,129,065)
+       2.32 TB      seeds
+       1.94 TB      genomes
+      41.12 MB      genomes.map.bin
+     320.03 kB      masks.bin
+         332 B      info.toml
+
 
 {{< /tab>}}
 
 {{< /tabs >}}
 
-- Directory/file sizes are counted with https://github.com/shenwei356/dirsize. (base: 1024)
+- Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize -k`, base: 1000).
 - Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 5000` for GTDB datasets, `-b 25000` for others.
 
 

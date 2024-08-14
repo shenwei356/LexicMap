@@ -19,9 +19,9 @@ LexicMap is a **nucleotide sequence alignment** tool for efficiently querying ge
 1. **LexicMap is scalable to up to millions of prokaryotic genomes**.
 1. **The sensitivity of LexicMap is comparable with Blastn**.
 1. **The alignment is [fast and memory-efficient](https://bioinf.shenwei.me/LexicMap/introduction/#searching)**.
-1. LexicMap is easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
+1. LexicMap is **easy to [install](http://bioinf.shenwei.me/LexicMap/installation/)**,
    we provide [binary files](https://github.com/shenwei356/LexicMap/releases/) with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
-2. LexicMap is easy to use ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
+2. LexicMap is **easy to use** ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
 3. Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
 
 ## Introduction
@@ -39,7 +39,7 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. An [improved version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds accurately and efficiently.
     1. **We solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to provide a [window guarantee](https://doi.org/10.1093/bioinformatics/btab790)**.
     2. **We added the support of suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched, which means **seeds are immune to any single SNP**.
-2. A multi-level index enables fast and low-memory variable-length seed matching and chaining.
+2. A hierarchical index enables fast and low-memory variable-length seed matching and chaining.
 3. A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.
 4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
 
@@ -177,13 +177,13 @@ Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [
 
 |dataset          |genomes  |gzip_size|tool    |db_size|time     |RAM     |
 |:----------------|--------:|--------:|:-------|------:|--------:|-------:|
-|GTDB complete    |402,538  |578 GB   |LexicMap|906 GB |10 h 36 m|63.3 GB |
-|                 |         |         |Blastn  |360 GB |3 h 11 m |718 MB  |
-|AllTheBacteria HQ|1,858,610|3.1 TB   |LexicMap|3.88 TB|48 h 08 m|88.6 GB |
-|                 |         |         |Blastn  |1.76 TB|14 h 03 m|2.9 GB  |
+|GTDB complete    |402,538  |443 GB   |LexicMap|973 GB |10 h 36 m|63.3 GB |
+|                 |         |         |Blastn  |387 GB |3 h 11 m |718 MB  |
+|AllTheBacteria HQ|1,858,610|2.5 TB   |LexicMap|4.26 TB|48 h 08 m|88.6 GB |
+|                 |         |         |Blastn  |1.93 TB|14 h 03 m|2.9 GB  |
 |                 |         |         |Phylign |248 GB |/        |/       |
-|Genbank+RefSeq   |2,340,672|3.5 TB   |LexicMap|4.94 TB|54 h 33 m|178.3 GB|
-|                 |         |         |Blastn  |2.15 TB|14 h 04 m|4.3 GB  |
+|Genbank+RefSeq   |2,340,672|2.7 TB   |LexicMap|5.43 TB|54 h 33 m|178.3 GB|
+|                 |         |         |Blastn  |2.37 TB|14 h 04 m|4.3 GB  |
 
 Notes:
 - All files are stored on a server with HDD disks. No files are cached in memory.
@@ -207,7 +207,7 @@ GTDB complete (402,538 genomes):
 |               |             |Blastn         |301,197    |277,042             |2,353 s   |378.4 GB|
 |a plasmid      |52,830 bp    |LexicMap       |63,108     |1,190               |87 s      |4.8 GB  |
 |               |             |Blastn         |69,311     |2,308               |2,262 s   |364.7 GB|
-|1033 AMR genes |1 kb (median)|LexicMap       |3,867,003  |2,228,339           |1,165 s   |20.2 GB |
+|1033 AMR genes |1 kb (median)|LexicMap       |3,867,003  |2,228,339           |1,254 s   |21.4 GB |
 |               |             |Blastn         |5,357,772  |2,240,766           |4,686 s   |442.1 GB|
 
 
