@@ -1,5 +1,5 @@
 Query	Genome hits	Time	RAM
-A 1.3-kb marker gene	37,164	52s	4.1 GB
-A 1.5-kb 16S rRNA	1,949,496	13m53s	13.1 GB
-A 52.8-kb plasmid	544,619	23m30s	17.5 GB
-1003 AMR genes	25,702,419	4h02m	41.3 GB
+A 1.3-kb marker gene	37,164	36 s	4.1 GB
+A 1.5-kb 16S rRNA	1,949,496	10 m 41 s	14.1 GB
+A 52.8-kb plasmid	544,619	19 m 20 s	19.3 GB
+1003 AMR genes	25,702,419	187 m 40 s	55.4 GB
