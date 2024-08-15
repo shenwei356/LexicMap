@@ -21,6 +21,7 @@
 package kv
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"math"
@@ -182,6 +183,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	getAnchor := scr.getAnchor
 	var is2ndKmer bool
 
+	r := bufio.NewReader(nil)
+
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
 			continue
@@ -264,9 +267,11 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		// -----------------------------------------------------
 		// check one by one
 
-		r := scr.fh
+		// r := scr.fh
 
-		r.Seek(int64(offset), 0)
+		scr.fh.Seek(int64(offset), 0)
+
+		r.Reset(scr.fh)
 
 		first = true
 		found = false
@@ -418,7 +423,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// 		return nil, ErrBrokenFile
 				// 	}
 				// }
-				r.Seek(int64(lenVal1<<3), 1)
+
+				// r.Seek(int64(lenVal1<<3), 1)
+				r.Discard(int(lenVal1 << 3))
 			}
 
 			if kmer2 > rightBound { // only record kmer1
@@ -482,7 +489,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// 		return nil, ErrBrokenFile
 				// 	}
 				// }
-				r.Seek(int64(lenVal2<<3), 1)
+
+				// r.Seek(int64(lenVal2<<3), 1)
+				r.Discard(int(lenVal2 << 3))
 			}
 
 			if lastPair {
@@ -561,6 +570,8 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 	getAnchor := scr.getAnchor
 	var is2ndKmer bool
+
+	r := bufio.NewReader(nil)
 
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
@@ -641,9 +652,11 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 			// -----------------------------------------------------
 			// check one by one
 
-			r := scr.fh
+			// r := scr.fh
 
-			r.Seek(int64(offset), 0)
+			scr.fh.Seek(int64(offset), 0)
+
+			r.Reset(scr.fh)
 
 			first = true
 			found = false
@@ -781,7 +794,9 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					// 		return nil, ErrBrokenFile
 					// 	}
 					// }
-					r.Seek(int64(lenVal1<<3), 1)
+
+					// r.Seek(int64(lenVal1<<3), 1)
+					r.Discard(int(lenVal1 << 3))
 				}
 
 				if kmer2 > rightBound { // only record kmer1
@@ -843,7 +858,9 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					// 		return nil, ErrBrokenFile
 					// 	}
 					// }
-					r.Seek(int64(lenVal2<<3), 1)
+
+					// r.Seek(int64(lenVal2<<3), 1)
+					r.Discard(int(lenVal2 << 3))
 				}
 
 				if lastPair {

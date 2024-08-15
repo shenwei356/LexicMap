@@ -19,6 +19,7 @@
 - `lexicmap search`:
     - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
+    - Use buffered reader for seeds file reading.
     - Fix object recycling and reduce memory usage.
     - Fix alignment against genomes with many short contigs.
     - Fix early quit when meeting a sequence shorter than k.
