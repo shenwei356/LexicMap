@@ -9,7 +9,7 @@ weight: 30
 
 ### v0.4.0
 
-[v0.4.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0) - 2024-07-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.4.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0)
+[v0.4.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0) - 2024-08-15 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.4.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0)
 
 - New commands:
     - **`lexicmap utils 2blast`: Convert the default search output to blast-style format**.
