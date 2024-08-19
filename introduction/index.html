@@ -62,7 +62,7 @@ Table of contents Table of contents Features Introduction Quick start Performanc
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
       "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nTable of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Related projects Support License Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn. The alignment is fast and memory-efficient. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).",
-      "wordCount" : "1614",
+      "wordCount" : "1633",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1542,7 +1542,7 @@ without the vital positional information for downstream analysis.</li>
 <li><strong>We added the support of suffix matching of seeds, making seeds much more tolerant to mutations</strong>. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched, which means <strong>seeds are immune to any single SNP</strong>.</li>
 </ol>
 </li>
-<li>A hierarchical index enables fast and low-memory variable-length seed matching and chaining.</li>
+<li><strong>A hierarchical index enables fast and low-memory variable-length seed matching</strong> (prefix + suffix matching).</li>
 <li>A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.</li>
 <li>A <a
   class="gdoc-markdown__link"
@@ -1558,11 +1558,18 @@ without the vital positional information for downstream analysis.</li>
 <p>LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the <a
   class="gdoc-markdown__link"
   href="https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1"
->AllTheBacteria</a> datasets (<strong>2.3 and 1.9 million genomes</strong> respectively).
+>AllTheBacteria</a> datasets (<strong>2.3 and 1.9 million prokaryotic assemblies</strong> respectively).
 Running at this scale has previously only been achieved by <a
   class="gdoc-markdown__link"
   href="https://github.com/karel-brinda/Phylign"
->Phylign</a> (previously called mof-search).</p>
+>Phylign</a> (previously called mof-search), which compresses genomes with phylogenetic information and provides searching
+(prefiltering with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/iqbal-lab-org/cobs"
+>COBS</a> and alignment with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/lh3/minimap2"
+>minimap2</a>).</p>
 </li>
 <li>
 <p>For searching in all <strong>2,340,672 Genbank+Refseq prokaryotic genomes</strong>, <em>Bastn is unable to run with this dataset on common servers as it requires &gt;2000 GB RAM</em>.  (see <a

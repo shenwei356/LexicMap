@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names. E.g., GCF_000006945.2.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes.",
-      "wordCount" : "2851",
+      "wordCount" : "2876",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1589,7 +1589,7 @@ via the flag <code>-G/--big-genomes</code>.
 <ul>
 <li><strong>The number of masks</strong> (<code>-m/--masks</code>, default 40,000). Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.</li>
 <li><strong>The number of genomes</strong>. More genome consure more memory.</li>
-<li><strong>The divergence between genome sequences</strong>. Diverse genomes consume more memory.</li>
+<li><strong>The divergence between genome sequences in each batch</strong>. Diverse genomes consume more memory.</li>
 <li><strong>The genome batch size</strong>  (<code>-b/--batch-size</code>, default 5,000). <strong>This is the main parameter to adjust memory usage</strong>. Bigger values increase indexing memory occupation.</li>
 <li><strong>The maximum seed distance</strong> or <strong>the maximum sketching desert size</strong> (<code>-D/--seed-max-desert</code>, default 200),
 and the distance of k-mers to fill deserts (<code>-d/--seed-in-desert-dist</code>, default 50).
@@ -1598,10 +1598,11 @@ decrease the indexing memory occupation and decrease the index size. While the a
 </ul>
 </li>
 <li><strong>If the RAM is not sufficient</strong>. Please:
-<ol>
+<ul>
 <li><strong>Use a smaller genome batch size</strong>. It decreases indexing memory occupation and has little affection on searching performance.</li>
+<li><strong>Sorting the input file list by species</strong>. So genomes within a batch would be more similar and the memory would be lower.</li>
 <li>Use a smaller number of masks, e.g., 20,000 performs well for small genomes (&lt;=5 Mb). And if the queries are long (&gt;= 2kb), there&rsquo;s little affection for the alignment results.</li>
-</ol>
+</ul>
 </li>
 </ul>
 </li>
