@@ -87,15 +87,16 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - More RAM (> 100 GB) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 40,000). Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.
         - **The number of genomes**. More genome consure more memory.
-        - **The divergence between genome sequences**. Diverse genomes consume more memory.
+        - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). **This is the main parameter to adjust memory usage**. Bigger values increase indexing memory occupation.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 200),
           and the distance of k-mers to fill deserts (`-d/--seed-in-desert-dist`, default 50).
           Bigger `-D/--seed-max-desert` values decrease the search sensitivity for distant targets, speed up the indexing speed,
           decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
     - **If the RAM is not sufficient**. Please:
-        1. **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
-        2. Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (>= 2kb), there's little affection for the alignment results.
+        - **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
+        - **Sorting the input file list by species**. So genomes within a batch would be more similar and the memory would be lower.
+        - Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (>= 2kb), there's little affection for the alignment results.
 - **Disk**
     - More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See [some examples](#index-size).
         - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genome bring higher compression rates.

@@ -4,7 +4,7 @@
    height="653"
    overflow="hidden"
    version="1.1"
-   id="svg309"
+   id="svg283"
    sodipodi:docname="overview.svg"
    inkscape:version="1.3.2 (091e20ef0f, 2023-11-25, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
@@ -12,9 +12,9 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs309" />
+     id="defs283" />
   <sodipodi:namedview
-     id="namedview309"
+     id="namedview283"
      pagecolor="#ffffff"
      bordercolor="#000000"
      borderopacity="0.25"
@@ -22,17 +22,17 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="0.7046875"
-     inkscape:cx="503.7694"
-     inkscape:cy="324.25721"
-     inkscape:window-width="1600"
-     inkscape:window-height="928"
+     inkscape:zoom="1.3890625"
+     inkscape:cx="503.93701"
+     inkscape:cy="324.31946"
+     inkscape:window-width="2560"
+     inkscape:window-height="1368"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g309" />
+     inkscape:current-layer="g283" />
   <g
-     id="g309"
+     id="g283"
      transform="translate(-136,-36)">
     <rect
        x="0"
@@ -1106,238 +1106,208 @@
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,533)"
-       id="text122">1</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(694.251,533)"
-       id="text123">CA</text>
+       id="text122">1 CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(709.084,533)"
-       id="text124">A</text>
+       id="text123">A</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(716.751,533)"
-       id="text125">ACC</text>
+       id="text124">ACC</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,546)"
-       id="text126">2</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(694.251,546)"
-       id="text127">CA</text>
+       id="text125">2 CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(709.084,546)"
-       id="text128">C</text>
+       id="text126">C</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(716.751,546)"
-       id="text129">AGA</text>
+       id="text127">AGA</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,560)"
-       id="text130">3</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(694.251,560)"
-       id="text131">CA</text>
+       id="text128">3 CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(709.084,560)"
-       id="text132">G</text>
+       id="text129">G</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(717.417,560)"
-       id="text133">CAC</text>
+       id="text130">CAC</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,573)"
-       id="text134">4</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(694.251,573)"
-       id="text135">CA</text>
+       id="text131">4 CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(709.084,573)"
-       id="text136">T</text>
+       id="text132">T</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(715.584,573)"
-       id="text137">C</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(723.251,573)"
-       id="text138">AC</text>
+       id="text133">CAC</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,586)"
-       id="text139">5</text>
+       id="text134">5</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(694.251,586)"
-       id="text140">CATG</text>
+       id="text135">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(723.917,586)"
-       id="text141">AT</text>
+       id="text136">AT</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,600)"
-       id="text142">6</text>
+       id="text137">6</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(694.251,600)"
-       id="text143">CATG</text>
+       id="text138">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(723.917,600)"
-       id="text144">GT</text>
+       id="text139">GT</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(685.251,613)"
-       id="text145">7 CATTGA</text>
+       id="text140">7 CATTGA</text>
     <rect
        x="746"
        y="524"
        width="25"
        height="11"
        fill="#dddddd"
-       id="rect145" />
+       id="rect140" />
     <rect
        x="771"
        y="524"
        width="25"
        height="11"
        fill="#a0a0a0"
-       id="rect146" />
+       id="rect141" />
     <rect
        x="795"
        y="524"
        width="38"
        height="11"
        fill="#5e5e5e"
-       id="rect147" />
+       id="rect142" />
     <rect
        x="833"
        y="524"
        width="5"
        height="11"
-       id="rect148" />
+       id="rect143" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="14px"
        transform="translate(852.262,533)"
-       id="text148">k</text>
+       id="text143">k</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(859.262,533)"
-       id="text149">-</text>
+       id="text144">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(863.928,533)"
-       id="text150">mer information</text>
+       id="text145">mer information</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(852.262,546)"
-       id="text151">(64</text>
+       id="text146">(64</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(872.595,546)"
-       id="text152">-</text>
+       id="text147">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(877.262,546)"
-       id="text153">bit)</text>
+       id="text148">bit)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(738.735,495)"
-       id="text154">Genome batch ID (17</text>
+       id="text149">Genome batch ID (17</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(853.402,495)"
-       id="text155">-</text>
+       id="text150">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(857.402,495)"
-       id="text156">bit)</text>
+       id="text151">bit)</text>
     <path
        d="m 748.5,264.947 c 61.987,5.239 61.987,-5.239 123.967,-5.239 V 232.476 H 748.5 Z m 10.213,-32.471 v -3.531 h 123.12 v 27.404 c -4.68,0 -9.366,0.19 -9.366,0.19 v -24.063 z m 9.6,-3.531 V 225.5 H 892.5 v 27.318 c -5.333,0 -10.667,0.143 -10.667,0.143 v -24.016 z"
        fill="#d9d9d9"
        fill-rule="evenodd"
-       id="path156" />
+       id="path151" />
     <path
        d="m 748.5,232.476 h 123.967 v 27.232 c -61.98,0 -61.98,10.478 -123.967,5.239 z m 10.213,0 v -3.531 h 123.12 v 27.404 c -4.68,0 -9.366,0.19 -9.366,0.19 M 768.313,228.945 V 225.5 H 892.5 v 27.318 c -5.333,0 -10.667,0.143 -10.667,0.143"
        stroke="#000000"
@@ -1345,393 +1315,393 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path157" />
+       id="path152" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(781.751,245)"
-       id="text157">Bit</text>
+       id="text152">Bit</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(795.751,245)"
-       id="text158">-</text>
+       id="text153">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(799.751,245)"
-       id="text159">packed</text>
+       id="text154">packed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(762.751,258)"
-       id="text160">Genomes batch</text>
+       id="text155">Genomes batch</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(850.751,258)"
-       id="text161">b</text>
+       id="text156">b</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="15px"
        transform="translate(807.02,224)"
-       id="text162">···</text>
+       id="text157">···</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(771.664,508)"
-       id="text163">Genome ID (17</text>
+       id="text158">Genome ID (17</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(853.664,508)"
-       id="text164">-</text>
+       id="text159">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(857.664,508)"
-       id="text165">bit)</text>
+       id="text160">bit)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(796.154,646)"
-       id="text166">Position (28</text>
+       id="text161">Position (28</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(859.487,646)"
-       id="text167">-</text>
+       id="text162">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(863.487,646)"
-       id="text168">bit)</text>
+       id="text163">bit)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(824.718,634)"
-       id="text169">Strand (1</text>
+       id="text164">Strand (1</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(874.051,634)"
-       id="text170">-</text>
+       id="text165">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(878.051,634)"
-       id="text171">bit)</text>
+       id="text166">bit)</text>
     <path
        d="m 759.167,497.497 0.104,20.111 -1.333,0.007 -0.105,-20.111 z m 3.43,18.76 -3.958,8.021 -4.041,-7.979 z"
        fill="#686868"
-       id="path171" />
+       id="path166" />
     <path
        d="m 784.167,511.5 v 5.778 h -1.334 V 511.5 Z m 3.333,4.445 -4,8 -4,-8 z"
        fill="#686868"
-       id="path172" />
+       id="path167" />
     <path
        d="M 0.666658,-0.00339898 0.743954,15.1571 -0.589362,15.1639 -0.666658,0.00339898 Z M 4.07045,13.8068 0.111286,21.8271 -3.92945,13.8476 Z"
        fill="#686868"
        transform="matrix(1,0,0,-1,814.5,635.327)"
-       id="path173" />
+       id="path168" />
     <rect
        x="746"
        y="537"
        width="25"
        height="11"
        fill="#dddddd"
+       id="rect168" />
+    <rect
+       x="771"
+       y="537"
+       width="25"
+       height="11"
+       fill="#a0a0a0"
+       id="rect169" />
+    <rect
+       x="795"
+       y="537"
+       width="38"
+       height="11"
+       fill="#5e5e5e"
+       id="rect170" />
+    <rect
+       x="833"
+       y="537"
+       width="5"
+       height="11"
+       id="rect171" />
+    <rect
+       x="746"
+       y="550"
+       width="25"
+       height="11"
+       fill="#dddddd"
+       id="rect172" />
+    <rect
+       x="771"
+       y="550"
+       width="25"
+       height="11"
+       fill="#a0a0a0"
        id="rect173" />
     <rect
-       x="771"
-       y="537"
-       width="25"
+       x="795"
+       y="550"
+       width="38"
        height="11"
-       fill="#a0a0a0"
+       fill="#5e5e5e"
        id="rect174" />
     <rect
-       x="795"
-       y="537"
-       width="38"
+       x="833"
+       y="550"
+       width="5"
        height="11"
-       fill="#5e5e5e"
        id="rect175" />
     <rect
-       x="833"
-       y="537"
-       width="5"
+       x="746"
+       y="563"
+       width="25"
        height="11"
+       fill="#dddddd"
        id="rect176" />
     <rect
-       x="746"
-       y="550"
+       x="771"
+       y="563"
        width="25"
        height="11"
-       fill="#dddddd"
+       fill="#a0a0a0"
        id="rect177" />
     <rect
-       x="771"
-       y="550"
-       width="25"
+       x="795"
+       y="563"
+       width="38"
        height="11"
-       fill="#a0a0a0"
+       fill="#5e5e5e"
        id="rect178" />
     <rect
-       x="795"
-       y="550"
-       width="38"
+       x="833"
+       y="563"
+       width="5"
        height="11"
-       fill="#5e5e5e"
        id="rect179" />
     <rect
-       x="833"
-       y="550"
-       width="5"
+       x="746"
+       y="576"
+       width="25"
        height="11"
+       fill="#dddddd"
        id="rect180" />
     <rect
-       x="746"
-       y="563"
+       x="771"
+       y="576"
        width="25"
        height="11"
-       fill="#dddddd"
+       fill="#a0a0a0"
        id="rect181" />
     <rect
-       x="771"
-       y="563"
-       width="25"
+       x="795"
+       y="576"
+       width="38"
        height="11"
-       fill="#a0a0a0"
+       fill="#5e5e5e"
        id="rect182" />
     <rect
-       x="795"
-       y="563"
-       width="38"
+       x="833"
+       y="576"
+       width="5"
        height="11"
-       fill="#5e5e5e"
        id="rect183" />
     <rect
-       x="833"
-       y="563"
-       width="5"
+       x="746"
+       y="589"
+       width="25"
        height="11"
+       fill="#dddddd"
        id="rect184" />
     <rect
-       x="746"
-       y="576"
+       x="771"
+       y="589"
        width="25"
        height="11"
-       fill="#dddddd"
+       fill="#a0a0a0"
        id="rect185" />
     <rect
-       x="771"
-       y="576"
-       width="25"
+       x="795"
+       y="589"
+       width="38"
        height="11"
-       fill="#a0a0a0"
+       fill="#5e5e5e"
        id="rect186" />
     <rect
-       x="795"
-       y="576"
-       width="38"
+       x="833"
+       y="589"
+       width="5"
        height="11"
-       fill="#5e5e5e"
        id="rect187" />
     <rect
-       x="833"
-       y="576"
-       width="5"
+       x="746"
+       y="602"
+       width="25"
        height="11"
+       fill="#dddddd"
        id="rect188" />
     <rect
-       x="746"
-       y="589"
+       x="771"
+       y="602"
        width="25"
        height="11"
-       fill="#dddddd"
+       fill="#a0a0a0"
        id="rect189" />
     <rect
-       x="771"
-       y="589"
-       width="25"
+       x="795"
+       y="602"
+       width="38"
        height="11"
-       fill="#a0a0a0"
+       fill="#5e5e5e"
        id="rect190" />
     <rect
-       x="795"
-       y="589"
-       width="38"
+       x="833"
+       y="602"
+       width="5"
        height="11"
-       fill="#5e5e5e"
        id="rect191" />
-    <rect
-       x="833"
-       y="589"
-       width="5"
-       height="11"
-       id="rect192" />
-    <rect
-       x="746"
-       y="602"
-       width="25"
-       height="11"
-       fill="#dddddd"
-       id="rect193" />
-    <rect
-       x="771"
-       y="602"
-       width="25"
-       height="11"
-       fill="#a0a0a0"
-       id="rect194" />
-    <rect
-       x="795"
-       y="602"
-       width="38"
-       height="11"
-       fill="#5e5e5e"
-       id="rect195" />
-    <rect
-       x="833"
-       y="602"
-       width="5"
-       height="11"
-       id="rect196" />
     <path
        d="M 0.666667,-6.41328e-6 0.666708,4.24682 -0.666626,4.24683 -0.666667,6.41328e-6 Z M 4.00003,2.91345 1.04987e-4,10.9135 -3.99997,2.91353 Z"
        fill="#686868"
        transform="matrix(1,0,0,-1,836.5,624.414)"
-       id="path196" />
+       id="path191" />
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(273.776,575)"
-       id="text196">CA</text>
+       id="text191">CA</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(289.11,575)"
-       id="text197">TGCT</text>
+       id="text192">TGCT</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(182.519,568)"
-       id="text198">The</text>
+       id="text193">The</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="14px"
        transform="translate(210.519,568)"
-       id="text199">k</text>
+       id="text194">k</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(217.519,568)"
-       id="text200">-</text>
+       id="text195">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(222.185,568)"
-       id="text201">mer</text>
+       id="text196">mer</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(182.519,581)"
-       id="text202">captured by</text>
+       id="text197">captured by</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(182.519,595)"
-       id="text203">probe</text>
+       id="text198">probe</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="14px"
        transform="translate(222.352,595)"
-       id="text204">c’</text>
+       id="text199">c’</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(391.199,549)"
-       id="text205">CATG</text>
+       id="text200">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(420.866,549)"
-       id="text206">AA</text>
+       id="text201">AA</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(391.199,562)"
-       id="text207">CATG</text>
+       id="text202">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(420.866,562)"
-       id="text208">AC</text>
+       id="text203">AC</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(391.199,589)"
-       id="text209">CATG</text>
+       id="text204">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(420.866,589)"
-       id="text210">TG</text>
+       id="text205">TG</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(391.199,602)"
-       id="text211">CATG</text>
+       id="text206">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(420.866,602)"
-       id="text212">TT</text>
+       id="text207">TT</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="15px"
        transform="translate(404.789,575)"
-       id="text213">···</text>
+       id="text208">···</text>
     <path
        d="m 387.5,602.5 c -2.761,0 -5,-0.373 -5,-0.833 v -28.834 c 0,-0.46 -2.238,-0.833 -5,-0.833 2.762,0 5,-0.373 5,-0.833 v -28.834 c 0,-0.46 2.239,-0.833 5,-0.833"
        stroke="#a0a0a0"
@@ -1739,99 +1709,71 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path213" />
+       id="path208" />
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(265.172,594)"
-       id="text214">Probe prefix = 2</text>
+       id="text209">Probe prefix = 2</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(265.172,607)"
-       id="text215">M</text>
-    <text
-       fill="#ff0000"
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(274.005,607)"
-       id="text216">in</text>
-    <text
-       fill="#ff0000"
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(285.338,607)"
-       id="text217">prefix</text>
-    <text
-       fill="#ff0000"
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(314.505,607)"
-       id="text218">=</text>
-    <text
-       fill="#ff0000"
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(323.672,607)"
-       id="text219">4</text>
+       id="text210">Min prefix = 4</text>
     <path
        d="m 323.501,570.833 47.433,0.081 -0.002,1.334 -47.433,-0.081 z m 46.105,-3.254 7.994,4.013 -8.007,3.987 z"
-       id="path219" />
+       id="path210" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(313.287,533)"
-       id="text220">Set search</text>
+       id="text211">Set search</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(328.787,546)"
-       id="text221">range</text>
+       id="text212">range</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(445.712,514)"
-       id="text222">Find scanning</text>
+       id="text213">Find scanning</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(449.712,527)"
-       id="text223">start position</text>
+       id="text214">start position</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="24px"
        transform="translate(166.48,489)"
-       id="text224">Variable</text>
+       id="text215">Variable</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="24px"
        transform="translate(254.48,489)"
-       id="text225">-</text>
+       id="text216">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="24px"
        transform="translate(262.48,489)"
-       id="text226">length seed matching</text>
+       id="text217">length seed matching</text>
     <path
        d="m 675,597 h 2.5 v -27 h 5 v 27 h 2.5 l -5,5 z"
        fill="#55b5e8"
        fill-rule="evenodd"
-       id="path226" />
+       id="path217" />
     <path
        d="m 928.5,172.5 c 2.762,0 5,0.373 5,0.833 v 42.334 c 0,0.46 2.239,0.833 5,0.833 -2.761,0 -5,0.373 -5,0.833 v 42.334 c 0,0.46 -2.239,0.833 -5,0.833"
        stroke="#a0a0a0"
@@ -1839,250 +1781,184 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path227" />
+       id="path218" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(941.045,212)"
-       id="text227">Bit</text>
+       id="text218">Bit</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(957.379,212)"
-       id="text228">-</text>
+       id="text219">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(962.045,212)"
-       id="text229">packed</text>
+       id="text220">packed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(948.799,225)"
-       id="text230">genome</text>
+       id="text221">genome</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(949.632,239)"
-       id="text231">batches</text>
+       id="text222">batches</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="27px"
        transform="translate(141.407,489)"
-       id="text232">b</text>
+       id="text223">b</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="27px"
        transform="translate(141.407,62)"
-       id="text233">a</text>
+       id="text224">a</text>
     <path
        d="M 0.666648,-0.00497635 0.728171,8.23678 -0.605126,8.24674 -0.666648,0.00497635 Z M 4.05146,6.87861 0.111286,14.9082 -3.94832,6.93832 Z"
        fill="#686868"
        transform="matrix(1,0,0,-1,620.5,628.408)"
-       id="path233" />
+       id="path224" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(519.449,641)"
-       id="text234">Offsets in the seed data file</text>
+       id="text225">Offsets in the seed data file</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(668.116,641)"
-       id="text235">c’</text>
+       id="text226">c’</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(563.532,532)"
-       id="text236">(</text>
+       id="text227">(</text>
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(567.032,532)"
-       id="text237">CA</text>
+       id="text228">CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(582.366,532)"
-       id="text238">A</text>
+       id="text229">A</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(590.032,532)"
-       id="text239">ACC</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(612.532,532)"
-       id="text240">,</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(618.532,532)"
-       id="text241">1)</text>
+       id="text230">ACC, 1)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(563.532,558)"
-       id="text242">(</text>
+       id="text231">(</text>
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(567.032,558)"
-       id="text243">CA</text>
+       id="text232">CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(582.366,558)"
-       id="text244">C</text>
+       id="text233">C</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(590.032,558)"
-       id="text245">AGA</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(612.699,558)"
-       id="text246">,</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(618.699,558)"
-       id="text247">2</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(624.699,558)"
-       id="text248">)</text>
+       id="text234">AGA, 2)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(563.532,585)"
-       id="text249">(</text>
+       id="text235">(</text>
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(567.032,585)"
-       id="text250">CA</text>
+       id="text236">CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(582.366,585)"
-       id="text251">G</text>
+       id="text237">G</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(590.699,585)"
-       id="text252">CAC</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(613.199,585)"
-       id="text253">,</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(619.199,585)"
-       id="text254">3</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(625.199,585)"
-       id="text255">)</text>
+       id="text238">CAC, 3)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(563.532,611)"
-       id="text256">(</text>
+       id="text239">(</text>
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(567.032,611)"
-       id="text257">CA</text>
+       id="text240">CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(582.366,611)"
-       id="text258">T</text>
+       id="text241">T</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(588.866,611)"
-       id="text259">CAC</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(611.366,611)"
-       id="text260">,</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(617.366,611)"
-       id="text261">4</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="11px"
-       transform="translate(623.366,611)"
-       id="text262">)</text>
+       id="text242">CAC, 4)</text>
     <text
        fill="#ff0000"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(466.446,548)"
-       id="text263">CATG</text>
+       id="text243">CATG</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="11px"
        transform="translate(496.113,548)"
-       id="text264">AA</text>
+       id="text244">AA</text>
     <path
        d="m 689.5,482.5 c 0,-2.761 0.373,-5 0.833,-5 h 76.834 c 0.46,0 0.833,-2.238 0.833,-5 0,2.762 0.373,5 0.833,5 h 76.834 c 0.46,0 0.833,2.239 0.833,5"
        stroke="#e59f01"
@@ -2090,23 +1966,23 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path264" />
+       id="path244" />
     <path
-       d="m 557.5,482.5 c 0,-2.761 0.373,-5 0.833,-5 h 38.334 c 0.46,0 0.833,-2.239 0.833,-5 0,2.761 0.373,5 0.833,5 h 38.334 c 0.46,0 0.833,2.239 0.833,5"
+       d="m 556.5,482.5 c 0,-2.761 0.373,-5 0.833,-5 h 38.334 c 0.46,0 0.833,-2.239 0.833,-5 0,2.761 0.373,5 0.833,5 h 38.334 c 0.46,0 0.833,2.239 0.833,5"
        stroke="#01743f"
        stroke-width="1.33333"
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path265" />
+       id="path245" />
     <path
-       d="m 438.654,433.851 3.892,0.922 -0.307,1.297 -3.893,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.893,-0.921 z m 5.189,1.229 3.893,0.922 -0.307,1.297 -3.893,-0.922 z m 5.19,1.229 3.893,0.921 -0.308,1.298 -3.892,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.892,-0.922 z m 5.19,1.228 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.893,-0.922 z m 5.189,1.229 3.893,0.921 -0.307,1.298 -3.893,-0.922 z m 5.19,1.229 3.893,0.921 -0.308,1.298 -3.892,-0.922 z m 5.19,1.228 3.892,0.922 -0.307,1.298 -3.892,-0.922 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.893,-0.922 z m 5.189,1.229 3.893,0.921 -0.307,1.298 -3.893,-0.922 z m 5.19,1.229 3.893,0.921 -0.308,1.298 -3.892,-0.922 z m 5.19,1.228 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.893,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.893,-0.922 z m 5.189,1.228 3.893,0.922 -0.307,1.297 -3.893,-0.921 z m 5.19,1.229 3.893,0.922 -0.308,1.297 -3.892,-0.921 z m 5.19,1.229 3.892,0.922 -0.307,1.297 -3.892,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.892,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.892,-0.922 z m 5.19,1.229 3.892,0.921 -0.307,1.298 -3.893,-0.922 z m 5.189,1.228 3.893,0.922 -0.307,1.297 -3.893,-0.921 z m 5.19,1.229 3.893,0.922 -0.308,1.297 -3.892,-0.921 z m 5.19,1.229 2.225,0.527 -0.307,1.297 -2.225,-0.527 z m 1.695,-3.024 6.863,5.735 -8.706,2.05 z"
+       d="m 438.655,433.852 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.89,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.89,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.89,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.89,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.309,1.297 -3.891,-0.928 z m 5.188,1.238 3.891,0.928 -0.31,1.297 -3.891,-0.928 z m 5.188,1.238 3.89,0.928 -0.309,1.297 -3.891,-0.928 z m 5.187,1.238 3.891,0.928 -0.31,1.297 -3.89,-0.928 z m 5.188,1.238 3.891,0.929 -0.31,1.296 -3.891,-0.928 z m 5.187,1.238 3.891,0.929 -0.309,1.296 -3.891,-0.928 z m 5.188,1.238 3.891,0.929 -0.31,1.296 -3.89,-0.928 z m 5.188,1.238 1.041,0.248 -0.31,1.297 -1.041,-0.248 z m 0.518,-3.303 6.853,5.747 -8.71,2.034 z"
        fill="#01743f"
-       id="path266" />
+       id="path246" />
     <path
        d="m 562.6,440.841 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.273,0.802 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.954,0.602 -0.2,1.319 -3.955,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.273,0.802 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.802 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.273,0.802 3.954,0.602 -0.201,1.319 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.955,-0.602 z m 5.273,0.803 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.802 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.955,0.602 -0.201,1.318 -3.955,-0.602 z m 5.273,0.803 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.802 3.955,0.602 -0.201,1.319 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.273,0.803 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.955,0.602 -0.201,1.319 -3.955,-0.602 z m 5.273,0.803 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.803 3.954,0.602 -0.2,1.318 -3.955,-0.602 z m 5.273,0.802 3.954,0.602 -0.201,1.318 -3.954,-0.602 z m 5.272,0.803 3.955,0.602 -0.201,1.318 -3.954,-0.602 z m 5.273,0.802 3.954,0.602 -0.2,1.319 -3.955,-0.602 z m 5.272,0.803 3.622,0.551 -0.2,1.319 -3.622,-0.552 z m 2.806,-2.945 7.307,5.159 -8.511,2.75 z"
        fill="#e59f01"
-       id="path267" />
+       id="path247" />
     <rect
        x="692.5"
        y="575.5"
@@ -2116,7 +1992,7 @@
        stroke-width="1.33333"
        stroke-miterlimit="8"
        fill="none"
-       id="rect267" />
+       id="rect247" />
     <path
        d="m 637.5,650.5 c 0,2.761 -0.373,5 -0.833,5 H 515.333 c -0.46,0 -0.833,2.239 -0.833,5 0,-2.761 -0.373,-5 -0.833,-5 H 392.333 c -0.46,0 -0.833,-2.239 -0.833,-5"
        stroke="#01743f"
@@ -2124,7 +2000,7 @@
        stroke-miterlimit="8"
        fill="none"
        fill-rule="evenodd"
-       id="path268" />
+       id="path248" />
     <path
        d="m 10,156 c -2.76147,0 -5.00009,-0.373 -5.00009,-0.833 L 5.00008,78.8332 C 5.00008,78.373 2.76147,78 0,78 2.76147,78 5.00008,77.6269 5.00008,77.1668 V 0.833228 C 5.00008,0.373049 7.2387,0 10.0002,0"
        stroke="#e59f01"
@@ -2133,233 +2009,197 @@
        fill="none"
        fill-rule="evenodd"
        transform="matrix(0,-1,-1,0,842.5,660.5)"
-       id="path269" />
+       id="path249" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(398.956,670)"
-       id="text269">In</text>
+       id="text249">In</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(410.622,670)"
-       id="text270">-</text>
+       id="text250">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(415.289,670)"
-       id="text271">RAM querying of the</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(546.956,670)"
-       id="text272">start</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(577.956,670)"
-       id="text273">position</text>
+       id="text251">RAM querying of the start position</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(411.702,683)"
-       id="text274">for scanning in</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(506.869,683)"
-       id="text275">the</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(530.202,683)"
-       id="text276">seed</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="14px"
-       transform="translate(564.536,683)"
-       id="text277">data file</text>
+       id="text252">for scanning in the seed data file</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(683.986,673)"
-       id="text278">Scanning records on disk</text>
+       id="text253">Scanning records on disk</text>
     <rect
        x="838"
        y="524"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect278" />
+       id="rect253" />
     <rect
        x="838"
        y="537"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect279" />
+       id="rect254" />
     <rect
        x="838"
        y="550"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect280" />
+       id="rect255" />
     <rect
        x="838"
        y="563"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect281" />
+       id="rect256" />
     <rect
        x="838"
        y="576"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect282" />
+       id="rect257" />
     <rect
        x="838"
        y="602"
        width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect283" />
+       id="rect258" />
     <rect
        x="838"
        y="589"
-       width="5"
+       width="6"
        height="11"
        fill="#a0a0a0"
-       id="rect284" />
+       id="rect259" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(859.107,617)"
-       id="text284">Seed direction (1</text>
+       id="text259">Seed direction (1</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(949.773,617)"
-       id="text285">-</text>
+       id="text260">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(953.773,617)"
-       id="text286">bit)</text>
+       id="text261">bit)</text>
     <path
        d="M 5.81226e-6,-0.666667 5.37533,-0.66662 5.37532,0.666713 -5.81226e-6,0.666667 Z M 4.04203,-3.99996 12.042,1.04987e-4 4.04196,4.00004 Z"
        fill="#686868"
        transform="matrix(-1,0,0,1,855.542,611.5)"
-       id="path286" />
+       id="path261" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="12px"
        transform="translate(558.326,495)"
-       id="text287">T</text>
+       id="text262">T</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(565.659,495)"
-       id="text288">able</text>
+       id="text263">able</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="12px"
        transform="translate(591.659,495)"
-       id="text289">o</text>
+       id="text264">o</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(598.993,495)"
-       id="text290">f seed</text>
+       id="text265">f seed</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="12px"
        transform="translate(558.326,510)"
-       id="text291">C</text>
+       id="text266">C</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(566.993,510)"
-       id="text292">ontent</text>
-    <text
-       font-family="Arial, Arial_MSFontService, sans-serif"
-       font-weight="400"
-       font-size="12px"
-       transform="translate(603.659,510)"
-       id="text293">(</text>
+       id="text267">ontent (</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(607.659,510)"
-       id="text294">ToC</text>
+       id="text268">ToC</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(630.326,510)"
-       id="text295">)</text>
+       id="text269">)</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(645.725,536)"
-       id="text296">Scan</text>
+       id="text270">Scan</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(647.725,549)"
-       id="text297">from</text>
+       id="text271">from</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="14px"
        transform="translate(647.645,563)"
-       id="text298">here</text>
+       id="text272">here</text>
     <text
        fill="#7030a0"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(465.891,577)"
-       id="text299">CA</text>
+       id="text273">CA</text>
     <text
        fill="#00b050"
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="700"
        font-size="11px"
        transform="translate(481.224,577)"
-       id="text300">T</text>
+       id="text274">T</text>
     <path
        d="m 486.167,551.5 v 6.076 h -1.334 V 551.5 Z m 3.333,4.743 -4,8 -4,-8 z"
        fill="#00b0f0"
-       id="path300" />
+       id="path274" />
     <path
        d="m 490.5,573.833 h 34.811 v 35.214 l -0.667,-0.666 h 27.478 v 1.333 H 523.978 V 574.5 l 0.666,0.667 H 490.5 Z m 60.289,31.214 8,4 -8,4 z"
        fill="#00b0f0"
-       id="path301" />
+       id="path275" />
     <path
        d="M 0,0 9.82992,36.8183"
        stroke="#00b050"
@@ -2368,60 +2208,60 @@
        fill="none"
        fill-rule="evenodd"
        transform="matrix(-1,0,0,1,485.33,580.5)"
-       id="path302" />
+       id="path276" />
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(358.467,628)"
-       id="text302">p’</text>
+       id="text276">p’</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(367.8,628)"
-       id="text303">-</text>
+       id="text277">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(371.8,628)"
-       id="text304">bp subsequence for</text>
+       id="text278">bp subsequence for</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(348.467,641)"
-       id="text305">choosing marker</text>
+       id="text279">choosing marker</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-style="italic"
        font-weight="400"
        font-size="12px"
        transform="translate(440.467,641)"
-       id="text306">k</text>
+       id="text280">k</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(446.467,641)"
-       id="text307">-</text>
+       id="text281">-</text>
     <text
        font-family="Arial, Arial_MSFontService, sans-serif"
        font-weight="400"
        font-size="12px"
        transform="translate(450.467,641)"
-       id="text308">mers</text>
+       id="text282">mers</text>
     <path
        d="M 0,-0.666667 H 23.9195 V 38.4092 l -0.6667,-0.6666 h 16.5861 v 1.3333 H 22.5861 V 0 l 0.6667,0.666667 H 0 Z m 38.5056,35.075867 8,4 -8,4 z"
        fill="#00b0f0"
        transform="matrix(1,0,0,-1,634.5,608.909)"
-       id="path308" />
+       id="path282" />
     <path
        d="m 437.502,544.833 21.095,0.058 -0.004,1.334 -21.095,-0.058 z m 19.771,-3.279 7.989,4.022 -8.011,3.978 z"
        fill="#55b5e8"
-       id="path309" />
+       id="path283" />
   </g>
 </svg>
