@@ -198,6 +198,11 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     lexicmap utils 2blast results.tsv -o results.txt
 
     ```
+    Add genome annotation
+
+    ```
+    lexicmap utils 2blast results.tsv -o results.txt --kv-file-genome ass2species.map
+    ```
 
     From stdin:
 
@@ -207,12 +212,12 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     $ seqkit seq -M 500 q.long-reads.fasta.gz \
         | seqkit head -n 1 \
         | lexicmap search -d demo.lmi/ -a \
-        | lexicmap utils 2blast
+        | lexicmap utils 2blast --kv-file-genome ass2species.map
 
     Query = GCF_006742205.1_r100
     Length = 431
 
-    [Subject genome #1/1] = GCF_006742205.1
+    [Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
     Query coverage per genome = 92.575%
 
     >NZ_AP019721.1
