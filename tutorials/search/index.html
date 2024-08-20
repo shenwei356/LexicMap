@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2582",
+      "wordCount" : "2597",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1879,18 +1879,20 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 <p>Exporting blast-like alignment text.</p>
 <p>From file:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap utils 2blast results.tsv -o results.txt
-</span></span></code></pre></div><p>From stdin:</p>
+</span></span></code></pre></div><p>Add genome annotation</p>
+<pre tabindex="0"><code>lexicmap utils 2blast results.tsv -o results.txt --kv-file-genome ass2species.map
+</code></pre><p>From stdin:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl"># align only one long-read &lt;= 500 bp
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">$ seqkit seq -M 500 q.long-reads.fasta.gz \
 </span></span><span class="line"><span class="cl">    | seqkit head -n 1 \
 </span></span><span class="line"><span class="cl">    | lexicmap search -d demo.lmi/ -a \
-</span></span><span class="line"><span class="cl">    | lexicmap utils 2blast
+</span></span><span class="line"><span class="cl">    | lexicmap utils 2blast --kv-file-genome ass2species.map
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Query = GCF_006742205.1_r100
 </span></span><span class="line"><span class="cl">Length = 431
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_006742205.1
+</span></span><span class="line"><span class="cl">[Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
 </span></span><span class="line"><span class="cl">Query coverage per genome = 92.575%
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">&gt;NZ_AP019721.1
