@@ -3,6 +3,14 @@ title: index
 weight: 10
 ---
 
+## Terminology differences
+
+- In the LexicMap source code and command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
+- In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
+  Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
+
+## Usage
+
 ```plain
 $ lexicmap index -h
 Generate an index from FASTA/Q sequences

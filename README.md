@@ -1,4 +1,4 @@
-## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
+## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.fsvg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
 [![Latest Version](https://img.shields.io/github/release/shenwei356/LexicMap.svg?style=flat?maxAge=86400)](https://github.com/shenwei356/LexicMap/releases)
 [![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
@@ -180,10 +180,15 @@ Or install with `conda`:
 
 <img src="overview.svg" alt="LexicMap overview" width="800"/>
 
-## Related projects
+## Citation
 
-- High-performance [LexicHash](https://github.com/shenwei356/LexicHash) computation in Go.
-- [Wavefront alignment algorithm (WFA) in Golang](https://github.com/shenwei356/wfa).
+In preparation.
+
+## Terminology differences
+
+- In the LexicMap source code and command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
+- In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
+  Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
 
 ## Support
 
@@ -194,3 +199,8 @@ propose new functions or ask for help.
 
 [MIT License](https://github.com/shenwei356/LexicMap/blob/master/LICENSE)
 
+
+## Related projects
+
+- High-performance [LexicHash](https://github.com/shenwei356/LexicHash) computation in Go.
+- [Wavefront alignment algorithm (WFA) in Golang](https://github.com/shenwei356/wfa).

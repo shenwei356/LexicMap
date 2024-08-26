@@ -260,10 +260,9 @@ Or install with `conda`:
 
 <img src="/LexicMap/overview.svg" alt="LexicMap overview" width="900"/>
 
-## Related projects
+## Citation
 
-- High-performance [LexicHash](https://github.com/shenwei356/LexicHash) computation in Go.
-- [Wavefront alignment algorithm (WFA) in Golang](https://github.com/shenwei356/wfa).
+In preparation.
 
 ## Support
 
@@ -274,3 +273,8 @@ propose new functions or ask for help.
 
 [MIT License](https://github.com/shenwei356/LexicMap/blob/master/LICENSE)
 
+
+## Related projects
+
+- High-performance [LexicHash](https://github.com/shenwei356/LexicHash) computation in Go.
+- [Wavefront alignment algorithm (WFA) in Golang](https://github.com/shenwei356/wfa).
