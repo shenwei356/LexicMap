@@ -2,15 +2,21 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/index/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-genbank/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/introduction/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/search/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/</loc>
   </url><url>
@@ -23,6 +29,8 @@
     <loc>https://bioinf.shenwei.me/LexicMap/releases/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/</loc>
   </url><url>

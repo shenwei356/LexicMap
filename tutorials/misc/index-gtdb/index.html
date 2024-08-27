@@ -12,8 +12,11 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
+  <meta name="description" content="Tools:
+https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs https://github.com/shenwei356/brename, for batch file renaming Data:
+time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \ -f &quot;genomic.fna.gz&quot; -o &quot;GTDB_complete&quot; -M &quot;gtdb&quot; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- just in case, check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &quot;*.gz&quot; \ fd &quot;.gz$&quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
-    <title>Tags | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>Indexing GTDB | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -34,19 +37,59 @@
     
   <meta
     property="og:title"
-    content="Tags"
+    content="Indexing GTDB"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tags/" />
+  <meta property="og:description" content="Tools:
+https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs https://github.com/shenwei356/brename, for batch file renaming Data:
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- just in case, check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/" />
 
-
+<meta property="article:section" content="Tutorials" />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Tags" />
+<meta name="twitter:title" content="Indexing GTDB" />
+  <meta name="twitter:description" content="Tools:
+https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs https://github.com/shenwei356/brename, for batch file renaming Data:
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- just in case, check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
 
+  <script type="application/ld+json">
+  {
+      "@context": "http://schema.org",
+      "@type": "TechArticle",
+      "articleSection": "Tutorials",
+      "name": "Indexing GTDB",
+      "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/",
+      "headline": "Indexing GTDB",
+      "description": "Tools:\nhttps:\/\/github.com\/pirovc\/genome_updater, for downloading genomes https:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs https:\/\/github.com\/shenwei356\/brename, for batch file renaming Data:\ntime genome_updater.sh -d \u0022refseq,genbank\u0022 -g \u0022archaea,bacteria\u0022 \\ -f \u0022genomic.fna.gz\u0022 -o \u0022GTDB_complete\u0022 -M \u0022gtdb\u0022 -t 12 -m -L curl cd GTDB_complete\/2024-01-30_19-34-40\/ # ----------------- just in case, check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name \u0022*.gz\u0022 \\ fd \u0022.gz$\u0022 $genomes \\ | rush --eta \u0027seqkit seq -w 0 {} \u003e \/dev\/null; if [ $?",
+      "wordCount" : "208",
+      "inLanguage": "en",
+      "isFamilyFriendly": "true",
+      "mainEntityOfPage": {
+          "@type": "WebPage",
+          "@id": "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/"
+      },
+      "copyrightHolder" : "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
+      "copyrightYear" : "0001",
+      "dateCreated": "0001-01-01T00:00:00.00Z",
+      "datePublished": "0001-01-01T00:00:00.00Z",
+      "dateModified": "0001-01-01T00:00:00.00Z",
+      "publisher":{
+          "@type":"Organization",
+          "name": "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
+          "url": "https://bioinf.shenwei.me/LexicMap/",
+          "logo": {
+              "@type": "ImageObject",
+              "url": "https://bioinf.shenwei.me/LexicMap/brand.svg",
+              "width":"32",
+              "height":"32"
+          }
+      }
+  }
+  </script>
 
 
     
@@ -111,7 +154,7 @@
   href="/LexicMap/custom.css"
   media="all"
 />
-  <link href="https://bioinf.shenwei.me/LexicMap/tags/" rel="canonical" type="text/html" />
+  <link href="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/" rel="canonical" type="text/html" />
 
 <!-- Made with Geekdoc theme https://github.com/thegeeklab/hugo-geekdoc -->
 
@@ -568,7 +611,7 @@
               type="checkbox"
               
                 class="gdoc-nav__toggle" id="navtree-5198871c"
-                
+                checked
               
             />
             <label
@@ -627,7 +670,7 @@
                 <span class="flex">
                   <a
                     href="/LexicMap/tutorials/misc/index-gtdb/"
-                    class="gdoc-nav__entry"
+                    class="gdoc-nav__entry is-active"
                   >
                     Indexing GTDB
                   </a>
@@ -1510,19 +1553,133 @@
         <div class="gdoc-page">
           
   
+
+
   
 
 
-<nav class="gdoc-paging flex flex-even align-center" role="navigation">
-  <div class="gdoc-paging__item gdoc-paging__item--prev">
-    
-  </div>
-  <div class="gdoc-paging__state">1/0</div>
-  <div class="gdoc-paging__item gdoc-paging__item--next">
-    
-  </div>
-</nav>
 
+
+
+
+<div
+  class="gdoc-page__header flex flex-wrap
+  
+    justify-between
+  
+  hidden-mobile
+  "
+  itemprop="breadcrumb"
+>
+  
+    <div>
+      <svg class="gdoc-icon gdoc_path hidden-mobile"><use xlink:href="#gdoc_path"></use></svg>
+      <ol class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
+        
+        
+        
+        
+  
+  
+    
+    
+    
+    
+  
+  
+    
+    
+    
+    
+  
+  
+    
+    
+    
+    
+  
+  
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/misc/' href='/LexicMap/tutorials/misc/'><span itemprop='name'>More</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Indexing GTDB</span><meta itemprop='position' content='5' /></li>
+  
+
+  
+
+  
+
+  
+
+      </ol>
+    </div>
+  
+  
+</div>
+
+
+
+  <article
+    class="gdoc-markdown gdoc-markdown__align--left"
+  >
+    <h1>Indexing GTDB</h1>
+    <p>Tools:</p>
+<ul>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/pirovc/genome_updater"
+>https://github.com/pirovc/genome_updater</a>, for downloading genomes</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/seqkit"
+>https://github.com/shenwei356/seqkit</a>, for checking sequence files</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/rush"
+>https://github.com/shenwei356/rush</a>, for running jobs</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/brename"
+>https://github.com/shenwei356/brename</a>, for batch file renaming</li>
+</ul>
+<p>Data:</p>
+<pre><code>time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \
+    -f &quot;genomic.fna.gz&quot; -o &quot;GTDB_complete&quot; -M &quot;gtdb&quot; -t 12 -m -L curl
+
+cd GTDB_complete/2024-01-30_19-34-40/
+
+# ----------------- just in case, check the file integrity -----------------
+genomes=files
+
+# corrupted files
+# find $genomes -name &quot;*.gz&quot; \
+fd &quot;.gz$&quot; $genomes \
+    | rush --eta 'seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi' \
+    &gt; failed.txt
+
+# empty files
+find $genomes -name &quot;*.gz&quot; -size 0 &gt;&gt; failed.txt
+
+# delete these files
+cat failed.txt | rush '/bin/rm {}'
+
+# redownload them:
+# run the genome_updater command again, with the flag -i
+
+# ----------------- just in case, check the file integrity -----------------
+
+
+# creat a new directory containing symbol links to the orginal files
+mkdir gtdb; cd gtdb;
+find ../files -name &quot;*.fna.gz&quot; | rush --eta 'ln -s {}'
+brename -p '^(\w{3}_\d{9}\.\d+).+' -r '$1.fna.gz'
+cd ..
+
+find gtdb/ -name &quot;*.fna.gz&quot; &gt; files.txt
+</code></pre>
+<p>Indexing. On a 48-CPU machine, time: 11 h, ram: 64 GB, index size: 906 GB.
+If you don&rsquo;t have enough memory, please decrease the value of <code>-b</code>.</p>
+<pre><code>lexicmap index -b 5000 -S -X files.txt -O gtdb_complete.lmi --log gtdb_complete.lmi.log
+</code></pre>
+
+  </article>
 
 
 
@@ -1797,6 +1954,9 @@
         
 
         
+          
+          
+        
 
         
           
@@ -1827,6 +1987,11 @@
         
         
 
+        
+          
+            
+            
+          
         
 
         
@@ -2397,9 +2562,27 @@
 
 
 <span class="gdoc-page__nav">
+  
+    <a
+      class="gdoc-page__nav--prev flex align-center"
+      href="/LexicMap/tutorials/search/"
+      title="Step 2. Searching"
+    >
+      <i class="gdoc-icon">gdoc_arrow_left_alt</i>
+      Step 2. Searching
+    </a>
   
 </span>
 <span class="gdoc-page__nav">
+  
+    <a
+      class="gdoc-page__nav--next flex align-center"
+      href="/LexicMap/tutorials/misc/index-genbank/"
+      title="Indexing GenBank&#43;RefSeq"
+    >
+      Indexing GenBank&#43;RefSeq
+      <i class="gdoc-icon">gdoc_arrow_right_alt</i>
+    </a>
   
 </span>
 
