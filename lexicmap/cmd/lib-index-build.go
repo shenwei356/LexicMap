@@ -1747,6 +1747,54 @@ func readGenomeMapName2Idx(file string) (map[string]uint64, error) {
 	return m, nil
 }
 
+// readGenomeList reads genome-index mapping file and return the list of genomes
+func readGenomeList(file string) ([]string, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	r := bufio.NewReader(fh)
+	m := make([]string, 0, 1024)
+
+	buf := make([]byte, 8)
+	var n, lenID int
+	for {
+		n, err = io.ReadFull(r, buf[:2])
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		if n < 2 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+		lenID = int(be.Uint16(buf[:2]))
+		id := make([]byte, lenID)
+
+		n, err = io.ReadFull(r, id)
+		if err != nil {
+			return nil, err
+		}
+		if n < lenID {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		n, err = io.ReadFull(r, buf)
+		if err != nil {
+			return nil, err
+		}
+		if n < 8 {
+			return nil, fmt.Errorf("broken genome map file")
+		}
+
+		m = append(m, string(id))
+	}
+	return m, nil
+}
+
 var poolPrefix2Kmers = &sync.Pool{New: func() interface{} {
 	tmp := make([]*[4]uint64, 0, 1024)
 	return &tmp

@@ -118,7 +118,8 @@ Flags:
                                   (default 16)
       --contig-interval int       ► Length of interval (N's) between contigs in a genome. (default 1000)
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
-                                  case ignored. (default
+                                  case ignored. Attention: use double quotation marks for patterns
+                                  containing commas, e.g., -p '"A{2,}"'. (default
                                   "\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
       --force                     ► Overwrite existing output directory.
   -h, --help                      help for index
@@ -139,8 +140,12 @@ Flags:
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
                                   The value needs to be the power of 4. (default 1024)
   -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
+      --ref-name-info string      ► A two-column tab-delimted file for mapping reference names
+                                  (extracted by --ref-name-regexp) to taxonomic information such as
+                                  species names. It helps to reduce memory usage.
   -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
-                                  reference name from the filename. (default
+                                  reference name from the filename. Attention: use double quotation
+                                  marks for patterns containing commas, e.g., -p '"A{2,}"' (default
                                   "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
       --save-seed-pos             ► Save seed positions, which can be inspected with "lexicmap utils
                                   seed-pos".

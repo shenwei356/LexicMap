@@ -27,7 +27,6 @@ import (
 
 	"github.com/shenwei356/bio/seq"
 	"github.com/spf13/cobra"
-	"github.com/twotwotwo/sorts/sortutil"
 )
 
 var genomesCmd = &cobra.Command{
@@ -52,7 +51,7 @@ var genomesCmd = &cobra.Command{
 		// ---------------------------------------------------------------
 
 		// genomes.map file for mapping index to genome id
-		m, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
+		m, err := readGenomeList(filepath.Join(dbDir, FileGenomeIndex))
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}
@@ -68,15 +67,7 @@ var genomesCmd = &cobra.Command{
 			w.Close()
 		}()
 
-		ids := make([]string, len(m))
-		i := 0
-		for id := range m {
-			ids[i] = id
-			i++
-		}
-		sortutil.Strings(ids)
-
-		for _, id := range ids {
+		for _, id := range m {
 			outfh.WriteString(id)
 			outfh.WriteString("\n")
 		}
