@@ -18,6 +18,8 @@ Terminology differences:
 1. Prepare input files:
     - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
       E.g., GCF_000006945.2.fna.gz
+        - A regular expression is also available to extract reference id from the file name.
+          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
     - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish targe genomes.
 2. Run:
     - From a directory with multiple genome files:
@@ -50,14 +52,10 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 - **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
     - **Genome ID**: they should be distinct for accurate result interpretation, which will be shown in the search result.
-    - File extention: a regular expression set by the flag `-N/--ref-name-regexp` is used to **extract genome IDs** from the file name.
+        - A regular expression is also available to extract reference id from the file name.
+          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
+- **File extention**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
       The default value supports common sequence file extentions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
-    - [brename](https://github.com/shenwei356/brename) can help to batch rename files safely.
-    - If you don't want to change the original file names, you can
-        1. Create and change to a new directory.
-        2. Create symbolic links (`ln -s`) for all genome files.
-        3. Batch rename all the symbolic links with brename.
-        4. Use this directory as input via the flag `-I/--in-dir`.
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
     - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
@@ -66,7 +64,7 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
-        - For fungi genomes, please increase the value.
+        - **For fungi genomes, please increase the value**.
     - **Minimum sequence length**. A flag `-l/--min-seq-len` can filter out sequences shorter than the threshold (default is the `k` value).
 - **At most 17,179,869,184 (2<sup>34</sup>) genomes are supported**. For more genomes, please create a file list and split it into multiple parts, and build an index for each part.
 
@@ -88,11 +86,11 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 - **CPU:**
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
-    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
+    - More is better as LexicMap is a CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
     - More RAM (> 100 GB) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 40,000). Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.
-        - **The number of genomes**. More genome consure more memory.
+        - **The number of genomes**. More genomes consume more memory.
         - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). **This is the main parameter to adjust memory usage**. Bigger values increase indexing memory occupation.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 200),
@@ -106,12 +104,14 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (>= 2kb), there's little affection for the alignment results.
 - **Disk**
     - More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See [some examples](#index-size).
-        - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genome bring higher compression rates.
+        - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genomes bring higher compression rates.
     - SSD disks are preferred, while HDD disks are also fast enough.
 
 ## Algorithm
 
 <img src="/LexicMap/indexing.svg" alt="" width="900"/>
+
+{{< expand "Click to show details." "..." >}}
 
 1. **Generating *m* [LexicHash masks](https://doi.org/10.1093/bioinformatics/btad652)**.
 
@@ -122,18 +122,18 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         1. Randomly generating left *k*-*p* bases.
         3. If the mask is duplicated, re-generating.
 
-2. **Building an index for each genome batch** (`-b/--batch-size`, default 10,000, max 131,072).
+2. **Building an index for each genome batch** (`-b/--batch-size`, default 5,000, max 131,072).
 
     1. For each genome file in a genome batch.
         1. Optionally discarding sequences via regular expression (`-B/--seq-name-filter`).
         2. Skipping genomes bigger than the value of `-g/--max-genome`.
         3. Concatenating all sequences, with intervals of 1000-bp N's.
         4. Capturing the most similar k-mer (in non-gap and non-interval regions) for each mask and recording the k-mer and its location(s) and strand information. Base N is treated as A.
-        5. Filling sketching deserts (genome regions longer than `--seed-max-desert` without any captured k-mers/seeds).
+        5. Filling sketching deserts (genome regions longer than `--seed-max-desert` [default 200] without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.
            As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
             1. For a desert region (`start`, `end`), masking the extended region (`start-1000`, `end+1000`) with the masks.
-            2. Starting from `start`, every around `--seed-in-desert-dist` (default 150) bp, finding a k-mer which is captured by some mask, and add the k-mer and its position information into the index of that mask.
+            2. Starting from `start`, every around `--seed-in-desert-dist` (default 50) bp, finding a k-mer which is captured by some mask, and adding the k-mer and its position information into the index of that mask.
         6. Saving the concatenated genome sequence (bit-packed, 2 bits for one base, N is treated as A) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.
     2. Duplicate and reverse all k-mers, and save each reversed k-mer along with the duplicated position information in the seed data of the closest (sharing the longgest prefix) mask. This is for suffix matching of seeds.
     2. Compressing k-mers and the corresponding data (k-mer-data, or seeds data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
@@ -145,6 +145,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     2. For genome data files, just moving them.
     3. Concatenating `genomes.map.bin`, which maps each genome ID to its batch ID and index in the batch.
     4. Update the index summary file.
+
+{{</ expand >}}
 
 ## Parameters
 
@@ -181,7 +183,6 @@ alignment speed is almost not affected.
 |`-M/--mask-file`|A file              |File with custom masks|File with custom masks, which could be exported from an existing index or newly generated by "lexicmap utils masks". This flag oversides `-k/--kmer`, `-m/--masks`, `-s/--rand-seed`, etc.|
 |**`-k/--kmer`** |Max: 32, default: 31|K-mer size            |■ Bigger values improve the search specificity and do not increase the index size.                                                                                                        |
 |**`-m/--masks`**|Default: 40,000     |Number of masks       |■  Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.               |
-[shenwei@mBio index]$
 
 
 {{< /tab>}}
@@ -223,7 +224,7 @@ We use a small dataset for demonstration.
 
         lexicmap index -I refs/ -O demo.lmi
 
-    It would take about 3 seconds and 2 GB RAM in a 16-CPU PC.
+    It would take about 6 seconds and 3 GB RAM in a 16-CPU PC.
 
     Optionally, we can also use **a file list** as the input.
 

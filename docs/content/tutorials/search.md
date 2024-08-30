@@ -57,6 +57,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
 
+{{< expand "Click to show details." "..." >}}
+
 1. **Masking:**
    Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.
 1. **Seeding:**
@@ -78,6 +80,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     2. Fast alignment of query and subject sequence regions with [our implementation](https://github.com/shenwei356/wfa) of [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
     3. Filtering alignments based on user options.
 
+{{</ expand >}}
 
 ## Parameters
 

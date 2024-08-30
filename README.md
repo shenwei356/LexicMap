@@ -107,6 +107,11 @@ CIGAR string, aligned query and subject sequences can be outputted as extra colu
     sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' \
         | seqkit seq -g > results.fasta
 
+    seqkit head -n 1 results.fasta | head -n 3
+    >NZ_JALSCK010000007.1:39224-40522:-
+    TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+    ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+
 Export blast-style format:
 
 ```

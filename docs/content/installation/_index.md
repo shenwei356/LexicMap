@@ -3,7 +3,7 @@ title: Installation
 weight: 20
 ---
 
-LexicMap can be installed via [conda](#conda), [executable binary files](#binary-files),
+LexicMap can be installed via [conda](#conda), downloading [executable binary files](#binary-files),
 or [compiling from the source](#compile-from-the-source).
 
 Besides, it supports [shell completion](#shell-completion), which could help accelerate typing.
@@ -13,6 +13,11 @@ Besides, it supports [shell completion](#shell-completion), which could help acc
 [Install conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html), then run
 
     conda install -c bioconda lexicmap
+
+Or use [mamba](https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html), which is faster.
+
+    conda install -c conda-forge mamba
+    mamba install -c bioconda lexicmap
 
 Linux and MacOS (both x86 and arm CPUs) are supported.
 
@@ -44,7 +49,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         # bash
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
-        source $HOME/.bash # apply the configuration
+        source $HOME/.bashrc # apply the configuration
 
         # zsh
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.zshrc
@@ -59,8 +64,8 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
     |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
     |:------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    |macOS  |**64-bit**|[**lexicmap_darwin_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_amd64.tar.gz)               |
-    |macOS  |arm64     |[**lexicmap_darwin_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_arm64.tar.gz)               |
+    |macOS  |64-bit|[**lexicmap_darwin_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_amd64.tar.gz)               |
+    |macOS  |**arm64**     |[**lexicmap_darwin_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_arm64.tar.gz)               |
 
 2. Copy it to any directory in the environment variable `PATH`:
 
@@ -70,7 +75,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         # bash
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
-        source $HOME/.bash # apply the configuration
+        source $HOME/.bashrc # apply the configuration
 
         # zsh
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.zshrc
@@ -111,11 +116,11 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 ## Compile from the source
 
 
-1. [Install go](https://go.dev/doc/install).
+1. [Install go](https://go.dev/doc/install) (go 1.22 or later versions).
 
-        wget https://go.dev/dl/go1.22.4.linux-amd64.tar.gz
+        wget https://go.dev/dl/go1.22.6.linux-amd64.tar.gz
 
-        tar -zxf go1.22.4.linux-amd64.tar.gz -C $HOME/
+        tar -zxf go1.22.6.linux-amd64.tar.gz -C $HOME/
 
         # or
         #   echo "export PATH=$PATH:$HOME/go/bin" >> ~/.bashrc

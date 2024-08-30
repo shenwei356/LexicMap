@@ -64,6 +64,24 @@ to output CIGAR string, aligned query and subject sequences.
 21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 ```
 
+An example:
+
+    # Extracting similar sequences for a query gene.
+
+    # search matches with query coverage >= 90%
+    lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta -o results.tsv \
+        --min-qcov-per-hsp 90 --all
+
+    # extract matched sequences as FASTA format
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' \
+        | seqkit seq -g > results.fasta
+
+    seqkit head -n 1 results.fasta | head -n 3
+    >NZ_JALSCK010000007.1:39224-40522:-
+    TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+    ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+
+
 And `lexicmap util 2blast` can help to convert the tabular format to Blast-style format,
 see [examples](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/#examples).
 
@@ -84,8 +102,10 @@ While for the query sequences, we don't convert them.
 
 ## Why is LexicMap slow for batch searching?
 
-- LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 16 million) of genomes.
+LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 17 million) of genomes.
+There are some ways to improve the search speed.
 
+- `lexicmap search` has a flag `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
 - `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
 faster search.
     - For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
