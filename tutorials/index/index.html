@@ -62,7 +62,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
       "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names.",
-      "wordCount" : "2973",
+      "wordCount" : "2913",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1840,8 +1840,6 @@ decrease the indexing memory occupation and decrease the index size. While the a
 <li><strong>If the RAM is not sufficient</strong>. Please:
 <ul>
 <li><strong>Use a smaller genome batch size</strong>. It decreases indexing memory occupation and has little affection on searching performance.</li>
-<li><strong>Sorting the input file list by species</strong>. So genomes within a batch would be more similar and the memory would be lower.
-For LexicMap v0.4.1 or later versions, a flag <code>--ref-name-info</code> can specify a two-column tab-delimted file for mapping reference names to taxonomic information such as species names, and the input files will be sorted according to the taxonomic information.</li>
 <li>Use a smaller number of masks, e.g., 20,000 performs well for small genomes (&lt;=5 Mb). And if the queries are long (&gt;= 2kb), there&rsquo;s little affection for the alignment results.</li>
 </ul>
 </li>
