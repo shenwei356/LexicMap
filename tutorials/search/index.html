@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2597",
+      "wordCount" : "2602",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -767,6 +767,50 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
                     class="gdoc-nav__entry"
                   >
                     Indexing AllTheBacteria
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/tutorials/misc/index-globdb/"
+                    class="gdoc-nav__entry"
+                  >
+                    Indexing GlobDB
                   </a>
                 </span>
               
@@ -1752,7 +1796,15 @@ However, short queries can also be aligned.</div>
     </a>
 </div>
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
-<ol>
+
+<div class="gdoc-expand">
+  <label class="gdoc-expand__head flex justify-between" for="4768ecf9-2">
+    <span>Click to show details.</span>
+    <span>...</span>
+  </label>
+  <input id="4768ecf9-2" type="checkbox" class="gdoc-expand__control hidden" />
+  <div class="gdoc-markdown--nested gdoc-expand__content">
+    <ol>
 <li><strong>Masking:</strong>
 Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.</li>
 <li><strong>Seeding:</strong>
@@ -1798,6 +1850,10 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 </ol>
 </li>
 </ol>
+
+  </div>
+</div>
+
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="parameters"
     >
@@ -2016,11 +2072,11 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 </ul>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="0651434d-3">
+  <label class="gdoc-expand__head flex justify-between" for="0651434d-4">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="0651434d-3" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="0651434d-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code>$ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
 09:32:55.551 [INFO] LexicMap v0.4.0
@@ -2600,6 +2656,39 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         

@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/index/",
       "headline": "index",
       "description": "Terminology differences In the LexicMap source code and command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Usage $ lexicmap index -h Generate an index from FASTA\/Q sequences Input: *1.",
-      "wordCount" : "1317",
+      "wordCount" : "1368",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -755,6 +755,50 @@
                     class="gdoc-nav__entry"
                   >
                     Indexing AllTheBacteria
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/tutorials/misc/index-globdb/"
+                    class="gdoc-nav__entry"
+                  >
+                    Indexing GlobDB
                   </a>
                 </span>
               
@@ -1735,7 +1779,8 @@ Because these masks, which consist of thousands of k-mers and capture k-mers fro
 </span></span><span class="line"><span class="cl">                                  (default 16)
 </span></span><span class="line"><span class="cl">      --contig-interval int       ► Length of interval (N&#39;s) between contigs in a genome. (default 1000)
 </span></span><span class="line"><span class="cl">  -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
-</span></span><span class="line"><span class="cl">                                  case ignored. (default
+</span></span><span class="line"><span class="cl">                                  case ignored. Attention: use double quotation marks for patterns
+</span></span><span class="line"><span class="cl">                                  containing commas, e.g., -p &#39;&#34;A{2,}&#34;&#39;. (default
 </span></span><span class="line"><span class="cl">                                  &#34;\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
 </span></span><span class="line"><span class="cl">      --force                     ► Overwrite existing output directory.
 </span></span><span class="line"><span class="cl">  -h, --help                      help for index
@@ -1756,8 +1801,12 @@ Because these masks, which consist of thousands of k-mers and capture k-mers fro
 </span></span><span class="line"><span class="cl">      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
 </span></span><span class="line"><span class="cl">                                  The value needs to be the power of 4. (default 1024)
 </span></span><span class="line"><span class="cl">  -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
+</span></span><span class="line"><span class="cl">      --ref-name-info string      ► A two-column tab-delimted file for mapping reference names
+</span></span><span class="line"><span class="cl">                                  (extracted by --ref-name-regexp) to taxonomic information such as
+</span></span><span class="line"><span class="cl">                                  species names. It helps to reduce memory usage.
 </span></span><span class="line"><span class="cl">  -N, --ref-name-regexp string    ► Regular expression (must contains &#34;(&#34; and &#34;)&#34;) for extracting the
-</span></span><span class="line"><span class="cl">                                  reference name from the filename. (default
+</span></span><span class="line"><span class="cl">                                  reference name from the filename. Attention: use double quotation
+</span></span><span class="line"><span class="cl">                                  marks for patterns containing commas, e.g., -p &#39;&#34;A{2,}&#34;&#39; (default
 </span></span><span class="line"><span class="cl">                                  &#34;(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$&#34;)
 </span></span><span class="line"><span class="cl">      --save-seed-pos             ► Save seed positions, which can be inspected with &#34;lexicmap utils
 </span></span><span class="line"><span class="cl">                                  seed-pos&#34;.
@@ -2053,6 +2102,39 @@ Because these masks, which consist of thousands of k-mers and capture k-mers fro
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 

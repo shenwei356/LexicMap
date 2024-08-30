@@ -62,7 +62,7 @@ Table of contents Table of contents Features Introduction Quick start Performanc
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
       "description": "LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to millions of prokaryotic genomes.\nTable of contents Table of contents Features Introduction Quick start Performance Indexing Searching Installation Algorithm overview Citation Support License Related projects Features LexicMap is scalable to up to millions of prokaryotic genomes. The sensitivity of LexicMap is comparable with Blastn. The alignment is fast and memory-efficient. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).",
-      "wordCount" : "1622",
+      "wordCount" : "1634",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -758,6 +758,50 @@ Table of contents Table of contents Features Introduction Quick start Performanc
                     class="gdoc-nav__entry"
                   >
                     Indexing AllTheBacteria
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/tutorials/misc/index-globdb/"
+                    class="gdoc-nav__entry"
+                  >
+                    Indexing GlobDB
                   </a>
                 </span>
               
@@ -1866,6 +1910,11 @@ lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta -o results.ts
 # extract matched sequences as FASTA format
 sed 1d results.tsv | awk -F'\t' '{print &quot;&gt;&quot;$5&quot;:&quot;$14&quot;-&quot;$15&quot;:&quot;$16&quot;\n&quot;$20;}' \
     | seqkit seq -g &gt; results.fasta
+
+seqkit head -n 1 results.fasta | head -n 3
+&gt;NZ_JALSCK010000007.1:39224-40522:-
+TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 </code></pre>
 <p>Export blast-style format:</p>
 <pre tabindex="0"><code>seqkit seq -M 500 q.long-reads.fasta.gz \
@@ -2657,6 +2706,39 @@ propose new functions or ask for help.</p>
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 
