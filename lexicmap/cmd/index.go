@@ -26,8 +26,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -275,8 +273,8 @@ Important parameters:
 			checkError(fmt.Errorf("the value of --contig-interval (%d) should be >= -D/--seed-max-desert (%d)", contigInterval, maxDesert))
 		}
 
-		refNameStr := getFlagString(cmd, "ref-name-info")
-		var name2info map[string]string
+		// refNameStr := getFlagString(cmd, "ref-name-info")
+		// var name2info map[string]string
 
 		// ---------------------------------------------------------------
 		// options for building index
@@ -350,13 +348,13 @@ Important parameters:
 
 		}
 
-		if refNameStr != "" {
-			name2info, err = readKVs(refNameStr, false)
-			checkError(err)
-			if opt.Verbose || opt.Log2File {
-				log.Infof("%d reference name information records loaded", len(name2info))
-			}
-		}
+		// if refNameStr != "" {
+		// 	name2info, err = readKVs(refNameStr, false)
+		// 	checkError(err)
+		// 	if opt.Verbose || opt.Log2File {
+		// 		log.Infof("%d reference name information records loaded", len(name2info))
+		// 	}
+		// }
 
 		if opt.Verbose || opt.Log2File {
 			log.Info("checking input files ...")
@@ -388,38 +386,38 @@ Important parameters:
 		}
 
 		// sort files according to taxonomic information
-		if len(name2info) > 0 {
-			if opt.Verbose || opt.Log2File {
-				log.Info("sorting input files according to reference name information...")
-			}
-			file2info := make([][2]string, len(files))
+		// if len(name2info) > 0 {
+		// 	if opt.Verbose || opt.Log2File {
+		// 		log.Info("sorting input files according to reference name information...")
+		// 	}
+		// 	file2info := make([][2]string, len(files))
 
-			var baseFile, genomeID string
-			for i, file := range files {
-				baseFile = filepath.Base(file)
-				if reRefName.MatchString(baseFile) {
-					genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
-				} else {
-					genomeID, _, _ = filepathTrimExtension(baseFile, nil)
-				}
+		// 	var baseFile, genomeID string
+		// 	for i, file := range files {
+		// 		baseFile = filepath.Base(file)
+		// 		if reRefName.MatchString(baseFile) {
+		// 			genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
+		// 		} else {
+		// 			genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+		// 		}
 
-				file2info[i] = [2]string{file, name2info[genomeID]}
-			}
-			sort.Slice(file2info, func(i, j int) bool {
-				a, b := file2info[i][1], file2info[j][1]
-				if a == b {
-					return strings.Compare(file2info[i][0], file2info[j][0]) < 0
-				}
-				return strings.Compare(a, b) < 0
-			})
-			for i := range file2info {
-				files[i] = file2info[i][0]
-				// fmt.Printf("%s, %s\n", files[i], file2info[i][1])
-			}
-			if opt.Verbose || opt.Log2File {
-				log.Info("  input files sorted")
-			}
-		}
+		// 		file2info[i] = [2]string{file, name2info[genomeID]}
+		// 	}
+		// 	sort.Slice(file2info, func(i, j int) bool {
+		// 		a, b := file2info[i][1], file2info[j][1]
+		// 		if a == b {
+		// 			return strings.Compare(file2info[i][0], file2info[j][0]) < 0
+		// 		}
+		// 		return strings.Compare(a, b) < 0
+		// 	})
+		// 	for i := range file2info {
+		// 		files[i] = file2info[i][0]
+		// 		// fmt.Printf("%s, %s\n", files[i], file2info[i][1])
+		// 	}
+		// 	if opt.Verbose || opt.Log2File {
+		// 		log.Info("  input files sorted")
+		// 	}
+		// }
 
 		// ---------------------------------------------------------------
 		// log
@@ -511,8 +509,8 @@ func init() {
 	indexCmd.Flags().IntP("max-genome", "g", 15000000,
 		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Extremely large genomes (e.g., non-isolate assemblies from Genbank) will be skipped. Need to be smaller than the maximum supported genome size: %d`, MAX_GENOME_SIZE)))
 
-	indexCmd.Flags().StringP("ref-name-info", "", ``,
-		formatFlagUsage(`A two-column tab-delimted file for mapping reference names (extracted by --ref-name-regexp) to taxonomic information such as species names. It helps to reduce memory usage.`))
+	// indexCmd.Flags().StringP("ref-name-info", "", ``,
+	// 	formatFlagUsage(`A two-column tab-delimted file for mapping reference names (extracted by --ref-name-regexp) to taxonomic information such as species names. It helps to reduce memory usage.`))
 
 	// -----------------------------  output  -----------------------------
 

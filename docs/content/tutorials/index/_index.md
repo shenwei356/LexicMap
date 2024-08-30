@@ -99,8 +99,6 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
           decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
     - **If the RAM is not sufficient**. Please:
         - **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
-        - **Sorting the input file list by species**. So genomes within a batch would be more similar and the memory would be lower.
-           For LexicMap v0.4.1 or later versions, a flag `--ref-name-info` can specify a two-column tab-delimted file for mapping reference names to taxonomic information such as species names, and the input files will be sorted according to the taxonomic information.
         - Use a smaller number of masks, e.g., 20,000 performs well for small genomes (<=5 Mb). And if the queries are long (>= 2kb), there's little affection for the alignment results.
 - **Disk**
     - More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See [some examples](#index-size).

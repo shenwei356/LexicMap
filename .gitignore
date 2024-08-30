@@ -26,12 +26,15 @@ docs/themes
 .hugo_build.lock
 
 demo/demo.lmi
+demo/demo.lmi-no-df
 demo/*.lexicmap.tsv.gz
 demo/seed_distance.tsv
 demo/seed_distance
+demo/seed_distance-no-df
 demo/seed-pos.tsv.gz
 demo/t.txt
 demo/kmers.tsv*
+
 
 lexicmap/binaries/*
 lexicmap/lexicmap*

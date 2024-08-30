@@ -140,9 +140,6 @@ Flags:
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
                                   The value needs to be the power of 4. (default 1024)
   -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
-      --ref-name-info string      ► A two-column tab-delimted file for mapping reference names
-                                  (extracted by --ref-name-regexp) to taxonomic information such as
-                                  species names. It helps to reduce memory usage.
   -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
                                   reference name from the filename. Attention: use double quotation
                                   marks for patterns containing commas, e.g., -p '"A{2,}"' (default

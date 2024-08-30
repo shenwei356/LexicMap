@@ -2,10 +2,6 @@
 
 ### v0.4.1 - 2024-09-xx
 
-- `lexicmap index`:
-    - Add a new flag `--ref-name-info`, the value is a two-column tab-delimted file
-      for mapping reference names to taxonomic information such as species names.
-      It helps to reduce memory usage.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
 

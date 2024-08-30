@@ -36,18 +36,11 @@ Data:
     # redownload them:
     # run the genome_updater command again, with the flag -i
 
-Taxonomic information (optional), for reducing index memory.
-
-    cut -f 1,8 assembly_summary.txt > ref2species.tsv
-
 Indexing. On a 48-CPU machine, time: 54 h, ram: 178 GB, index size: 4.94 TB.
 If you don't have enough memory, please decrease the value of `-b`.
-
-    # --ref-name-info is available for v0.4.1 or later versions.
 
     lexicmap index \
         -I files/ \
         --ref-name-regexp '^(\w{3}_\d{9}\.\d+)' \
-        --ref-name-info ref2species.tsv \
         -O genbank_refseq.lmi --log genbank_refseq.lmi.log \
         -b 25000
