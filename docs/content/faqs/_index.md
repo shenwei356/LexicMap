@@ -103,13 +103,12 @@ While for the query sequences, we don't convert them.
 ## Why is LexicMap slow for batch searching?
 
 LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 17 million) of genomes.
-There are some ways to improve the search speed.
+There are some ways to improve the search speed of `lexicmap search`.
 
-- `lexicmap search` has a flag `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
-- `lexicmap search` has a flag `-w/--load-whole-seeds` to load the whole seed data into memory for
-faster search.
-    - For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
-- `lexicmap search` also has a flag `--pseudo-align` to only perform pseudo alignment, which is slightly faster and uses less memory.
+- Increasing the value of `--max-open-files` (default 512). You might need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+- Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
+- Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
+- Setting `--pseudo-align` to only perform pseudo alignment, which is slightly faster and uses less memory.
 It can be used in searching with long and divergent query sequences like nanopore long-reads.
 
 {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
