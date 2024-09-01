@@ -10,6 +10,12 @@ weight: 10
 
 LexicMap is a **nucleotide sequence alignment** tool for efficiently querying gene, plasmid, viral, or long-read sequences against up to **millions of prokaryotic genomes**.
 
+Preprint:
+
+> Wei Shen and Zamin Iqbal.
+> (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
+> bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+
 ## Table of contents
 
 {{< toc format=html >}}
