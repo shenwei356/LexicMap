@@ -267,7 +267,9 @@ Or install with `conda`:
 
 ## Citation
 
-In preparation.
+Wei Shen and Zamin Iqbal.
+(2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
+bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
 
 ## Support
 
