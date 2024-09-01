@@ -1,4 +1,4 @@
-## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.fsvg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
+## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
 [![Latest Version](https://img.shields.io/github/release/shenwei356/LexicMap.svg?style=flat?maxAge=86400)](https://github.com/shenwei356/LexicMap/releases)
 [![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
