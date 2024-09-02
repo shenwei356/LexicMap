@@ -2,6 +2,8 @@
 
 ### v0.4.1 - 2024-09-xx
 
+- `lexicmap search`:
+    - Improve the speed of genome information extraction.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
 

@@ -343,7 +343,8 @@ type Reader struct {
 
 	buf []byte
 
-	fhData *os.File
+	fhData    *os.File
+	bufReader *bufio.Reader
 }
 
 var poolReader = &sync.Pool{New: func() interface{} {
@@ -445,6 +446,8 @@ func NewReader(file string) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	r.bufReader = bufio.NewReader(nil)
 
 	return r, nil
 }
@@ -645,8 +648,11 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 
 	r.fhData.Seek(offset, 0)
 
+	br := r.bufReader
+	br.Reset(r.fhData)
+
 	// ID length
-	n, err = io.ReadFull(r.fhData, buf[:2])
+	n, err = io.ReadFull(br, buf[:2])
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +663,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	offset += 2
 
 	// ID
-	n, err = io.ReadFull(r.fhData, buf[:idLen])
+	n, err = io.ReadFull(br, buf[:idLen])
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +675,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
-	n, err = io.ReadFull(r.fhData, buf[:12])
+	n, err = io.ReadFull(br, buf[:12])
 	if err != nil {
 		return nil, err
 	}
@@ -687,7 +693,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	var j, nappend int
 	var idLen2 int
 	for i := 0; i < g.NumSeqs; i++ {
-		n, err = io.ReadFull(r.fhData, buf[:4])
+		n, err = io.ReadFull(br, buf[:4])
 		if err != nil {
 			return nil, err
 		}
@@ -697,7 +703,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 		g.SeqSizes = append(g.SeqSizes, int(be.Uint32(buf[:4])))
 
 		// seq id
-		n, err = io.ReadFull(r.fhData, buf[:2])
+		n, err = io.ReadFull(br, buf[:2])
 		if err != nil {
 			return nil, err
 		}
@@ -715,7 +721,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 				*id = append(*id, 0)
 			}
 		}
-		n, err = io.ReadFull(r.fhData, *id)
+		n, err = io.ReadFull(br, *id)
 		if err != nil {
 			return nil, err
 		}
