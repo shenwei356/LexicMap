@@ -12,11 +12,11 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
+  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
+lexicmap search -d db.lmi query." />
 
     <title>Step 2. Searching | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -42,11 +42,11 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
     content="Step 2. Searching"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
+  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
+lexicmap search -d db.lmi query." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/search/" />
 
@@ -55,11 +55,11 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 2. Searching" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.
+  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
 For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length" />
+lexicmap search -d db.lmi query." />
 
 
   <script type="application/ld+json">
@@ -70,8 +70,8 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
       "name": "Step 2. Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output Alignment result relationship Output format Examples TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 0 --min-qcov-per-genome 0 --top-n-genomes 0 Input Query length",
-      "wordCount" : "2602",
+      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.",
+      "wordCount" : "2918",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1678,13 +1678,18 @@ lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-p
         <li><a href="#input">Input</a></li>
         <li><a href="#hardware-requirements">Hardware requirements</a></li>
         <li><a href="#algorithm">Algorithm</a></li>
-        <li><a href="#parameters">Parameters</a></li>
+        <li><a href="#parameters">Parameters</a>
+          <ul>
+            <li><a href="#improving-searching-speed">Improving searching speed</a></li>
+          </ul>
+        </li>
         <li><a href="#steps">Steps</a></li>
         <li><a href="#output">Output</a>
           <ul>
             <li><a href="#alignment-result-relationship">Alignment result relationship</a></li>
             <li><a href="#output-format">Output format</a></li>
             <li><a href="#examples">Examples</a></li>
+            <li><a href="#summarizing-results">Summarizing results</a></li>
           </ul>
         </li>
       </ul></nav>
@@ -2042,6 +2047,37 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 </div>
 
 <div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="improving-searching-speed"
+    >
+        Improving searching speed
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Improving searching speed" aria-label="Anchor to: Improving searching speed" href="#improving-searching-speed">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>Here are some tips to improve the search speed.</p>
+<ul>
+<li>Increasing the concurrency number
+<ul>
+<li>Increasing the value of <code>--max-open-files</code> (default 512). You might need to <a
+  class="gdoc-markdown__link"
+  href="https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux"
+>change the open files limit</a>.</li>
+<li>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</li>
+</ul>
+</li>
+<li>Loading the entire seed data into memoy (It&rsquo;s unnecessary if the index is stored in SSD)
+<ul>
+<li>Setting <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.</li>
+</ul>
+</li>
+<li>Returning less results
+<ul>
+<li>Setting <code>-n/--top-n-genomes</code> to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.</li>
+</ul>
+</li>
+</ul>
+<div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="steps"
     >
         Steps
@@ -2373,6 +2409,58 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/csvtk"
 >csvtk pretty</a>.</p>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="summarizing-results"
+    >
+        Summarizing results
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Summarizing results" aria-label="Anchor to: Summarizing results" href="#summarizing-results">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>If you would like to summarize alignment results, e.g., the number of species, here&rsquo;s the method.</p>
+<ol>
+<li>
+<p>Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to any information (such as species name).</p>
+<pre><code> # for GTDB/GenBank/RefSeq genomes downloaded with genome_updater
+ cut -f 1,8 assembly_summary.txt &gt; ref2species.tsv
+
+ head -n 3 ass2species.tsv
+ GCF_002287175.1 Methanobacterium bryantii
+ GCF_000762265.1 Methanobacterium formicicum
+ GCF_029601605.1 Methanobacterium formicicum
+</code></pre>
+</li>
+<li>
+<p>Add information to the alignment result with <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/csvtk"
+>csvtk</a> or other tools.</p>
+<pre><code> # add species
+ cat b.gene_E_coli_16S.fasta.lexicmap.tsv \
+     | csvtk mutate -t --after slen -n species -f sgenome \
+     | csvtk replace -t -f species -p &quot;(.+)&quot; -r &quot;{kv}&quot; -k ass2species.tsv \
+     &gt; result.with_species.tsv
+
+ # filter result with query coverage &gt;= 80 and count the species
+ cat result.with_species.tsv \
+     | csvtk uniq -t -f sgenome \
+     | csvtk filter2 -t -f &quot;\$qcovHSP &gt;= 80&quot; \
+     | csvtk freq -t -f species -nr \
+     &gt; result.with_species.tsv.stats.tsv
+
+ csvtk head -t -n 5 result.with_species.tsv.stats.tsv \
+     | csvtk pretty -t
+
+ species                    frequency
+ ------------------------   ---------
+ Salmonella enterica        135065   
+ Escherichia coli           128071   
+ Streptococcus pneumoniae   51971    
+ Staphylococcus aureus      44215    
+ Pseudomonas aeruginosa     34254</code></pre>
+</li>
+</ol>
 
   </article>
 
