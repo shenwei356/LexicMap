@@ -128,6 +128,17 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< /tabs >}}
 
+### Improving searching speed
+
+Here are some tips to improve the search speed.
+
+- Increasing the concurrency number
+    - Increasing the value of `--max-open-files` (default 512). You might need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
+- Loading the entire seed data into memoy (It's unnecessary if the index is stored in SSD)
+    - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
+- Returning less results
+    - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
 
 ## Steps
 
@@ -405,3 +416,43 @@ ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7
 {{< /tabs >}}
 
 Search results (TSV format) above are formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
+
+### Summarizing results
+
+If you would like to summarize alignment results, e.g., the number of species, here's the method.
+
+1. Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to any information (such as species name).
+   
+        # for GTDB/GenBank/RefSeq genomes downloaded with genome_updater
+        cut -f 1,8 assembly_summary.txt > ref2species.tsv
+
+        head -n 3 ass2species.tsv
+        GCF_002287175.1 Methanobacterium bryantii
+        GCF_000762265.1 Methanobacterium formicicum
+        GCF_029601605.1 Methanobacterium formicicum
+
+2. Add information to the alignment result with [csvtk](https://github.com/shenwei356/csvtk) or other tools.
+
+        # add species
+        cat b.gene_E_coli_16S.fasta.lexicmap.tsv \
+            | csvtk mutate -t --after slen -n species -f sgenome \
+            | csvtk replace -t -f species -p "(.+)" -r "{kv}" -k ass2species.tsv \
+            > result.with_species.tsv
+
+        # filter result with query coverage >= 80 and count the species
+        cat result.with_species.tsv \
+            | csvtk uniq -t -f sgenome \
+            | csvtk filter2 -t -f "\$qcovHSP >= 80" \
+            | csvtk freq -t -f species -nr \
+            > result.with_species.tsv.stats.tsv
+
+        csvtk head -t -n 5 result.with_species.tsv.stats.tsv \
+            | csvtk pretty -t
+
+        species                    frequency
+        ------------------------   ---------
+        Salmonella enterica        135065   
+        Escherichia coli           128071   
+        Streptococcus pneumoniae   51971    
+        Staphylococcus aureus      44215    
+        Pseudomonas aeruginosa     34254

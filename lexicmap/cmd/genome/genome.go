@@ -447,7 +447,7 @@ func NewReader(file string) (*Reader, error) {
 		return nil, err
 	}
 
-	r.bufReader = bufio.NewReader(nil)
+	r.bufReader = bufio.NewReaderSize(nil, 1024)
 
 	return r, nil
 }
