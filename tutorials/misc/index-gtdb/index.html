@@ -12,9 +12,10 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
-  <meta name="description" content="Tools:
+  <meta name="description" content="Info:
+https://gtdb.ecogenomic.org/ Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \ -f &quot;genomic.fna.gz&quot; -o &quot;GTDB_complete&quot; -M &quot;gtdb&quot; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &quot;*.gz&quot; \ fd &quot;.gz$&quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \ -f &quot;genomic.fna.gz&quot; -o &quot;GTDB_complete&quot; -M &quot;gtdb&quot; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &quot;*.gz&quot; \ fd &quot;.gz$&quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
     <title>Indexing GTDB | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +41,10 @@ time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&q
     content="Indexing GTDB"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Tools:
+  <meta property="og:description" content="Info:
+https://gtdb.ecogenomic.org/ Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/" />
 
@@ -51,9 +53,10 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Indexing GTDB" />
-  <meta name="twitter:description" content="Tools:
+  <meta name="twitter:description" content="Info:
+https://gtdb.ecogenomic.org/ Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;GTDB_complete&#34; -M &#34;gtdb&#34; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
 
   <script type="application/ld+json">
@@ -64,8 +67,8 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
       "name": "Indexing GTDB",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/",
       "headline": "Indexing GTDB",
-      "description": "Tools:\nhttps:\/\/github.com\/pirovc\/genome_updater, for downloading genomes https:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\ntime genome_updater.sh -d \u0022refseq,genbank\u0022 -g \u0022archaea,bacteria\u0022 \\ -f \u0022genomic.fna.gz\u0022 -o \u0022GTDB_complete\u0022 -M \u0022gtdb\u0022 -t 12 -m -L curl cd GTDB_complete\/2024-01-30_19-34-40\/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name \u0022*.gz\u0022 \\ fd \u0022.gz$\u0022 $genomes \\ | rush --eta \u0027seqkit seq -w 0 {} \u003e \/dev\/null; if [ $? -ne 0 ]; then echo {}; fi\u0027 \\ \u003e failed.",
-      "wordCount" : "156",
+      "description": "Info:\nhttps:\/\/gtdb.ecogenomic.org\/ Tools:\nhttps:\/\/github.com\/pirovc\/genome_updater, for downloading genomes https:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\ntime genome_updater.sh -d \u0022refseq,genbank\u0022 -g \u0022archaea,bacteria\u0022 \\ -f \u0022genomic.fna.gz\u0022 -o \u0022GTDB_complete\u0022 -M \u0022gtdb\u0022 -t 12 -m -L curl cd GTDB_complete\/2024-01-30_19-34-40\/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name \u0022*.gz\u0022 \\ fd \u0022.gz$\u0022 $genomes \\ | rush --eta \u0027seqkit seq -w 0 {} \u003e \/dev\/null; if [ $?",
+      "wordCount" : "158",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -610,25 +613,15 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
             <input
               type="checkbox"
               
-                class="gdoc-nav__toggle" id="navtree-5198871c"
-                checked
+                class="hidden"
               
             />
             <label
-              
-                for="navtree-5198871c" class="flex justify-between align-center"
               
             >
               
                 <span class="flex">More</span>
               
-              
-                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
-                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
-                </svg>
-                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
-                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
-                </svg>
               
             </label>
 
@@ -805,6 +798,50 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
                     class="gdoc-nav__entry"
                   >
                     Indexing GlobDB
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/tutorials/misc/index-uhgg/"
+                    class="gdoc-nav__entry"
+                  >
+                    Indexing UHGG
                   </a>
                 </span>
               
@@ -1664,7 +1701,14 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
     class="gdoc-markdown gdoc-markdown__align--left"
   >
     <h1>Indexing GTDB</h1>
-    <p>Tools:</p>
+    <p>Info:</p>
+<ul>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://gtdb.ecogenomic.org/"
+>https://gtdb.ecogenomic.org/</a></li>
+</ul>
+<p>Tools:</p>
 <ul>
 <li><a
   class="gdoc-markdown__link"
@@ -2027,6 +2071,39 @@ If you don&rsquo;t have enough memory, please decrease the value of <code>-b</co
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         

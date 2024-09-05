@@ -12,9 +12,12 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
-  <meta name="description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
+  <meta name="description" content="Info:
+Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
+https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
 
-    <title>search | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>Indexing UHGG | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,36 +38,42 @@
     
   <meta
     property="og:title"
-    content="search"
+    content="Indexing UHGG"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
+  <meta property="og:description" content="Info:
+Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
+https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/search/" />
+<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" />
 
-<meta property="article:section" content="Usage" />
+<meta property="article:section" content="Tutorials" />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="search" />
-  <meta name="twitter:description" content="$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a/--all, the search result would be formatted to Blast-style format with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident, do not significantly accelerate the search speed." />
+<meta name="twitter:title" content="Indexing UHGG" />
+  <meta name="twitter:description" content="Info:
+Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
+https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
 
 
   <script type="application/ld+json">
   {
       "@context": "http://schema.org",
       "@type": "TechArticle",
-      "articleSection": "Usage",
-      "name": "search",
-      "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
-      "headline": "search",
-      "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a\/--all, the search result would be formatted to Blast-style format with \u0027lexicmap utils 2blast\u0027. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q\/--min-qcov-per-hsp, -Q\/--min-qcov-per-genome, and -i\/--align-min-match-pident, do not significantly accelerate the search speed.",
-      "wordCount" : "722",
+      "articleSection": "Tutorials",
+      "name": "Indexing UHGG",
+      "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/",
+      "headline": "Indexing UHGG",
+      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.",
+      "wordCount" : "213",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
           "@type": "WebPage",
-          "@id": "https://bioinf.shenwei.me/LexicMap/usage/search/"
+          "@id": "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/"
       },
       "copyrightHolder" : "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
       "copyrightYear" : "0001",
@@ -148,7 +157,7 @@
   href="/LexicMap/custom.css"
   media="all"
 />
-  <link href="https://bioinf.shenwei.me/LexicMap/usage/search/" rel="canonical" type="text/html" />
+  <link href="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" rel="canonical" type="text/html" />
 
 <!-- Made with Geekdoc theme https://github.com/thegeeklab/hugo-geekdoc -->
 
@@ -830,7 +839,7 @@
                 <span class="flex">
                   <a
                     href="/LexicMap/tutorials/misc/index-uhgg/"
-                    class="gdoc-nav__entry"
+                    class="gdoc-nav__entry is-active"
                   >
                     Indexing UHGG
                   </a>
@@ -1016,7 +1025,7 @@
                 <span class="flex">
                   <a
                     href="/LexicMap/usage/search/"
-                    class="gdoc-nav__entry is-active"
+                    class="gdoc-nav__entry"
                   >
                     search
                   </a>
@@ -1665,7 +1674,15 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>search</span><meta itemprop='position' content='4' /></li>
+    
+    
+    
+    
+  
+  
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/misc/' href='/LexicMap/tutorials/misc/'><span itemprop='name'>More</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Indexing UHGG</span><meta itemprop='position' content='5' /></li>
+  
+
   
 
   
@@ -1683,121 +1700,76 @@
   <article
     class="gdoc-markdown gdoc-markdown__align--left"
   >
-    <h1>search</h1>
-    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap search  -h
-</span></span><span class="line"><span class="cl">Search sequences against an index
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Attention:
-</span></span><span class="line"><span class="cl">  1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
-</span></span><span class="line"><span class="cl">  2. For multiple queries, the order of queries might be different from the input.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Tips:
-</span></span><span class="line"><span class="cl">  1. When using -a/--all, the search result would be formatted to Blast-style format
-</span></span><span class="line"><span class="cl">     with &#39;lexicmap utils 2blast&#39;. And the search speed would be slightly slowed down.
-</span></span><span class="line"><span class="cl">  2. Alignment result filtering is performed in the final phase, so stricter filtering criteria,
-</span></span><span class="line"><span class="cl">     including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
-</span></span><span class="line"><span class="cl">     do not significantly accelerate the search speed. Hence, you can search with default
-</span></span><span class="line"><span class="cl">     parameters and then filter the result with tools like awk or csvtk.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Alignment result relationship:
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  Query
-</span></span><span class="line"><span class="cl">  ├── Subject genome
-</span></span><span class="line"><span class="cl">      ├── Subject sequence
-</span></span><span class="line"><span class="cl">          ├── High-Scoring segment Pair (HSP)
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">  &gt; A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the
-</span></span><span class="line"><span class="cl">  &gt; highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Output format:
-</span></span><span class="line"><span class="cl">  Tab-delimited format with 17+ columns, with 1-based positions.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">    1.  query,    Query sequence ID.
-</span></span><span class="line"><span class="cl">    2.  qlen,     Query sequence length.
-</span></span><span class="line"><span class="cl">    3.  hits,     Number of subject genomes.
-</span></span><span class="line"><span class="cl">    4.  sgenome,  Subject genome ID.
-</span></span><span class="line"><span class="cl">    5.  sseqid,   Subject sequence ID.
-</span></span><span class="line"><span class="cl">    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-</span></span><span class="line"><span class="cl">    7.  hsp,      Nth HSP in the genome. (just for improving readability)
-</span></span><span class="line"><span class="cl">    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-</span></span><span class="line"><span class="cl">    9.  alenHSP,  Aligned length in the current HSP.
-</span></span><span class="line"><span class="cl">    10. pident,   Percentage of identical matches in the current HSP.
-</span></span><span class="line"><span class="cl">    11. gaps,     Gaps in the current HSP.
-</span></span><span class="line"><span class="cl">    12. qstart,   Start of alignment in query sequence.
-</span></span><span class="line"><span class="cl">    13. qend,     End of alignment in query sequence.
-</span></span><span class="line"><span class="cl">    14. sstart,   Start of alignment in subject sequence.
-</span></span><span class="line"><span class="cl">    15. send,     End of alignment in subject sequence.
-</span></span><span class="line"><span class="cl">    16. sstr,     Subject strand.
-</span></span><span class="line"><span class="cl">    17. slen,     Subject sequence length.
-</span></span><span class="line"><span class="cl">    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-</span></span><span class="line"><span class="cl">    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-</span></span><span class="line"><span class="cl">    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-</span></span><span class="line"><span class="cl">    21. align,    Alignment text (&#34;|&#34; and &#34; &#34;) between qseq and sseq. (optional with -a/--all)
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Usage:
-</span></span><span class="line"><span class="cl">  lexicmap search [flags] -d &lt;index path&gt; [query.fasta.gz ...] [-o query.tsv.gz]
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Flags:
-</span></span><span class="line"><span class="cl">      --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
-</span></span><span class="line"><span class="cl">                                       phase). (default 50)
-</span></span><span class="line"><span class="cl">      --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-</span></span><span class="line"><span class="cl">                                       extracting query and target sequences for alignment. It should be
-</span></span><span class="line"><span class="cl">                                       &lt;= contig interval length in database. (default 1000)
-</span></span><span class="line"><span class="cl">      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
-</span></span><span class="line"><span class="cl">  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
-</span></span><span class="line"><span class="cl">  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
-</span></span><span class="line"><span class="cl">  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
-</span></span><span class="line"><span class="cl">                                       want to output blast-style format with &#34;lexicmap utils 2blast&#34;.
-</span></span><span class="line"><span class="cl">  -h, --help                           help for search
-</span></span><span class="line"><span class="cl">  -d, --index string                   ► Index directory created by &#34;lexicmap index&#34;.
-</span></span><span class="line"><span class="cl">  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
-</span></span><span class="line"><span class="cl">      --max-open-files int             ► Maximum opened files. (default 512)
-</span></span><span class="line"><span class="cl">  -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
-</span></span><span class="line"><span class="cl">                                       improve the batch searching speed and consume much memory.
-</span></span><span class="line"><span class="cl">                                       (default 12)
-</span></span><span class="line"><span class="cl">  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
-</span></span><span class="line"><span class="cl">  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
-</span></span><span class="line"><span class="cl">  -o, --out-file string                ► Out file, supports a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
-</span></span><span class="line"><span class="cl">      --pseudo-align                   ► Only perform pseudo alignment, alignment metrics, including
-</span></span><span class="line"><span class="cl">                                       qcovGnm, qcovSHP and pident, will be less accurate.
-</span></span><span class="line"><span class="cl">      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
-</span></span><span class="line"><span class="cl">      --seed-max-gap int               ► Max gap in seed chaining. (default 500)
-</span></span><span class="line"><span class="cl">  -p, --seed-min-prefix int            ► Minimum (prefix) length of matched seeds. (default 15)
-</span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there&#39;s only one
-</span></span><span class="line"><span class="cl">                                       pair of seeds matched. (default 17)
-</span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
-</span></span><span class="line"><span class="cl">                                       phase.
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Global Flags:
-</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
-</span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
-</span></span><span class="line"><span class="cl">      --log string           ► Log file.
-</span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
-</span></span><span class="line"><span class="cl">                             with --log.
-</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
-</span></span><span class="line"><span class="cl">                             (default 8)
-</span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
-    <h2 id="examples"
-    >
-        Examples
-    </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/search/#examples" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Examples" aria-label="Anchor to: Examples" href="#examples">
-        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
-    </a>
-</div>
-<p>See 
+    <h1>Indexing UHGG</h1>
+    <p>Info:</p>
+<ul>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://www.ebi.ac.uk/metagenomics/genome-catalogues/human-gut-v2-0-2"
+>Unified Human Gastrointestinal Genome (UHGG) v2.0.2</a></li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://www.nature.com/articles/s41587-020-0603-3"
+>A unified catalog of 204,938 reference genomes from the human gut microbiome</a></li>
+<li>Number of Genomes: 289,232</li>
+</ul>
+<p>Tools:</p>
+<ul>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/seqkit"
+>https://github.com/shenwei356/seqkit</a>, for checking sequence files</li>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/rush"
+>https://github.com/shenwei356/rush</a>, for running jobs</li>
+</ul>
+<p>Data:</p>
+<pre><code># meta data
+wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv
 
+# gff url
+sed 1d genomes-all_metadata.tsv | cut -f 20  | sed 's/v2.0/v2.0.2/' | sed -E 's/^ftp/https/' &gt; url.txt
 
-<span class="gdoc-button gdoc-button--regular">
-  <a
-    class="gdoc-button__link" href="/LexicMap/tutorials/search/"
-  >
-    Searching
-  </a>
-</span>
-</p>
+# download gff files
+mkdir -p files; cd files
+
+time cat ../url.txt \
+    | rush --eta -v 'dir={///%}/{//%}' \
+        'mkdir -p {dir}; curl -s -o {dir}/{%} {}' \
+        -c -C download.rush -j 12
+cd ..
+
+# extract sequences from gff files
+find files/ -name &quot;*.gff.gz&quot; \
+    | rush --eta \
+        'zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz' \
+        -c -C extract.rush
+</code></pre>
+<p>Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB.
+If you don&rsquo;t have enough memory, please decrease the value of <code>-b</code>.</p>
+<pre><code>lexicmap index \
+    -I files/ \
+    -O uhgg.lmi --log uhgg.lmi.log \
+    -b 5000
+</code></pre>
+<p>File sizes:</p>
+<pre><code>$ du -sh files/ uhgg.lmi
+658G    files/
+509G    uhgg.lmi
+
+$ du -sh files/ uhgg.lmi --apparent-size
+425G    files/
+426G    uhgg.lmi
+
+$ dirsize uhgg.lmi
+uhgg.lmi: 425.15 GiB (456,497,171,291)
+243.47 GiB      seeds
+181.67 GiB      genomes
+  6.34 MiB      genomes.map.bin
+312.53 KiB      masks.bin
+     330 B      info.toml
+</code></pre>
 
   </article>
 
@@ -2206,150 +2178,6 @@
         
 
         
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-
-        
-      
-    
-
-  
-
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-
-        
-        
-          
-  
-  
-
-  
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
           
           
         
@@ -2363,6 +2191,53 @@
       
     
 
+  
+
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+          
+        
+
+        
+
+        
+
+        
+        
+          
+  
+  
+
+  
   
     
 
@@ -2388,6 +2263,105 @@
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         
@@ -2751,11 +2725,11 @@
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/index/"
-      title="index"
+      href="/LexicMap/tutorials/misc/index-globdb/"
+      title="Indexing GlobDB"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      index
+      Indexing GlobDB
     </a>
   
 </span>
@@ -2763,10 +2737,10 @@
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/utils/"
-      title="utils"
+      href="/LexicMap/usage/lexicmap/"
+      title="lexicmap"
     >
-      utils
+      lexicmap
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

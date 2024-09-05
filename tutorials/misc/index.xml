@@ -12,7 +12,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/</guid>
-      <description>Tools:&#xA;https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:&#xA;time genome_updater.sh -d &amp;quot;refseq,genbank&amp;quot; -g &amp;quot;archaea,bacteria&amp;quot; \ -f &amp;quot;genomic.fna.gz&amp;quot; -o &amp;quot;GTDB_complete&amp;quot; -M &amp;quot;gtdb&amp;quot; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &amp;quot;*.gz&amp;quot; \ fd &amp;quot;.gz$&amp;quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &amp;gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &amp;gt; failed.</description>
+      <description>Info:&#xA;https://gtdb.ecogenomic.org/ Tools:&#xA;https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:&#xA;time genome_updater.sh -d &amp;quot;refseq,genbank&amp;quot; -g &amp;quot;archaea,bacteria&amp;quot; \ -f &amp;quot;genomic.fna.gz&amp;quot; -o &amp;quot;GTDB_complete&amp;quot; -M &amp;quot;gtdb&amp;quot; -t 12 -m -L curl cd GTDB_complete/2024-01-30_19-34-40/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &amp;quot;*.gz&amp;quot; \ fd &amp;quot;.gz$&amp;quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &amp;gt; /dev/null; if [ $?</description>
     </item>
     <item>
       <title>Indexing GenBank&#43;RefSeq</title>
@@ -26,14 +26,21 @@
       <link>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/</guid>
-      <description>Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/&#xA;Decompressing all tarballs.&#xA;cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.&#xA;Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)&#xA;lexicmap index -I assemblies/ -O atb.</description>
+      <description>Info:&#xA;AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps:&#xA;Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/&#xA;Decompressing all tarballs.&#xA;cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.</description>
     </item>
     <item>
       <title>Indexing GlobDB</title>
       <link>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/</guid>
-      <description># download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &amp;quot;*.fa.gz&amp;quot; &amp;gt; files.txt # index with lexicmap # elapsed time: 3h:40m:38s # peak rss: 87.15 GB lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000000 </description>
+      <description>Info:&#xA;GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Steps:&#xA;# download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &amp;quot;*.fa.gz&amp;quot; &amp;gt; files.txt # index with lexicmap # elapsed time: 3h:40m:38s # peak rss: 87.15 GB lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000000 </description>
+    </item>
+    <item>
+      <title>Indexing UHGG</title>
+      <link>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/</guid>
+      <description>Info:&#xA;Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:&#xA;https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:&#xA;# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &amp;gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.</description>
     </item>
   </channel>
 </rss>

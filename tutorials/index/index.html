@@ -62,7 +62,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
       "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names.",
-      "wordCount" : "2913",
+      "wordCount" : "2952",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -607,25 +607,15 @@ On this page and in the LexicMap command line options, the term “mask” is us
             <input
               type="checkbox"
               
-                class="gdoc-nav__toggle" id="navtree-5198871c"
-                
+                class="hidden"
               
             />
             <label
-              
-                for="navtree-5198871c" class="flex justify-between align-center"
               
             >
               
                 <span class="flex">More</span>
               
-              
-                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
-                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
-                </svg>
-                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
-                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
-                </svg>
               
             </label>
 
@@ -802,6 +792,50 @@ On this page and in the LexicMap command line options, the term “mask” is us
                     class="gdoc-nav__entry"
                   >
                     Indexing GlobDB
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/tutorials/misc/index-uhgg/"
+                    class="gdoc-nav__entry"
+                  >
+                    Indexing UHGG
                   </a>
                 </span>
               
@@ -1769,6 +1803,11 @@ The default value supports common sequence file extentions, e.g., <code>.fa</cod
 <ul>
 <li><strong>Only DNA or RNA sequences are supported</strong>.</li>
 <li><strong>Sequence IDs</strong> should be distinct for accurate result interpretation, which will be shown in the search result.</li>
+<li>Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
+(<code>seqkit seq -n ref.fa.gz | sed -E 's/\s+/\t/' &gt; id2desc.tsv</code>) and use it to <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results"
+>add description in search result</a>.</li>
 <li><strong>One or more sequences (contigs) in each file are allowed</strong>.
 <ul>
 <li>Unwanted sequences can be filtered out by regular expressions from the flag <code>-B/--seq-name-filter</code>.</li>
@@ -2704,6 +2743,39 @@ see the <a
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 
