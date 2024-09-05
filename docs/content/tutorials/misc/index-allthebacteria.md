@@ -3,8 +3,14 @@ title: Indexing AllTheBacteria
 weight: 15
 ---
 
+Info:
 
-Downloading assemblies tarballs here (except these starting with `unknown__`) to a directory (like assemblies):
+- [AllTheBacteria](https://github.com/AllTheBacteria/AllTheBacteria), All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable.
+- Preprint: [AllTheBacteria - all bacterial genomes assembled, available and searchable](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1)
+
+Steps:
+
+1. Downloading assemblies tarballs here (except these starting with `unknown__`) to a directory (like assemblies):
 https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
 
 1. Decompressing all tarballs.

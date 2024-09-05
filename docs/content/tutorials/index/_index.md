@@ -59,6 +59,8 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
     - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
+    - Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
+      (`seqkit seq -n ref.fa.gz | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add description in search result](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
     - **One or more sequences (contigs) in each file are allowed**.
         - Unwanted sequences can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.

@@ -3,6 +3,15 @@ title: Indexing GlobDB
 weight: 20
 ---
 
+
+Info:
+
+- [GlobDB](https://globdb.org/) , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot.
+- https://x.com/daanspeth/status/1822964436950192218
+
+
+Steps:
+
     # download data
     wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz
 

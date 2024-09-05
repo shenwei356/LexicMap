@@ -3,6 +3,10 @@ title: Indexing GTDB
 weight: 5
 ---
 
+Info:
+
+- https://gtdb.ecogenomic.org/
+
 Tools:
 
 - https://github.com/pirovc/genome_updater, for downloading genomes
