@@ -48,3 +48,18 @@ If you don't have enough memory, please decrease the value of `-b`.
         --ref-name-regexp '^(\w{3}_\d{9}\.\d+)' \
         -O gtdb_complete.lmi --log gtdb_complete.lmi.log \
         -b 5000
+
+Files:
+
+    $ du -sh files gtdb_complete.lmi --apparent-size
+    413G    files
+    907G    gtdb_complete.lmi
+
+    $ dirsize gtdb_complete.lmi
+    gtdb_complete.lmi: 906.14 GiB (972,962,162,476)
+    543.06 GiB      seeds
+    362.98 GiB      genomes
+    102.37 MiB      kmers-m12345.tsv
+      9.60 MiB      genomes.map.bin
+    312.53 KiB      masks.bin
+         330 B      info.toml

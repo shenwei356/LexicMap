@@ -76,8 +76,8 @@ github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUc
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/shenwei356/bio v0.13.3 h1:tWspivWisj/kS9RmDv8N0WEovn007jUImk8OdtPYZ38=
-github.com/shenwei356/bio v0.13.3/go.mod h1:5TMT6kpb5lQsa1Uz6nh6PGLtvKi8fQ3SWO2sfiBEOnc=
+github.com/shenwei356/bio v0.13.5 h1:szK7O6cNWxk0sMUh6j9rf2TwMu273a+SxXuvxvBDr8Y=
+github.com/shenwei356/bio v0.13.5/go.mod h1:5TMT6kpb5lQsa1Uz6nh6PGLtvKi8fQ3SWO2sfiBEOnc=
 github.com/shenwei356/breader v0.3.2 h1:GLy2clIMck6FdTwj8WLnmhv0PW/7Pp+Wcx7TVEHG0ks=
 github.com/shenwei356/breader v0.3.2/go.mod h1:BimwolkMTIr/O4iX7xXtjEB1z5y39G+8I5Tsm9guC3E=
 github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba h1:UvnrxFDPmz7agYX0eQ2JEorTKn1ORnZ9dT5OzbjPvK8=

@@ -1212,6 +1212,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			algn := wfa.New(wfa.DefaultPenalties, alignOption)
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+			// algn.AdaptiveReduction(&wfa.AdaptiveReductionOption{
+			// 	MinWFLen:    10,
+			// 	MaxDistDiff: 50,
+			// })
 
 			var _qseq, _tseq []byte
 			var cigar *wfa.AlignmentResult
