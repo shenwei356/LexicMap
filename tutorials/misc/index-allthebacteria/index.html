@@ -12,11 +12,11 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
-  <meta name="description" content="Info:
-AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps:
-Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
-Decompressing all tarballs.
-cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz/xz/zstd-compressed) genome files." />
+  <meta name="description" content="Make sure you have enough disk space, at least 8 TB, &gt;10 TB is preferred.
+Tools:
+https://github.com/shenwei356/rush, for running jobs Info:
+AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps for v0.2 Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like atb): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
+mkdir -p atb; cd atb; # assembly file list, 650 files in total wget https://bioinf." />
 
     <title>Indexing AllTheBacteria | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -42,11 +42,11 @@ cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; 
     content="Indexing AllTheBacteria"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Info:
-AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps:
-Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
-Decompressing all tarballs.
-cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz/xz/zstd-compressed) genome files." />
+  <meta property="og:description" content="Make sure you have enough disk space, at least 8 TB, &gt;10 TB is preferred.
+Tools:
+https://github.com/shenwei356/rush, for running jobs Info:
+AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps for v0.2 Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like atb): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
+mkdir -p atb; cd atb; # assembly file list, 650 files in total wget https://bioinf." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/" />
 
@@ -55,11 +55,11 @@ cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; 
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Indexing AllTheBacteria" />
-  <meta name="twitter:description" content="Info:
-AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps:
-Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
-Decompressing all tarballs.
-cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz/xz/zstd-compressed) genome files." />
+  <meta name="twitter:description" content="Make sure you have enough disk space, at least 8 TB, &gt;10 TB is preferred.
+Tools:
+https://github.com/shenwei356/rush, for running jobs Info:
+AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps for v0.2 Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like atb): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
+mkdir -p atb; cd atb; # assembly file list, 650 files in total wget https://bioinf." />
 
 
   <script type="application/ld+json">
@@ -70,8 +70,8 @@ cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; 
       "name": "Indexing AllTheBacteria",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/",
       "headline": "Indexing AllTheBacteria",
-      "description": "Info:\nAllTheBacteria, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps:\nDownloading assemblies tarballs here (except these starting with unknown__) to a directory (like assemblies): https:\/\/ftp.ebi.ac.uk\/pub\/databases\/AllTheBacteria\/Releases\/0.2\/assembly\/\nDecompressing all tarballs.\ncd assemblies; ls *.tar.xz | parallel --eta \u0027tar -Jxf {}; gzip {}\/*.fa\u0027 cd .. After that, the assemblies directory would have multiple subdirectories. When you give the directory to lexicmap index -I, it can recursively scan (plain or gz\/xz\/zstd-compressed) genome files.",
-      "wordCount" : "132",
+      "description": "Make sure you have enough disk space, at least 8 TB, \u003e10 TB is preferred.\nTools:\nhttps:\/\/github.com\/shenwei356\/rush, for running jobs Info:\nAllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps for v0.2 Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like atb): https:\/\/ftp.ebi.ac.uk\/pub\/databases\/AllTheBacteria\/Releases\/0.2\/assembly\/\nmkdir -p atb; cd atb; # assembly file list, 650 files in total wget https:\/\/bioinf.",
+      "wordCount" : "416",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1704,44 +1704,129 @@ cd assemblies; ls *.tar.xz | parallel --eta &#39;tar -Jxf {}; gzip {}/*.fa&#39; 
     class="gdoc-markdown gdoc-markdown__align--left"
   >
     <h1>Indexing AllTheBacteria</h1>
-    <p>Info:</p>
+    <p><strong>Make sure you have enough disk space, at least 8 TB, &gt;10 TB is preferred.</strong></p>
+<p>Tools:</p>
+<ul>
+<li><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/rush"
+>https://github.com/shenwei356/rush</a>, for running jobs</li>
+</ul>
+<p>Info:</p>
 <ul>
 <li><a
   class="gdoc-markdown__link"
   href="https://github.com/AllTheBacteria/AllTheBacteria"
->AllTheBacteria</a>, All WGS isolate bacterial INSDC data to June 2023uniformly assembled, QC-ed, annotated, searchable.</li>
+>AllTheBacteria</a>, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable.</li>
 <li>Preprint: <a
   class="gdoc-markdown__link"
   href="https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1"
 >AllTheBacteria - all bacterial genomes assembled, available and searchable</a></li>
 </ul>
-<p>Steps:</p>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="steps-for-v02"
+    >
+        Steps for v0.2
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/#steps-for-v02" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Steps for v0.2" aria-label="Anchor to: Steps for v0.2" href="#steps-for-v02">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
 <ol>
 <li>
-<p>Downloading assemblies tarballs here (except these starting with <code>unknown__</code>) to a directory (like assemblies):
+<p>Downloading assemblies tarballs here (except these starting with <code>unknown__</code>) to a directory (like <code>atb</code>):
 <a
   class="gdoc-markdown__link"
   href="https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/"
 >https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/</a></p>
+<pre><code> mkdir -p atb;
+ cd atb;
+
+ # assembly file list, 650 files in total
+ wget https://bioinf.shenwei.me/LexicMap/AllTheBacteria-v0.2.url.txt
+
+ # download
+ #   rush is used: https://github.com/shenwei356/rush
+ #   The download.rush file stores finished jobs, which will be skipped in a second run for resuming jobs.
+ cat AllTheBacteria-v0.2.url.txt | rush --eta -j 2 -c -C download.rush 'wget {}'
+
+
+ # list of high-quality samples
+ wget https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/metadata/hq_set.sample_list.txt.gz
+</code></pre>
 </li>
 <li>
-<p>Decompressing all tarballs.</p>
-<pre><code> cd assemblies;
- ls *.tar.xz | parallel --eta 'tar -Jxf {}; gzip {}/*.fa'
+<p>Decompressing all tarballs. The decompressed genomes are stored in plain text,
+so we use <code>gzip</code> (can be replaced with faster <code>pigz</code> ) to compress them to save disk space.</p>
+<pre><code> # {^asm.tar.xz} is for removing the suffix &quot;asm.tar.xz&quot;
+ ls *.tar.xz | rush --eta -c -C decompress.rush 'tar -Jxf {}; gzip -f {^asm.tar.xz}/*.fa'
  cd ..
 </code></pre>
 <p>After that, the assemblies directory would have multiple subdirectories.
-When you give the directory to <code>lexicmap index -I</code>, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.</p>
+When you give the directory to <code>lexicmap index -I</code>, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.
+You can also give a file list with selected assemblies.</p>
+<pre><code> $ tree atb | more
+ atb
+ ├── achromobacter_xylosoxidans__01
+ │   ├── SAMD00013333.fa.gz
+ │   ├── SAMD00049594.fa.gz
+ │   ├── SAMD00195911.fa.gz
+ │   ├── SAMD00195914.fa.gz
+
+
+ # disk usage
+
+ $ du -sh atb
+ 2.9T    atb
+
+ $ du -sh atb --apparent-size
+ 2.1T    atb
+</code></pre>
 </li>
 <li>
 <p>Creating a LexicMap index. (more details: <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/index/"
 >https://bioinf.shenwei.me/LexicMap/tutorials/index/</a>)</p>
-<pre><code>lexicmap index -I assemblies/ -O atb.lmi -b 25000 --log atb.lmi.log
+<pre><code> # file paths of all samples
+ find atb/ -name &quot;*.fa.gz&quot; &gt; atb_all.txt
+
+ # wc -l atb_all.txt
+ # 1876015 atb_all.txt
+
+ # file paths of high-quality samples
+ grep -w -f &lt;(zcat atb/hq_set.sample_list.txt.gz) atb_all.txt &gt; atb_hq.txt
+
+ # wc -l atb_hq.txt
+ # 1858610 atb_hq.txt
+
+
+
+# index
+lexicmap index -S -X atb_hq.txt -O atb_hq.lmi -b 25000 --log atb_hq.lmi.log
 </code></pre>
 <p>For 1,858,610 HQ genomes, on a 48-CPU machine, time: 48 h, ram: 85 GB, index size: 3.88 TB.
 If you don&rsquo;t have enough memory, please decrease the value of <code>-b</code>.</p>
+<pre><code> # disk usage
+
+ $ du -sh atb_hq.lmi
+ 4.6T    atb_hq.lmi
+
+ $ du -sh atb_hq.lmi --apparent-size
+ 3.9T    atb_hq.lmi
+
+ $ dirsize atb_hq.lmi
+
+ atb_hq.lmi: 3.88 TiB (4,261,437,129,065)
+   2.11 TiB      seeds
+   1.77 TiB      genomes
+  39.22 MiB      genomes.map.bin
+ 312.53 KiB      masks.bin
+      332 B      info.toml
+</code></pre>
+<p>Note that, there&rsquo;s a tmp directory <code>atb_hq.lmi</code> being created during indexing.
+In the tmp directory, the seed data would be bigger than the final size of <code>seeds</code> directory,
+however, the genome files are simply moved to the final index.</p>
 </li>
 </ol>
 

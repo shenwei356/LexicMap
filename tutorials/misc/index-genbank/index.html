@@ -12,9 +12,10 @@
 <meta name="generator" content="Hugo 0.133.0">
 
 
-  <meta name="description" content="Tools:
+  <meta name="description" content="Make sure you have enough disk space, &gt;10 TB is preferred.
+Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \ -f &quot;genomic.fna.gz&quot; -o &quot;genbank&quot; -M &quot;ncbi&quot; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &quot;*.gz&quot; \ fd &quot;.gz$&quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&quot; \ -f &quot;genomic.fna.gz&quot; -o &quot;genbank&quot; -M &quot;ncbi&quot; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &quot;*.gz&quot; \ fd &quot;.gz$&quot; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
     <title>Indexing GenBank&#43;RefSeq | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +41,10 @@ time genome_updater.sh -d &quot;refseq,genbank&quot; -g &quot;archaea,bacteria&q
     content="Indexing GenBank+RefSeq"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Tools:
+  <meta property="og:description" content="Make sure you have enough disk space, &gt;10 TB is preferred.
+Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;genbank&#34; -M &#34;ncbi&#34; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;genbank&#34; -M &#34;ncbi&#34; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-genbank/" />
 
@@ -51,9 +53,10 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Indexing GenBank+RefSeq" />
-  <meta name="twitter:description" content="Tools:
+  <meta name="twitter:description" content="Make sure you have enough disk space, &gt;10 TB is preferred.
+Tools:
 https://github.com/pirovc/genome_updater, for downloading genomes https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;genbank&#34; -M &#34;ncbi&#34; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $? -ne 0 ]; then echo {}; fi&#39; \ &gt; failed." />
+time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34; \ -f &#34;genomic.fna.gz&#34; -o &#34;genbank&#34; -M &#34;ncbi&#34; -t 12 -m -L curl cd genbank/2024-02-15_11-00-51/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name &#34;*.gz&#34; \ fd &#34;.gz$&#34; $genomes \ | rush --eta &#39;seqkit seq -w 0 {} &gt; /dev/null; if [ $?" />
 
 
   <script type="application/ld+json">
@@ -64,8 +67,8 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
       "name": "Indexing GenBank+RefSeq",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-genbank/",
       "headline": "Indexing GenBank+RefSeq",
-      "description": "Tools:\nhttps:\/\/github.com\/pirovc\/genome_updater, for downloading genomes https:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\ntime genome_updater.sh -d \u0022refseq,genbank\u0022 -g \u0022archaea,bacteria\u0022 \\ -f \u0022genomic.fna.gz\u0022 -o \u0022genbank\u0022 -M \u0022ncbi\u0022 -t 12 -m -L curl cd genbank\/2024-02-15_11-00-51\/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name \u0022*.gz\u0022 \\ fd \u0022.gz$\u0022 $genomes \\ | rush --eta \u0027seqkit seq -w 0 {} \u003e \/dev\/null; if [ $? -ne 0 ]; then echo {}; fi\u0027 \\ \u003e failed.",
-      "wordCount" : "156",
+      "description": "Make sure you have enough disk space, \u003e10 TB is preferred.\nTools:\nhttps:\/\/github.com\/pirovc\/genome_updater, for downloading genomes https:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\ntime genome_updater.sh -d \u0022refseq,genbank\u0022 -g \u0022archaea,bacteria\u0022 \\ -f \u0022genomic.fna.gz\u0022 -o \u0022genbank\u0022 -M \u0022ncbi\u0022 -t 12 -m -L curl cd genbank\/2024-02-15_11-00-51\/ # ----------------- check the file integrity ----------------- genomes=files # corrupted files # find $genomes -name \u0022*.gz\u0022 \\ fd \u0022.gz$\u0022 $genomes \\ | rush --eta \u0027seqkit seq -w 0 {} \u003e \/dev\/null; if [ $?",
+      "wordCount" : "167",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1698,7 +1701,8 @@ time genome_updater.sh -d &#34;refseq,genbank&#34; -g &#34;archaea,bacteria&#34;
     class="gdoc-markdown gdoc-markdown__align--left"
   >
     <h1>Indexing GenBank&#43;RefSeq</h1>
-    <p>Tools:</p>
+    <p><strong>Make sure you have enough disk space, &gt;10 TB is preferred.</strong></p>
+<p>Tools:</p>
 <ul>
 <li><a
   class="gdoc-markdown__link"
