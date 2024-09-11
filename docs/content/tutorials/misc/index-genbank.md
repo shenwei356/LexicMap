@@ -3,6 +3,8 @@ title: Indexing GenBank+RefSeq
 weight: 10
 ---
 
+**Make sure you have enough disk space, >10 TB is preferred.**
+
 Tools:
 
 - https://github.com/pirovc/genome_updater, for downloading genomes
