@@ -474,7 +474,7 @@ var poolSub = &sync.Pool{New: func() interface{} {
 }}
 
 var poolSubs = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SubstrPair, 0, 256)
+	tmp := make([]*SubstrPair, 0, 64)
 	return &tmp
 }}
 

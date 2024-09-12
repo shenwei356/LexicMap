@@ -4,7 +4,7 @@
 
 - `lexicmap search`:
     - Improve the speed of anchor deduplication, genome information extraction.
-    - Better `-n/--top-n-genomes`.
+    - More accurate `-n/--top-n-genomes`, and add new help message.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
 
