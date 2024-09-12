@@ -54,7 +54,7 @@ require (
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect
-	golang.org/x/image v0.11.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 )
