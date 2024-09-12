@@ -1079,10 +1079,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// ----------------------------------------------------------------
 	// 3) chaining matches for all reference genomes, and alignment
 
-	minSinglePrefix := idx.opt.MinSinglePrefix
 	// minMatchedBases := idx.opt.MinMatchedBases
 
-	// 3.1) preprocess substring matches for each reference genome
+	// 3.1) preprocess substring matches and chaining for each reference genome
 	rs := poolSearchResults.Get().(*[]*SearchResult)
 	*rs = (*rs)[:0]
 
@@ -1090,54 +1089,62 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// k8 := idx.k8
 	// var matches uint8
 	// checkMismatch := maxMismatch >= 0 && maxMismatch < K-int(idx.opt.MinPrefix)
+
+	ch1 := make(chan *SearchResult, idx.opt.NumCPUs)
+	tokens := make(chan int, idx.opt.NumCPUs)
+
+	// collect chaining result
+	go func() {
+		for r := range ch1 {
+			*rs = append(*rs, r)
+		}
+
+		done <- 1
+	}()
+
 	for _, r := range *m {
-		ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
+		tokens <- 1
+		wg.Add(1)
 
-		// there's no need to chain for a single short seed.
-		// we might give it a chance if the mismatch is low
-		if len(*r.Subs) == 1 {
-			// if checkMismatch {
-			// 	if int((*r.Subs)[0].Mismatch) > maxMismatch {
-			// 		idx.RecycleSearchResult(r)
-			// 		continue
-			// 	}
-			// } else if (*r.Subs)[0].Len < minSinglePrefix {
-			// 	// do not forget to recycle filtered result
-			// 	idx.RecycleSearchResult(r)
-			// 	continue
-			// }
-			if (*r.Subs)[0].Len < minSinglePrefix {
-				// do not forget to recycle filtered result
-				idx.RecycleSearchResult(r)
-				continue
+		go func(r *SearchResult) {
+			ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
+
+			// -----------------------------------------------------
+			// chaining
+
+			chainer := idx.poolChainers.Get().(*Chainer)
+			r.Chains, r.Score = chainer.Chain(r.Subs)
+
+			defer func() {
+				idx.poolChainers.Put(chainer)
+				<-tokens
+				wg.Done()
+			}()
+
+			if r.Score < idx.chainingOptions.MinScore {
+				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+				return
 			}
-			// matches = (*r.Subs)[0].Matches(k8)
-			// if matches < minMatchedBases {
-			// 	// do not forget to recycle filtered result
-			// 	idx.RecycleSearchResult(r)
-			// 	continue
-			// }
-			// (*r.Subs)[0].Len = matches
-		}
 
-		for _, sub := range *r.Subs {
-			r.Score += float64(sub.Len * sub.Len)
-		}
-
-		*rs = append(*rs, r)
+			ch1 <- r
+		}(r)
 	}
 
-	// sort subjects in descending order based on the score (simple statistics).
-	// just use the standard library for a few seed pairs.
-	sort.Slice(*rs, func(i, j int) bool {
-		return (*rs)[i].Score > (*rs)[j].Score
-	})
+	wg.Wait()
+	close(ch1)
+	<-done
 
 	poolSearchResultsMap.Put(m)
 
 	// 3.2) only keep the top N targets
 	topN := idx.opt.TopN
 	if topN > 0 && len(*rs) > topN {
+		// sort subjects in descending order based on the score
+		// just use the standard library for a few seed pairs.
+		sort.Slice(*rs, func(i, j int) bool {
+			return (*rs)[i].Score > (*rs)[j].Score
+		})
+
 		var r *SearchResult
 		for i := topN; i < len(*rs); i++ {
 			r = (*rs)[i]
@@ -1148,13 +1155,12 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		*rs = (*rs)[:topN]
 	}
 
-	// 3.3) chaining and alignment
+	// 3.3) alignment
 
 	rs2 := poolSearchResults.Get().(*[]*SearchResult)
 	*rs2 = (*rs2)[:0]
 
 	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
-	tokens := make(chan int, idx.opt.NumCPUs)
 
 	// collect hits with good alignment
 	go func() {
@@ -1180,24 +1186,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		wg.Add(1)
 
 		go func(r *SearchResult) { // for a reference genome
-			// -----------------------------------------------------
-			// chaining
-
-			minChainingScore := idx.chainingOptions.MinScore
-
-			chainer := idx.poolChainers.Get().(*Chainer)
-			r.Chains, r.Score = chainer.Chain(r.Subs)
-
 			defer func() {
-				idx.poolChainers.Put(chainer)
 				<-tokens
 				wg.Done()
 			}()
-
-			if r.Score < minChainingScore {
-				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
-				return
-			}
 
 			// -----------------------------------------------------
 			// alignment
