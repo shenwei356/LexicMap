@@ -3,7 +3,7 @@
 ### v0.4.1 - 2024-09-xx
 
 - `lexicmap search`:
-    - Improve the speed of anchor deduplication, genome information extraction.
+    - Improve the speed of anchor deduplication and genome information extraction.
     - More accurate `-n/--top-n-genomes`, and add new help message.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
