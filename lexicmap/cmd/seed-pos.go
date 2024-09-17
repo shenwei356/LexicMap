@@ -338,9 +338,14 @@ Figures:
 			var first bool
 			var hasGap bool
 
+			counter := make(map[string]int, len(m)) // for genomes splitting into chunks
+			var count int
+
 			// var kp1 int = int(info.K) - 1
 
 			for ref2locs := range ch {
+				count = counter[ref2locs.Ref]
+
 				if len(*ref2locs.Locs) == 0 {
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
@@ -507,7 +512,11 @@ Figures:
 				p.Y.Tick.Label.Font.Size = 12
 
 				// Save image
-				filePlot = filepath.Join(plotDir, refname+plotExt)
+				if count > 0 {
+					filePlot = filepath.Join(plotDir, fmt.Sprintf("%s_%d%s", refname, count+1, plotExt))
+				} else {
+					filePlot = filepath.Join(plotDir, refname+plotExt)
+				}
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// -------------------------------------------------------------
@@ -595,7 +604,11 @@ Figures:
 				p.Y.Tick.Label.Font.Size = 12
 
 				// Save image
-				filePlot = filepath.Join(plotDir, refname+".seed_number"+plotExt)
+				if count > 0 {
+					filePlot = filepath.Join(plotDir, fmt.Sprintf("%s_%d.seed_number%s", refname, count+1, plotExt))
+				} else {
+					filePlot = filepath.Join(plotDir, refname+".seed_number"+plotExt)
+				}
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// ---------------------------------------------------------
@@ -615,6 +628,10 @@ Figures:
 						checkError(fmt.Errorf("failed to close genome data file: %s", err))
 					}
 				}
+
+				// ---------------------------------------------------------
+
+				counter[ref2locs.Ref]++
 			}
 
 			poolSkipRegions.Put(seqRegions)
@@ -632,62 +649,70 @@ Figures:
 					<-tokens
 				}()
 
-				ref2locs := poolRef2Locs.Get().(*Ref2Locs)
-				ref2locs.Ref = refname
-				ref2locs.StartTime = time.Now()
+				var batchIDAndRefIDs *[]uint64
 
-				var batchIDAndRefID uint64
 				var ok bool
-				if batchIDAndRefID, ok = m[refname]; !ok {
+				if batchIDAndRefIDs, ok = m[refname]; !ok {
 					log.Warningf("reference name not found: %s", refname)
+
+					ref2locs := poolRef2Locs.Get().(*Ref2Locs)
+					ref2locs.Ref = refname
+					ref2locs.StartTime = time.Now()
+
 					ch <- ref2locs
 					return
 				}
 
-				genomeBatch := int(batchIDAndRefID >> 17)
-				genomeIdx := int(batchIDAndRefID & 131071)
+				for _, batchIDAndRefID := range *batchIDAndRefIDs {
+					ref2locs := poolRef2Locs.Get().(*Ref2Locs)
+					ref2locs.Ref = refname
+					ref2locs.StartTime = time.Now()
 
-				// seed positions ------------------------------------------------------------
+					genomeBatch := int(batchIDAndRefID >> 17)
+					genomeIdx := int(batchIDAndRefID & 131071)
 
-				ref2locs.GenomeBatch = genomeBatch
-				ref2locs.GenomeIdx = genomeIdx
+					// seed positions ------------------------------------------------------------
 
-				rdr := readerPools[genomeBatch].Get().(*seedposition.Reader)
-				err = rdr.SeedPositions(genomeIdx, ref2locs.Locs)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read seed position for %s: %s", refname, err))
-				}
+					ref2locs.GenomeBatch = genomeBatch
+					ref2locs.GenomeIdx = genomeIdx
 
-				readerPools[genomeBatch].Put(rdr)
-
-				// sequence length ----------------------------------------------------------
-
-				var gRdr *genome.Reader
-				if hasGenomeRdrs {
-					gRdr = <-poolGenomeRdrs[ref2locs.GenomeBatch]
-				} else {
-					fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(ref2locs.GenomeBatch), FileGenomes)
-					gRdr, err = genome.NewReader(fileGenome)
+					rdr := readerPools[genomeBatch].Get().(*seedposition.Reader)
+					err = rdr.SeedPositions(genomeIdx, ref2locs.Locs)
 					if err != nil {
-						checkError(fmt.Errorf("failed to read genome data file: %s", err))
+						checkError(fmt.Errorf("failed to read seed position for %s: %s", refname, err))
 					}
-				}
-				g, err := gRdr.GenomeInfo(genomeIdx)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read genome infomation: %s", err))
-				}
-				ref2locs.Genome = g
 
-				if hasGenomeRdrs {
-					poolGenomeRdrs[ref2locs.GenomeBatch] <- gRdr
-				} else {
-					err = gRdr.Close()
+					readerPools[genomeBatch].Put(rdr)
+
+					// sequence length ----------------------------------------------------------
+
+					var gRdr *genome.Reader
+					if hasGenomeRdrs {
+						gRdr = <-poolGenomeRdrs[ref2locs.GenomeBatch]
+					} else {
+						fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(ref2locs.GenomeBatch), FileGenomes)
+						gRdr, err = genome.NewReader(fileGenome)
+						if err != nil {
+							checkError(fmt.Errorf("failed to read genome data file: %s", err))
+						}
+					}
+					g, err := gRdr.GenomeInfo(genomeIdx)
 					if err != nil {
-						checkError(fmt.Errorf("failed to close genome data file: %s", err))
+						checkError(fmt.Errorf("failed to read genome infomation: %s", err))
 					}
-				}
+					ref2locs.Genome = g
 
-				ch <- ref2locs
+					if hasGenomeRdrs {
+						poolGenomeRdrs[ref2locs.GenomeBatch] <- gRdr
+					} else {
+						err = gRdr.Close()
+						if err != nil {
+							checkError(fmt.Errorf("failed to close genome data file: %s", err))
+						}
+					}
+
+					ch <- ref2locs
+				}
 
 			}(refname)
 		}

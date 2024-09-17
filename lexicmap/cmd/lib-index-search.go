@@ -141,6 +141,10 @@ type Index struct {
 	// genome data reader
 	poolGenomeRdrs []chan *genome.Reader
 	hasGenomeRdrs  bool
+
+	// genome chunks
+	hasGenomeChunks bool // file FileGenomeChunks exists and it's not empty
+	genomeChunks    map[uint64]map[uint64]interface{}
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -217,6 +221,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		return nil, fmt.Errorf("MinPrefix (%d) should not be <= k (%d)", opt.MinPrefix, idx.k8)
 	}
 
+	// -----------------------------------------------------
+	// read genome chunks data if existed
+	fileGenomeChunks := filepath.Join(outDir, FileGenomeChunks)
+	idx.genomeChunks, err = readGenomeChunk(fileGenomeChunks)
+	if err != nil {
+		return nil, err
+	}
+	if len(idx.genomeChunks) > 0 {
+		idx.hasGenomeChunks = true
+	}
 	// -----------------------------------------------------
 	// read index of seeds
 
@@ -584,6 +598,8 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 
 // SearchResult stores a search result in a genome for the given query sequence.
 type SearchResult struct {
+	BatchGenomeIndex uint64 // just for finding genome chunks of the same genome
+
 	GenomeBatch int
 	GenomeIndex int
 	ID          []byte
@@ -979,8 +995,9 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 							*subs = (*subs)[:0]
 
 							r = poolSearchResult.Get().(*SearchResult)
-							r.GenomeBatch = refBatchAndIdx >> 17
-							r.GenomeIndex = refBatchAndIdx & 131071
+							r.BatchGenomeIndex = uint64(refBatchAndIdx)
+							r.GenomeBatch = refBatchAndIdx >> BITS_GENOME_IDX
+							r.GenomeIndex = refBatchAndIdx & MASK_GENOME_IDX
 							r.ID = r.ID[:0] // extract it from genome file later
 							r.GenomeSize = 0
 							r.Subs = subs
@@ -1799,41 +1816,43 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				return
 			}
 
-			// compute aligned bases per genome
-			var alignedBasesGenome int
-			regions := poolRegions.Get().(*[]*[2]int)
-			*regions = (*regions)[:0]
-			for _, sd := range *sds {
-				for _, c := range *sd.Similarity.Chains {
-					if c != nil {
-						region := poolRegion.Get().(*[2]int)
-						region[0], region[1] = c.QBegin, c.QEnd
-						*regions = append(*regions, region)
+			if !idx.hasGenomeChunks {
+				// compute aligned bases per genome
+				var alignedBasesGenome int
+				regions := poolRegions.Get().(*[]*[2]int)
+				*regions = (*regions)[:0]
+				for _, sd := range *sds {
+					for _, c := range *sd.Similarity.Chains {
+						if c != nil {
+							region := poolRegion.Get().(*[2]int)
+							region[0], region[1] = c.QBegin, c.QEnd
+							*regions = append(*regions, region)
+						}
 					}
 				}
-			}
-			alignedBasesGenome = coverageLen(regions)
-			recycleRegions(regions)
+				alignedBasesGenome = coverageLen(regions)
+				recycleRegions(regions)
 
-			// filter by query coverage per genome
-			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
-			if r.AlignedFraction > 100 {
-				r.AlignedFraction = 100
-			}
-			if r.AlignedFraction < minQcovGnm { // no valid alignments
-				idx.RecycleSimilarityDetails(sds)
-				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
-
-				if idx.hasGenomeRdrs {
-					idx.poolGenomeRdrs[refBatch] <- rdr
-				} else {
-					err = rdr.Close()
-					if err != nil {
-						checkError(fmt.Errorf("failed to close genome data file: %s", err))
-					}
-					<-idx.openFileTokens
+				// filter by query coverage per genome
+				r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
+				if r.AlignedFraction > 100 {
+					r.AlignedFraction = 100
 				}
-				return
+				if r.AlignedFraction < minQcovGnm { // no valid alignments
+					idx.RecycleSimilarityDetails(sds)
+					idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+
+					if idx.hasGenomeRdrs {
+						idx.poolGenomeRdrs[refBatch] <- rdr
+					} else {
+						err = rdr.Close()
+						if err != nil {
+							checkError(fmt.Errorf("failed to close genome data file: %s", err))
+						}
+						<-idx.openFileTokens
+					}
+					return
+				}
 			}
 
 			// sort target genomes according to their best alignment
@@ -1883,12 +1902,93 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// recycle this comparator
 	idx.poolSeqComparator.Put(cpr)
 
-	// sort all hits
 	if len(*rs2) == 0 {
 		poolSearchResults.Put(rs2)
 		return nil, nil
 	}
 
+	// merge search result from genome chunks, if has split genome
+	if idx.hasGenomeChunks {
+		var j int
+		var a, b uint64 // SearchResult.BatchGenomeIndex
+		var ok, merged bool
+		var rp *SearchResult
+		chunks := idx.genomeChunks
+		for i, r := range *rs2 {
+			a = r.BatchGenomeIndex
+			merged = false
+			for j = 0; j < i; j++ {
+				rp = (*rs2)[j]
+				if rp == nil { // it has been merged
+					continue
+				}
+
+				b = rp.BatchGenomeIndex
+				if a < b {
+					a, b = b, a
+				}
+
+				if _, ok = chunks[a][b]; !ok {
+					continue
+				}
+
+				// alignments belonging to the same genome
+				merged = true
+
+				// merge a into b
+
+				// only need to update SimilarityDetails, AlignedFraction
+				*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
+
+			}
+			if merged {
+				poolSearchResult.Put(r)
+				(*rs2)[i] = nil
+			}
+		}
+
+		// recompute query coverage per genome
+		var alignedBasesGenome int
+		minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
+		j = 0
+		for _, r := range *rs2 {
+			if r == nil {
+				continue
+			}
+
+			// compute aligned bases per genome
+			regions := poolRegions.Get().(*[]*[2]int)
+			*regions = (*regions)[:0]
+			for _, sd := range *r.SimilarityDetails {
+				for _, c := range *sd.Similarity.Chains {
+					if c != nil {
+						region := poolRegion.Get().(*[2]int)
+						region[0], region[1] = c.QBegin, c.QEnd
+						*regions = append(*regions, region)
+					}
+				}
+			}
+			alignedBasesGenome = coverageLen(regions)
+			recycleRegions(regions)
+
+			// filter by query coverage per genome
+			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
+			if r.AlignedFraction > 100 {
+				r.AlignedFraction = 100
+			}
+			if r.AlignedFraction < minQcovGnm { // no valid alignments
+				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+
+				continue
+			}
+
+			(*rs2)[j] = r
+			j++
+		}
+		*rs2 = (*rs2)[:j]
+	}
+
+	// sort all hits
 	sort.Slice(*rs2, func(i, j int) bool {
 		return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
 	})

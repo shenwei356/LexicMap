@@ -87,6 +87,8 @@ type Genome struct {
 	TwoBit    *[]byte   // bit-packed sequence
 	StartTime time.Time
 
+	GenomeID int // only for collecting Batch+Genome Index of split genome chunks, not saved in index
+
 	// seed positions to write to the file
 	Locs       *[]uint32
 	ExtraKmers *[]*[]uint64 // 3*n. (kmer, loc)
@@ -122,10 +124,13 @@ func (r *Genome) Reset() {
 	r.SeqSizes = r.SeqSizes[:0]
 	r.SeqIDs = r.SeqIDs[:0]
 
+	r.GenomeID = -1
+
 	// for safety
 	r.Kmers = nil
 	r.Locses = nil
 	r.TwoBit = nil
+
 }
 
 // RecycleGenome recycle a Genome

@@ -2,11 +2,18 @@
 
 ### v0.4.1 - 2024-09-xx
 
+- `lexicmap index`:
+    - Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.
 - `lexicmap search`:
+    - Remain compatible after the change of `lexicmap index`.
     - Improve the speed of anchor deduplication and genome information extraction.
     - More accurate `-n/--top-n-genomes`, and add new help message.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
+- `lexicmap utils subseq`:
+    - Remain compatible after the change of `lexicmap index`.
+- `lexicmap utils seed-pos`:
+    - Remain compatible after the change of `lexicmap index`, while histograms are plotted separately for multiple genome chunks.
 
 ### v0.4.0 - 2024-08-15
 

@@ -244,6 +244,34 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		}
 
 		// -------------------------------------------------------------------
+		// genomes.chunks.bin, just concatenate them
+		fh, err = os.Create(filepath.Join(outdir1, FileGenomeChunks))
+		if err != nil {
+			checkError(fmt.Errorf("failed to write genome chunk list file: %s", err))
+		}
+		bw.Reset(fh)
+		for _, db := range pathB {
+			fh1, err := os.Open(filepath.Join(db, FileGenomeChunks))
+			if err != nil {
+				checkError(fmt.Errorf("failed to open genome chunk list file: %s", err))
+			}
+			br := bufio.NewReader(fh1)
+			_, err = io.Copy(bw, br)
+			if err != nil {
+				checkError(fmt.Errorf("failed to copy genome chunk list data: %s", err))
+			}
+			err = fh1.Close()
+			if err != nil {
+				checkError(fmt.Errorf("failed to close genome chunk list file: %s", err))
+			}
+		}
+		bw.Flush()
+		err = fh.Close()
+		if err != nil {
+			checkError(fmt.Errorf("failed to close genome chunk list file: %s", err))
+		}
+
+		// -------------------------------------------------------------------
 		// info.toml, copy one and update the genome number
 		info, err := readIndexInfo(filepath.Join(pathB[0], FileInfo))
 		if err != nil {
@@ -256,6 +284,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				checkError(fmt.Errorf("failed to open info file: %s", err))
 			}
 
+			info.InputGenomes += info2.InputGenomes
 			info.Genomes += info2.Genomes
 			info.GenomeBatches += info2.GenomeBatches
 		}

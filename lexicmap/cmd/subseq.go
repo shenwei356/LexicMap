@@ -105,27 +105,37 @@ Attention:
 			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}
 
-		var batchIDAndRefID uint64
+		var batchIDAndRefIDs *[]uint64
+
 		var ok bool
-		if batchIDAndRefID, ok = m[refname]; !ok {
+		if batchIDAndRefIDs, ok = m[refname]; !ok {
 			checkError(fmt.Errorf("reference name not found: %s", refname))
 		}
 
-		genomeBatch := int(batchIDAndRefID >> 17)
-		genomeIdx := int(batchIDAndRefID & 131071)
-
-		fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileGenomes)
-		rdr, err := genome.NewReader(fileGenome)
-		if err != nil {
-			checkError(fmt.Errorf("failed to read genome data file: %s", err))
-		}
-
 		var tSeq *genome.Genome
-		if concatenatedPositions {
-			tSeq, err = rdr.SubSeq(genomeIdx, start-1, end-1)
-		} else {
-			tSeq, end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
-			end++ // returned end is 0-based.
+		var genomeBatch, genomeIdx int
+		var rdr *genome.Reader
+
+		for _, batchIDAndRefID := range *batchIDAndRefIDs {
+			genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
+			genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
+
+			fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileGenomes)
+			rdr, err = genome.NewReader(fileGenome)
+			if err != nil {
+				checkError(fmt.Errorf("failed to read genome data file: %s", err))
+			}
+
+			if concatenatedPositions {
+				tSeq, err = rdr.SubSeq(genomeIdx, start-1, end-1)
+			} else {
+				tSeq, end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+				end++ // returned end is 0-based.
+			}
+			if err == nil {
+				break
+				// checkError(fmt.Errorf("failed to read subsequence: %s", err))
+			}
 		}
 		if err != nil {
 			checkError(fmt.Errorf("failed to read subsequence: %s", err))
