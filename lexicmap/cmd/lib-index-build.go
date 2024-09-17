@@ -1474,13 +1474,13 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				seqSize = len(refseq.Seq) + len(record.Seq.Seq)
 				if seqSize > maxGenomeSize {
-					if i == 0 { // the first sequence is larger than maxGenomeSize
+					if len(record.Seq.Seq) > maxGenomeSize { // the current sequence is larger than maxGenomeSize
 						if outputBigGenomes {
 							chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
 						}
 						genome.PoolGenome.Put(refseq) // important
 						if opt.Verbose || opt.Log2File {
-							log.Warningf("skipping big genome (%d bp, %d sequences): %s", refseq.GenomeSize, refseq.NumSeqs, file)
+							log.Warningf("skipping a big genome with a sequence of %d bp: %s", len(record.Seq.Seq), file)
 							if !opt.Log2File {
 								log.Info()
 							}
@@ -1563,22 +1563,22 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				return
 			}
 
-			if refseq.GenomeSize > opt.MaxGenomeSize {
-				if outputBigGenomes {
-					chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
-				}
-				genome.PoolGenome.Put(refseq) // important
-				if opt.Verbose || opt.Log2File {
-					log.Warningf("skipping a big genome (%d bp, %d sequences): %s", refseq.GenomeSize, refseq.NumSeqs, file)
-					if !opt.Log2File {
-						log.Info()
-					}
-				}
-				if opt.Verbose {
-					chDuration <- time.Microsecond // important, or the progress bar will get hung
-				}
-				return
-			}
+			// if refseq.GenomeSize > opt.MaxGenomeSize {
+			// 	if outputBigGenomes {
+			// 		chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
+			// 	}
+			// 	genome.PoolGenome.Put(refseq) // important
+			// 	if opt.Verbose || opt.Log2File {
+			// 		log.Warningf("skipping a big genome (%d bp, %d sequences): %s", refseq.GenomeSize, refseq.NumSeqs, file)
+			// 		if !opt.Log2File {
+			// 			log.Info()
+			// 		}
+			// 	}
+			// 	if opt.Verbose {
+			// 		chDuration <- time.Microsecond // important, or the progress bar will get hung
+			// 	}
+			// 	return
+			// }
 
 			// if len(refseq.Seq) > MAX_GENOME_SIZE {
 			// 	if outputBigGenomes {

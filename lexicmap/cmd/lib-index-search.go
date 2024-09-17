@@ -1982,6 +1982,13 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				continue
 			}
 
+			// sort alignments
+			// sort target genomes according to their best alignment
+			// r.AlignResults = ars
+			sort.Slice(*r.SimilarityDetails, func(i, j int) bool {
+				return (*r.SimilarityDetails)[i].SimilarityScore > (*r.SimilarityDetails)[j].SimilarityScore
+			})
+
 			(*rs2)[j] = r
 			j++
 		}

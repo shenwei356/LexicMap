@@ -573,6 +573,28 @@ Figures:
 					}
 				}
 
+				if len(v2) == 0 { // all sequences are smaller than the window size
+					// ---------------------------------------------------------
+
+					if showProgressBar {
+						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
+					}
+					genome.RecycleGenome(ref2locs.Genome)
+					poolRef2Locs.Put(ref2locs)
+
+					// return or close genome reader
+					if hasGenomeRdrs {
+						poolGenomeRdrs[ref2locs.GenomeBatch] <- rdr
+					} else {
+						err = rdr.Close()
+						if err != nil {
+							checkError(fmt.Errorf("failed to close genome data file: %s", err))
+						}
+					}
+
+					continue
+				}
+
 				p = plot.New()
 
 				h, err = plotter.NewHist(v2, bins)
