@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.",
-      "wordCount" : "2918",
+      "wordCount" : "2941",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1938,7 +1938,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 <td style="text-align:left"><strong><code>-n/--top-n-genomes</code></strong></td>
 <td style="text-align:left">Default 0, 0 for all</td>
 <td style="text-align:left">Keep top N genome matches for a query in the chaining phase</td>
-<td style="text-align:left">The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
+<td style="text-align:left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
 </tr>
 <tr>
 <td style="text-align:left"><strong><code>-a/--all</code></strong></td>
@@ -1950,7 +1950,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 <td style="text-align:left">-J/&ndash;max-query-conc</td>
 <td style="text-align:left">Default 12, 0 for all</td>
 <td style="text-align:left">Maximum number of concurrent queries</td>
-<td style="text-align:left">Bigger values do not improve the batch searching speed and consume much memory</td>
+<td style="text-align:left">Bigger values do not improve the batch searching speed and consume much memory.</td>
 </tr>
 </tbody>
 </table> </div>
@@ -2492,7 +2492,8 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
  Escherichia coli           128071   
  Streptococcus pneumoniae   51971    
  Staphylococcus aureus      44215    
- Pseudomonas aeruginosa     34254</code></pre>
+ Pseudomonas aeruginosa     34254
+</code></pre>
 </li>
 </ol>
 

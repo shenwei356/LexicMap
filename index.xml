@@ -47,7 +47,7 @@
       <link>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/</guid>
-      <description>Make sure you have enough disk space, at least 8 TB, &amp;gt;10 TB is preferred.&#xA;Tools:&#xA;https://github.com/shenwei356/rush, for running jobs Info:&#xA;AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Steps for v0.2 Downloading assemblies tarballs here (except these starting with unknown__) to a directory (like atb): https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/&#xA;mkdir -p atb; cd atb; # assembly file list, 650 files in total wget https://bioinf.</description>
+      <description>Make sure you have enough disk space, at least 8 TB, &amp;gt;10 TB is preferred.&#xA;Tools:&#xA;https://github.com/shenwei356/rush, for running jobs Info:&#xA;AllTheBacteria, All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable. Preprint: AllTheBacteria - all bacterial genomes assembled, available and searchable Data on OSF: https://osf.io/xv7q9/ Steps for v0.2 and later versions hosted at OSF After v0.2, AllTheBacteria releases incremental datasets periodically, with all data stored at OSF.</description>
     </item>
     <item>
       <title>genomes</title>

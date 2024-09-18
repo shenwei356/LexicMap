@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a\/--all, the search result would be formatted to Blast-style format with \u0027lexicmap utils 2blast\u0027. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q\/--min-qcov-per-hsp, -Q\/--min-qcov-per-genome, and -i\/--align-min-match-pident, do not significantly accelerate the search speed.",
-      "wordCount" : "722",
+      "wordCount" : "745",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1768,7 +1768,8 @@
 </span></span><span class="line"><span class="cl">  -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there&#39;s only one
 </span></span><span class="line"><span class="cl">                                       pair of seeds matched. (default 17)
 </span></span><span class="line"><span class="cl">  -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
-</span></span><span class="line"><span class="cl">                                       phase.
+</span></span><span class="line"><span class="cl">                                       phase. Value 1 is not recommended as the best chaining result
+</span></span><span class="line"><span class="cl">                                       does not always bring the best alignment, so it better be &gt;= 5.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
