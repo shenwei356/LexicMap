@@ -224,7 +224,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// -----------------------------------------------------
 	// read genome chunks data if existed
 	fileGenomeChunks := filepath.Join(outDir, FileGenomeChunks)
-	idx.genomeChunks, err = readGenomeChunk(fileGenomeChunks)
+	idx.genomeChunks, err = readGenomeChunksMapBig2Small(fileGenomeChunks)
 	if err != nil {
 		return nil, err
 	}
@@ -1920,6 +1920,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			for j = 0; j < i; j++ {
 				rp = (*rs2)[j]
 				if rp == nil { // it has been merged
+					continue
+				}
+
+				if !bytes.Equal(r.ID, rp.ID) { // unequal genome IDs must not belong to the same genome.
 					continue
 				}
 

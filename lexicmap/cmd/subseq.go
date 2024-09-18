@@ -116,6 +116,8 @@ Attention:
 		var genomeBatch, genomeIdx int
 		var rdr *genome.Reader
 
+		var _end int
+
 		for _, batchIDAndRefID := range *batchIDAndRefIDs {
 			genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
 			genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
@@ -129,8 +131,8 @@ Attention:
 			if concatenatedPositions {
 				tSeq, err = rdr.SubSeq(genomeIdx, start-1, end-1)
 			} else {
-				tSeq, end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
-				end++ // returned end is 0-based.
+				tSeq, _end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), start-1, end-1)
+				_end++ // returned end is 0-based.
 			}
 			if err == nil {
 				break
@@ -140,6 +142,8 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read subsequence: %s", err))
 		}
+
+		end = _end // update end
 
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)

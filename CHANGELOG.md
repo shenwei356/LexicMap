@@ -10,6 +10,7 @@
     - More accurate `-n/--top-n-genomes`, and add new help message.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
+    - Add a header line and add another column to show if the reference genome is chunked.
 - `lexicmap utils subseq`:
     - Remain compatible after the change of `lexicmap index`.
 - `lexicmap utils seed-pos`:
