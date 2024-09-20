@@ -117,8 +117,8 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last int
-	var i int
+	var last, begin, middle, end int
+	var i, j int
 
 	var kmer0 uint64 // previous one
 	var kmer1 uint64 // current one
@@ -138,6 +138,8 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 
 	var index []int
 	getAnchor := scr.getAnchor
+	var anchor, anchorNext uint64
+	var lastNext uint64
 
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
@@ -174,10 +176,50 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 		// -----------------------------------------------------
 		// find the nearest anchor
 
-		i = index[getAnchor(leftBound)]
+		anchor = getAnchor(leftBound)
+		i = index[anchor]
 		if i < 0 {
 			continue
 		}
+		// fmt.Printf("\nquery: i: %d, kmer:%s\n", i, lexichash.MustDecode(leftBound, k))
+		// fmt.Printf("before: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+
+		lastNext = uint64(len(index))
+		anchorNext = anchor + 1
+		for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
+			anchorNext++
+		}
+		if j > 0 && // use binary search between i and j
+			j-i > 2 { // more than one seeds for the anchor
+
+			// fmt.Printf("%s: %d, %s: %d\n", lexichash.MustDecode(anchor, 5), i, lexichash.MustDecode(anchorNext, 5), j)
+
+			begin, end = i, j
+			for {
+				middle = begin + (end-begin)>>1
+				if middle&1 > 0 {
+					middle--
+				}
+				if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+					i = begin
+					break
+				}
+				// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
+				// 	data[middle], lexichash.MustDecode(data[middle], k))
+				if leftBound <= data[middle] { // when they are equal, we still need to check
+					// fmt.Printf(" left\n")
+					end = middle // new end
+				} else {
+					// fmt.Printf(" right\n")
+					begin = middle // new start
+				}
+				if begin+2 == end { // next to each other
+					i = begin
+					break
+				}
+			}
+			// fmt.Printf("after: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+		} // else: no next anchor available, reasons: 1) only 1 reference, 2) the anchor is TTTTT
 
 		// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
 
@@ -283,9 +325,8 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	var leftBound, rightBound uint64
 	var mask uint64
 
-	var last int
-	// var begin, middle, end int
-	var i int
+	var last, begin, middle, end int
+	var i, j int
 
 	var kmer0 uint64 // previous one
 	var kmer1 uint64 // current one
@@ -307,6 +348,8 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 
 	var index []int
 	getAnchor := scr.getAnchor
+	var anchor, anchorNext uint64
+	var lastNext uint64
 
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
@@ -344,10 +387,52 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 			// -----------------------------------------------------
 			// find the nearest anchor
 
-			i = index[getAnchor(leftBound)]
+			anchor = getAnchor(leftBound)
+			i = index[anchor]
 			if i < 0 {
 				continue
 			}
+			// fmt.Printf("\nquery: i: %d, kmer:%s\n", i, lexichash.MustDecode(leftBound, k))
+			// fmt.Printf("before: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+
+			lastNext = uint64(len(index))
+			anchorNext = anchor + 1
+			for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
+				anchorNext++
+			}
+			if j > 0 && // use binary search between i and j
+				j-i > 2 { // more than one seeds for the anchor
+
+				// fmt.Printf("%s: %d, %s: %d\n", lexichash.MustDecode(anchor, 5), i, lexichash.MustDecode(anchorNext, 5), j)
+
+				begin, end = i, j
+				for {
+					middle = begin + (end-begin)>>1
+					if middle&1 > 0 {
+						middle--
+					}
+					if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
+						i = begin
+						break
+					}
+					// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
+					// 	data[middle], lexichash.MustDecode(data[middle], k))
+					if leftBound <= data[middle] { // when they are equal, we still need to check
+						// fmt.Printf(" left\n")
+						end = middle // new end
+					} else {
+						// fmt.Printf(" right\n")
+						begin = middle // new start
+					}
+					if begin+2 == end { // next to each other
+						i = begin
+						break
+					}
+				}
+				// fmt.Printf("after: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+			} // else: no next anchor available, reasons: 1) only 1 reference, 2) the anchor is TTTTT
+
+			// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
 
 			// -----------------------------------------------------
 			// check one by one

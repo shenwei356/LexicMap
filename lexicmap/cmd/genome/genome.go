@@ -477,7 +477,7 @@ func (r *Reader) Close() error {
 
 // Seq returns the sequence with index of genome (0-based).
 func (r *Reader) Seq(idx int) (*Genome, error) {
-	return r.SubSeq(idx, 0, math.MaxUint32)
+	return r.SubSeq(idx, 0, math.MaxInt)
 }
 
 // GenomeInfo returns the genome information of a genome (idx is 0-based),
