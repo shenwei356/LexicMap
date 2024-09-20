@@ -186,8 +186,11 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 
 		lastNext = uint64(len(index))
 		anchorNext = anchor + 1
-		for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
-			anchorNext++
+		j = -1
+		if anchorNext < lastNext {
+			for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
+				anchorNext++
+			}
 		}
 		if j > 0 && // use binary search between i and j
 			j-i > 2 { // more than one seeds for the anchor
@@ -397,8 +400,11 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 
 			lastNext = uint64(len(index))
 			anchorNext = anchor + 1
-			for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
-				anchorNext++
+			j = -1
+			if anchorNext < lastNext {
+				for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
+					anchorNext++
+				}
 			}
 			if j > 0 && // use binary search between i and j
 				j-i > 2 { // more than one seeds for the anchor
