@@ -130,14 +130,27 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 ### Improving searching speed
 
+LexicMap's searching speed is related to many factors:
+- **The number of similar sequences in the index/database**. More genome hits cost more time, e.g., 16S rRNA gene.
+- **Similarity between query and subject sequences**. Alignment of diverse sequences is slower than that of highly similar sequences.
+- **The length of query sequence**. Longer queries run with more time.
+- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching and extracting candidate subsequences for alignment require a large number of file readings in parallel.
+- **CPU frequency and the number of threads**. Faster CPUs and more threads cost less time.
+
+
 Here are some tips to improve the search speed.
 
-- Increasing the concurrency number
-    - Increasing the value of `--max-open-files` (default 512). You might need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+- **Increasing the concurrency number**
+    - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
+
+          # Seeds (k-mer-value data) files
+          chunks = 48
+
+    - Increasing the value of `--max-open-files` (default 512). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
-- Loading the entire seed data into memoy (It's unnecessary if the index is stored in SSD)
+- (If you have many queries) **Loading the entire seed data into memoy** (It's unnecessary if the index is stored in SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
-- Returning less results
+- **Returning less results**
     - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
 
 ## Steps
