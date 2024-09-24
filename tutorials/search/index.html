@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.",
-      "wordCount" : "2941",
+      "wordCount" : "3088",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2089,23 +2089,41 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p>LexicMap&rsquo;s searching speed is related to many factors:</p>
+<ul>
+<li><strong>The number of similar sequences in the index/database</strong>. More genome hits cost more time, e.g., 16S rRNA gene.</li>
+<li><strong>Similarity between query and subject sequences</strong>. Alignment of diverse sequences is slower than that of highly similar sequences.</li>
+<li><strong>The length of query sequence</strong>. Longer queries run with more time.</li>
+<li><strong>The I/O performance and load</strong>. LexicMap is I/O bound, because seeds matching and extracting candidate subsequences for alignment require a large number of file readings in parallel.</li>
+<li><strong>CPU frequency and the number of threads</strong>. Faster CPUs and more threads cost less time.</li>
+</ul>
 <p>Here are some tips to improve the search speed.</p>
 <ul>
-<li>Increasing the concurrency number
+<li><strong>Increasing the concurrency number</strong>
 <ul>
-<li>Increasing the value of <code>--max-open-files</code> (default 512). You might need to <a
+<li>
+<p>Make sure that the value of <code>-j/--threads</code> (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in <code>info.toml</code> file, e.g,</p>
+<pre><code># Seeds (k-mer-value data) files
+chunks = 48
+</code></pre>
+</li>
+<li>
+<p>Increasing the value of <code>--max-open-files</code> (default 512). You might also need to <a
   class="gdoc-markdown__link"
   href="https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux"
->change the open files limit</a>.</li>
-<li>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</li>
+>change the open files limit</a>.</p>
+</li>
+<li>
+<p>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</p>
+</li>
 </ul>
 </li>
-<li>Loading the entire seed data into memoy (It&rsquo;s unnecessary if the index is stored in SSD)
+<li>(If you have many queries) <strong>Loading the entire seed data into memoy</strong> (It&rsquo;s unnecessary if the index is stored in SSD)
 <ul>
 <li>Setting <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.</li>
 </ul>
 </li>
-<li>Returning less results
+<li><strong>Returning less results</strong>
 <ul>
 <li>Setting <code>-n/--top-n-genomes</code> to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.</li>
 </ul>

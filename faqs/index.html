@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
       "description": "Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 200 bp by default.",
-      "wordCount" : "773",
+      "wordCount" : "818",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1830,21 +1830,31 @@ While for the query sequences, we don&rsquo;t convert them.</p>
 <p>LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 17 million) of genomes.
 There are some ways to improve the search speed of <code>lexicmap search</code>.</p>
 <ul>
-<li>Increasing the concurrency number
+<li><strong>Increasing the concurrency number</strong>
 <ul>
-<li>Increasing the value of <code>--max-open-files</code> (default 512). You might need to <a
+<li>
+<p>Make sure that the value of <code>-j/--threads</code> (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in <code>info.toml</code> file, e.g,</p>
+<pre><code># Seeds (k-mer-value data) files
+chunks = 48
+</code></pre>
+</li>
+<li>
+<p>Increasing the value of <code>--max-open-files</code> (default 512). You might also need to <a
   class="gdoc-markdown__link"
   href="https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux"
->change the open files limit</a>.</li>
-<li>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</li>
+>change the open files limit</a>.</p>
+</li>
+<li>
+<p>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</p>
+</li>
 </ul>
 </li>
-<li>Loading the entire seed data into memoy (It&rsquo;s unnecessary if the index is stored in SSD)
+<li><strong>Loading the entire seed data into memoy</strong> (It&rsquo;s unnecessary if the index is stored in SSD)
 <ul>
 <li>Setting <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.</li>
 </ul>
 </li>
-<li>Returning less results
+<li><strong>Returning less results</strong>
 <ul>
 <li>Setting <code>-n/--top-n-genomes</code> to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.</li>
 </ul>
