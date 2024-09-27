@@ -1490,9 +1490,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 								// only include valid chains
 								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 								r2.Update2(crChains2, cr.QueryLen)
-								sort.Slice(*r2.Chains, func(i, j int) bool {
-									return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
-								})
+								// there's no need
+								// sort.Slice(*r2.Chains, func(i, j int) bool {
+								// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+								// })
 
 								hasResult := false
 								j := 0
@@ -1678,9 +1679,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 						// only include valid chains
 						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 						r2.Update2(crChains2, cr.QueryLen)
-						sort.Slice(*r2.Chains, func(i, j int) bool {
-							return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
-						})
+						// there's no need
+						// sort.Slice(*r2.Chains, func(i, j int) bool {
+						// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+						// })
 
 						hasResult := false
 						j := 0
@@ -1855,7 +1857,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				}
 			}
 
-			// sort target genomes according to their best alignment
+			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
 			// r.AlignResults = ars
 			sort.Slice(*sds, func(i, j int) bool {
 				return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
@@ -1986,8 +1988,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				continue
 			}
 
-			// sort alignments
-			// sort target genomes according to their best alignment
+			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
 			// r.AlignResults = ars
 			sort.Slice(*r.SimilarityDetails, func(i, j int) bool {
 				return (*r.SimilarityDetails)[i].SimilarityScore > (*r.SimilarityDetails)[j].SimilarityScore
@@ -1999,7 +2000,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		*rs2 = (*rs2)[:j]
 	}
 
-	// sort all hits
+	// sort all genomes, by qcovHSP*pident of the best alignment.
 	sort.Slice(*rs2, func(i, j int) bool {
 		return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
 	})

@@ -327,6 +327,12 @@ Tab-delimited format with 17+ columns, with 1-based positions.
     20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
     21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
+Result ordering:
+
+  1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
+  2. Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.
+
+
 ### Examples
 
 {{< tabs "t2" >}}
@@ -437,7 +443,7 @@ If you would like to summarize alignment results, e.g., the number of species, h
 1. Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to any information (such as species name).
    
         # for GTDB/GenBank/RefSeq genomes downloaded with genome_updater
-        cut -f 1,8 assembly_summary.txt > ref2species.tsv
+        cut -f 1,8 assembly_summary.txt > ass2species.tsv
 
         head -n 3 ass2species.tsv
         GCF_002287175.1 Methanobacterium bryantii

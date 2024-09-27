@@ -6,7 +6,7 @@
     - Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.
 - `lexicmap search`:
     - More accurate `-n/--top-n-genomes`, and add new help message.
-    - Improve the speed of anchor deduplication and genome information extraction.
+    - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
     - Remain compatible after the change of `lexicmap index`.
 - `lexicmap utils genomes`:

@@ -56,6 +56,10 @@ Output format:
     20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
     21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
+Result ordering:
+  1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
+  2. Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.
+
 Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
 

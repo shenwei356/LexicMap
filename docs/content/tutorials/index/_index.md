@@ -16,7 +16,7 @@ Terminology differences:
 ## TL;DR
 
 1. Prepare input files:
-    - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**.
+    - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names**.
       E.g., GCF_000006945.2.fna.gz
         - A regular expression is also available to extract reference id from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
@@ -51,7 +51,7 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 
 - **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
-    - **Genome ID**: they should be distinct for accurate result interpretation, which will be shown in the search result.
+    - **Genome ID**: **they must not contain tab ("\t") symbols, and should be distinct for accurate result interpretation**, which will be shown in the search result.
         - A regular expression is also available to extract reference id from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
 - **File extention**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
