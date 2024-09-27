@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/search/",
       "headline": "search",
       "description": "$ lexicmap search -h Search sequences against an index Attention: 1. Input should be (gzipped) FASTA or FASTQ records from files or stdin. 2. For multiple queries, the order of queries might be different from the input. Tips: 1. When using -a\/--all, the search result would be formatted to Blast-style format with \u0027lexicmap utils 2blast\u0027. And the search speed would be slightly slowed down. 2. Alignment result filtering is performed in the final phase, so stricter filtering criteria, including -q\/--min-qcov-per-hsp, -Q\/--min-qcov-per-genome, and -i\/--align-min-match-pident, do not significantly accelerate the search speed.",
-      "wordCount" : "745",
+      "wordCount" : "772",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1735,6 +1735,10 @@
 </span></span><span class="line"><span class="cl">    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
 </span></span><span class="line"><span class="cl">    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
 </span></span><span class="line"><span class="cl">    21. align,    Alignment text (&#34;|&#34; and &#34; &#34;) between qseq and sseq. (optional with -a/--all)
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Result ordering:
+</span></span><span class="line"><span class="cl">  1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
+</span></span><span class="line"><span class="cl">  2. Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap search [flags] -d &lt;index path&gt; [query.fasta.gz ...] [-o query.tsv.gz]

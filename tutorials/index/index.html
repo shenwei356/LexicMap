@@ -13,7 +13,7 @@
 
 
   <meta name="description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names." />
+On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
 
     <title>Step 1. Building a database | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,7 +40,7 @@ On this page and in the LexicMap command line options, the term &ldquo;mask&rdqu
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names." />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -50,7 +50,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 1. Building a database" />
   <meta name="twitter:description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names." />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
 
 
   <script type="application/ld+json">
@@ -61,8 +61,8 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "name": "Step 1. Building a database",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
-      "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers in the file names.",
-      "wordCount" : "2952",
+      "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers (no tab symbols) in the file names.",
+      "wordCount" : "2962",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1733,7 +1733,7 @@ Because these masks, which consist of thousands of k-mers and capture k-mers fro
 <ol>
 <li>Prepare input files:
 <ul>
-<li><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names</strong>.
+<li><strong>Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names</strong>.
 E.g., GCF_000006945.2.fna.gz
 <ul>
 <li>A regular expression is also available to extract reference id from the file name.
@@ -1789,7 +1789,7 @@ More precisely:</p>
 <li><strong>File type</strong>: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.</li>
 <li><strong>File name</strong>: &ldquo;Genome ID&rdquo; + &ldquo;File extention&rdquo;. E.g., <code>GCF_000006945.2.fna.gz</code>.
 <ul>
-<li><strong>Genome ID</strong>: they should be distinct for accurate result interpretation, which will be shown in the search result.
+<li><strong>Genome ID</strong>: <strong>they must not contain tab (&quot;\t&quot;) symbols, and should be distinct for accurate result interpretation</strong>, which will be shown in the search result.
 <ul>
 <li>A regular expression is also available to extract reference id from the file name.
 E.g., <code>--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'</code> extracts <code>GCF_000006945.2</code> from GenBank assembly file <code>GCF_000006945.2_ASM694v2_genomic.fna.gz</code></li>

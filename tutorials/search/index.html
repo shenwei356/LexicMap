@@ -71,7 +71,7 @@ lexicmap search -d db.lmi query." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.",
-      "wordCount" : "3088",
+      "wordCount" : "3113",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2327,6 +2327,11 @@ chunks = 48
 20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
 21. align,    Alignment text (&quot;|&quot; and &quot; &quot;) between qseq and sseq. (optional with -a/--all)
 </code></pre>
+<p>Result ordering:</p>
+<ol>
+<li>Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.</li>
+<li>Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.</li>
+</ol>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="examples"
     >
@@ -2475,7 +2480,7 @@ chunks = 48
 <li>
 <p>Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to any information (such as species name).</p>
 <pre><code> # for GTDB/GenBank/RefSeq genomes downloaded with genome_updater
- cut -f 1,8 assembly_summary.txt &gt; ref2species.tsv
+ cut -f 1,8 assembly_summary.txt &gt; ass2species.tsv
 
  head -n 3 ass2species.tsv
  GCF_002287175.1 Methanobacterium bryantii
