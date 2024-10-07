@@ -4,6 +4,7 @@
 
 - `lexicmap index`:
     - Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.
+    - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
 - `lexicmap search`:
     - More accurate `-n/--top-n-genomes`, and add new help message.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.

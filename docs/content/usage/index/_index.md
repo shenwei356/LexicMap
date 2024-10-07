@@ -91,10 +91,11 @@ Important parameters:
                             ■ Big values decrease the search sensitivity for distant targets, speed up the indexing
                             speed, decrease the indexing memory occupation and decrease the index size. While the
                             alignment speed is almost not affected.
-  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
+  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: value of -j/--threads).
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
                             operating systems.
+                            ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
@@ -115,7 +116,7 @@ Flags:
                                   $contig_interval >= -g/--max-genome. The second column is one of the
                                   skip types: no_valid_seqs, too_large_genome, too_many_seqs.
   -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files.
-                                  (default 16)
+                                  Default: the value of -j/--threads. (default 16)
       --contig-interval int       ► Length of interval (N's) between contigs in a genome. (default 1000)
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
                                   case ignored. Attention: use double quotation marks for patterns

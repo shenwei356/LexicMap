@@ -115,10 +115,11 @@ Important parameters:
                             ■ Big values decrease the search sensitivity for distant targets, speed up the indexing
                             speed, decrease the indexing memory occupation and decrease the index size. While the
                             alignment speed is almost not affected.
-  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: #CPUs).
+  2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: value of -j/--threads).
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
                             operating systems.
+                            ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
@@ -170,7 +171,16 @@ Important parameters:
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
 		maskFile := getFlagString(cmd, "mask-file")
-		chunks := getFlagPositiveInt(cmd, "chunks")
+
+		chunks := opt.NumCPUs // the default value is equal to -j/--threads
+		_chunks := getFlagPositiveInt(cmd, "chunks")
+		if chunks != _chunks && cmd.Flags().Lookup("chunks").Changed {
+			chunks = _chunks
+		}
+		if chunks > 128 {
+			chunks = 128
+		}
+
 		mergeThreads := getFlagPositiveInt(cmd, "seed-data-threads")
 		if mergeThreads > chunks {
 			mergeThreads = chunks
@@ -559,12 +569,12 @@ func init() {
 
 	// -----------------------------  kmer-value data   -----------------------------
 
-	defaultChunks := runtime.NumCPU()
+	defaultChunks = runtime.NumCPU()
 	if defaultChunks > 128 {
 		defaultChunks = 128
 	}
 	indexCmd.Flags().IntP("chunks", "c", defaultChunks,
-		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files.`))
+		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Default: the value of -j/--threads.`))
 	indexCmd.Flags().IntP("partitions", "", 1024,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
 	indexCmd.Flags().IntP("max-open-files", "", 512,
@@ -589,5 +599,6 @@ func init() {
 	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>"))
 }
 
+var defaultChunks int
 var reIgnoreCaseStr = "(?i)"
 var reIgnoreCase = regexp.MustCompile(`\(\?i\)`)
