@@ -574,7 +574,7 @@ func init() {
 		defaultChunks = 128
 	}
 	indexCmd.Flags().IntP("chunks", "c", defaultChunks,
-		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Default: the value of -j/--threads.`))
+		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Max: 128. Default: the value of -j/--threads.`))
 	indexCmd.Flags().IntP("partitions", "", 1024,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
 	indexCmd.Flags().IntP("max-open-files", "", 512,
