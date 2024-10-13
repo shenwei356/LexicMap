@@ -273,10 +273,15 @@ Result ordering:
 		checkError(err)
 
 		if extLen > idx.contigInterval {
-			checkError(fmt.Errorf("the value of flag --align-ext-len (%d) should be <= contig interval length in database (%d)", extLen, idx.contigInterval))
+			// checkError(fmt.Errorf("the value of flag --align-ext-len (%d) should be <= contig interval length in database (%d)", extLen, idx.contigInterval))
+			log.Infof("the value of flag --align-ext-len (%d) is adjusted to contig interval length in database (%d)", extLen, idx.contigInterval)
+			sopt.ExtendLength = idx.contigInterval
+
 		}
 		if maxDist > idx.contigInterval {
-			checkError(fmt.Errorf("the value of flag --seed-max-dist (%d) should be <= contig interval length in database (%d)", maxDist, idx.contigInterval))
+			// checkError(fmt.Errorf("the value of flag --seed-max-dist (%d) should be <= contig interval length in database (%d)", maxDist, idx.contigInterval))
+			log.Infof("the value of flag --seed-max-dist (%d) is adjusted to contig interval length in database (%d)", maxDist, idx.contigInterval)
+			sopt.MaxDistance = float64(idx.contigInterval)
 		}
 
 		if outputLog {
