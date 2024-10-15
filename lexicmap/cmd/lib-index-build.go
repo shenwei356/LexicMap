@@ -150,6 +150,8 @@ type IndexBuildingOptions struct {
 	ContigInterval int // the length of N's between contigs
 
 	SaveSeedPositions bool
+
+	Debug bool
 }
 
 // CheckIndexBuildingOptions checks some important options
@@ -176,7 +178,7 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 		return fmt.Errorf("invalid numer of partitions in indexing k-mer data: %d, should be >=1", opt.Partitions)
 	}
 
-	if opt.GenomeBatchSize < 1 || opt.GenomeBatchSize > 1<<17 {
+	if opt.GenomeBatchSize < 1 || opt.GenomeBatchSize > 1<<BITS_BATCH_IDX {
 		return fmt.Errorf("invalid genome batch size: %d, valid range: [1, %d]", opt.GenomeBatchSize, 1<<BITS_BATCH_IDX)
 	}
 
@@ -330,6 +332,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	var begin, end int
 	var kvChunks int
+	var hasSomeGenomes bool
 	for batch := 0; batch < nBatches; batch++ {
 		// files for this batch
 		begin = batch * opt.GenomeBatchSize
@@ -343,13 +346,16 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		var outdirB string
 		if nBatches > 1 {
 			outdirB = filepath.Join(tmpDir, batchDir(batch))
-			tmpIndexes = append(tmpIndexes, outdirB)
 		} else {
 			outdirB = outdir
 		}
 
 		// build index for this batch
-		kvChunks = buildAnIndex(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
+		kvChunks, hasSomeGenomes = buildAnIndex(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
+
+		if nBatches > 1 && hasSomeGenomes { // only merge indexes with valid genomes
+			tmpIndexes = append(tmpIndexes, outdirB)
+		}
 	}
 
 	if outputBigGenomes {
@@ -446,7 +452,9 @@ const TOO_MANY_SEQS = "too_many_seqs"
 // build an index for the files of one batch
 func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8, opt *IndexBuildingOptions,
 	datas *[]*map[uint64]*[]uint64,
-	outdir string, files []string, batch int, nbatches int, outputBigGenomes bool, chBG chan string) int {
+	outdir string, files []string, batch int, nbatches int, outputBigGenomes bool, chBG chan string) (int, bool) {
+
+	debug := opt.Debug
 
 	var timeStart time.Time
 	if opt.Verbose || opt.Log2File {
@@ -555,7 +563,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	var nFiles int // the total number of indexed files
 	go func() {
 
-		for refseq := range genomesW { // each genome
+		for refseq := range genomesW { // each genome, one by one
 			nFiles++
 
 			// write the genome to file
@@ -571,6 +579,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				if err != nil {
 					checkError(fmt.Errorf("failed to write seed position: %s", err))
 				}
+			}
+
+			if debug {
+				log.Debugf("batch: %d, file #%d, genome data saved: %s", batch, refseq.GenomeIdx, refseq.ID)
+				log.Info()
 			}
 
 			// send signal of genome being written
@@ -606,7 +619,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 		var li *[]uint64
 		var ok bool
-		for refseq := range genomes { // each genome
+		for refseq := range genomes { // each genome, one by one
 			genomesW <- refseq // send to save to file, asynchronously writing
 
 			_kmers := refseq.Kmers
@@ -622,10 +635,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			bw.Write(buf)
 
 			// genome id -> a list of batch+ref-index
-			if li, ok = mGenomeChunks[refseq.GenomeID]; !ok {
+			if li, ok = mGenomeChunks[refseq.GenomeIdx]; !ok {
 				tmp := make([]uint64, 0, 8)
 				li = &tmp
-				mGenomeChunks[refseq.GenomeID] = &tmp
+				mGenomeChunks[refseq.GenomeIdx] = &tmp
 			}
 			*li = append(*li, batchIDAndRefID)
 
@@ -828,6 +841,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 			wg.Wait() // wait all mask chunks
 
+			if debug {
+				log.Debugf("batch: %d, file #%d, seeds collected: %s", batch, refseq.GenomeIdx, refseq.ID)
+				log.Info()
+			}
+
 			// wait the genome data being written
 			<-refseq.Done
 
@@ -880,9 +898,18 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 			go func(refseq *genome.Genome) {
 				defer func() {
+					if debug {
+						log.Debugf("batch: %d, file #%d, finished computing seeds: %s", batch, refseq.GenomeIdx, refseq.ID)
+						log.Info()
+					}
 					wgMask.Done()
 					<-tokensMask
 				}()
+
+				if debug {
+					log.Debugf("batch: %d, file #%d, start to compute seeds: %s", batch, refseq.GenomeIdx, refseq.ID)
+					log.Info()
+				}
 
 				// --------------------------------
 				// mask with lexichash
@@ -1379,6 +1406,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	}()
 
 	// 1.1) parsing input genome files
+	iFileBase := batch * opt.GenomeBatchSize
 	for iFile, file := range files {
 		tokens <- 1
 		wg.Add(1)
@@ -1389,6 +1417,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				<-tokens
 			}()
 			startTime := time.Now()
+
+			if debug {
+				log.Debugf("batch: %d, file #%d: %s, begin to parse file", batch, iFile, file)
+				log.Info()
+			}
 
 			k := lh.K
 			// k8 := uint8(lh.K)
@@ -1414,7 +1447,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			refseq := genome.PoolGenome.Get().(*genome.Genome)
 			refseq.Reset()
 
-			refseq.GenomeID = iFile
+			refseq.GenomeIdx = iFile
 
 			refseq.StartTime = startTime
 
@@ -1508,6 +1541,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 					refseq.ID = []byte(genomeID)
 
+					if debug {
+						log.Debugf("batch: %d, file #%d: %s, send split genome: %s", batch, iFile, file, genomeID)
+						log.Info()
+					}
+
 					// send to mask
 					genomesMask <- refseq
 
@@ -1518,7 +1556,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					refseq = genome.PoolGenome.Get().(*genome.Genome)
 					refseq.Reset()
 
-					refseq.GenomeID = iFile
+					refseq.GenomeIdx = iFile
 
 					// set a zero time, and won't send the time to the progress bar
 					refseq.StartTime = time.Time{}
@@ -1619,10 +1657,19 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 			refseq.ID = []byte(genomeID)
 
+			if debug {
+				if chunks > 1 {
+					log.Debugf("batch: %d, file #%d: %s, send split genome: %s", batch, iFile, file, genomeID)
+				} else {
+					log.Debugf("batch: %d, file #%d: %s, send genome: %s", batch, iFile, file, genomeID)
+				}
+				log.Info()
+			}
+
 			// send to mask
 			genomesMask <- refseq
 
-		}(file, iFile)
+		}(file, iFileBase+iFile)
 	}
 
 	wg.Wait() // all infiles are parsed
@@ -1760,7 +1807,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 	<-doneInfo // info file
 
-	return chunks
+	// rare case: no valid genome in a batch: nFiles == 0
+	return chunks, nFiles > 0
 }
 
 // IndexInfo contains summary of the index

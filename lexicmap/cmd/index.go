@@ -336,6 +336,8 @@ Important parameters:
 			ContigInterval: contigInterval,
 
 			SaveSeedPositions: getFlagBool(cmd, "save-seed-pos"),
+
+			Debug: getFlagBool(cmd, "debug"),
 		}
 		err = CheckIndexBuildingOptions(bopt)
 		checkError(err)
@@ -372,6 +374,9 @@ Important parameters:
 
 		var files []string
 		if readFromDir {
+			if opt.Verbose || opt.Log2File {
+				log.Infof("  scanning files from directory: %s", inDir)
+			}
 			files, err = getFileListFromDir(inDir, reFile, opt.NumCPUs)
 			if err != nil {
 				checkError(errors.Wrapf(err, "walking dir: %s", inDir))
@@ -380,6 +385,9 @@ Important parameters:
 				log.Warningf("  no files matching regular expression: %s", reFileStr)
 			}
 		} else {
+			if opt.Verbose || opt.Log2File {
+				log.Info("  checking files from command-line argument or/and file list ...")
+			}
 			files = getFileListFromArgsAndFile(cmd, args, !skipFileCheck, "infile-list", !skipFileCheck)
 			if opt.Verbose || opt.Log2File {
 				if len(files) == 1 && isStdin(files[0]) {
@@ -595,6 +603,9 @@ func init() {
 		formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
 
 	// ----------------------------------------------------------
+
+	indexCmd.Flags().BoolP("debug", "", false,
+		formatFlagUsage(`Print debug information.`))
 
 	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>"))
 }
