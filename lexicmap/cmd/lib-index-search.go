@@ -1818,7 +1818,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 				return
 			}
 
-			if !idx.hasGenomeChunks {
+			if !idx.hasGenomeChunks { // if hasGenomeChunks, do not filter results now
 				// compute aligned bases per genome
 				var alignedBasesGenome int
 				regions := poolRegions.Get().(*[]*[2]int)
@@ -1938,14 +1938,14 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 					continue
 				}
 
-				// alignments belonging to the same genome
-				merged = true
-
-				// merge a into b
+				// merge r into rp
 
 				// only need to update SimilarityDetails, AlignedFraction
 				*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
 
+				// alignments belonging to the same genome
+				merged = true
+				break
 			}
 			if merged {
 				poolSearchResult.Put(r)

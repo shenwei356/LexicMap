@@ -144,7 +144,7 @@ Input:
 
 				stringSplitNByByte(line, '\t', ncols, &items)
 				if len(items) < ncols {
-					checkError(fmt.Errorf("the input has only %d columns, did you forgot to add -a/--all for 'lexicmap search'?", len(items)))
+					checkError(fmt.Errorf("the input has only %d columns, did you forget to add -a/--all for 'lexicmap search'?", len(items)))
 				}
 
 				query = items[0]
