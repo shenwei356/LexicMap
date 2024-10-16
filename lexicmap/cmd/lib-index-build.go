@@ -1823,7 +1823,7 @@ type IndexInfo struct {
 	Chunks           int   `toml:"chunks" comment:"Seeds (k-mer-value data) files"`
 	Partitions       int   `toml:"index-partitions"`
 	InputGenomes     int   `toml:"input-genomes" comment:"Input genomes"`
-	Genomes          int   `toml:"genomes" comment:"Genome data. 'genomes' might be larger than 'input-genomes'."`
+	Genomes          int   `toml:"genomes" comment:"Genome data. \n'genomes' might be larger than 'input-genomes', as some big fragmented genomes are split into multiple chunks.\nIn this case, 'genome-batch-size' is not accurate, being variable in different batches."`
 	GenomeBatchSize  int   `toml:"genome-batch-size"`
 	GenomeBatches    int   `toml:"genome-batches"`
 	ContigInterval   int   `toml:"contig-interval"`
