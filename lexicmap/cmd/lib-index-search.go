@@ -1228,7 +1228,8 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			var _qseq, _tseq []byte
 			var cigar *wfa.AlignmentResult
-			var op *wfa.CIGARRecord
+			// var op *wfa.CIGARRecord
+			var op uint64
 			var Q, A, T *[]byte
 
 			// -----------------------------------------------------
@@ -1548,8 +1549,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 											}
 
 											for _, op = range cigar.Ops {
-												c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-												c.CIGAR = append(c.CIGAR, op.Op)
+												// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+												c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+												// c.CIGAR = append(c.CIGAR, op.Op)
+												c.CIGAR = append(c.CIGAR, byte(op>>32))
 											}
 
 											Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
@@ -1739,8 +1742,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 									}
 
 									for _, op = range cigar.Ops {
-										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-										c.CIGAR = append(c.CIGAR, op.Op)
+										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+										// c.CIGAR = append(c.CIGAR, op.Op)
+										c.CIGAR = append(c.CIGAR, byte(op>>32))
 									}
 
 									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
@@ -1921,11 +1926,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			merged = false
 			for j = 0; j < i; j++ {
 				rp = (*rs2)[j]
-				if rp == nil { // it has been merged
-					continue
-				}
-
-				if !bytes.Equal(r.ID, rp.ID) { // unequal genome IDs must not belong to the same genome.
+				if rp == nil || r.GenomeIndex != rp.GenomeIndex { // not from the same genome
 					continue
 				}
 

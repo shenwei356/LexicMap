@@ -574,12 +574,18 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	if err != nil {
 		return 0, -1, nil, 0, 0, err
 	}
-	r := bufio.NewReader(fh)
-	defer fh.Close()
+	// r := bufio.NewReader(fh)
+	r := poolBufReader.Get().(*bufio.Reader)
+	r.Reset(fh)
+	defer func() {
+		poolBufReader.Put(r)
+		fh.Close()
+	}()
 
 	// ---------------------------------------------
 
 	buf := make([]byte, 8)
+	buf16 := make([]byte, 16)
 
 	var n int
 
@@ -662,17 +668,17 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 		// index := make([]uint64, 0, nAnchors<<1)
 		index := make([]uint64, indexSize)
 		for j = 0; j < nAnchors; j++ {
-			_, err = io.ReadFull(r, buf)
+			_, err = io.ReadFull(r, buf16)
 			if err != nil {
 				return 0, -1, nil, 0, 0, err
 			}
-			kmer = be.Uint64(buf)
+			kmer = be.Uint64(buf16[:8])
 
-			_, err = io.ReadFull(r, buf)
-			if err != nil {
-				return 0, -1, nil, 0, 0, err
-			}
-			offset = be.Uint64(buf)
+			// _, err = io.ReadFull(r, buf)
+			// if err != nil {
+			// 	return 0, -1, nil, 0, 0, err
+			// }
+			offset = be.Uint64(buf16[8:16])
 
 			// index = append(index, kmer)
 			// index = append(index, offset)

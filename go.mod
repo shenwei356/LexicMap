@@ -5,6 +5,7 @@ go 1.22
 toolchain go1.22.6
 
 // replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
+// replace github.com/shenwei356/wfa => /home/shenwei/go/src/github.com/shenwei356/wfa/
 
 require (
 	github.com/dustin/go-humanize v1.0.1
@@ -20,7 +21,7 @@ require (
 	github.com/shenwei356/kmers v0.1.0
 	github.com/shenwei356/lexichash v0.5.0
 	github.com/shenwei356/util v0.5.2
-	github.com/shenwei356/wfa v0.3.0
+	github.com/shenwei356/wfa v0.3.1
 	github.com/shenwei356/xopen v0.3.2
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
