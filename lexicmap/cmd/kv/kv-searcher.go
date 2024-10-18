@@ -183,7 +183,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	getAnchor := scr.getAnchor
 	var is2ndKmer bool
 
-	r := bufio.NewReader(nil)
+	// r := bufio.NewReader(nil)
+	r := poolBufReader.Get().(*bufio.Reader)
 
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
@@ -503,6 +504,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		}
 	}
 
+	poolBufReader.Put(r)
 	return results, nil
 }
 
@@ -885,3 +887,8 @@ func (scr *Searcher) Close() error {
 // 	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
 // 		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
 // }
+
+var poolBufReader = &sync.Pool{New: func() interface{} {
+	r := bufio.NewReaderSize(nil, 16384)
+	return r
+}}
