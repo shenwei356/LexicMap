@@ -236,6 +236,11 @@ Result ordering:
 			maxQueryConcurrency = runtime.NumCPU()
 		}
 
+		// maxSeedingConcurrency := getFlagNonNegativeInt(cmd, "max-seed-conc")
+		// if maxSeedingConcurrency == 0 {
+		// 	maxSeedingConcurrency = runtime.NumCPU()
+		// }
+
 		// ---------------------------------------------------------------
 		// loading index
 
@@ -249,6 +254,8 @@ Result ordering:
 			Verbose:      opt.Verbose,
 			Log2File:     opt.Log2File,
 			MaxOpenFiles: maxOpenFiles,
+
+			// MaxSeedingConcurrency: maxSeedingConcurrency,
 
 			MinPrefix: uint8(minPrefix),
 			// MaxMismatch:     maxMismatch,
@@ -520,6 +527,9 @@ func init() {
 
 	mapCmd.Flags().IntP("max-query-conc", "J", 12,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
+
+	// mapCmd.Flags().IntP("max-seed-conc", "S", 8,
+	// 	formatFlagUsage(`Maximum number of concurrent seed file matching. Bigger values improve seed matching speed in SSD.`))
 
 	// seed searching
 

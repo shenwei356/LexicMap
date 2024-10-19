@@ -50,6 +50,8 @@ type IndexSearchingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
 	// seed searching
+	// MaxSeedingConcurrency int
+
 	InMemorySearch bool  // load the seed/kv data into memory
 	MinPrefix      uint8 // minimum prefix length, e.g., 15
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
@@ -92,6 +94,8 @@ func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
 var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	NumCPUs:      runtime.NumCPU(),
 	MaxOpenFiles: 512,
+
+	// MaxSeedingConcurrency: 8,
 
 	MinPrefix: 15,
 	// MaxMismatch:     -1,
@@ -838,6 +842,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 		doneR <- 1
 	}()
+
 	for iS := 0; iS < nSearchers; iS++ {
 		if inMemorySearch {
 			beginM = searchersIM[iS].ChunkIndex
@@ -1020,7 +1025,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	}()
 
 	// 2.1) search with multiple searchers
-
+	// tokensS := make(chan int, idx.opt.MaxSeedingConcurrency)
 	for iS := 0; iS < nSearchers; iS++ {
 		if inMemorySearch {
 			beginM = searchersIM[iS].ChunkIndex
@@ -1031,6 +1036,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 		}
 
 		wg.Add(1)
+		// tokensS <- 1
 		go func(iS, beginM, endM int) {
 			idx.searcherTokens[iS] <- 1 // get the access to the searcher
 			var srs *[]*kv.SearchResult
@@ -1079,6 +1085,7 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 
 			<-idx.searcherTokens[iS] // return the access
 			wg.Done()
+			// <-tokensS
 		}(iS, beginM, endM)
 	}
 	wg.Wait()
