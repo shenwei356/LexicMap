@@ -9,14 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.133.0">
+<meta name="generator" content="Hugo 0.134.2">
 
 
-  <meta name="description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
+  <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
-For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query." />
+For short queries like genes or long reads, returning top N hits." />
 
     <title>Step 2. Searching | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -42,11 +40,9 @@ lexicmap search -d db.lmi query." />
     content="Step 2. Searching"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
+  <meta property="og:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
-For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query." />
+For short queries like genes or long reads, returning top N hits." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/search/" />
 
@@ -55,11 +51,9 @@ lexicmap search -d db.lmi query." />
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 2. Searching" />
-  <meta name="twitter:description" content="Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
+  <meta name="twitter:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
 Run:
-For short queries like genes or long reads, returning top N hits.
-lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.
-lexicmap search -d db.lmi query." />
+For short queries like genes or long reads, returning top N hits." />
 
 
   <script type="application/ld+json">
@@ -70,8 +64,8 @@ lexicmap search -d db.lmi query." />
       "name": "Step 2. Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
-      "description": "Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.\nlexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \\ --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000 For longer queries like plasmids, returning all hits.\nlexicmap search -d db.lmi query.",
-      "wordCount" : "3113",
+      "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.",
+      "wordCount" : "3144",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -616,15 +610,25 @@ lexicmap search -d db.lmi query." />
             <input
               type="checkbox"
               
-                class="hidden"
+                class="gdoc-nav__toggle" id="navtree-5198871c"
+                
               
             />
             <label
+              
+                for="navtree-5198871c" class="flex justify-between align-center"
               
             >
               
                 <span class="flex">More</span>
               
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
               
             </label>
 
@@ -1919,40 +1923,46 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong><code>-w/--load-whole-seeds</code></strong></td>
-<td style="text-align:left"></td>
-<td style="text-align:left">Load the whole seed data into memory for faster search</td>
-<td style="text-align:left">Use this if the index is not big and many queries are needed to search.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-n/--top-n-genomes</code></strong></td>
-<td style="text-align:left">Default 0, 0 for all</td>
-<td style="text-align:left">Keep top N genome matches for a query in the chaining phase</td>
-<td style="text-align:left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-a/--all</code></strong></td>
-<td style="text-align:left"></td>
-<td style="text-align:left">Output more columns, e.g., matched sequences.</td>
-<td style="text-align:left">Use this if you want to output blast-style format with &ldquo;lexicmap utils 2blast&rdquo;</td>
-</tr>
-<tr>
-<td style="text-align:left">-J/&ndash;max-query-conc</td>
-<td style="text-align:left">Default 12, 0 for all</td>
-<td style="text-align:left">Maximum number of concurrent queries</td>
-<td style="text-align:left">Bigger values do not improve the batch searching speed and consume much memory.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>-j/--threads</code></strong></td>
+          <td style="text-align: left">Default: all available cpus</td>
+          <td style="text-align: left">Number of CPU cores to use.</td>
+          <td style="text-align: left">The value should be &gt;= the number of seed chunk files (“chunks” in info.toml, set by <code>-c/--chunks</code> in <code>lexicmap index</code>).</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-w/--load-whole-seeds</code></strong></td>
+          <td style="text-align: left"></td>
+          <td style="text-align: left">Load the whole seed data into memory for faster search</td>
+          <td style="text-align: left">Use this if the index is not big and many queries are needed to search.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-n/--top-n-genomes</code></strong></td>
+          <td style="text-align: left">Default 0, 0 for all</td>
+          <td style="text-align: left">Keep top N genome matches for a query in the chaining phase</td>
+          <td style="text-align: left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-a/--all</code></strong></td>
+          <td style="text-align: left"></td>
+          <td style="text-align: left">Output more columns, e.g., matched sequences.</td>
+          <td style="text-align: left">Use this if you want to output blast-style format with &ldquo;lexicmap utils 2blast&rdquo;</td>
+      </tr>
+      <tr>
+          <td style="text-align: left">-J/&ndash;max-query-conc</td>
+          <td style="text-align: left">Default 12, 0 for all</td>
+          <td style="text-align: left">Maximum number of concurrent queries</td>
+          <td style="text-align: left">Bigger values do not improve the batch searching speed and consume much memory.</td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>
@@ -1968,46 +1978,46 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong><code>-p, --seed-min-prefix</code></strong></td>
-<td style="text-align:left">Default 15</td>
-<td style="text-align:left">Minimum (prefix) length of matched seeds.</td>
-<td style="text-align:left">Smaller values produce more results at the cost of slow speed.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-P, --seed-min-single-prefix</code></strong></td>
-<td style="text-align:left">Default 17</td>
-<td style="text-align:left">Minimum (prefix) length of matched seeds if there&rsquo;s only one pair of seeds matched.</td>
-<td style="text-align:left">Smaller values produce more results at the cost of slow speed.</td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--seed-max-dist</code></td>
-<td style="text-align:left">Default 1000</td>
-<td style="text-align:left">Max distance between seeds in seed chaining. It should be &lt;= contig interval length in database.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--seed-max-gap</code></td>
-<td style="text-align:left">Default 200</td>
-<td style="text-align:left">Max gap in seed chaining.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>-p, --seed-min-prefix</code></strong></td>
+          <td style="text-align: left">Default 15</td>
+          <td style="text-align: left">Minimum (prefix) length of matched seeds.</td>
+          <td style="text-align: left">Smaller values produce more results at the cost of slow speed.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-P, --seed-min-single-prefix</code></strong></td>
+          <td style="text-align: left">Default 17</td>
+          <td style="text-align: left">Minimum (prefix) length of matched seeds if there&rsquo;s only one pair of seeds matched.</td>
+          <td style="text-align: left">Smaller values produce more results at the cost of slow speed.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--seed-max-dist</code></td>
+          <td style="text-align: left">Default 1000</td>
+          <td style="text-align: left">Max distance between seeds in seed chaining. It should be &lt;= contig interval length in database.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--seed-max-gap</code></td>
+          <td style="text-align: left">Default 200</td>
+          <td style="text-align: left">Max gap in seed chaining.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"></td>
+          <td style="text-align: left"></td>
+          <td style="text-align: left"></td>
+          <td style="text-align: left"></td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>
@@ -2023,58 +2033,58 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong><code>-Q/--min-qcov-per-genome</code></strong></td>
-<td style="text-align:left">Default 0</td>
-<td style="text-align:left">Minimum query coverage (percentage) per genome.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-q/--min-qcov-per-hsp</code></strong></td>
-<td style="text-align:left">Default 0</td>
-<td style="text-align:left">Minimum query coverage (percentage) per HSP.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-l/--align-min-match-len</code></strong></td>
-<td style="text-align:left">Default 50</td>
-<td style="text-align:left">Minimum aligned length in a HSP segment.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-i/--align-min-match-pident</code></strong></td>
-<td style="text-align:left">Default 70</td>
-<td style="text-align:left">Minimum base identity (percentage) in a HSP segment.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--align-band</code></td>
-<td style="text-align:left">Default 50</td>
-<td style="text-align:left">Band size in backtracking the score matrix.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--align-ext-len</code></td>
-<td style="text-align:left">Default 1000</td>
-<td style="text-align:left">Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be &lt;= contig interval length in database.</td>
-<td style="text-align:left"></td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--align-max-gap</code></td>
-<td style="text-align:left">Default 20</td>
-<td style="text-align:left">Maximum gap in a HSP segment.</td>
-<td style="text-align:left"></td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>-Q/--min-qcov-per-genome</code></strong></td>
+          <td style="text-align: left">Default 0</td>
+          <td style="text-align: left">Minimum query coverage (percentage) per genome.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-q/--min-qcov-per-hsp</code></strong></td>
+          <td style="text-align: left">Default 0</td>
+          <td style="text-align: left">Minimum query coverage (percentage) per HSP.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-l/--align-min-match-len</code></strong></td>
+          <td style="text-align: left">Default 50</td>
+          <td style="text-align: left">Minimum aligned length in a HSP segment.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-i/--align-min-match-pident</code></strong></td>
+          <td style="text-align: left">Default 70</td>
+          <td style="text-align: left">Minimum base identity (percentage) in a HSP segment.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--align-band</code></td>
+          <td style="text-align: left">Default 50</td>
+          <td style="text-align: left">Band size in backtracking the score matrix.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--align-ext-len</code></td>
+          <td style="text-align: left">Default 1000</td>
+          <td style="text-align: left">Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be &lt;= contig interval length in database.</td>
+          <td style="text-align: left"></td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--align-max-gap</code></td>
+          <td style="text-align: left">Default 20</td>
+          <td style="text-align: left">Maximum gap in a HSP segment.</td>
+          <td style="text-align: left"></td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>

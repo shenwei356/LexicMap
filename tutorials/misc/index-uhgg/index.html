@@ -9,13 +9,13 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.133.0">
+<meta name="generator" content="Hugo 0.134.2">
 
 
   <meta name="description" content="Info:
 Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
 https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &quot;*.gff.gz&quot; \ | rush --eta \ &#39;zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don&rsquo;t have enough memory, please decrease the value of -b." />
 
     <title>Indexing UHGG | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -44,7 +44,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
   <meta property="og:description" content="Info:
 Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
 https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" />
 
@@ -56,7 +56,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
   <meta name="twitter:description" content="Info:
 Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
 https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download." />
+# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
 
 
   <script type="application/ld+json">
@@ -67,7 +67,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
       "name": "Indexing UHGG",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/",
       "headline": "Indexing UHGG",
-      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.",
+      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files\/ -name \u0022*.gff.gz\u0022 \\ | rush --eta \\ \u0027zcat {} | perl -ne \u0022print if \\$s; \\$s=true if \/^##FASTA\/\u0022 | seqkit seq -w 0 -o {\/}\/{%:}.fna.gz\u0027 \\ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b.",
       "wordCount" : "213",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -613,15 +613,25 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
             <input
               type="checkbox"
               
-                class="hidden"
+                class="gdoc-nav__toggle" id="navtree-5198871c"
+                checked
               
             />
             <label
+              
+                for="navtree-5198871c" class="flex justify-between align-center"
               
             >
               
                 <span class="flex">More</span>
               
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
               
             </label>
 

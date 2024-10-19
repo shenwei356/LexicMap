@@ -1,0 +1,2 @@
+Flag	Value	Function	Comment
+**`-j/--threads`**	Default: all available CPUs	Number of CPU cores to use.	► If the value is smaller than the number of available CPUs, make sure set the same value to `-c/--chunks`.

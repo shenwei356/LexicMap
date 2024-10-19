@@ -9,11 +9,11 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.133.0">
+<meta name="generator" content="Hugo 0.134.2">
 
 
   <meta name="description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
+On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish targe genomes. Run: From a directory with multiple genome files:" />
 
     <title>Step 1. Building a database | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,7 +40,7 @@ On this page and in the LexicMap command line options, the term &ldquo;mask&rdqu
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes. Run: From a directory with multiple genome files:" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -50,7 +50,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 1. Building a database" />
   <meta name="twitter:description" content="Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names." />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes. Run: From a directory with multiple genome files:" />
 
 
   <script type="application/ld+json">
@@ -61,8 +61,8 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "name": "Step 1. Building a database",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
-      "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers (no tab symbols) in the file names.",
-      "wordCount" : "2962",
+      "description": "Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA\/Q files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp \u0027^(\\w{3}_\\d{9}\\.\\d\u002b)\u0027 extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish targe genomes. Run: From a directory with multiple genome files:",
+      "wordCount" : "3014",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -607,15 +607,25 @@ On this page and in the LexicMap command line options, the term “mask” is us
             <input
               type="checkbox"
               
-                class="hidden"
+                class="gdoc-nav__toggle" id="navtree-5198871c"
+                
               
             />
             <label
+              
+                for="navtree-5198871c" class="flex justify-between align-center"
               
             >
               
                 <span class="flex">More</span>
               
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
               
             </label>
 
@@ -2018,26 +2028,26 @@ alignment speed is almost not affected.</p>
       checked="checked"
     />
     <label for="tabs-t1-0" class="gdoc-tabs__label">
-      Genome batches
+      General
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong><code>-b/--batch-size</code></strong></td>
-<td style="text-align:left">Max: 131072, default: 5000</td>
-<td style="text-align:left">Maximum number of genomes in each batch</td>
-<td style="text-align:left">If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation and increase batch searching speed, while single query searching speed is not affected.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>-j/--threads</code></strong></td>
+          <td style="text-align: left">Default: all available CPUs</td>
+          <td style="text-align: left">Number of CPU cores to use.</td>
+          <td style="text-align: left">► If the value is smaller than the number of available CPUs, make sure set the same value to <code>-c/--chunks</code>.</td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>
@@ -2049,38 +2059,26 @@ alignment speed is almost not affected.</p>
       
     />
     <label for="tabs-t1-1" class="gdoc-tabs__label">
-      LexicHash mask generation
+      Genome batches
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><code>-M/--mask-file</code></td>
-<td style="text-align:left">A file</td>
-<td style="text-align:left">File with custom masks</td>
-<td style="text-align:left">File with custom masks, which could be exported from an existing index or newly generated by &ldquo;lexicmap utils masks&rdquo;. This flag oversides <code>-k/--kmer</code>, <code>-m/--masks</code>, <code>-s/--rand-seed</code>, etc.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-k/--kmer</code></strong></td>
-<td style="text-align:left">Max: 32, default: 31</td>
-<td style="text-align:left">K-mer size</td>
-<td style="text-align:left">■ Bigger values improve the search specificity and do not increase the index size.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-m/--masks</code></strong></td>
-<td style="text-align:left">Default: 40,000</td>
-<td style="text-align:left">Number of masks</td>
-<td style="text-align:left">■  Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>-b/--batch-size</code></strong></td>
+          <td style="text-align: left">Max: 131072, default: 5000</td>
+          <td style="text-align: left">Maximum number of genomes in each batch</td>
+          <td style="text-align: left">If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation and increase batch searching speed, while single query searching speed is not affected.</td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>
@@ -2092,50 +2090,93 @@ alignment speed is almost not affected.</p>
       
     />
     <label for="tabs-t1-2" class="gdoc-tabs__label">
+      LexicHash mask generation
+    </label>
+    <div class="gdoc-markdown--nested gdoc-tabs__content">
+      <div class="table-wrap"> <table>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><code>-M/--mask-file</code></td>
+          <td style="text-align: left">A file</td>
+          <td style="text-align: left">File with custom masks</td>
+          <td style="text-align: left">File with custom masks, which could be exported from an existing index or newly generated by &ldquo;lexicmap utils masks&rdquo;. This flag oversides <code>-k/--kmer</code>, <code>-m/--masks</code>, <code>-s/--rand-seed</code>, etc.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-k/--kmer</code></strong></td>
+          <td style="text-align: left">Max: 32, default: 31</td>
+          <td style="text-align: left">K-mer size</td>
+          <td style="text-align: left">■ Bigger values improve the search specificity and do not increase the index size.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-m/--masks</code></strong></td>
+          <td style="text-align: left">Default: 40,000</td>
+          <td style="text-align: left">Number of masks</td>
+          <td style="text-align: left">■  Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=10,000 is high enough.</td>
+      </tr>
+  </tbody>
+</table> </div>
+
+    </div>
+    <input
+      type="radio"
+      class="gdoc-tabs__control hidden"
+      name="tabs-t1"
+      id="tabs-t1-3"
+      
+    />
+    <label for="tabs-t1-3" class="gdoc-tabs__label">
       Seeds (k-mer-value) data
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
       <div class="table-wrap"> <table>
-<thead>
-<tr>
-<th style="text-align:left">Flag</th>
-<th style="text-align:left">Value</th>
-<th style="text-align:left">Function</th>
-<th style="text-align:left">Comment</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left"><strong><code>--seed-max-desert</code></strong></td>
-<td style="text-align:left">Default: 200</td>
-<td style="text-align:left">Maximum length of distances between seeds</td>
-<td style="text-align:left">The default value of 200 guarantees queries &gt;200 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every &ndash;seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.</td>
-</tr>
-<tr>
-<td style="text-align:left"><code>-c/--chunks</code></td>
-<td style="text-align:left">Maximum: 128, default: #CPUs</td>
-<td style="text-align:left">Number of seed file chunks</td>
-<td style="text-align:left">Bigger values accelerate the search speed at the cost of a high disk reading load. The maximum number should not exceed the maximum number of open files set by the operating systems.</td>
-</tr>
-<tr>
-<td style="text-align:left"><strong><code>-J/--seed-data-threads</code></strong></td>
-<td style="text-align:left">Maximum: -c/&ndash;chunks, default: 8</td>
-<td style="text-align:left">Number of threads for writing seed data and merging seed chunks from all batches</td>
-<td style="text-align:left">■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.</td>
-</tr>
-<tr>
-<td style="text-align:left"><code>-p/--partitions</code></td>
-<td style="text-align:left">Default: 1024</td>
-<td style="text-align:left">Number of partitions for indexing each seed file</td>
-<td style="text-align:left">Bigger values bring a little higher memory occupation. ► After indexing, <code>lexicmap utils reindex-seeds</code> can be used to reindex the seeds data with  another value of this flag.</td>
-</tr>
-<tr>
-<td style="text-align:left"><code>--max-open-files</code></td>
-<td style="text-align:left">Default: 512</td>
-<td style="text-align:left">Maximum number of open files</td>
-<td style="text-align:left">It&rsquo;s only used in merging indexes of multiple genome batches.</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th style="text-align: left">Flag</th>
+          <th style="text-align: left">Value</th>
+          <th style="text-align: left">Function</th>
+          <th style="text-align: left">Comment</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: left"><strong><code>--seed-max-desert</code></strong></td>
+          <td style="text-align: left">Default: 200</td>
+          <td style="text-align: left">Maximum length of distances between seeds</td>
+          <td style="text-align: left">The default value of 200 guarantees queries &gt;200 bp would match at least one seed. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every &ndash;seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-c/--chunks</code></strong></td>
+          <td style="text-align: left">Maximum: 128, default: value of -j/&ndash;threads</td>
+          <td style="text-align: left">Number of seed file chunks</td>
+          <td style="text-align: left">Bigger values accelerate the search speed at the cost of a high disk reading load. ► The value should not exceed the maximum number of open files set by the operating systems. ► Make sure the value of <code>-j/--threads</code> in <code>lexicmap search</code> is &gt;= this value.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><strong><code>-J/--seed-data-threads</code></strong></td>
+          <td style="text-align: left">Maximum: -c/&ndash;chunks, default: 8</td>
+          <td style="text-align: left">Number of threads for writing seed data and merging seed chunks from all batches</td>
+          <td style="text-align: left">■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>-p/--partitions</code></td>
+          <td style="text-align: left">Default: 1024</td>
+          <td style="text-align: left">Number of partitions for indexing each seed file</td>
+          <td style="text-align: left">Bigger values bring a little higher memory occupation. ► After indexing, <code>lexicmap utils reindex-seeds</code> can be used to reindex the seeds data with  another value of this flag.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--max-open-files</code></td>
+          <td style="text-align: left">Default: 512</td>
+          <td style="text-align: left">Maximum number of open files</td>
+          <td style="text-align: left">It&rsquo;s only used in merging indexes of multiple genome batches.</td>
+      </tr>
+  </tbody>
 </table> </div>
 
     </div>
