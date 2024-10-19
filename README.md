@@ -49,7 +49,7 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million prokaryotic assemblies** respectively).
 Running at this scale has previously only been achieved by [Phylign](https://github.com/karel-brinda/Phylign) (previously called mof-search), which compresses genomes with phylogenetic information and provides searching
 (prefiltering with [COBS](https://github.com/iqbal-lab-org/cobs) and alignment with [minimap2](https://github.com/lh3/minimap2)).
-1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Bastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
+1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
     
     **With LexicMap** (48 CPUs),
 

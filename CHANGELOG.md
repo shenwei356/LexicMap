@@ -10,7 +10,7 @@
     - More accurate `-n/--top-n-genomes`, and add new help message.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
-    - Improve the speed of alignment.
+    - Improve the speed of alignment, and reduce the memory usage.
     - Remain compatible after the change of `lexicmap index`.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
