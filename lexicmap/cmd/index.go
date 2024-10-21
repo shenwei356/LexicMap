@@ -122,13 +122,16 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
+                            ■ The actual value is min(--seed-data-threads, max(1, --max-open-files/($batches_1_round + 2))),
+                            where $batches_1_round = min(int($input_files / --batch-size), --max-open-files).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-  5. --max-open-files,      ► Maximum number of open files (default: 512).
-                            ► It's only used in merging indexes of multiple genome batches.
+ *5. --max-open-files,      ► Maximum number of open files (default: 768).
+                            ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
+                            ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -585,8 +588,8 @@ func init() {
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Max: 128. Default: the value of -j/--threads.`))
 	indexCmd.Flags().IntP("partitions", "", 1024,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
-	indexCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files, used in merging indexes.`))
+	indexCmd.Flags().IntP("max-open-files", "", 768,
+		formatFlagUsage(`Maximum opened files, used in merging indexes. If there are >100 batches, please increase this value and set a bigger "ulimit -n" in shell.`))
 
 	indexCmd.Flags().BoolP("save-seed-pos", "", false,
 		formatFlagUsage(`Save seed positions, which can be inspected with "lexicmap utils seed-pos".`))
@@ -597,7 +600,7 @@ func init() {
 		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
 
 	indexCmd.Flags().IntP("seed-data-threads", "J", 8,
-		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]`))
+		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are >100 batches, please also increase the value of --max-open-files and set a bigger "ulimit -n" in shell.`))
 
 	indexCmd.Flags().IntP("contig-interval", "", 1000,
 		formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))

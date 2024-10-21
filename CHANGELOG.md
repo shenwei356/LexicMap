@@ -5,6 +5,7 @@
 - `lexicmap index`:
     - **Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
+    - Change the default value of `--max-open-files` from 512 to 768.
     - Add a new flag `--debug`.
 - `lexicmap search`:
     - More accurate `-n/--top-n-genomes`, and add new help message.
