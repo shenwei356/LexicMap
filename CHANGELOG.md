@@ -1,7 +1,9 @@
 # Changelog
 
-### v0.4.1 - 2024-09-xx
+### v0.5.1 - 2024-xx-xx
 
+- New commands:
+    - `lexicmap utils remerge`: Rerun the merging step for an unfinished index.
 - `lexicmap index`:
     - **Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.

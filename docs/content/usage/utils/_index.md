@@ -17,6 +17,7 @@ Available Commands:
   kmers         View k-mers captured by the masks
   masks         View masks of the index or generate new masks randomly
   reindex-seeds Recreate indexes of k-mer-value (seeds) data
+  remerge       Rerun the merging step for an unfinished index
   seed-pos      Extract and plot seed positions via reference name(s)
   subseq        Extract subsequence via reference name, sequence ID, position and strand
 
@@ -33,4 +34,14 @@ Global Flags:
                              (default 16)
 ```
 
-The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
+
+Subcommands:
+
+- [2blast](2blast/)
+- [masks](masks/)
+- [kmers](kmers/)
+- [genomes](genomes/)
+- [subseq](subseq/)
+- [seed-pos](seed-pos/)
+- [reindex-seeds](reindex-seeds/)
+- [remerge](remerge/)
