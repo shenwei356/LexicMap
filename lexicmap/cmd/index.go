@@ -51,6 +51,10 @@ Input:
   4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
      The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
      (-G/--big-genomes).
+     Changes since v0.5.0: 
+	   - Genomes with any single contig larger than the threshold will be skipped as before.
+       - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
+         be split into chunks and alignments from these chunks will be merged in "lexicmap search".
      You need to increase the value for indexing fungi genomes.
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
@@ -516,7 +520,7 @@ func init() {
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'`))
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by contents in FASTA/Q header/name, case ignored.`))
@@ -525,10 +529,10 @@ func init() {
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
 	indexCmd.Flags().IntP("min-seq-len", "l", -1,
-		formatFlagUsage(`Maximum sequence length to index. The value would be k for values <= 0`))
+		formatFlagUsage(`Maximum sequence length to index. The value would be k for values <= 0.`))
 
 	indexCmd.Flags().IntP("max-genome", "g", 15000000,
-		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Extremely large genomes (e.g., non-isolate assemblies from Genbank) will be skipped. Need to be smaller than the maximum supported genome size: %d`, MAX_GENOME_SIZE)))
+		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Genomes with any single contig larger than the threshold will be skipped, while fragmented (with many contigs) genomes larger than the threshold will be split into chunks and alignments from these chunks will be merged in "lexicmap search". The value needs to be smaller than the maximum supported genome size: %d.`, MAX_GENOME_SIZE)))
 
 	// indexCmd.Flags().StringP("ref-name-info", "", ``,
 	// 	formatFlagUsage(`A two-column tab-delimted file for mapping reference names (extracted by --ref-name-regexp) to taxonomic information such as species names. It helps to reduce memory usage.`))

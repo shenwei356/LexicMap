@@ -17,11 +17,13 @@ When to use this command?
   22:54:24.455 [INFO]   [round 1]
   22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 
-  ► Then you can run this command with a bigger --max-open-files and
-  -J/--seed-data-threads. You might need to set a bigger 'ulimit -n' if the
-  value of --max-open-files is bigger than 1024.
+  ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and
+  -J/--seed-data-threads (e.g., 12. 12 needs be <= 4096/(297+2)=13.7).
+  And you need to set a bigger 'ulimit -n' if the value of --max-open-files is bigger than 1024.
 
 - The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
+
+- Disk quota is reached in the merging step.
 
 Usage:
   lexicmap utils remerge [flags] [flags] -d <index path>

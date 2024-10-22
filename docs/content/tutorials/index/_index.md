@@ -66,6 +66,10 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
+        - **Changes since v0.5.0**:
+            - Genomes with any single contig larger than the threshold will be skipped as before.
+            - However, **fragmented (with many contigs) genomes with the total bases larger than the threshold will
+              be split into chunks** and alignments from these chunks will be merged in "lexicmap search".
         - **For fungi genomes, please increase the value**.
     - **Minimum sequence length**. A flag `-l/--min-seq-len` can filter out sequences shorter than the threshold (default is the `k` value).
 - **At most 17,179,869,184 (2<sup>34</sup>) genomes are supported**. For more genomes, please create a file list and split it into multiple parts, and build an index for each part.
@@ -320,6 +324,28 @@ We use a small dataset for demonstration.
 
     {{< /expand >}}
 
+### Notes for indexing with large datasets
+
+If you have hundreds of thousands of input genomes or more, it's **better to control the number of genome batches**, which can be calculated via
+
+    $num_input_files / --batch-size
+
+E.g, for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
+The number is too big, and **it would slow down the seed-data merging step in `lexicmap index`** and **candidate sequence extraction in `lexicmap search`**.
+
+Therefore, if you have enough memory, you can set a bigger `--batch-size` (e.g., 2,340,672 / 25000 = 93.6).
+
+If the batch number is still big (e.g. 300), you can set bigger `--max-open-files` (e.g., `4096`) and `-J/--seed-data-threads` (e.g., `12`. 12 <= 4096/300 = 13.6)
+to accelerate the merging step. Meanwhile, don't forget to increase the maximum open files per process via `ulimit -n 4096`.
+
+If you forgot these setting, you can rerun the merging step for an unfinished index via [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/)
+(available since v0.5.0, also see [FAQ: how to resume the indexing](https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step)). Other cases to use this command:
+- Only one thread is used for merging indexes, which happens when there are
+a lot (>200 batches) of batches (`$inpu_files / --batch-size`) and the value
+of `--max-open-files` is not big enough.
+- The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
+- Disk quota is reached in the merging step.
+
 
 ## Output
 
@@ -391,10 +417,9 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
-    genbank_refseq.lmi: 5.43 TB (5,428,824,803,581)
+    genbank_refseq.lmi: 5.43 TB (5,428,003,631,182)
        3.04 TB      seeds
        2.38 TB      genomes
-     821.17 MB      kmers-m12345.tsv
       58.52 MB      genomes.map.bin
      320.03 kB      masks.bin
          332 B      info.toml
@@ -417,7 +442,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< /tabs >}}
 
-- Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize -k`, base: 1000).
+- Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize -k`, **base: 1000**).
 - Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 5000` for GTDB datasets, `-b 25000` for others.
 
 

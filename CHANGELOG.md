@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.5.1 - 2024-xx-xx
+### v0.5.0 - 2024-xx-xx
 
 - New commands:
     - `lexicmap utils remerge`: Rerun the merging step for an unfinished index.

@@ -46,6 +46,39 @@ For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has m
 - For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 
 
+
+## How to resume the indexing as Slurm job limit is almost reached while lexicmap index is still in the merging step?
+
+Use [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/) (available since v0.5.0), which reruns the merging step for an unfinished index.
+
+> When to use this command?
+> - Only one thread is used for merging indexes, which happens when there are
+>  a lot (>200 batches) of batches (`$inpu_files / --batch-size`) and the value
+>  of `--max-open-files` is not big enough.
+> - The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
+> - Disk quota is reached in the merging step.
+
+So you can stop the indexing command by press `Ctrl` + `C` (**make sure it is in the merging step**, see example below), and run `lexicmap utils remerge -d index.lmi`,
+where `index.lmi` is the output index directory in `lexicmap index`.
+
+Optionally, you might set bigger values of
+flag `--max-open-files` and `-J/--seed-data-threads` if you have hundreds of thousands of input genomes or have set
+a small batch size with `-b/--batch-size`. E.g.,
+
+    22:54:24.420 [INFO] merging 297 indexes...
+    22:54:24.455 [INFO]   [round 1]
+    22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
+
+There's only one thread was used for seed data merging, it would take a long time.
+So we can set a larger `--max-open-files`, e.g., `4096`,
+and it would allow `4096 / (297+2) = 13.7` threads for merging, let's set `--seed-data-threads 12`.
+
+    # specify the maximum open files per process
+    ulimit -n 4096
+
+    lexicmap utils remerge -d index.lmi --max-open-files 4096 --seed-data-threads 12
+
+
 ## Can I extract the matched sequences?
 
 Yes, `lexicmap search` has a flag
