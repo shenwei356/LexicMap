@@ -216,6 +216,28 @@ alignment speed is almost not affected.
 
 Also see the [usage](https://bioinf.shenwei.me/LexicMap/usage/#index) of `lexicmap index`.
 
+### Notes for indexing with large datasets
+
+If you have hundreds of thousands of input genomes or more, it's **better to control the number of genome batches**, which can be calculated via
+
+    $num_input_files / --batch-size
+
+E.g, for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
+The number is too big, and **it would slow down the seed-data merging step in `lexicmap index`** and **candidate sequence extraction in `lexicmap search`**.
+
+Therefore, if you have enough memory, you can set a bigger `--batch-size` (e.g., 2,340,672 / 25000 = 93.6).
+
+If the batch number is still big (e.g. 300), you can set bigger `--max-open-files` (e.g., `4096`) and `-J/--seed-data-threads` (e.g., `12`. 12 <= 4096/300 = 13.6)
+to accelerate the merging step. Meanwhile, don't forget to increase the maximum open files per process via `ulimit -n 4096`.
+
+If you forgot these setting, you can rerun the merging step for an unfinished index via [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/)
+(available since v0.5.0, also see [FAQ: how to resume the indexing](https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step)). Other cases to use this command:
+- Only one thread is used for merging indexes, which happens when there are
+a lot (>200 batches) of batches (`$inpu_files / --batch-size`) and the value
+of `--max-open-files` is not big enough.
+- The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
+- Disk quota is reached in the merging step.
+
 ## Steps
 
 We use a small dataset for demonstration.
@@ -323,28 +345,6 @@ We use a small dataset for demonstration.
         16:22:54.620 [INFO]
 
     {{< /expand >}}
-
-### Notes for indexing with large datasets
-
-If you have hundreds of thousands of input genomes or more, it's **better to control the number of genome batches**, which can be calculated via
-
-    $num_input_files / --batch-size
-
-E.g, for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
-The number is too big, and **it would slow down the seed-data merging step in `lexicmap index`** and **candidate sequence extraction in `lexicmap search`**.
-
-Therefore, if you have enough memory, you can set a bigger `--batch-size` (e.g., 2,340,672 / 25000 = 93.6).
-
-If the batch number is still big (e.g. 300), you can set bigger `--max-open-files` (e.g., `4096`) and `-J/--seed-data-threads` (e.g., `12`. 12 <= 4096/300 = 13.6)
-to accelerate the merging step. Meanwhile, don't forget to increase the maximum open files per process via `ulimit -n 4096`.
-
-If you forgot these setting, you can rerun the merging step for an unfinished index via [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/)
-(available since v0.5.0, also see [FAQ: how to resume the indexing](https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step)). Other cases to use this command:
-- Only one thread is used for merging indexes, which happens when there are
-a lot (>200 batches) of batches (`$inpu_files / --batch-size`) and the value
-of `--max-open-files` is not big enough.
-- The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
-- Disk quota is reached in the merging step.
 
 
 ## Output
