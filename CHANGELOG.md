@@ -2,19 +2,26 @@
 
 ### v0.5.0 - 2024-xx-xx
 
+This version generates the same alignment results as v0.4.0.
+
 - New commands:
-    - `lexicmap utils remerge`: Rerun the merging step for an unfinished index.
+    - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
 - `lexicmap index`:
     - **Genomes with thousands of contigs (fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
+    - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed matching speed at the cost of 2 GiB more memory occupation.
+      For existing lexicmap indexes, just run `lexicmap utils reindex-seeds --partitions 4096` to re-create seed indexes**.
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
-    - Change the default value of `--max-open-files` from 512 to 768.
+    - Change the default value of `--max-open-files` from 512 to 1024.
     - Add a new flag `--debug`.
 - `lexicmap search`:
+    - Automatically adjust arguments `--seed-max-dist` and `--align-ext-len` for indexes with a smaller contig interval size.
     - More accurate `-n/--top-n-genomes`, and add new help message.
+    - Change the default value of `--max-open-files` from 512 to 1024.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
     - Improve the speed of alignment, and reduce the memory usage.
     - Remain compatible after the change of `lexicmap index`.
+    - Add a new flag `--debug`.
 - `lexicmap utils genomes`:
     - Do not sort genome ids.
     - Add a header line and add another column to show if the reference genome is chunked.
@@ -22,6 +29,8 @@
     - Remain compatible after the change of `lexicmap index`.
 - `lexicmap utils seed-pos`:
     - Remain compatible after the change of `lexicmap index`, while histograms are plotted separately for multiple genome chunks.
+- `lexicmap utils reindex-seeds`:
+    - Change the default value of `--partitions` from 1024 to 4096.
 
 ### v0.4.0 - 2024-08-15
 

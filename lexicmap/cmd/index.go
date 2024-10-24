@@ -129,11 +129,11 @@ Important parameters:
                             ■ The actual value is min(--seed-data-threads, max(1, --max-open-files/($batches_1_round + 2))),
                             where $batches_1_round = min(int($input_files / --batch-size), --max-open-files).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
-  4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
+  4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
- *5. --max-open-files,      ► Maximum number of open files (default: 768).
+ *5. --max-open-files,      ► Maximum number of open files (default: 1024).
                             ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
                             ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
 
@@ -590,9 +590,9 @@ func init() {
 	}
 	indexCmd.Flags().IntP("chunks", "c", defaultChunks,
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Max: 128. Default: the value of -j/--threads.`))
-	indexCmd.Flags().IntP("partitions", "", 1024,
+	indexCmd.Flags().IntP("partitions", "", 4096,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
-	indexCmd.Flags().IntP("max-open-files", "", 768,
+	indexCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files, used in merging indexes. If there are >100 batches, please increase this value and set a bigger "ulimit -n" in shell.`))
 
 	indexCmd.Flags().BoolP("save-seed-pos", "", false,

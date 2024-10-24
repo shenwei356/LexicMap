@@ -77,7 +77,7 @@ Flags:
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
-      --max-open-files int             ► Maximum opened files. (default 512)
+      --max-open-files int             ► Maximum opened files. (default 1024)
   -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
                                        improve the batch searching speed and consume much memory.
                                        (default 12)

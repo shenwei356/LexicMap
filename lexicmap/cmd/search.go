@@ -274,6 +274,8 @@ Result ordering:
 			MoreAccurateAlignment: !onlyPseudoAlign,
 
 			OutputSeq: moreColumns,
+
+			Debug: getFlagBool(cmd, "debug"),
 		}
 
 		// read info file to get the contig interval size
@@ -482,7 +484,7 @@ Result ordering:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query.seq)
+					query.result, err = idx.Search(query)
 					if err != nil {
 						checkError(err)
 					}
@@ -523,8 +525,8 @@ func init() {
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
-	mapCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files.`))
+	mapCmd.Flags().IntP("max-open-files", "", 1024,
+		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome bacheds or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
@@ -586,6 +588,9 @@ func init() {
 
 	mapCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
 		formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
+
+	mapCmd.Flags().BoolP("debug", "", false,
+		formatFlagUsage(`Print debug information.`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
 

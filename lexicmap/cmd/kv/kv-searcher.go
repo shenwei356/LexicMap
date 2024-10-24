@@ -160,7 +160,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var ctrlByte byte
 	var nBytes int
 	var nReaded, nDecoded int
-	var v1, v2 uint64
+	var v1, v2, v uint64
 	var kmer1, kmer2 uint64
 	var lenVal1, lenVal2 uint64
 	var j uint64
@@ -276,7 +276,6 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 		first = true
 		found = false
-		var v uint64
 
 		for {
 			// read the control byte

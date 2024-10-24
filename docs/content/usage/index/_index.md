@@ -99,11 +99,11 @@ Important parameters:
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
-  4. --partitions,          ► Number of partitions for indexing each seed file (default: 1024).
+  4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-  5. --max-open-files,      ► Maximum number of open files (default: 512).
+  5. --max-open-files,      ► Maximum number of open files (default: 1024).
                             ► It's only used in merging indexes of multiple genome batches.
 
 Usage:
@@ -139,7 +139,7 @@ Flags:
       --no-desert-filling         ► Disable sketching desert filling (only for debug).
   -O, --out-dir string            ► Output LexicMap index directory.
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
-                                  The value needs to be the power of 4. (default 1024)
+                                  The value needs to be the power of 4. (default 4096)
   -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
   -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
                                   reference name from the filename. Attention: use double quotation

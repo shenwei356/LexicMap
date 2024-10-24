@@ -31,6 +31,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -73,6 +74,9 @@ type IndexSearchingOptions struct {
 
 	// Output
 	OutputSeq bool
+
+	//
+	Debug bool
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -351,7 +355,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	<-done
 
 	// we can create genome reader pools
-	n := (idx.opt.MaxOpenFiles - len(fileSeeds)) / info.GenomeBatches
+	n := (idx.opt.MaxOpenFiles - len(fileSeeds) - 1) / info.GenomeBatches // 1 is for the output file
 	if n < 2 {
 	} else {
 		if n > opt.NumCPUs {
@@ -759,7 +763,17 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
-func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
+func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
+	var startTime time.Time
+	debug := idx.opt.Debug
+
+	if debug {
+		log.Debugf("%s: start to search", query.seqID)
+		startTime = time.Now()
+	}
+
+	s := query.seq
+
 	// ----------------------------------------------------------------
 	// 1) mask the query sequence
 
@@ -1095,6 +1109,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	idx.poolKmers.Put(_kmersR)
 	idx.poolLocses.Put(_locsesR)
 
+	if debug {
+		log.Debugf("%s: finished seed-matching (%d genome hits) in %s", query.seqID, len(*m), time.Since(startTime))
+		startTime = time.Now()
+	}
+
 	if len(*m) == 0 { // no results
 		poolSearchResultsMap.Put(m)
 		return nil, nil
@@ -1177,6 +1196,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			idx.RecycleSearchResult(r)
 		}
 		*rs = (*rs)[:topN]
+	}
+
+	if debug {
+		log.Debugf("%s: finished chaining (%d genome hits) in %s", query.seqID, len(*rs), time.Since(startTime))
+		startTime = time.Now()
 	}
 
 	// 3.3) alignment
@@ -1916,6 +1940,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	// recycle this comparator
 	idx.poolSeqComparator.Put(cpr)
 
+	if debug {
+		log.Debugf("%s: finished alignment (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+		startTime = time.Now()
+	}
+
 	if len(*rs2) == 0 {
 		poolSearchResults.Put(rs2)
 		return nil, nil
@@ -2006,6 +2035,11 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 			j++
 		}
 		*rs2 = (*rs2)[:j]
+
+		if debug {
+			log.Debugf("%s: finished merging alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+			startTime = time.Now()
+		}
 	}
 
 	// sort all genomes, by qcovHSP*pident of the best alignment.
@@ -2022,6 +2056,10 @@ func (idx *Index) Search(s []byte) (*[]*SearchResult, error) {
 	//
 	for _, r := range *rs2 {
 		r.SortBySeqID()
+	}
+
+	if debug {
+		log.Debugf("%s: finished sorting alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
 	}
 
 	return rs2, nil
