@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -151,8 +152,10 @@ type Index struct {
 	hasGenomeRdrs  bool
 
 	// genome chunks
-	hasGenomeChunks bool // file FileGenomeChunks exists and it's not empty
-	genomeChunks    map[uint64]map[uint64]interface{}
+	hasGenomeChunks              bool       // file FileGenomeChunks exists and it's not empty
+	genomeChunks                 [][]uint64 // original chunk information
+	poolGenomeChunksIdx2List     *sync.Pool
+	poolGenomeChunksPointer2List *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -232,12 +235,29 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// -----------------------------------------------------
 	// read genome chunks data if existed
 	fileGenomeChunks := filepath.Join(outDir, FileGenomeChunks)
-	idx.genomeChunks, err = readGenomeChunksMapBig2Small(fileGenomeChunks)
+	idx.genomeChunks, err = readGenomeChunksLists(fileGenomeChunks)
 	if err != nil {
 		return nil, err
 	}
 	if len(idx.genomeChunks) > 0 {
 		idx.hasGenomeChunks = true
+
+		// used to stored slice indexes of genome chunks of the same genome
+		idx.poolGenomeChunksIdx2List = &sync.Pool{New: func() interface{} {
+			data := make(map[uint64]*[]int)
+			for _, idxs := range idx.genomeChunks {
+				li := make([]int, 0, len(idxs))
+				for _, idx := range idxs {
+					data[idx] = &li
+				}
+			}
+			return &data
+		}}
+
+		idx.poolGenomeChunksPointer2List = &sync.Pool{New: func() interface{} {
+			data := make(map[uintptr]*[]int, 1024)
+			return &data
+		}}
 	}
 	// -----------------------------------------------------
 	// read index of seeds
@@ -1952,49 +1972,68 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 	// merge search result from genome chunks, if has split genome
 	if idx.hasGenomeChunks {
-		var j int
-		var a, b uint64 // SearchResult.BatchGenomeIndex
-		var ok, merged bool
-		var rp *SearchResult
-		chunks := idx.genomeChunks
-		for i, r := range *rs2 {
+		var r, rp *SearchResult
+		var i, j int
+		var a uint64 // SearchResult.BatchGenomeIndex
+		var ok bool
+		var li *[]int
+		var ptr uintptr
+		gcIdx2List := idx.poolGenomeChunksIdx2List.Get().(*map[uint64]*[]int)
+		gcPtr2List := idx.poolGenomeChunksPointer2List.Get().(*map[uintptr]*[]int)
+
+		// collect "i"s belonging to the same genome
+		for i, r = range *rs2 {
 			a = r.BatchGenomeIndex
-			merged = false
-			for j = 0; j < i; j++ {
-				rp = (*rs2)[j]
-				if rp == nil || r.GenomeIndex != rp.GenomeIndex { // not from the same genome
-					continue
-				}
+			if li, ok = (*gcIdx2List)[a]; !ok { // not a chunk of some genome
+				continue
+			}
 
-				b = rp.BatchGenomeIndex
-				if a < b {
-					a, b = b, a
-				}
+			*li = append(*li, i)
 
-				if _, ok = chunks[a][b]; !ok {
-					continue
-				}
+			ptr = uintptr(unsafe.Pointer(li))
+			if _, ok = (*gcPtr2List)[ptr]; !ok {
+				(*gcPtr2List)[ptr] = li
+			}
+		}
 
-				// merge r into rp
+		// merge alignments of the same genome
+		for _, li = range *gcPtr2List {
+			if len(*li) == 1 { // there's only one genome chunk
+				// reset the list
+				(*li) = (*li)[:0]
+				continue
+			}
+			i = (*li)[0]
+			rp = (*rs2)[i]
+			for _, j = range (*li)[1:] { // merge j -> i
+				r = (*rs2)[j]
 
 				// only need to update SimilarityDetails, AlignedFraction
 				*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
 
-				// alignments belonging to the same genome
-				merged = true
-				break
-			}
-			if merged {
 				poolSearchResult.Put(r)
-				(*rs2)[i] = nil
+				(*rs2)[j] = nil
 			}
+
+			// reset the list
+			(*li) = (*li)[:0]
+		}
+
+		// recycle datastructure
+		clear(*gcPtr2List)
+		idx.poolGenomeChunksPointer2List.Put(gcPtr2List)
+		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
+
+		if debug {
+			log.Debugf("%s: finished merging alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+			startTime = time.Now()
 		}
 
 		// recompute query coverage per genome
 		var alignedBasesGenome int
 		minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
 		j = 0
-		for _, r := range *rs2 {
+		for _, r = range *rs2 {
 			if r == nil {
 				continue
 			}
@@ -2037,7 +2076,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		*rs2 = (*rs2)[:j]
 
 		if debug {
-			log.Debugf("%s: finished merging alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+			log.Debugf("%s: finished filtering merged alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
 			startTime = time.Now()
 		}
 	}

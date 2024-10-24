@@ -64,7 +64,7 @@ var genomesCmd = &cobra.Command{
 
 		// -----------------------------------------------------
 		// read genome chunks data if existed
-		genomeChunks, err := readGenomeChunksMapBig2Small(filepath.Join(dbDir, FileGenomeChunks))
+		genomeChunks, err := readGenomeChunksMap(filepath.Join(dbDir, FileGenomeChunks))
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genome chunk file: %s", err))
 		}
