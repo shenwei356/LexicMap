@@ -27,6 +27,10 @@ Input:
   4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
      The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
      (-G/--big-genomes).
+     Changes since v0.5.0:
+           - Genomes with any single contig larger than the threshold will be skipped as before.
+       - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
+         be split into chunks and alignments from these chunks will be merged in "lexicmap search".
      You need to increase the value for indexing fungi genomes.
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
@@ -98,13 +102,16 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
+                            ■ The actual value is min(--seed-data-threads, max(1, --max-open-files/($batches_1_round + 2))),
+                            where $batches_1_round = min(int($input_files / --batch-size), --max-open-files).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-  5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches.
+ *5. --max-open-files,      ► Maximum number of open files (default: 1024).
+                            ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
+                            ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
 
 Usage:
   lexicmap index [flags] [-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>
@@ -118,6 +125,7 @@ Flags:
   -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files. Max:
                                   128. Default: the value of -j/--threads. (default 16)
       --contig-interval int       ► Length of interval (N's) between contigs in a genome. (default 1000)
+      --debug                     ► Print debug information.
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
                                   case ignored. Attention: use double quotation marks for patterns
                                   containing commas, e.g., -p '"A{2,}"'. (default
@@ -130,12 +138,17 @@ Flags:
   -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
                                   -s/--rand-seed etc.
   -m, --masks int                 ► Number of LexicHash masks. (default 40000)
-  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
-                                  assemblies from Genbank) will be skipped. Need to be smaller than the
-                                  maximum supported genome size: 268435456 (default 15000000)
-      --max-open-files int        ► Maximum opened files, used in merging indexes. (default 512)
+  -g, --max-genome int            ► Maximum genome size. Genomes with any single contig larger than
+                                  the threshold will be skipped, while fragmented (with many contigs)
+                                  genomes larger than the threshold will be split into chunks and
+                                  alignments from these chunks will be merged in "lexicmap search". The
+                                  value needs to be smaller than the maximum supported genome size:
+                                  268435456. (default 15000000)
+      --max-open-files int        ► Maximum opened files, used in merging indexes. If there are >100
+                                  batches, please increase this value and set a bigger "ulimit -n" in
+                                  shell. (default 1024)
   -l, --min-seq-len int           ► Maximum sequence length to index. The value would be k for values
-                                  <= 0 (default -1)
+                                  <= 0. (default -1)
       --no-desert-filling         ► Disable sketching desert filling (only for debug).
   -O, --out-dir string            ► Output LexicMap index directory.
       --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
@@ -143,13 +156,14 @@ Flags:
   -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
   -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
                                   reference name from the filename. Attention: use double quotation
-                                  marks for patterns containing commas, e.g., -p '"A{2,}"' (default
+                                  marks for patterns containing commas, e.g., -p '"A{2,}"'. (default
                                   "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
       --save-seed-pos             ► Save seed positions, which can be inspected with "lexicmap utils
                                   seed-pos".
   -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
-                                  from all batches, the value should be in range of [1, -c/--chunks]
-                                  (default 8)
+                                  from all batches, the value should be in range of [1, -c/--chunks]. If
+                                  there are >100 batches, please also increase the value of
+                                  --max-open-files and set a bigger "ulimit -n" in shell. (default 8)
   -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
   -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
                                   Deserts with seed distance larger than this value will be filled by

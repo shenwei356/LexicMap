@@ -74,10 +74,14 @@ Flags:
   -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
   -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
                                        want to output blast-style format with "lexicmap utils 2blast".
+      --debug                          ► Print debug information.
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
-      --max-open-files int             ► Maximum opened files. (default 1024)
+      --max-open-files int             ► Maximum opened files. It mainly affects candidate subsequence
+                                       extraction. Increase this value if you have hundreds of genome
+                                       batches or have multiple queries, and do not forgot to set a
+                                       bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
   -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
                                        improve the batch searching speed and consume much memory.
                                        (default 12)
@@ -86,8 +90,9 @@ Flags:
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
       --pseudo-align                   ► Only perform pseudo alignment, alignment metrics, including
                                        qcovGnm, qcovSHP and pident, will be less accurate.
-      --seed-max-dist int              ► Max distance between seeds in seed chaining. (default 10000)
-      --seed-max-gap int               ► Max gap in seed chaining. (default 500)
+      --seed-max-dist int              ► Max distance between seeds in seed chaining. It should be <=
+                                       contig interval length in database. (default 1000)
+      --seed-max-gap int               ► Max gap in seed chaining. (default 200)
   -p, --seed-min-prefix int            ► Minimum (prefix) length of matched seeds. (default 15)
   -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there's only one
                                        pair of seeds matched. (default 17)
@@ -102,7 +107,7 @@ Global Flags:
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
-                             (default 8)
+                             (default 16)
 ```
 
 
