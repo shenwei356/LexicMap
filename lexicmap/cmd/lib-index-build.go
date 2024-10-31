@@ -1513,7 +1513,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						}
 						genome.PoolGenome.Put(refseq) // important
 						if opt.Verbose || opt.Log2File {
-							log.Warningf("skipping a big genome with a sequence of %d bp: %s", len(record.Seq.Seq), file)
+							log.Warningf("  skipping a big genome with a sequence of %d bp: %s", len(record.Seq.Seq), file)
 							if !opt.Log2File {
 								log.Info()
 							}
@@ -1592,7 +1592,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				}
 				genome.PoolGenome.Put(refseq) // important
 				if opt.Verbose || opt.Log2File {
-					log.Warningf("skipping %s: no valid sequences", file)
+					log.Warningf("  skipping %s: no valid sequences", file)
 					log.Info()
 				}
 				if opt.Verbose {
@@ -1638,7 +1638,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// }
 
 			if chunks > 1 && (opt.Verbose || opt.Log2File) {
-				log.Warningf("splitting a big genome into %d chunks: %s", chunks, file)
+				log.Warningf("  splitting a big genome into %d chunks: %s", chunks, file)
 				if !opt.Log2File {
 					log.Info()
 				}

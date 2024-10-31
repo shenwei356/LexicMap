@@ -1247,7 +1247,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		checkError(err)
 	}
 
-	alignOption := &wfa.Options{GlobalAlignment: true}
+	alignOption := &wfa.Options{GlobalAlignment: false}
 
 	// do not do this, as multiple genome readers would compete in reading sequences from the same file.
 	// sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].BatchGenomeIndex < (*rs)[j].BatchGenomeIndex })
@@ -1564,6 +1564,18 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										if err != nil {
 											checkError(fmt.Errorf("fail to align sequence"))
 										}
+
+										// update sequence regions
+										c.QBegin = c.QBegin + cigar.QBegin - 1
+										c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+										if rc {
+											c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+											c.TEnd = c.TEnd - cigar.TBegin - 1
+										} else {
+											c.TBegin = c.TBegin + cigar.TBegin - 1
+											c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+										}
+
 										c.AlignedBasesQ = c.QEnd - c.QBegin + 1
 										c.AlignedLength = int(cigar.AlignLen)
 										c.MatchedBases = int(cigar.Matches)
@@ -1609,7 +1621,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 												c.CIGAR = append(c.CIGAR, byte(op>>32))
 											}
 
-											Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
+											Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
 
 											c.QSeq = append(c.QSeq, *Q...)
 											c.TSeq = append(c.TSeq, *T...)
@@ -1757,6 +1769,24 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
+
+								// update sequence regions
+								// fmt.Println(len(_qseq), cigar.QBegin, cigar.QEnd)
+								// fmt.Println(len(_tseq), cigar.TBegin, cigar.TEnd)
+								// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+
+								c.QBegin = c.QBegin + (cigar.QBegin - 1)
+								c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+								if rc {
+									c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+									c.TEnd = c.TEnd - (cigar.TBegin - 1)
+								} else {
+									c.TBegin = c.TBegin + (cigar.TBegin - 1)
+									c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+								}
+
+								// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+
 								c.AlignedBasesQ = c.QEnd - c.QBegin + 1
 								c.AlignedLength = int(cigar.AlignLen)
 								c.MatchedBases = int(cigar.Matches)
@@ -1802,7 +1832,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										c.CIGAR = append(c.CIGAR, byte(op>>32))
 									}
 
-									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq)
+									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
 
 									c.QSeq = append(c.QSeq, *Q...)
 									c.TSeq = append(c.TSeq, *T...)
