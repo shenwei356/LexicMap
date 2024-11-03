@@ -190,6 +190,8 @@ Or install with `conda`:
 
     conda install -c bioconda lexicmap
 
+**We also provide [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10), with new features and improvements**.
+
 ## Algorithm overview
 
 <img src="overview.svg" alt="LexicMap overview" width="800"/>
