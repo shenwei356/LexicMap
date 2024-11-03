@@ -2,8 +2,6 @@
 
 ### v0.5.0 - 2024-xx-xx
 
-This version generates the same alignment results as v0.4.0.
-
 - New commands:
     - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
 - `lexicmap index`:
@@ -14,10 +12,12 @@ This version generates the same alignment results as v0.4.0.
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Add a new flag `--debug`.
 - `lexicmap search`:
+    - **Improving (pseudo)alignment for highly repetitive sequences**.
     - Fix positions and alignment texts for queries with highly repetitive sequences in flanking regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
     - Automatically adjust arguments `--seed-max-dist` and `--align-ext-len` for indexes with a smaller contig interval size.
     - More accurate `-n/--top-n-genomes`, and add new help message.
     - Change the default value of `--max-open-files` from 512 to 1024.
+    - Change the default value of `--align-band` from 50 to 100.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
     - Improve the speed of alignment, and reduce the memory usage.

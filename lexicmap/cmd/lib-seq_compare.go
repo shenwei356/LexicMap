@@ -57,7 +57,7 @@ var DefaultSeqComparatorOptions = SeqComparatorOptions{
 		// can not be < k
 		MaxDistance: 50,
 		// can not be two small
-		Band: 100,
+		BandBase: 100,
 	},
 
 	MinAlignedFraction: 0,

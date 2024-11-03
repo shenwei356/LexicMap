@@ -441,7 +441,8 @@ Result ordering:
 				// can not be < k
 				// MaxDistance: maxAlignMismatch,
 				// can not be two small
-				Band: alignBand,
+				BandBase:  alignBand,
+				BandCount: int(alignBand / 2),
 			},
 
 			MinAlignedFraction: minQcovChain,
@@ -573,7 +574,7 @@ func init() {
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	// mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
 	// 	formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
-	mapCmd.Flags().IntP("align-band", "", 50,
+	mapCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseduo alignment phase).`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))

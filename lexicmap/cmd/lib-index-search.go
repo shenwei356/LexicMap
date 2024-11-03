@@ -788,7 +788,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	debug := idx.opt.Debug
 
 	if debug {
-		log.Debugf("%s: start to search", query.seqID)
+		log.Debugf("%s (%d bp): start to search", query.seqID, len(query.seq))
 		startTime = time.Now()
 	}
 
@@ -1130,7 +1130,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	idx.poolLocses.Put(_locsesR)
 
 	if debug {
-		log.Debugf("%s: finished seed-matching (%d genome hits) in %s", query.seqID, len(*m), time.Since(startTime))
+		log.Debugf("%s (%d bp): finished seed-matching (%d genome hits) in %s", query.seqID, len(query.seq), len(*m), time.Since(startTime))
 		startTime = time.Now()
 	}
 
@@ -1219,7 +1219,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	}
 
 	if debug {
-		log.Debugf("%s: finished chaining (%d genome hits) in %s", query.seqID, len(*rs), time.Since(startTime))
+		log.Debugf("%s (%d bp): finished chaining (%d genome hits) in %s", query.seqID, len(query.seq), len(*rs), time.Since(startTime))
 		startTime = time.Now()
 	}
 
@@ -1994,7 +1994,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	idx.poolSeqComparator.Put(cpr)
 
 	if debug {
-		log.Debugf("%s: finished alignment (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+		log.Debugf("%s (%d bp): finished alignment (%d genome hits) in %s", query.seqID, len(query.seq), len(*rs2), time.Since(startTime))
 		startTime = time.Now()
 	}
 
@@ -2058,7 +2058,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
 
 		if debug {
-			log.Debugf("%s: finished merging alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+			log.Debugf("%s (%d bp): finished merging alignment results (%d genome hits) in %s", query.seqID, len(query.seq), len(*rs2), time.Since(startTime))
 			startTime = time.Now()
 		}
 
@@ -2109,7 +2109,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		*rs2 = (*rs2)[:j]
 
 		if debug {
-			log.Debugf("%s: finished filtering merged alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+			log.Debugf("%s (%d bp): finished filtering merged alignment results (%d genome hits) in %s", query.seqID, len(query.seq), len(*rs2), time.Since(startTime))
 			startTime = time.Now()
 		}
 	}
@@ -2131,7 +2131,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	}
 
 	if debug {
-		log.Debugf("%s: finished sorting alignment results (%d genome hits) in %s", query.seqID, len(*rs2), time.Since(startTime))
+		log.Debugf("%s (%d bp): finished sorting alignment results (%d genome hits) in %s", query.seqID, len(query.seq), len(*rs2), time.Since(startTime))
 	}
 
 	return rs2, nil

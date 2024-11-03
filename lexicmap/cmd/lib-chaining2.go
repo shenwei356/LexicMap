@@ -32,7 +32,8 @@ type Chaining2Options struct {
 	MinAlignLen int
 	MinIdentity float64
 	MaxDistance int
-	Band        int // only check i in range of  i − A < j < i
+	BandCount   int // only check i in range of  i − A < j < i
+	BandBase    int // only check i where i.Qstart+i.Len + A < j.Qstart
 }
 
 // DefaultChaining2Options is the defalt vaule of Chaining2Option.
@@ -42,7 +43,8 @@ var DefaultChaining2Options = Chaining2Options{
 	MinAlignLen: 50,
 
 	MaxDistance: 100,
-	Band:        100,
+	BandCount:   50,
+	BandBase:    100,
 }
 
 // Chainer2 is an object for chaining the anchors in two similar sequences.
@@ -165,9 +167,12 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		return paths, 0, 0, 0, 0, 0, 0, 0
 	}
 
-	var i, _b, j int
+	var i, j int
 	// var k int
-	band := ce.options.Band // band size of banded-DP
+	bandBase := int32(ce.options.BandBase) // band size of banded-DP
+	bandCount := ce.options.BandCount
+	var _bCount int
+	var _bBase int32
 
 	// a list for storing score matrix, the size is band * len(seeds pair)
 	// scores := &ce.scores
@@ -210,7 +215,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		// this old one can't handle some frequent k-mers properly, which have many hits in other place.
 		// for _b = 1; _b <= band; _b++ { // check previous $band seeds
 		j = i
-		_b = 0
+		_bCount = 0
 		// fmt.Printf("i: %d, %s\n", i, a.String())
 		for {
 			j--
@@ -227,9 +232,11 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 				continue
 			}
 
-			_b++
+			_bCount++
+
+			_bBase = a.QBegin - b.QBegin - int32(b.Len)
 			// fmt.Printf("  b: %d, j: %d, %s\n", _b, j, b.String())
-			if _b > band {
+			if !(_bBase <= bandBase || _bCount <= bandCount) {
 				break
 			}
 
