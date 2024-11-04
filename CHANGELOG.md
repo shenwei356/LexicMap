@@ -19,6 +19,7 @@
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Change the default value of `--align-band` from 50 to 100.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
+    - Improve the speed of chaining for long queries.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
     - Improve the speed of alignment, and reduce the memory usage.
     - Remain compatible after the change of `lexicmap index`.

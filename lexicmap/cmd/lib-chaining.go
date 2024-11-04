@@ -147,17 +147,25 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
+	maxDistanceInt32 := int32(maxDistance)
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
-		// fmt.Printf("i:%d, a: %s\n", i, a)
+		// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
 
 		// just initialize the max score, which comes from the current seed
 		// m = scores[k]
 		w = seedWeight(float64(a.Len))
 		m, mj, mdir = w, i, 0
 
-		for j = 0; j < i; j++ { // try all previous seeds, no bound
+		// for j = 0; j < i; j++ { // try all previous seeds, no bound
+		j = i
+		for {
+			j--
+			if j < 0 {
+				break
+			}
+
 			b = (*subs)[j]
 
 			// fmt.Printf("  j:%d, b: %s\n", j, b)
@@ -165,16 +173,20 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				continue
 			}
 
+			if a.QBegin-b.QBegin > maxDistanceInt32 {
+				break
+			}
+
 			d = distance(a, b)
 			if d > maxDistance {
 				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
-				continue
+				continue // must not be break
 			}
 
 			g = gap(a, b)
 			if g > maxGap {
 				// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
-				continue
+				continue // must not be break
 			}
 
 			// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
