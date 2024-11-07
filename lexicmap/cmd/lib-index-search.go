@@ -36,6 +36,7 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
@@ -804,6 +805,18 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		return nil, err
 	}
 	defer idx.lh.RecycleMaskResult(_kmers, _locses)
+
+	// remove low-complexity k-mers
+	k8 := idx.k8
+	ttt := (uint64(1) << (idx.k << 1)) - 1
+	for i, kmer := range *_kmers {
+		if kmer == ttt || (kmer != 0 && util.IsLowComplexity(kmer, k8)) {
+			// fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
+			(*_kmers)[i] = 0
+			// (*_locses)[i] = (*_locses)[i][:0]
+			continue
+		}
+	}
 
 	// ----------------------------------------------------------------
 	// 2) matching the captured k-mers in databases

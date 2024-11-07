@@ -20,7 +20,10 @@
 
 package util
 
-import "math/bits"
+import (
+	"math/bits"
+	"sync"
+)
 
 // KmerBaseAt returns the base in pos i (0-based).
 func KmerBaseAt(code uint64, k uint8, i uint8) uint8 {
@@ -149,3 +152,107 @@ func MustSharingPrefixKmersSuffixMatches(code1, code2 uint64, k, p uint8) (n uin
 	}
 	return n
 }
+
+// IsLowComplexity checks k-mer complexity according to the frequencies of 2-mer and 3-mer.
+func IsLowComplexity(code uint64, k uint8) bool {
+	counts := pool64Uint8s.Get().(*[]byte)
+	idxes := pool64Ints.Get().(*[]uint8)
+
+	var mer uint64
+	var i, end, n uint8
+
+	var min2Mers uint8 = 4
+	var min3Mers uint8 = 8
+	var maxCount2Mer uint8 = k/2 - 1
+	var maxCount3Mer uint8 = k/3 - 1
+
+	// fmt.Printf("thresholds: 2-mer: %d, 3-mer: %d\n", maxCount2Mer, maxCount3Mer)
+
+	// --------------------------------------------------------
+	// 2-mer
+
+	clear(*counts)
+
+	end = k - 2
+	for i = 0; i <= end; i++ {
+		mer = code >> (i << 1) & 15
+		(*counts)[mer]++
+	}
+
+	n = 0
+	*idxes = (*idxes)[:0]
+	for i = 0; i < 16; i++ {
+		if (*counts)[i] > 0 {
+			n++
+			if n >= min2Mers {
+				pool64Uint8s.Put(counts)
+				pool64Ints.Put(idxes)
+				return false
+			}
+
+			*idxes = append(*idxes, i)
+		}
+	}
+
+	// for i = 0; i < 16; i++ {
+	for _, i = range *idxes {
+		if (*counts)[i] >= maxCount2Mer {
+			// fmt.Printf("  %s, mers:%d, count(%s)=%d\n", lexichash.MustDecode(code, k),
+			// 	n, lexichash.MustDecode(uint64(i), 2), (*counts)[i])
+			pool64Uint8s.Put(counts)
+			pool64Ints.Put(idxes)
+			return true
+		}
+	}
+
+	// --------------------------------------------------------
+	// 3-mer
+
+	clear((*counts)[:16])
+
+	end = k - 2
+	for i = 0; i <= end; i++ {
+		mer = code >> (i << 1) & 63
+		(*counts)[mer]++
+	}
+
+	n = 0
+	*idxes = (*idxes)[:0]
+	for i = 0; i < 64; i++ {
+		if (*counts)[i] > 0 {
+			n++
+			if n >= min3Mers {
+				pool64Uint8s.Put(counts)
+				pool64Ints.Put(idxes)
+				return false
+			}
+
+			*idxes = append(*idxes, i)
+		}
+	}
+
+	// for i = 0; i < 64; i++ {
+	for _, i = range *idxes {
+		if (*counts)[i] >= maxCount3Mer {
+			// fmt.Printf("  %s, mers:%d, count(%s)=%d\n", lexichash.MustDecode(code, k),
+			// 	n, lexichash.MustDecode(uint64(i), 3), (*counts)[i])
+			pool64Uint8s.Put(counts)
+			pool64Ints.Put(idxes)
+			return true
+		}
+	}
+
+	pool64Uint8s.Put(counts)
+	pool64Ints.Put(idxes)
+	return false
+}
+
+var pool64Uint8s = &sync.Pool{New: func() interface{} {
+	tmp := make([]byte, 64)
+	return &tmp
+}}
+
+var pool64Ints = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint8, 0, 64)
+	return &tmp
+}}

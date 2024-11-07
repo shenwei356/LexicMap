@@ -144,7 +144,7 @@ There are some ways to improve the search speed of `lexicmap search`.
           # Seeds (k-mer-value data) files
           chunks = 48
 
-    - Increasing the value of `--max-open-files` (default 512). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+    - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
 - **Loading the entire seed data into memoy** (It's unnecessary if the index is stored in SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
