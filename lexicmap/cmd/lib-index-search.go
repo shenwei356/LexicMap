@@ -1573,6 +1573,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										} else {
 											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 										}
+										// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 										cigar, err = algn.Align(_qseq, _tseq)
 										if err != nil {
 											checkError(fmt.Errorf("fail to align sequence"))
@@ -1778,6 +1779,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								} else {
 									_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
 								}
+								// fmt.Printf("q: %s\nt: %s\n", s[c.QBegin:c.QEnd+1], _tseq)
 								cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))

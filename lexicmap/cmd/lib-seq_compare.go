@@ -105,13 +105,12 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	// a reusable Radix tree for searching k-mers sharing at least n-base prefixes.
 	t := rtree.NewTree(k)
 
-	// only considering the positive strand
-	var kmer uint64
+	var kmer, kmerRC uint64
 	var ok bool
 	ttt := (uint64(1) << (k << 1)) - 1
 
 	for {
-		kmer, ok, _ = iter.NextPositiveKmer()
+		kmer, kmerRC, ok, _ = iter.NextKmer()
 		if !ok {
 			break
 		}
@@ -121,7 +120,8 @@ func (cpr *SeqComparator) Index(s []byte) error {
 			continue
 		}
 
-		t.Insert(kmer, uint32(iter.Index()))
+		t.Insert(kmer, uint32(iter.Index()<<1))
+		t.Insert(kmerRC, uint32(iter.Index()<<1|1))
 	}
 
 	cpr.tree = t
@@ -306,15 +306,16 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// --------------------------------------------------------------
 	// search on the tree
 
+	// ----------- round 1: k = k ------------------
 	iter, err := iterator.NewKmerIterator(s, k)
 	if err != nil {
 		return nil, err
 	}
 
 	t := cpr.tree
-	var kmer uint64
+	var kmer, kmerRC uint64
 	var ok bool
-	var v uint32
+	var v, p uint32
 	var srs *[]*rtree.SearchResult
 	var sr *rtree.SearchResult
 
@@ -322,14 +323,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	subs := poolSubs.Get().(*[]*SubstrPair)
 	*subs = (*subs)[:0]
 
-	// only considering k-mers on the positive strand.
-	// how can we detect inversion?
-	//	-----> <====== ----->
-	//	||||||         ||||||
-	//	-----> ======> ----->
 	ttt := (uint64(1) << (k << 1)) - 1
 	for {
-		kmer, ok, _ = iter.NextPositiveKmer()
+		kmer, kmerRC, ok, _ = iter.NextKmer()
 		if !ok {
 			break
 		}
@@ -338,27 +334,61 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 			continue
 		}
 
+		// ------------ positive strand -----------
+
 		srs, ok = t.Search(kmer, m)
-		if !ok {
-			continue
-		}
-		for _, sr = range *srs {
-			for _, v = range sr.Values {
-				if v+uint32(sr.LenPrefix) < begin || v > end { // skip flanking regions
-					continue
+		if ok {
+			// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmer, k8))
+			for _, sr = range *srs {
+				for _, v = range sr.Values {
+					p = v >> 1
+					// fmt.Printf("  p: %d, len: %d\n", p, sr.LenPrefix)
+					if v&1 == 1 || p < begin || p+uint32(sr.LenPrefix) > end { // skip flanking regions
+						continue
+					}
+
+					_sub2 := poolSub.Get().(*SubstrPair)
+					_sub2.QBegin = int32(p)
+					_sub2.TBegin = int32(iter.Index())
+					// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
+					_sub2.Len = uint8(sr.LenPrefix)
+					_sub2.QRC = false
+					_sub2.TRC = false
+
+					*subs = append(*subs, _sub2)
 				}
-
-				_sub2 := poolSub.Get().(*SubstrPair)
-				_sub2.QBegin = int32(v)
-				_sub2.TBegin = int32(iter.Index())
-				// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
-				_sub2.Len = uint8(sr.LenPrefix)
-				_sub2.TRC = false
-
-				*subs = append(*subs, _sub2)
 			}
+
+			t.RecycleSearchResult(srs)
 		}
-		t.RecycleSearchResult(srs)
+
+		// ------------ negative strand -----------
+
+		srs, ok = t.Search(kmerRC, m)
+		if ok {
+			// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmerRC, k8))
+			for _, sr = range *srs {
+				for _, v = range sr.Values {
+					p = v>>1 + uint32(k) - uint32(sr.LenPrefix)
+					// fmt.Printf("  p: %d, len: %d\n", p, sr.LenPrefix)
+					if v&1 == 0 || p+uint32(sr.LenPrefix) < begin || p > end { // skip flanking regions
+						continue
+					}
+
+					_sub2 := poolSub.Get().(*SubstrPair)
+					_sub2.QBegin = int32(p)
+					_sub2.TBegin = int32(iter.Index() + k - int(sr.LenPrefix))
+					// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
+					_sub2.Len = uint8(sr.LenPrefix)
+					_sub2.QRC = true
+					_sub2.TRC = true
+
+					*subs = append(*subs, _sub2)
+				}
+			}
+
+			t.RecycleSearchResult(srs)
+		}
 	}
 
 	if len(*subs) < 1 { // no way
