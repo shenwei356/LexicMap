@@ -406,6 +406,12 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// }
 	// fmt.Println("-------------------------------")
 
+	TrimSubStrPairs(subs, k)
+	if len(*subs) == 0 {
+		RecycleSubstrPairs(subs)
+		return nil, nil
+	}
+
 	// --------------------------------------------------------------
 	// chaining paired substrings
 
@@ -459,5 +465,107 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 func (cpr *SeqComparator) RecycleIndex() {
 	if cpr.tree != nil {
 		rtree.RecycleTree(cpr.tree)
+	}
+}
+
+// TrimSubStrPairs trims anchors for query/subjects with tandem repeats in either end
+func TrimSubStrPairs(subs *[]*SubstrPair, k int) {
+	if len(*subs) < 2 {
+		return
+	}
+
+	var qb, tb int32
+	var _qb, _tb int32
+	var qn, tn int
+	var qne, tne bool
+	var p *SubstrPair
+	k32 := int32(k)
+
+	// head
+
+	qn, tn = 0, 0
+	qne, tne = false, false
+
+	p = (*subs)[0]
+	qb, tb = p.QBegin, p.TBegin
+	_qb, _tb = qb, tb
+
+	for _, p = range (*subs)[1:] {
+		qb, tb = p.QBegin, p.TBegin
+		if qb == _qb && tb-_tb < k32 {
+			qn++
+		} else {
+			qne = true
+		}
+
+		if tb == _tb && qb-_qb < k32 {
+			tn++
+		} else {
+			tne = true
+		}
+
+		if qne && tne {
+			break
+		}
+		_qb, _tb = qb, tb
+	}
+	start := max(qn, tn)
+
+	// tail
+
+	qn, tn = 0, 0
+	qne, tne = false, false
+
+	p = (*subs)[len(*subs)-1]
+	qb, tb = p.QBegin, p.TBegin
+	_qb, _tb = qb, tb
+
+	for i := len(*subs) - 2; i >= 0; i-- {
+		p = (*subs)[i]
+		qb, tb = p.QBegin, p.TBegin
+		if qb == _qb && _tb-tb < k32 {
+			qn++
+		} else {
+			qne = true
+		}
+
+		if tb == _tb && _qb-qb < k32 {
+			tn++
+		} else {
+			tne = true
+		}
+
+		if qne && tne {
+			break
+		}
+		_qb, _tb = qb, tb
+	}
+
+	end := max(qn, tn)
+
+	// fmt.Printf("start: %d, end: %d\n", start, end)
+
+	if start == 0 && end == 0 {
+		return
+	}
+
+	for i := 0; i < start; i++ {
+		poolSub.Put((*subs)[i])
+		(*subs)[i] = nil
+	}
+
+	var j int
+	for i := 0; i < end; i++ {
+		j = len(*subs) - 1 - i
+		if (*subs)[j] != nil {
+			poolSub.Put((*subs)[j])
+			(*subs)[j] = nil
+		}
+	}
+
+	if start >= len(*subs)-end { // all discarded
+		*subs = (*subs)[:0]
+	} else {
+		*subs = (*subs)[start : len(*subs)-end]
 	}
 }

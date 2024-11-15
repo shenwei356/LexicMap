@@ -1260,7 +1260,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		checkError(err)
 	}
 
-	alignOption := &wfa.Options{GlobalAlignment: false}
+	alignOption := &wfa.Options{GlobalAlignment: true}
 
 	// do not do this, as multiple genome readers would compete in reading sequences from the same file.
 	// sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].BatchGenomeIndex < (*rs)[j].BatchGenomeIndex })
