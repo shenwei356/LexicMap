@@ -400,17 +400,17 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	ClearSubstrPairs(subs, k)
 
-	// fmt.Println("----------- cleaned anchors ----------")
-	// for i, sub := range *subs {
-	// 	fmt.Printf("%3d: %s\n", i, sub)
-	// }
-	// fmt.Println("-------------------------------")
-
 	TrimSubStrPairs(subs, k)
 	if len(*subs) == 0 {
 		RecycleSubstrPairs(subs)
 		return nil, nil
 	}
+
+	// fmt.Println("----------- cleaned anchors ----------")
+	// for i, sub := range *subs {
+	// 	fmt.Printf("%3d: %s\n", i, sub)
+	// }
+	// fmt.Println("-------------------------------")
 
 	// --------------------------------------------------------------
 	// chaining paired substrings

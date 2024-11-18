@@ -452,8 +452,10 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			nAlignedBasesT += int(te) - int(tb) + 1
 
 			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
+			// fmt.Println(nMatchedBases, nAlignedBasesQ, pident)
+
 			// the pident here (pseudo alignment) would be much lower than the real one .
-			if pident < 20 {
+			if pident < 15 {
 				firstAnchorOfAChain = true
 				break
 			}
@@ -495,7 +497,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			if nAlignedBasesQ >= minAlignLen {
 				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
-				if pident >= 20 {
+				if pident >= 15 {
 					if pident > 100 {
 						pident = 100
 					}
