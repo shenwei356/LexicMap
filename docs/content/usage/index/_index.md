@@ -124,7 +124,8 @@ Flags:
                                   skip types: no_valid_seqs, too_large_genome, too_many_seqs.
   -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files. Max:
                                   128. Default: the value of -j/--threads. (default 16)
-      --contig-interval int       ► Length of interval (N's) between contigs in a genome. (default 1000)
+      --contig-interval int       ► Length of interval (N's) between contigs in a genome. It can't be
+                                  too small (<1000) or some alignments might be fragmented (default 1000)
       --debug                     ► Print debug information.
   -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
                                   case ignored. Attention: use double quotation marks for patterns

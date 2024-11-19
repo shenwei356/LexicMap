@@ -1483,10 +1483,14 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 							// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
 
-							if _begin >= tPosOffsetBegin && _end <= tPosOffsetEnd {
+							// +K -K is because chained region might have little overlaps with contig intervals
+							if _begin+K >= tPosOffsetBegin && _end-K <= tPosOffsetEnd {
 								iSeq = j
 								// fmt.Printf("    iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
 								// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
+								break
+							} else if _end < tPosOffsetBegin { // no need to find
+								iSeq = -1
 								break
 							}
 
@@ -1567,6 +1571,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								j := 0
 								for i, c := range *r2.Chains {
 									if accurateAlign {
+										if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+											continue
+										}
+
 										_qseq = s[c.QBegin : c.QEnd+1]
 										if rc {
 											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
@@ -1772,6 +1780,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						for i, c := range *r2.Chains {
 
 							if accurateAlign {
+								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+									continue
+								}
+
 								_qseq = s[c.QBegin : c.QEnd+1]
 								if rc {
 									// Attention, it's different from previous code

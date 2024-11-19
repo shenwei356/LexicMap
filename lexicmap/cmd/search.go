@@ -279,20 +279,20 @@ Result ordering:
 		}
 
 		// read info file to get the contig interval size
-		fileInfo := filepath.Join(dbDir, FileInfo)
-		info, err := readIndexInfo(fileInfo)
-		if err != nil {
-			checkError(fmt.Errorf("failed to read index info file: %s", err))
-		}
+		// fileInfo := filepath.Join(dbDir, FileInfo)
+		// info, err := readIndexInfo(fileInfo)
+		// if err != nil {
+		// 	checkError(fmt.Errorf("failed to read index info file: %s", err))
+		// }
 
-		if extLen > info.ContigInterval {
-			log.Infof("the value of flag --align-ext-len (%d) is adjusted to contig interval length in database (%d)", extLen, info.ContigInterval)
-			sopt.ExtendLength = info.ContigInterval
-		}
-		if maxDist > info.ContigInterval {
-			log.Infof("the value of flag --seed-max-dist (%d) is adjusted to contig interval length in database (%d)", maxDist, info.ContigInterval)
-			sopt.MaxDistance = float64(info.ContigInterval)
-		}
+		// if extLen > info.ContigInterval {
+		// 	log.Infof("the value of flag --align-ext-len (%d) is adjusted to contig interval length in database (%d)", extLen, info.ContigInterval)
+		// 	sopt.ExtendLength = info.ContigInterval
+		// }
+		// if maxDist > info.ContigInterval {
+		// 	log.Infof("the value of flag --seed-max-dist (%d) is adjusted to contig interval length in database (%d)", maxDist, info.ContigInterval)
+		// 	sopt.MaxDistance = float64(info.ContigInterval)
+		// }
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)

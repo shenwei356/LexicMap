@@ -607,7 +607,7 @@ func init() {
 		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are >100 batches, please also increase the value of --max-open-files and set a bigger "ulimit -n" in shell.`))
 
 	indexCmd.Flags().IntP("contig-interval", "", 1000,
-		formatFlagUsage(`Length of interval (N's) between contigs in a genome.`))
+		formatFlagUsage(`Length of interval (N's) between contigs in a genome. It can't be too small (<1000) or some alignments might be fragmented`))
 
 	// ----------------------------------------------------------
 

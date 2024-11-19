@@ -17,7 +17,6 @@
     - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
     - Fix positions and alignment texts for queries with highly repetitive sequences in end regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
     - Skip seeds of low-complexity.
-    - Automatically adjust arguments `--seed-max-dist` and `--align-ext-len` for indexes with a smaller contig interval size.
     - More accurate `-n/--top-n-genomes`, and add new help message.
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Change the default value of `--align-band` from 50 to 100.
