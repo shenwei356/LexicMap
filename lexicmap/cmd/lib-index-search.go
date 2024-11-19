@@ -1569,18 +1569,26 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 								hasResult := false
 								j := 0
+								var start, end int
 								for i, c := range *r2.Chains {
 									if accurateAlign {
 										if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 											continue
 										}
-
 										_qseq = s[c.QBegin : c.QEnd+1]
+
 										if rc {
-											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
+											start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
 										} else {
-											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
+											start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+
 										}
+										if start >= end {
+											// fmt.Println(string(*tSeq.SeqIDs[0]))
+											continue
+										}
+										_tseq = tSeq.Seq[start:end]
+
 										// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 										cigar, err = algn.Align(_qseq, _tseq)
 										if err != nil {
@@ -1777,22 +1785,29 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 						hasResult := false
 						j := 0
+						var start, end int
 						for i, c := range *r2.Chains {
 
 							if accurateAlign {
 								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 									continue
 								}
-
 								_qseq = s[c.QBegin : c.QEnd+1]
+
+								// Attention, it's different from previous code
 								if rc {
-									// Attention, it's different from previous code
-									_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
+									start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
 								} else {
-									_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
+									start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
 								}
+								if start >= end {
+									// fmt.Println(string(*tSeq.SeqIDs[0]))
+									continue
+								}
+								_tseq = tSeq.Seq[start:end]
+
 								// fmt.Printf("q: %s\nt: %s\n", s[c.QBegin:c.QEnd+1], _tseq)
-								cigar, err = algn.Align(s[c.QBegin:c.QEnd+1], _tseq)
+								cigar, err = algn.Align(_qseq, _tseq)
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
