@@ -162,6 +162,10 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								tmp := make([]uint64, 0, len(*values1))
 								values = &tmp
 								(*m)[kmer] = values
+
+								// values = poolUint64s.Get().(*[]uint64)
+								// *values = (*values)[:0]
+								// (*m)[kmer] = values
 							}
 							*values = append(*values, (*values1)...)
 						}
@@ -173,6 +177,10 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
 					}
 				}
+
+				// for _, values = range *m {
+				// 	poolUint64s.Put(values)
+				// }
 				kv.RecycleKmerData(m)
 
 				for _, rdr = range rdrs {
@@ -330,3 +338,8 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
 	return nil
 }
+
+var poolUint64s = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint64, 0, 8)
+	return &tmp
+}}

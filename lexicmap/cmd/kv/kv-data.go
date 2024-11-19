@@ -555,6 +555,7 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		}
 	}
 
+	wtr.poolP2O.Put(p2o)
 	return nil
 }
 
