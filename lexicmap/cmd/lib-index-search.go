@@ -1265,6 +1265,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	// do not do this, as multiple genome readers would compete in reading sequences from the same file.
 	// sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].BatchGenomeIndex < (*rs)[j].BatchGenomeIndex })
 
+	// sort genomes according to the index in a genome data file for slightly faster file seeking
+	if len(*rs) > 1 { // GenomeIndex
+		sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].GenomeIndex < (*rs)[j].GenomeIndex })
+	}
+
 	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
@@ -1339,6 +1344,15 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			clear(*hashes)
 			var hash uint64
 
+			var tSeq *genome.Genome
+
+			// sort chains according to coordinates for faster file seeking
+			if len(*r.Chains) > 1 {
+				sort.Slice(*r.Chains, func(i, j int) bool {
+					return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
+				})
+			}
+
 			// check sequences from all chains
 			for _, chain := range *r.Chains { // for each lexichash chain
 				// ------------------------------------------------------------------------
@@ -1395,7 +1409,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// extract target sequence for comparison.
 				// Right now, we fetch seq from disk for each seq,
 				// In the future, we might buffer frequently accessed references for improving speed.
-				tSeq, err := rdr.SubSeq(refID, tBegin, tEnd)
+				tSeq, err = rdr.SubSeq3(refID, tBegin, tEnd, tSeq)
 				if err != nil {
 					checkError(err)
 				}
@@ -1422,7 +1436,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				if cr == nil {
 					// recycle target sequence
-					genome.RecycleGenome(tSeq)
+					// genome.RecycleGenome(tSeq)
 					continue
 				}
 
@@ -1926,8 +1940,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// recycle target sequence
 
 				poolChains2.Put(cr.Chains)
-				genome.RecycleGenome(tSeq)
+				// genome.RecycleGenome(tSeq)
 			}
+
+			genome.RecycleGenome(tSeq)
 
 			poolHashes.Put(hashes)
 			wfa.RecycleAligner(algn)

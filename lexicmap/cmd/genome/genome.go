@@ -95,6 +95,9 @@ type Genome struct {
 
 	// for making sure both genome and key-value data being written
 	Done chan int
+
+	// offset of sequence, only used in calling SubSeq for more than once
+	SeqOffSet int64
 }
 
 func (r Genome) String() string {
@@ -783,6 +786,245 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	// -- first byte --
 	b := buf[0]
 	j = start & 3
+
+	switch j {
+	case 0:
+		(*s)[3] = bit2base[b&3]
+		b >>= 2
+		(*s)[2] = bit2base[b&3]
+		b >>= 2
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 1:
+		(*s)[2] = bit2base[b&3]
+		b >>= 2
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 2:
+		(*s)[1] = bit2base[b&3]
+		b >>= 2
+		(*s)[0] = bit2base[b&3]
+	case 3:
+		(*s)[0] = bit2base[b&3]
+	}
+	j = 4 - j
+	*s = (*s)[:j]
+	if j >= l {
+		*s = (*s)[:l]
+		return g, nil
+	}
+
+	// -- middle byte --
+	if nBytes > 2 {
+		for _, b = range buf[1 : nBytes-1] {
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+			*s = append(*s, bit2base[b&3])
+		}
+	}
+
+	if nBytes > 1 {
+		// -- last byte --
+		b = buf[nBytes-1]
+		j = end & 3
+		switch j {
+		case 0:
+			*s = append(*s, bit2base[b>>6&3])
+		case 1:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+		case 2:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+		case 3:
+			*s = append(*s, bit2base[b>>6&3])
+			*s = append(*s, bit2base[b>>4&3])
+			*s = append(*s, bit2base[b>>2&3])
+			*s = append(*s, bit2base[b&3])
+		}
+	}
+
+	*s = (*s)[:l]
+	g.Len = len(g.Seq)
+	return g, nil
+}
+
+// SubSeq3 returns the subsequence of a genome (idx is 0-based),
+// from start to end (both are 0-based and included).
+// Please call RecycleGenome() after using the result.
+func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error) {
+	if idx < 0 || idx >= int(r.nSeqs) {
+		return nil, fmt.Errorf("sequence index (%d) out of range: [0, %d]", idx, int(r.nSeqs)-1)
+	}
+
+	buf := r.buf
+
+	var n int
+	var err error
+
+	var offset int64
+	i2 := idx << 1
+	nBases := int(r.Index[i2+1])
+
+	if start < 0 {
+		start = 0
+	}
+	if end >= nBases-1 {
+		end = nBases - 1
+	}
+	if end < start {
+		end = start
+	}
+
+	br := r.bufReader
+
+	if g == nil { // read genome info once
+		offset = int64(r.Index[i2])
+
+		// -----------------------------------------------------------
+		// get sequence information
+
+		g = PoolGenome.Get().(*Genome)
+
+		r.fhData.Seek(offset, 0)
+		br.Reset(r.fhData)
+
+		// ID length
+		n, err = io.ReadFull(br, buf[:2])
+		if err != nil {
+			return nil, err
+		}
+		if n < 2 {
+			return nil, ErrBrokenFile
+		}
+		idLen := be.Uint16(buf[:2])
+		offset += 2
+
+		// ID
+		n, err = io.ReadFull(br, buf[:idLen])
+		if err != nil {
+			return nil, err
+		}
+		if n < int(idLen) {
+			return nil, ErrBrokenFile
+		}
+		g.ID = g.ID[:0]
+		g.ID = append(g.ID, buf[:idLen]...)
+		offset += int64(idLen)
+
+		// genome size, Len of concatenated seqs, NumSeqs
+		n, err = io.ReadFull(br, buf[:12])
+		if err != nil {
+			return nil, err
+		}
+		if n < 12 {
+			return nil, ErrBrokenFile
+		}
+		g.GenomeSize = int(be.Uint32(buf[:4]))
+		g.Len = int(be.Uint32(buf[4:8]))
+		g.NumSeqs = int(be.Uint32(buf[8:12]))
+		offset += 12
+
+		// SeqSizes and SeqIDs
+		g.SeqSizes = g.SeqSizes[:0]
+		g.SeqIDs = g.SeqIDs[:0]
+		var j, nappend int
+		var idLen2 int
+		for i := 0; i < g.NumSeqs; i++ {
+			n, err = io.ReadFull(br, buf[:6])
+			if err != nil {
+				return nil, err
+			}
+			if n < 6 {
+				return nil, ErrBrokenFile
+			}
+			g.SeqSizes = append(g.SeqSizes, int(be.Uint32(buf[:4])))
+
+			// seq id
+			// n, err = io.ReadFull(br, buf[:2])
+			// if err != nil {
+			// 	return nil, err
+			// }
+			// if n < 2 {
+			// 	return nil, ErrBrokenFile
+			// }
+
+			idLen2 = int(be.Uint16(buf[4:6]))
+			id := poolID.Get().(*[]byte)
+			if len(*id) >= idLen2 {
+				*id = (*id)[:idLen2]
+			} else {
+				nappend = idLen2 - len(*id)
+				for j = 0; j < nappend; j++ {
+					*id = append(*id, 0)
+				}
+			}
+			n, err = io.ReadFull(br, *id)
+			if err != nil {
+				return nil, err
+			}
+			if n < idLen2 {
+				return nil, ErrBrokenFile
+			}
+			g.SeqIDs = append(g.SeqIDs, id)
+
+			offset += int64(6 + idLen2)
+		}
+
+		g.SeqOffSet = offset
+	} else { // skip reading genome information
+
+		offset = g.SeqOffSet
+	}
+
+	// saving the offset for faster extract other subsequences in the same genome
+
+	// get sequence
+
+	// start of byte, 8 is #bytes+#bases
+	offset += 8 + int64(start>>2)
+	_, err = r.fhData.Seek(offset, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	br.Reset(r.fhData)
+
+	nBytes := end>>2 - start>>2 + 1
+
+	// prepair the buf
+	if nBytes <= len(r.buf) {
+		buf = r.buf[:nBytes]
+	} else {
+		n := nBytes - len(r.buf)
+		for i := 0; i < n; i++ {
+			r.buf = append(r.buf, 0)
+		}
+		buf = r.buf
+	}
+	n, err = io.ReadFull(br, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if n < nBytes {
+		return nil, ErrBrokenFile
+	}
+
+	l := end - start + 1
+
+	// initialize with l+4 blank values, because if there less than 4 bases
+	// to extract, code below would panic.
+	s := &g.Seq
+	*s = (*s)[:4]
+
+	// -- first byte --
+	b := buf[0]
+	j := start & 3
 
 	switch j {
 	case 0:
