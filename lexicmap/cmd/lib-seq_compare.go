@@ -400,6 +400,12 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	ClearSubstrPairs(subs, k)
 
+	// fmt.Println("----------- cleared anchors ----------")
+	// for i, sub := range *subs {
+	// 	fmt.Printf("%3d: %s\n", i, sub)
+	// }
+	// fmt.Println("-------------------------------")
+
 	TrimSubStrPairs(subs, k)
 	if len(*subs) == 0 {
 		RecycleSubstrPairs(subs)
@@ -468,104 +474,104 @@ func (cpr *SeqComparator) RecycleIndex() {
 	}
 }
 
-// TrimSubStrPairs trims anchors for query/subjects with tandem repeats in either end
+// TrimSubStrPairs trims anchors for query/subjects with tandem repeats in either end.
+//
+// case 1: embeded anchor in query/target
+//
+//	61: 156-186 (+) vs 1163-1193 (+), len:31
+//	62: 157-187 (-) vs 1164-1194 (-), len:31
+//	63: 158-188 (+) vs 1165-1195 (+), len:31
+//	64: 168-195 (-) vs 1168-1195 (-), len:28
+//	65: 175-202 (-) vs 1168-1195 (-), len:28 <---
+//	66: 182-209 (-) vs 1168-1195 (-), len:28 <---
+//	67: 189-216 (-) vs 1168-1195 (-), len:28 <---
+//	68: 196-223 (+) vs 1168-1195 (+), len:28 <---
+//	69: 203-230 (+) vs 1168-1195 (+), len:28 <---
+//	70: 210-237 (-) vs 1168-1195 (-), len:28 <---
+//	71: 217-244 (-) vs 1168-1195 (-), len:28 <--- gap=7, overlap=28 (28/28)
+//
+// case 2: big overlap + big gap
+//
+//	727: 789-819 (-) vs 789-819 (-), len:31
+//	728: 790-820 (-) vs 790-820 (-), len:31
+//	729: 804-821 (-) vs 821-838 (-), len:18 <--- gap=17, overlap=17 (17/18)
 func TrimSubStrPairs(subs *[]*SubstrPair, k int) {
 	if len(*subs) < 2 {
 		return
 	}
 
-	var qb, tb int32
-	var _qb, _tb int32
-	var qn, tn int
-	var qne, tne bool
-	var p *SubstrPair
-	k32 := int32(k)
+	var _p, p *SubstrPair
+	var i int
+	last := len(*subs) - 1
 
 	// head
+	_p = (*subs)[0]
+	start := 0
 
-	qn, tn = 0, 0
-	qne, tne = false, false
-
-	p = (*subs)[0]
-	qb, tb = p.QBegin, p.TBegin
-	_qb, _tb = qb, tb
-
-	for _, p = range (*subs)[1:] {
-		qb, tb = p.QBegin, p.TBegin
-		if qb == _qb && tb-_tb < k32 {
-			qn++
-		} else {
-			qne = true
+	for i, p = range (*subs)[1:] {
+		if (p.QBegin == _p.QBegin || p.TBegin == _p.TBegin) || // case 1
+			(gap(_p, p) > 11 && float64(overlap(_p, p))/float64(_p.Len) > 0.8) { // case 2
+			start = i
+			_p = p
+			continue
 		}
 
-		if tb == _tb && qb-_qb < k32 {
-			tn++
-		} else {
-			tne = true
-		}
-
-		if qne && tne {
-			break
-		}
-		_qb, _tb = qb, tb
+		break
 	}
-	start := max(qn, tn)
 
 	// tail
+	_p = (*subs)[last]
+	end := last
 
-	qn, tn = 0, 0
-	qne, tne = false, false
-
-	p = (*subs)[len(*subs)-1]
-	qb, tb = p.QBegin, p.TBegin
-	_qb, _tb = qb, tb
-
-	for i := len(*subs) - 2; i >= 0; i-- {
+	for i = len(*subs) - 2; i >= 0; i-- {
 		p = (*subs)[i]
-		qb, tb = p.QBegin, p.TBegin
-		if qb == _qb && _tb-tb < k32 {
-			qn++
-		} else {
-			qne = true
+
+		if (p.QBegin == _p.QBegin || p.TBegin == _p.TBegin) || // case 1
+			(gap(p, _p) > 11 && float64(overlap(p, _p))/float64(_p.Len) > 0.8) { // case 2
+			end = i
+			_p = p
+			continue
 		}
 
-		if tb == _tb && _qb-qb < k32 {
-			tn++
-		} else {
-			tne = true
-		}
-
-		if qne && tne {
-			break
-		}
-		_qb, _tb = qb, tb
+		break
 	}
-
-	end := max(qn, tn)
 
 	// fmt.Printf("start: %d, end: %d\n", start, end)
 
-	if start == 0 && end == 0 {
+	if start == 0 && end == len(*subs) {
 		return
 	}
 
-	for i := 0; i < start; i++ {
+	// remove head overhang
+	for i = 0; i < start; i++ {
 		poolSub.Put((*subs)[i])
 		(*subs)[i] = nil
 	}
 
-	var j int
-	for i := 0; i < end; i++ {
-		j = len(*subs) - 1 - i
-		if (*subs)[j] != nil {
-			poolSub.Put((*subs)[j])
-			(*subs)[j] = nil
+	// remove tail overhang
+	for i = end + 1; i <= last; i++ {
+		if (*subs)[i] != nil {
+			poolSub.Put((*subs)[i])
+			(*subs)[i] = nil
 		}
 	}
 
-	if start >= len(*subs)-end { // all discarded
+	if start >= end { // all discarded
 		*subs = (*subs)[:0]
 	} else {
-		*subs = (*subs)[start : len(*subs)-end]
+		*subs = (*subs)[start : end+1]
 	}
+}
+
+// a should be in front of b
+func overlap(a, b *SubstrPair) int32 {
+	var qo, to int32
+	if b.QBegin >= a.QBegin && b.QBegin <= a.QBegin+int32(a.Len) {
+		qo = a.QBegin + int32(a.Len) - b.QBegin + 1
+	}
+
+	if b.TBegin >= a.TBegin && b.TBegin <= a.TBegin+int32(a.Len) {
+		to = a.TBegin + int32(a.Len) - b.TBegin + 1
+	}
+	return max(qo, to)
 }
