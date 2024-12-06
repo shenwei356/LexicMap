@@ -153,6 +153,33 @@ func MustSharingPrefixKmersSuffixMatches(code1, code2 uint64, k, p uint8) (n uin
 	return n
 }
 
+// IsLowComplexity checks k-mer complexity with DUST algorithm
+func IsLowComplexityDust(code uint64, k uint8) bool {
+	counts := pool64Uint8s.Get().(*[]byte)
+	clear(*counts)
+
+	var mer uint64
+	var i, end, c uint8
+
+	end = k - 2
+	for i = 0; i <= end; i++ {
+		mer = code >> (i << 1) & 63
+		(*counts)[mer]++
+	}
+
+	var score uint16
+	for i = 0; i < 64; i++ {
+		c = (*counts)[i]
+		if c > 1 {
+			score += uint16(c) * uint16(c-1) >> 1
+		}
+	}
+
+	pool64Uint8s.Put(counts)
+
+	return score > 20
+}
+
 // IsLowComplexity checks k-mer complexity according to the frequencies of 2-mer and 3-mer.
 func IsLowComplexity(code uint64, k uint8) bool {
 	counts := pool64Uint8s.Get().(*[]byte)
@@ -256,3 +283,12 @@ var pool64Ints = &sync.Pool{New: func() interface{} {
 	tmp := make([]uint8, 0, 64)
 	return &tmp
 }}
+
+func Ns(b uint64, k uint8) (code uint64) {
+	var i uint8
+	code = b
+	for i = 1; i < k; i++ {
+		code = code<<2 + b
+	}
+	return code
+}

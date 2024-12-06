@@ -808,9 +808,13 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 	// remove low-complexity k-mers
 	k8 := idx.k8
-	ttt := (uint64(1) << (idx.k << 1)) - 1
+	ccc := util.Ns(0b01, k8)
+	ggg := util.Ns(0b10, k8)
+	ttt := (uint64(1) << (k8 << 1)) - 1
+
 	for i, kmer := range *_kmers {
-		if kmer == ttt || (kmer != 0 && util.IsLowComplexity(kmer, k8)) {
+		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+			util.IsLowComplexityDust(kmer, k8) {
 			// fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
 			(*_kmers)[i] = 0
 			// (*_locses)[i] = (*_locses)[i][:0]
@@ -1453,7 +1457,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				for _, c := range *cr.Chains { // for each pseudo alignment chain
 					qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
 					// fmt.Printf("\n--------------------------------------------\n")
-					// fmt.Printf("--- lexichash chain: %d, pseudo alignment chain: %d ---\n", i+1, _i+1)
+					// fmt.Printf("--- %s: lexichash chain: %d, pseudo alignment chain: %d ---\n", r.ID, i+1, _i+1)
 					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
 
 					// ------------------------------------------------------------

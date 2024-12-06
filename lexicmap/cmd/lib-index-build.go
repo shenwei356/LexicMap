@@ -982,9 +982,12 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				// remove low-complexity k-mers
 				k8 := uint8(lh.K)
+				ccc := util.Ns(0b01, k8)
+				ggg := util.Ns(0b10, k8)
 				ttt := (uint64(1) << (k << 1)) - 1
 				for i, kmer := range *_kmers {
-					if kmer == ttt || (kmer != 0 && util.IsLowComplexity(kmer, k8)) {
+					if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+						util.IsLowComplexityDust(kmer, k8) {
 						// fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
 						(*_kmers)[i] = 0
 						(*locses)[i] = (*locses)[i][:0]
@@ -1208,7 +1211,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
 								// if kmer != 0 {
-								if kmer != 0 && kmer != ttt && !util.IsLowComplexity(kmer, k8) {
+								if kmer != 0 && kmer != ccc && kmer != ggg && kmer != ttt &&
+									!util.IsLowComplexityDust(kmer, k8) {
 									// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 									// 	kmerPos = uint64(start+_j) << 1
 									// 	break
@@ -1227,7 +1231,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
 								// if kmer != 0 {
-								if kmer != 0 && kmer != ttt && !util.IsLowComplexity(kmer, k8) {
+								if kmer != 0 && kmer != ccc && kmer != ggg && kmer != ttt &&
+									!util.IsLowComplexityDust(kmer, k8) {
 									// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 									// 	kmerPos = uint64(start+_j)<<1 | 1
 									// 	break
@@ -1282,7 +1287,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
 								// if kmer != 0 {
-								if kmer != 0 && kmer != ttt && !util.IsLowComplexity(kmer, k8) {
+								if kmer != 0 && kmer != ccc && kmer != ggg && kmer != ttt &&
+									!util.IsLowComplexityDust(kmer, k8) {
 									// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 									// 	kmerPos = uint64(start+_j) << 1
 									// 	break
@@ -1301,7 +1307,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
 								// if kmer != 0 {
-								if kmer != 0 && kmer != ttt && !util.IsLowComplexity(kmer, k8) {
+								if kmer != 0 && kmer != ccc && kmer != ggg && kmer != ttt &&
+									!util.IsLowComplexityDust(kmer, k8) {
 									// if _im, ok = (*kmer2maskidx)[kmer]; ok {
 									// 	kmerPos = uint64(start+_j)<<1 | 1
 									// 	break

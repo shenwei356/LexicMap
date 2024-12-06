@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash/iterator"
 )
 
@@ -95,6 +96,7 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 // Index initializes the SeqComparator with the query sequence.
 func (cpr *SeqComparator) Index(s []byte) error {
 	k := cpr.options.K
+	k8 := uint8(k)
 
 	// k-mer iterator
 	iter, err := iterator.NewKmerIterator(s, int(k))
@@ -107,6 +109,9 @@ func (cpr *SeqComparator) Index(s []byte) error {
 
 	var kmer, kmerRC uint64
 	var ok bool
+
+	ccc := util.Ns(0b01, k8)
+	ggg := util.Ns(0b10, k8)
 	ttt := (uint64(1) << (k << 1)) - 1
 
 	for {
@@ -116,7 +121,8 @@ func (cpr *SeqComparator) Index(s []byte) error {
 		}
 
 		// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmer, k))
-		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+			util.IsLowComplexityDust(kmer, k8) {
 			continue
 		}
 
@@ -323,14 +329,18 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	subs := poolSubs.Get().(*[]*SubstrPair)
 	*subs = (*subs)[:0]
 
+	ccc := util.Ns(0b01, k8)
+	ggg := util.Ns(0b10, k8)
 	ttt := (uint64(1) << (k << 1)) - 1
+
 	for {
 		kmer, kmerRC, ok, _ = iter.NextKmer()
 		if !ok {
 			break
 		}
 
-		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+			util.IsLowComplexityDust(kmer, k8) {
 			continue
 		}
 

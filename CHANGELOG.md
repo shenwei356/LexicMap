@@ -8,7 +8,7 @@
     - **Big genomes with thousands of contigs (big yet fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
     - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed-matching speed at the cost of 2 GiB more memory occupation**.
       For existing lexicmap indexes, just run `lexicmap utils reindex-seeds --partitions 4096` to re-create seed indexes.
-    - **Do not save seeds of low-complexity**, e.g., ACAAAAAAAAAAAAAAAAAAAAAAAAAAAAA, GTCTCTCTCTCTCTCTCTCTCTCTCTCTCTC, and GAAGAAGAAGAAGAAGAAGAAGAAGAAGAAG.
+    - **Do not save seeds of low-complexity**.
     - Fix high memory usage in writting seed data.
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
     - Change the default value of `--max-open-files` from 512 to 1024.
