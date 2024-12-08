@@ -94,8 +94,6 @@ var poolChain = &sync.Pool{New: func() interface{} {
 func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	n := len(*subs)
 
-	var sumMaxScore float64
-
 	if n == 1 { // for one seed, just check the seed weight
 		paths := poolChains.Get().(*[]*[]int)
 		*paths = (*paths)[:0]
@@ -238,7 +236,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	}
 	paths := poolChains.Get().(*[]*[]int)
 	*paths = (*paths)[:0]
-	var first bool
+	// var first bool
 
 	path := poolChain.Get().(*[]int)
 	*path = (*path)[:0]
@@ -251,6 +249,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	})
 
 	var iMaxScore int
+
+	// for computing the score for sorting
+	firstChain := true
+	var score float64
+	var v, p *SubstrPair
 
 	for {
 		// find the next highest score
@@ -285,7 +288,10 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
 		i = Mi
-		first = true
+		// first = true
+		if firstChain {
+			score = seedWeight(float64((*subs)[i].Len))
+		}
 		for {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
@@ -311,15 +317,29 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				break
 			}
 
+			if firstChain && i != Mi {
+				// two anchors might overlap,
+				//  v:  ------      computed part: the non-overlapped part: --
+				//  p:    =======   computed part: the whole anchor
+				v, p = (*subs)[i], (*subs)[(*path)[len(*path)-1]]
+				if v.QBegin+int32(v.Len) >= p.QBegin {
+					w = seedWeight(float64(p.QBegin) - (float64(v.QBegin) + float64(v.Len)))
+				} else {
+					w = seedWeight(float64(v.Len))
+				}
+				g = gap(v, p)
+				score += w - gapScore(g)
+			}
+
 			*path = append(*path, i) // record the anchor
 			(*visited)[i] = true     // mark as visited
-			if first {
-				// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
-				sumMaxScore += (*maxscores)[i]
-				first = false
-			}
+
+			// if first {
+			// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
+			// first = false
+			// }
 			// else {
-			// 	fmt.Printf("  add %d, %s\n", i, (*subs)[i])
+			// fmt.Printf("  add %d, %s\n", i, (*subs)[i])
 			// }
 			if i != j {
 				i = j
@@ -334,9 +354,14 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				break
 			}
 		}
+
+		if firstChain {
+			firstChain = false
+		}
 	}
 
-	return paths, sumMaxScore
+	// fmt.Println(score)
+	return paths, score
 }
 
 func seedWeight(l float64) float64 {
