@@ -28,7 +28,7 @@ import (
 )
 
 func TestIsLowComplexityDust(t *testing.T) {
-	mer := []byte("AAAAAAAACCGGGCAATTGCCCGGTGCTGGA")
+	mer := []byte("TAAAAATACCTCAAAAAGAATAAAAATCCCG")
 	k := len(mer)
 
 	code, err := kmers.Encode(mer)

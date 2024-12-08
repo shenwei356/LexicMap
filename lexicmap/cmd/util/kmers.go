@@ -177,7 +177,9 @@ func IsLowComplexityDust(code uint64, k uint8) bool {
 
 	pool64Uint8s.Put(counts)
 
-	return score > 20
+	// fmt.Println(score)
+
+	return score > 50
 }
 
 // IsLowComplexity checks k-mer complexity according to the frequencies of 2-mer and 3-mer.
