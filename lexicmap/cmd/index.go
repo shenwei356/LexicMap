@@ -487,6 +487,7 @@ Important parameters:
 			log.Info()
 			log.Info("general:")
 			log.Infof("  genome batch size: %d", batchSize)
+			log.Infof("  threads: %d", opt.NumCPUs)
 			log.Infof("  batch merge threads: %d", mergeThreads)
 			log.Info()
 		}
