@@ -303,7 +303,7 @@ Result ordering:
 		}
 
 		if outputLog {
-			log.Info("searching ...")
+			log.Infof("searching with %d threads...", opt.NumCPUs)
 		}
 
 		// ---------------------------------------------------------------

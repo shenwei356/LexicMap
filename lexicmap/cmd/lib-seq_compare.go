@@ -77,6 +77,8 @@ type SeqComparator struct {
 
 	// a prefix tree for matching k-mers
 	tree *rtree.Tree
+
+	ccc, ggg, ttt uint64
 }
 
 // NewSeqComparator creates a new SeqComparator with given options.
@@ -88,6 +90,10 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 		// 	return NewChainer2(&options.Chaining2Options)
 		// }},
 		poolChainers: poolChainers,
+
+		ccc: util.Ns(0b01, options.K),
+		ggg: util.Ns(0b10, options.K),
+		ttt: util.Ns(0b11, options.K),
 	}
 
 	return cpr
@@ -110,9 +116,9 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	var kmer, kmerRC uint64
 	var ok bool
 
-	ccc := util.Ns(0b01, k8)
-	ggg := util.Ns(0b10, k8)
-	ttt := (uint64(1) << (k << 1)) - 1
+	ccc := cpr.ccc
+	ggg := cpr.ggg
+	ttt := cpr.ttt
 
 	for {
 		kmer, kmerRC, ok, _ = iter.NextKmer()
@@ -329,9 +335,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	subs := poolSubs.Get().(*[]*SubstrPair)
 	*subs = (*subs)[:0]
 
-	ccc := util.Ns(0b01, k8)
-	ggg := util.Ns(0b10, k8)
-	ttt := (uint64(1) << (k << 1)) - 1
+	ccc := cpr.ccc
+	ggg := cpr.ggg
+	ttt := cpr.ttt
 
 	for {
 		kmer, kmerRC, ok, _ = iter.NextKmer()
