@@ -15,12 +15,12 @@
     - Add a new flag `--debug`.
 - `lexicmap search`:
     - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
-    - Better chaining of overlapped anchors: 
+    - **More accurate chainning score with better chaining of overlapped anchors, this produces more accurate results with `-n/--top-n-genomes`**: 
          - Merging two overlapped non-gapped anchors into a longer one.
          - For these with gaps, only the non-overlapped part of the second anchor is used to compute the weight.
+         - Using the score of the best chain (rather than the sum) for sorting genomes when using `-n`.
     - Fix positions and alignment texts for queries with highly repetitive sequences in end regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
     - Skip seeds of low-complexity.
-    - More accurate `-n/--top-n-genomes`, and add new help message.
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Change the default value of `--align-band` from 50 to 100.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
