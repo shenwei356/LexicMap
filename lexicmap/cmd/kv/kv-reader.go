@@ -43,8 +43,9 @@ type Reader struct {
 	fh   *os.File // file handler of the kv-data file
 	r    *bufio.Reader
 
-	buf  []byte
-	buf8 []uint8
+	buf     []byte
+	buf8    []uint8
+	buf2048 []uint8 // for parsing seed data
 
 	// index of seed data
 	readIndexInfo bool
@@ -67,6 +68,8 @@ func NewReader(file string) (*Reader, error) {
 		r:    r,
 		buf:  make([]byte, 64),
 		buf8: make([]uint8, 8),
+
+		buf2048: make([]uint8, 2048),
 	}
 
 	// ---------------------------------------------
@@ -144,6 +147,7 @@ func (rdr *Reader) Close() error {
 func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	buf := rdr.buf
 	buf8 := rdr.buf8
+	buf2048 := rdr.buf2048
 	r := rdr.r
 
 	var ctrlByte byte
@@ -154,11 +158,12 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	var nReaded, nDecoded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
+	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
 	var values *[]uint64
 	var v uint64
 	var ok bool
+	var n uint64
 
 	m := PoolKmerData.Get().(*map[uint64]*[]uint64)
 	clear(*m)
@@ -247,18 +252,51 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 			(*m)[kmer1] = values
 		}
 
-		for j = 0; j < lenVal1; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal1; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	*values = append(*values, v)
+		// }
+
+		lenVal = lenVal1
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				*values = append(*values, v)
+			}
 
-			*values = append(*values, v)
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < int(n) {
+				return nil, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				*values = append(*values, v)
+			}
 		}
 
 		if lastPair && !hasKmer2 {
@@ -270,18 +308,51 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 			(*m)[kmer2] = values
 		}
 
-		for j = 0; j < lenVal2; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal2; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	*values = append(*values, v)
+		// }
+
+		lenVal = lenVal2
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				*values = append(*values, v)
+			}
 
-			*values = append(*values, v)
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < int(n) {
+				return nil, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				*values = append(*values, v)
+			}
 		}
 
 		if lastPair {
@@ -301,6 +372,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	buf := rdr.buf
 	buf8 := rdr.buf8
+	buf2048 := rdr.buf2048
 	r := rdr.r
 
 	var ctrlByte byte
@@ -311,9 +383,10 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	var nReaded, nDecoded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
+	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
 	var v uint64
+	var n uint64
 
 	var err error
 
@@ -401,38 +474,108 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 
 		// ------------------ values -------------------
 
-		for j = 0; j < lenVal1; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal1; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	m = append(m, kmer1)
+		// 	m = append(m, v)
+		// }
+
+		lenVal = lenVal1
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				m = append(m, kmer1)
+				m = append(m, v)
+			}
 
-			m = append(m, kmer1)
-			m = append(m, v)
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < int(n) {
+				return nil, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				m = append(m, kmer1)
+				m = append(m, v)
+			}
 		}
 
 		if lastPair && !hasKmer2 {
 			break
 		}
 
-		for j = 0; j < lenVal2; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal2; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	m = append(m, kmer2)
+		// 	m = append(m, v)
+		// }
+
+		lenVal = lenVal2
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				m = append(m, kmer1)
+				m = append(m, v)
+			}
 
-			m = append(m, kmer2)
-			m = append(m, v)
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, err
+			}
+			if nReaded < int(n) {
+				return nil, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				m = append(m, kmer1)
+				m = append(m, v)
+			}
 		}
 
 		if lastPair {
@@ -462,6 +605,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 
 	buf := rdr.buf
 	buf8 := rdr.buf8
+	buf2048 := rdr.buf2048
 	r := rdr.r
 
 	var ctrlByte byte
@@ -471,10 +615,11 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 	var nBytes int
 	var nReaded, nDecoded int
 	var v1, v2 uint64
-	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
+	var kmer, kmer1, kmer2 uint64
+	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
 	var v uint64
+	var n uint64
 
 	var err error
 
@@ -585,20 +730,58 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 
 		// ------------------ values -------------------
 
-		for j = 0; j < lenVal1; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal1; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, nil, 0, 0, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, nil, 0, 0, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	m = append(m, kmer1)
+		// 	m = append(m, v)
+		// 	iOffset += 2
+		// }
+
+		lenVal = lenVal1
+		kmer = kmer1
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, nil, 0, 0, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				m = append(m, kmer)
+				m = append(m, v)
+			}
+			iOffset += 512
 
-			m = append(m, kmer1)
-			m = append(m, v)
-			iOffset += 2
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, nil, 0, 0, err
+			}
+			if nReaded < int(n) {
+				return nil, nil, 0, 0, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				m = append(m, kmer)
+				m = append(m, v)
+			}
+			iOffset += lenVal << 1
 		}
 
 		if lastPair && !hasKmer2 {
@@ -613,20 +796,58 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 			prefixPre = prefix
 		}
 
-		for j = 0; j < lenVal2; j++ {
-			nReaded, err = io.ReadFull(r, buf8)
+		// for j = 0; j < lenVal2; j++ {
+		// 	nReaded, err = io.ReadFull(r, buf8)
+		// 	if err != nil {
+		// 		return nil, nil, 0, 0, err
+		// 	}
+		// 	if nReaded < 8 {
+		// 		return nil, nil, 0, 0, ErrBrokenFile
+		// 	}
+
+		// 	v = be.Uint64(buf8)
+
+		// 	m = append(m, kmer2)
+		// 	m = append(m, v)
+		// 	iOffset += 2
+		// }
+
+		lenVal = lenVal2
+		kmer = kmer2
+		for lenVal > 256 { // buffer size is 256*8=2048
+			nReaded, err = io.ReadFull(r, buf2048)
 			if err != nil {
 				return nil, nil, 0, 0, err
 			}
-			if nReaded < 8 {
+			if nReaded < 2048 {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
+			for j = 0; j <= 2040; j += 8 {
+				v = be.Uint64(buf2048[j : j+8])
 
-			v = be.Uint64(buf8)
+				m = append(m, kmer)
+				m = append(m, v)
+			}
+			iOffset += 512
 
-			m = append(m, kmer2)
-			m = append(m, v)
-			iOffset += 2
+			lenVal -= 256
+		}
+		if lenVal > 0 {
+			n = lenVal << 3
+			nReaded, err = io.ReadFull(r, buf2048[:n])
+			if err != nil {
+				return nil, nil, 0, 0, err
+			}
+			if nReaded < int(n) {
+				return nil, nil, 0, 0, ErrBrokenFile
+			}
+			for j = 0; j < lenVal; j++ {
+				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+				m = append(m, kmer)
+				m = append(m, v)
+			}
+			iOffset += lenVal << 1
 		}
 
 		if lastPair {

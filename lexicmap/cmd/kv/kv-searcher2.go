@@ -126,7 +126,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	results := poolSearchResults.Get().(*[]*SearchResult)
 	*results = (*results)[:0]
 
-	var found, saveKmer bool
+	var found bool // , saveKmer bool
 	// var mismatch uint8
 	var sr1 *SearchResult
 
@@ -245,18 +245,19 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 				found = true
 			}
 
-			saveKmer = false
-			if found && kmer1 >= leftBound {
-				// if checkMismatch {
-				// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-				// 	if mismatch <= m8 {
-				// 		saveKmer = true
-				// 	}
-				// } else {
-				saveKmer = true
-				// }
-			}
-			if saveKmer {
+			// saveKmer = false
+			// if found && kmer1 >= leftBound {
+			// 	// if checkMismatch {
+			// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+			// 	// 	if mismatch <= m8 {
+			// 	// 		saveKmer = true
+			// 	// 	}
+			// 	// } else {
+			// 	saveKmer = true
+			// 	// }
+			// }
+			// saveKmer = found
+			if found {
 				// fmt.Printf("  save: %s\n", lexichash.MustDecode(kmer1, k))
 				if kmer1 != kmer0 || first { // new kmer
 					if sr1 != nil {
@@ -337,7 +338,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	results := poolSearchResults.Get().(*[]*SearchResult)
 	*results = (*results)[:0]
 
-	var found, saveKmer bool
+	var found bool // , saveKmer bool
 	// var mismatch uint8
 	var sr1 *SearchResult
 
@@ -459,18 +460,19 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 					found = true
 				}
 
-				saveKmer = false
-				if found && kmer1 >= leftBound {
-					// if checkMismatch {
-					// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-					// 	if mismatch <= m8 {
-					// 		saveKmer = true
-					// 	}
-					// } else {
-					saveKmer = true
-					// }
-				}
-				if saveKmer {
+				// saveKmer = false
+				// if found && kmer1 >= leftBound {
+				// 	// if checkMismatch {
+				// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+				// 	// 	if mismatch <= m8 {
+				// 	// 		saveKmer = true
+				// 	// 	}
+				// 	// } else {
+				// 	saveKmer = true
+				// 	// }
+				// }
+				// saveKmer = found
+				if found {
 					// fmt.Printf("  save: %s\n", lexichash.MustDecode(kmer1, k))
 					if kmer1 != kmer0 || first { // new kmer
 						if sr1 != nil {

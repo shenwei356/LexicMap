@@ -791,6 +791,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 
 	buf8 := make([]byte, 8)
 	buf := make([]byte, 64)
+	buf2048 := make([]byte, 2048)
 
 	var n int
 
@@ -904,8 +905,8 @@ func CreateKVIndex(file string, nAnchors int) error {
 	var nReaded, nDecoded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
-	var i, j uint64
+	var lenVal, lenVal1, lenVal2 uint64
+	var i uint64
 
 	var _j int
 	var prefix, prefixPre uint64
@@ -1029,15 +1030,35 @@ func CreateKVIndex(file string, nAnchors int) error {
 
 			// ------------------ values -------------------
 
-			for j = 0; j < lenVal1; j++ {
-				nReaded, err = io.ReadFull(r, buf8)
+			// for j = 0; j < lenVal1; j++ {
+			// 	nReaded, err = io.ReadFull(r, buf8)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	if nReaded < 8 {
+			// 		return ErrBrokenFile
+			// 	}
+			// }
+			lenVal = lenVal1
+			for lenVal > 256 { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
 				if err != nil {
 					return err
 				}
-				if nReaded < 8 {
+				if nReaded < 2048 {
 					return ErrBrokenFile
 				}
 
+				lenVal -= 256
+			}
+			if lenVal > 0 {
+				nReaded, err = io.ReadFull(r, buf2048[:lenVal<<3])
+				if err != nil {
+					return err
+				}
+				if nReaded < int(lenVal<<3) {
+					return ErrBrokenFile
+				}
 			}
 
 			offset += int(lenVal1) << 3
@@ -1055,15 +1076,35 @@ func CreateKVIndex(file string, nAnchors int) error {
 				prefixPre = prefix
 			}
 
-			for j = 0; j < lenVal2; j++ {
-				nReaded, err = io.ReadFull(r, buf8)
+			// for j = 0; j < lenVal2; j++ {
+			// 	nReaded, err = io.ReadFull(r, buf8)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	if nReaded < 8 {
+			// 		return ErrBrokenFile
+			// 	}
+			// }
+			lenVal = lenVal2
+			for lenVal > 256 { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
 				if err != nil {
 					return err
 				}
-				if nReaded < 8 {
+				if nReaded < 2048 {
 					return ErrBrokenFile
 				}
 
+				lenVal -= 256
+			}
+			if lenVal > 0 {
+				nReaded, err = io.ReadFull(r, buf2048[:lenVal<<3])
+				if err != nil {
+					return err
+				}
+				if nReaded < int(lenVal<<3) {
+					return ErrBrokenFile
+				}
 			}
 
 			offset += int(lenVal2) << 3

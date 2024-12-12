@@ -53,7 +53,10 @@ type Searcher struct {
 
 	maxKmer uint64
 	buf     []byte
-	buf8    []uint8
+	// buf8    []uint8
+	buf2048 []uint8 // for parsing seed data
+
+	r *bufio.Reader
 }
 
 // NewSearcher creates a new Searcher for the given kv-data file.
@@ -78,7 +81,10 @@ func NewSearcher(file string) (*Searcher, error) {
 
 		maxKmer: 1<<(k<<1) - 1,
 		buf:     make([]byte, 64),
-		buf8:    make([]uint8, 8),
+		// buf8:    make([]uint8, 8),
+		buf2048: make([]uint8, 2048),
+
+		r: bufio.NewReaderSize(nil, 4096),
 	}
 	return scr, nil
 }
@@ -162,10 +168,12 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var nReaded, nDecoded int
 	var v1, v2, v uint64
 	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
+	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
-	buf8 := scr.buf8
+	// buf8 := scr.buf8
 	buf := scr.buf
+	buf2048 := scr.buf2048
+	var n uint64
 
 	var err error
 
@@ -173,7 +181,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
-	var sr1, sr2 *SearchResult
+	var sr, sr1, sr2 *SearchResult
 
 	var kmer uint64
 	prefixSearch := p < k
@@ -184,7 +192,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var is2ndKmer bool
 
 	// r := bufio.NewReader(nil)
-	r := poolBufReader.Get().(*bufio.Reader)
+	// r := poolBufReader.Get().(*bufio.Reader)
+	r := scr.r
 
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
@@ -370,17 +379,18 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 			// ------------------ values -------------------
 
-			saveKmer = false
-			if found && kmer1 >= leftBound {
-				// if checkMismatch {
-				// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-				// 	if mismatch <= m8 {
-				// 		saveKmer = true
-				// 	}
-				// } else {
-				saveKmer = true
-				// }
-			}
+			// saveKmer = false
+			// if found && kmer1 >= leftBound {
+			// 	// if checkMismatch {
+			// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+			// 	// 	if mismatch <= m8 {
+			// 	// 		saveKmer = true
+			// 	// 	}
+			// 	// } else {
+			// 	saveKmer = true
+			// 	// }
+			// }
+			saveKmer = found && kmer1 >= leftBound
 			if saveKmer {
 				sr1 = poolSearchResult.Get().(*SearchResult)
 				sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
@@ -390,25 +400,57 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// sr1.Mismatch = mismatch
 				sr1.Values = sr1.Values[:0]
 
-				for j = 0; j < lenVal1; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
+				// for j = 0; j < lenVal1; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return nil, err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return nil, ErrBrokenFile
+				// 	}
+
+				// 	v = be.Uint64(buf8)
+
+				// 	if !checkFlag || v&MASK_REVERSE == rvflag {
+				// 		sr1.Values = append(sr1.Values, v)
+				// 	}
+				// }
+
+				lenVal = lenVal1
+				sr = sr1
+				for lenVal > 256 { // buffer size is 256*8=2048
+					nReaded, err = io.ReadFull(r, buf2048)
 					if err != nil {
 						return nil, err
 					}
-					if nReaded < 8 {
+					if nReaded < 2048 {
 						return nil, ErrBrokenFile
 					}
+					for j = 0; j <= 2040; j += 8 {
+						v = be.Uint64(buf2048[j : j+8])
 
-					v = be.Uint64(buf8)
+						if !checkFlag || v&MASK_REVERSE == rvflag {
+							sr.Values = append(sr.Values, v)
+						}
+					}
 
-					// if iQ+chunkIndex == 19333 {
-					// 	fmt.Println(!checkFlag, v&MASK_REVERSE == rvflag, v, v&MASK_REVERSE, rvflag)
-					// }
-					if !checkFlag || v&MASK_REVERSE == rvflag {
-						// if iQ+chunkIndex == 19333 {
-						// 	fmt.Printf("  save: %s, v:%d\n", lexichash.MustDecode(kmer1, k), v)
-						// }
-						sr1.Values = append(sr1.Values, v)
+					lenVal -= 256
+				}
+				if lenVal > 0 {
+					n = lenVal << 3
+					nReaded, err = io.ReadFull(r, buf2048[:n])
+					if err != nil {
+						return nil, err
+					}
+					if nReaded < int(n) {
+						return nil, ErrBrokenFile
+					}
+					for j = 0; j < lenVal; j++ {
+						v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+						if !checkFlag || v&MASK_REVERSE == rvflag {
+							sr.Values = append(sr.Values, v)
+						}
 					}
 				}
 
@@ -439,18 +481,18 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				break
 			}
 
-			saveKmer = false
-			if found {
-				// if checkMismatch {
-				// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer2, k, p)
-				// 	if mismatch <= m8 {
-				// 		saveKmer = true
-				// 	}
-				// } else {
-				saveKmer = true
-				// }
-			}
-
+			// saveKmer = false
+			// if found {
+			// 	// if checkMismatch {
+			// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer2, k, p)
+			// 	// 	if mismatch <= m8 {
+			// 	// 		saveKmer = true
+			// 	// 	}
+			// 	// } else {
+			// 	saveKmer = true
+			// 	// }
+			// }
+			saveKmer = found
 			if saveKmer {
 				sr2 = poolSearchResult.Get().(*SearchResult)
 				sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
@@ -460,21 +502,56 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				// sr2.Mismatch = mismatch
 				sr2.Values = sr2.Values[:0]
 
-				for j = 0; j < lenVal2; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
+				// for j = 0; j < lenVal2; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return nil, err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return nil, ErrBrokenFile
+				// 	}
+
+				// 	v = be.Uint64(buf8)
+				// 	if !checkFlag || v&MASK_REVERSE == rvflag {
+				// 		sr2.Values = append(sr2.Values, v)
+				// 	}
+				// }
+
+				lenVal = lenVal2
+				sr = sr2
+				for lenVal > 256 { // buffer size is 256*8=2048
+					nReaded, err = io.ReadFull(r, buf2048)
 					if err != nil {
 						return nil, err
 					}
-					if nReaded < 8 {
+					if nReaded < 2048 {
 						return nil, ErrBrokenFile
 					}
+					for j = 0; j <= 2040; j += 8 {
+						v = be.Uint64(buf2048[j : j+8])
 
-					v = be.Uint64(buf8)
-					if !checkFlag || v&MASK_REVERSE == rvflag {
-						// if iQ+chunkIndex == 19333 {
-						// 	fmt.Printf("  save: %s, v:%d\n", lexichash.MustDecode(kmer2, k), v)
-						// }
-						sr2.Values = append(sr2.Values, v)
+						if !checkFlag || v&MASK_REVERSE == rvflag {
+							sr.Values = append(sr.Values, v)
+						}
+					}
+
+					lenVal -= 256
+				}
+				if lenVal > 0 {
+					n = lenVal << 3
+					nReaded, err = io.ReadFull(r, buf2048[:n])
+					if err != nil {
+						return nil, err
+					}
+					if nReaded < int(n) {
+						return nil, ErrBrokenFile
+					}
+					for j = 0; j < lenVal; j++ {
+						v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+						if !checkFlag || v&MASK_REVERSE == rvflag {
+							sr.Values = append(sr.Values, v)
+						}
 					}
 				}
 
@@ -503,7 +580,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		}
 	}
 
-	poolBufReader.Put(r)
+	// poolBufReader.Put(r)
 	return results, nil
 }
 
@@ -549,10 +626,12 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var nReaded, nDecoded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
-	var lenVal1, lenVal2 uint64
+	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
-	buf8 := scr.buf8
+	// buf8 := scr.buf8
 	buf := scr.buf
+	buf2048 := scr.buf2048
+	var n uint64
 
 	var err error
 
@@ -560,7 +639,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
-	var sr1, sr2 *SearchResult
+	var sr, sr1, sr2 *SearchResult
 
 	var kmer uint64
 	prefixSearch := p < k
@@ -748,17 +827,18 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 				// ------------------ values -------------------
 
-				saveKmer = false
-				if found && kmer1 >= leftBound {
-					// if checkMismatch {
-					// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-					// 	if mismatch <= m8 {
-					// 		saveKmer = true
-					// 	}
-					// } else {
-					saveKmer = true
-					// }
-				}
+				// saveKmer = false
+				// if found && kmer1 >= leftBound {
+				// 	// if checkMismatch {
+				// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
+				// 	// 	if mismatch <= m8 {
+				// 	// 		saveKmer = true
+				// 	// 	}
+				// 	// } else {
+				// 	saveKmer = true
+				// 	// }
+				// }
+				saveKmer = found && kmer1 >= leftBound
 				if saveKmer {
 					sr1 = poolSearchResult.Get().(*SearchResult)
 					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
@@ -769,18 +849,56 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					// sr1.Mismatch = mismatch
 					sr1.Values = sr1.Values[:0]
 
-					for j = 0; j < lenVal1; j++ {
-						nReaded, err = io.ReadFull(r, buf8)
+					// for j = 0; j < lenVal1; j++ {
+					// 	nReaded, err = io.ReadFull(r, buf8)
+					// 	if err != nil {
+					// 		return nil, err
+					// 	}
+					// 	if nReaded < 8 {
+					// 		return nil, ErrBrokenFile
+					// 	}
+
+					// 	v = be.Uint64(buf8)
+					// 	if !checkFlag || v&MASK_REVERSE == rvflag {
+					// 		sr1.Values = append(sr1.Values, v)
+					// 	}
+					// }
+
+					lenVal = lenVal1
+					sr = sr1
+					for lenVal > 256 { // buffer size is 256*8=2048
+						nReaded, err = io.ReadFull(r, buf2048)
 						if err != nil {
 							return nil, err
 						}
-						if nReaded < 8 {
+						if nReaded < 2048 {
 							return nil, ErrBrokenFile
 						}
+						for j = 0; j <= 2040; j += 8 {
+							v = be.Uint64(buf2048[j : j+8])
 
-						v = be.Uint64(buf8)
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr1.Values = append(sr1.Values, v)
+							if !checkFlag || v&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, v)
+							}
+						}
+
+						lenVal -= 256
+					}
+					if lenVal > 0 {
+						n = lenVal << 3
+						nReaded, err = io.ReadFull(r, buf2048[:n])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(n) {
+							return nil, ErrBrokenFile
+						}
+						for j = 0; j < lenVal; j++ {
+							v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+							if !checkFlag || v&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, v)
+							}
 						}
 					}
 
@@ -811,18 +929,18 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					break
 				}
 
-				saveKmer = false
-				if found {
-					// if checkMismatch {
-					// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer2, k, p)
-					// 	if mismatch <= m8 {
-					// 		saveKmer = true
-					// 	}
-					// } else {
-					saveKmer = true
-					// }
-				}
-
+				// saveKmer = false
+				// if found {
+				// 	// if checkMismatch {
+				// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer2, k, p)
+				// 	// 	if mismatch <= m8 {
+				// 	// 		saveKmer = true
+				// 	// 	}
+				// 	// } else {
+				// 	saveKmer = true
+				// 	// }
+				// }
+				saveKmer = found
 				if saveKmer {
 					sr2 = poolSearchResult.Get().(*SearchResult)
 					sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
@@ -833,18 +951,56 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					// sr2.Mismatch = mismatch
 					sr2.Values = sr2.Values[:0]
 
-					for j = 0; j < lenVal2; j++ {
-						nReaded, err = io.ReadFull(r, buf8)
+					// for j = 0; j < lenVal2; j++ {
+					// 	nReaded, err = io.ReadFull(r, buf8)
+					// 	if err != nil {
+					// 		return nil, err
+					// 	}
+					// 	if nReaded < 8 {
+					// 		return nil, ErrBrokenFile
+					// 	}
+
+					// 	v = be.Uint64(buf8)
+					// 	if !checkFlag || v&MASK_REVERSE == rvflag {
+					// 		sr2.Values = append(sr2.Values, v)
+					// 	}
+					// }
+
+					lenVal = lenVal2
+					sr = sr2
+					for lenVal > 256 { // buffer size is 256*8=2048
+						nReaded, err = io.ReadFull(r, buf2048)
 						if err != nil {
 							return nil, err
 						}
-						if nReaded < 8 {
+						if nReaded < 2048 {
 							return nil, ErrBrokenFile
 						}
+						for j = 0; j <= 2040; j += 8 {
+							v = be.Uint64(buf2048[j : j+8])
 
-						v = be.Uint64(buf8)
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr2.Values = append(sr2.Values, v)
+							if !checkFlag || v&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, v)
+							}
+						}
+
+						lenVal -= 256
+					}
+					if lenVal > 0 {
+						n = lenVal << 3
+						nReaded, err = io.ReadFull(r, buf2048[:n])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(n) {
+							return nil, ErrBrokenFile
+						}
+						for j = 0; j < lenVal; j++ {
+							v = be.Uint64(buf2048[j<<3 : j<<3+8])
+
+							if !checkFlag || v&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, v)
+							}
 						}
 					}
 
