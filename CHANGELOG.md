@@ -15,6 +15,9 @@
     - Add a new flag `--debug`.
 - `lexicmap search`:
     - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
+    - Better chaining of overlapped anchors: 
+         - Merging two overlapped non-gapped anchors into a longer one.
+         - For these with gaps, only the non-overlapped part of the second anchor is used to compute the weight.
     - Fix positions and alignment texts for queries with highly repetitive sequences in end regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
     - Skip seeds of low-complexity.
     - More accurate `-n/--top-n-genomes`, and add new help message.

@@ -148,6 +148,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	*score2idx = append(*score2idx, [2]float64{(*maxscores)[0], 0})
 
 	// compute scores
+	var length int32 // substr/anchor length
 	var s, m, w, d, g float64
 	var dir, mdir float64
 	var a, b *SubstrPair
@@ -161,8 +162,9 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 		// just initialize the max score, which comes from the current seed
 		// m = scores[k]
-		w = seedWeight(float64(a.Len))
-		m, mj, mdir = w, i, 0
+		// w = seedWeight(float64(a.Len))
+		// m, mj, mdir = w, i, 0
+		m, mj, mdir = seedWeight(float64(a.Len)), i, 0
 
 		// for j = 0; j < i; j++ { // try all previous seeds, no bound
 		j = i
@@ -193,6 +195,24 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			if g > maxGap {
 				// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
 				continue // must not be break
+			}
+
+			// effective seed length
+			if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+				// b -----
+				// a       ------
+				length = int32(a.Len)
+				w = seedWeight(float64(length))
+			} else if g == 0 { // merge them into a longer anchor
+				// b -----
+				// a    ------
+				length = a.QBegin + int32(a.Len) - int32(b.QBegin)
+				w = -seedWeight(float64(b.Len)) + seedWeight(float64(length))
+			} else {
+				// b -----
+				// a    ------
+				length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
+				w = seedWeight(float64(length))
 			}
 
 			// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
@@ -236,7 +256,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	}
 	paths := poolChains.Get().(*[]*[]int)
 	*paths = (*paths)[:0]
-	// var first bool
 
 	path := poolChain.Get().(*[]int)
 	*path = (*path)[:0]
@@ -251,10 +270,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	var iMaxScore int
 
 	// for computing the score for sorting
-	firstChain := true
-	var score float64
-	var v, p *SubstrPair
-
+	var maxScore float64
+	first := true // best chain
 	for {
 		// find the next highest score
 
@@ -288,10 +305,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
 		i = Mi
-		// first = true
-		if firstChain {
-			score = seedWeight(float64((*subs)[i].Len))
+		if first {
+			maxScore = M
+			first = false
 		}
+
 		for {
 			j = (*maxscoresIdxs)[i] // previous anchor
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
@@ -317,26 +335,12 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				break
 			}
 
-			if firstChain && i != Mi {
-				// two anchors might overlap,
-				//  v:  ------      computed part: the non-overlapped part: --
-				//  p:    =======   computed part: the whole anchor
-				v, p = (*subs)[i], (*subs)[(*path)[len(*path)-1]]
-				if v.QBegin+int32(v.Len) >= p.QBegin {
-					w = seedWeight(float64(p.QBegin) - (float64(v.QBegin) + float64(v.Len)))
-				} else {
-					w = seedWeight(float64(v.Len))
-				}
-				g = gap(v, p)
-				score += w - gapScore(g)
-			}
-
 			*path = append(*path, i) // record the anchor
 			(*visited)[i] = true     // mark as visited
 
-			// if first {
+			// if firstAnchor {
 			// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
-			// first = false
+			// firstAnchor = false
 			// }
 			// else {
 			// fmt.Printf("  add %d, %s\n", i, (*subs)[i])
@@ -355,13 +359,10 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			}
 		}
 
-		if firstChain {
-			firstChain = false
-		}
 	}
 
-	// fmt.Println(score)
-	return paths, score
+	// fmt.Println(maxScore)
+	return paths, maxScore
 }
 
 func seedWeight(l float64) float64 {
@@ -383,8 +384,12 @@ func direction(a, b *SubstrPair) float64 {
 	return -1
 }
 
+// different in plus:plus and plus:minus match
 func gap(a, b *SubstrPair) float64 {
-	return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin)))
+	if a.TBegin >= b.TBegin {
+		return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin)))
+	}
+	return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin+int32(a.Len)-b.TBegin-int32(b.Len))))
 }
 
 func gapScore(gap float64) float64 {
