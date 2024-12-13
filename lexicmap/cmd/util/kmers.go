@@ -158,21 +158,289 @@ func IsLowComplexityDust(code uint64, k uint8) bool {
 	counts := pool64Uint8s.Get().(*[]byte)
 	clear(*counts)
 
-	var mer uint64
 	var i, end, c uint8
 
 	end = k - 2
-	for i = 0; i <= end; i++ {
-		mer = code >> (i << 1) & 63
-		(*counts)[mer]++
+	// for i = 0; i <= end; i++ {
+	// 	(*counts)[code>>(i<<1)&63]++
+	// }
+	for i = 0; i+7 <= end; i += 8 {
+		(*counts)[code>>(i<<1)&63]++
+		(*counts)[code>>((i+1)<<1)&63]++
+		(*counts)[code>>((i+2)<<1)&63]++
+		(*counts)[code>>((i+3)<<1)&63]++
+		(*counts)[code>>((i+4)<<1)&63]++
+		(*counts)[code>>((i+5)<<1)&63]++
+		(*counts)[code>>((i+6)<<1)&63]++
+		(*counts)[code>>((i+7)<<1)&63]++
+	}
+	for ; i <= end; i++ {
+		(*counts)[code>>(i<<1)&63]++
 	}
 
 	var score uint16
-	for i = 0; i < 64; i++ {
-		c = (*counts)[i]
-		if c > 1 {
-			score += uint16(c) * uint16(c-1) >> 1
-		}
+	// for i = 0; i < 64; i++ {
+	// 	c = (*counts)[i]
+	// 	if c > 1 {
+	// 		score += uint16(c) * uint16(c-1) >> 1
+	// 	}
+	// }
+
+	c = (*counts)[0]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[1]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[2]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[3]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[4]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[5]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[6]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[7]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[8]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[9]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[10]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[11]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[12]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[13]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[14]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[15]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[16]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[17]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[18]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[19]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[20]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[21]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[22]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[23]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[24]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[25]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[26]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[27]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[28]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[29]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[30]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[31]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[32]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[33]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[34]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[35]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[36]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[37]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[38]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[39]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[40]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[41]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[42]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[43]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[44]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[45]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[46]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[47]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[48]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[49]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[50]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[51]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[52]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[53]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[54]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[55]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[56]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[57]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[58]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[59]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[60]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[61]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[62]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
+	}
+	c = (*counts)[63]
+	if c > 1 {
+		score += uint16(c) * uint16(c-1) >> 1
 	}
 
 	pool64Uint8s.Put(counts)
