@@ -575,13 +575,13 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	if err != nil {
 		return 0, -1, nil, 0, 0, err
 	}
-	// r := bufio.NewReader(fh)
-	r := poolBufReader.Get().(*bufio.Reader)
-	r.Reset(fh)
-	defer func() {
-		poolBufReader.Put(r)
-		fh.Close()
-	}()
+	r := bufio.NewReaderSize(fh, 16<<10)
+	// r := poolBufReader.Get().(*bufio.Reader)
+	// r.Reset(fh)
+	// defer func() {
+	// 	poolBufReader.Put(r)
+	// 	fh.Close()
+	// }()
 
 	// ---------------------------------------------
 
