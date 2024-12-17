@@ -134,7 +134,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
 	var first bool
-	ttt := (uint64(1) << (k << 1)) - 1
+	// ttt := (uint64(1) << (k << 1)) - 1
 
 	var index []int
 	getAnchor := scr.getAnchor
@@ -154,7 +154,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 		kmer = kmers[iQ]
 
-		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+		if kmer == 0 {
 			continue
 		}
 
@@ -346,7 +346,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
 	var first bool
-	ttt := (uint64(1) << (k << 1)) - 1
+	// ttt := (uint64(1) << (k << 1)) - 1
 
 	var iKmer int
 
@@ -369,7 +369,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 		// kmer = kmers[iQ]
 		for iKmer, kmer = range *kmers[iQ] {
 
-			if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			if kmer == 0 {
 				continue
 			}
 

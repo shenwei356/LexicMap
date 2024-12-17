@@ -143,7 +143,11 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	// checkMismatch := m >= 0 && m < int(k-p)
 	// m8 := uint8(m)
 
-	var rvflag uint64
+	// var rvflag uint64
+	// if reversedKmer {
+	// 	rvflag = MASK_REVERSE
+	// }
+	var rvflag uint8
 	if reversedKmer {
 		rvflag = MASK_REVERSE
 	}
@@ -166,7 +170,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var ctrlByte byte
 	var nBytes int
 	var nReaded, nDecoded int
-	var v1, v2, v uint64
+	var v1, v2 uint64
+	// var v uint64
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
@@ -186,7 +191,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var kmer uint64
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
-	ttt := (uint64(1) << (k << 1)) - 1
+	// ttt := (uint64(1) << (k << 1)) - 1
 
 	getAnchor := scr.getAnchor
 	var is2ndKmer bool
@@ -205,7 +210,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 		kmer = kmers[iQ]
 
-		if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+		if kmer == 0 {
 			continue
 		}
 
@@ -426,11 +431,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if nReaded < 2048 {
 						return nil, ErrBrokenFile
 					}
-					for j = 0; j <= 2040; j += 8 {
-						v = be.Uint64(buf2048[j : j+8])
 
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr.Values = append(sr.Values, v)
+					if checkFlag {
+						for j = 0; j <= 2040; j += 8 {
+							if buf2048[j+7]&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
+							}
+						}
+					} else {
+						for j = 0; j <= 2040; j += 8 {
+							sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
 						}
 					}
 
@@ -445,11 +455,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if nReaded < int(n) {
 						return nil, ErrBrokenFile
 					}
-					for j = 0; j < lenVal; j++ {
-						v = be.Uint64(buf2048[j<<3 : j<<3+8])
 
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr.Values = append(sr.Values, v)
+					if checkFlag {
+						for j = 0; j < lenVal; j++ {
+							if buf2048[j<<3+7]&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
+							}
+						}
+					} else {
+						for j = 0; j < lenVal; j++ {
+							sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
 						}
 					}
 				}
@@ -527,11 +542,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if nReaded < 2048 {
 						return nil, ErrBrokenFile
 					}
-					for j = 0; j <= 2040; j += 8 {
-						v = be.Uint64(buf2048[j : j+8])
 
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr.Values = append(sr.Values, v)
+					if checkFlag {
+						for j = 0; j <= 2040; j += 8 {
+							if buf2048[j+7]&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
+							}
+						}
+					} else {
+						for j = 0; j <= 2040; j += 8 {
+							sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
 						}
 					}
 
@@ -546,11 +566,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if nReaded < int(n) {
 						return nil, ErrBrokenFile
 					}
-					for j = 0; j < lenVal; j++ {
-						v = be.Uint64(buf2048[j<<3 : j<<3+8])
 
-						if !checkFlag || v&MASK_REVERSE == rvflag {
-							sr.Values = append(sr.Values, v)
+					if checkFlag {
+						for j = 0; j < lenVal; j++ {
+							if buf2048[j<<3+7]&MASK_REVERSE == rvflag {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
+							}
+						}
+					} else {
+						for j = 0; j < lenVal; j++ {
+							sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
 						}
 					}
 				}
@@ -601,7 +626,11 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	// checkMismatch := m >= 0 && m < int(k-p)
 	// m8 := uint8(m)
 
-	var rvflag uint64
+	// var rvflag uint64
+	// if reversedKmer {
+	// 	rvflag = MASK_REVERSE
+	// }
+	var rvflag uint8
 	if reversedKmer {
 		rvflag = MASK_REVERSE
 	}
@@ -644,7 +673,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var kmer uint64
 	prefixSearch := p < k
 	chunkIndex := scr.ChunkIndex
-	ttt := (uint64(1) << (k << 1)) - 1
+	// ttt := (uint64(1) << (k << 1)) - 1
 
 	var iKmer int
 
@@ -664,7 +693,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 		// kmer = kmers[iQ]
 		for iKmer, kmer = range *kmers[iQ] {
 
-			if kmer == 0 || kmer == ttt { // skip AAAAAAAAAA and TTTTTTTTT
+			if kmer == 0 {
 				continue
 			}
 
@@ -740,7 +769,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 			first = true
 			found = false
-			var v uint64
+			// var v uint64
 
 			for {
 				// read the control byte
@@ -874,11 +903,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if nReaded < 2048 {
 							return nil, ErrBrokenFile
 						}
-						for j = 0; j <= 2040; j += 8 {
-							v = be.Uint64(buf2048[j : j+8])
 
-							if !checkFlag || v&MASK_REVERSE == rvflag {
-								sr.Values = append(sr.Values, v)
+						if checkFlag {
+							for j = 0; j <= 2040; j += 8 {
+								if buf2048[j+7]&MASK_REVERSE == rvflag {
+									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
+								}
+							}
+						} else {
+							for j = 0; j <= 2040; j += 8 {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
 							}
 						}
 
@@ -893,11 +927,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if nReaded < int(n) {
 							return nil, ErrBrokenFile
 						}
-						for j = 0; j < lenVal; j++ {
-							v = be.Uint64(buf2048[j<<3 : j<<3+8])
 
-							if !checkFlag || v&MASK_REVERSE == rvflag {
-								sr.Values = append(sr.Values, v)
+						if checkFlag {
+							for j = 0; j < lenVal; j++ {
+								if buf2048[j<<3+7]&MASK_REVERSE == rvflag {
+									sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
+								}
+							}
+						} else {
+							for j = 0; j < lenVal; j++ {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
 							}
 						}
 					}
@@ -976,11 +1015,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if nReaded < 2048 {
 							return nil, ErrBrokenFile
 						}
-						for j = 0; j <= 2040; j += 8 {
-							v = be.Uint64(buf2048[j : j+8])
 
-							if !checkFlag || v&MASK_REVERSE == rvflag {
-								sr.Values = append(sr.Values, v)
+						if checkFlag {
+							for j = 0; j <= 2040; j += 8 {
+								if buf2048[j+7]&MASK_REVERSE == rvflag {
+									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
+								}
+							}
+						} else {
+							for j = 0; j <= 2040; j += 8 {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
 							}
 						}
 
@@ -995,11 +1039,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if nReaded < int(n) {
 							return nil, ErrBrokenFile
 						}
-						for j = 0; j < lenVal; j++ {
-							v = be.Uint64(buf2048[j<<3 : j<<3+8])
 
-							if !checkFlag || v&MASK_REVERSE == rvflag {
-								sr.Values = append(sr.Values, v)
+						if checkFlag {
+							for j = 0; j < lenVal; j++ {
+								if buf2048[j<<3+7]&MASK_REVERSE == rvflag {
+									sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
+								}
+							}
+						} else {
+							for j = 0; j < lenVal; j++ {
+								sr.Values = append(sr.Values, be.Uint64(buf2048[j<<3:j<<3+8]))
 							}
 						}
 					}
