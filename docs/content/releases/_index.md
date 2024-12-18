@@ -27,13 +27,13 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
     - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed-matching speed at the cost of 2 GiB more memory occupation**.
       For existing lexicmap indexes, just run `lexicmap utils reindex-seeds --partitions 4096` to re-create seed indexes.
     - **Do not save seeds of low-complexity**.
-    - Fix high memory usage in writting seed data.
+    - Fix high memory usage in writing seed data.
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Add a new flag `--debug`.
 - `lexicmap search`:
     - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
-    - **More accurate chainning score with better chaining of overlapped anchors, this produces more accurate results with `-n/--top-n-genomes`**: 
+    - **More accurate chaining score with better chaining of overlapped anchors, this produces more accurate results with `-n/--top-n-genomes`**: 
          - Merging two overlapped non-gapped anchors into a longer one.
          - For these with gaps, only the non-overlapped part of the second anchor is used to compute the weight.
          - Using the score of the best chain (rather than the sum) for sorting genomes when using `-n`.
