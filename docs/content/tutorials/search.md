@@ -50,7 +50,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - Similarities between query and target sequences.
         - The number of threads. It uses all CPUs by default (`-j/--threads`).
 - **Disk**
-    - Sufficient space is required to store the index size.
+    - SSD disks are preferred to store the index size, while HDD disks are also fast enough.
     - No temporary files are generated during searching.
 
 ## Algorithm
@@ -178,28 +178,28 @@ Here are some tips to improve the search speed.
 {{< expand "Click to show the log of a demo run." "..." >}}
 
     $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-    09:32:55.551 [INFO] LexicMap v0.4.0
-    09:32:55.551 [INFO]   https://github.com/shenwei356/LexicMap
-    09:32:55.551 [INFO]
-    09:32:55.551 [INFO] checking input files ...
-    09:32:55.551 [INFO]   1 input file(s) given
-    09:32:55.551 [INFO]
-    09:32:55.551 [INFO] loading index: demo.lmi/
-    09:32:55.551 [INFO]   reading masks...
-    09:32:55.552 [INFO]   reading indexes of seeds (k-mer-value) data...
-    09:32:55.555 [INFO]   creating genome reader pools, each batch with 16 readers...
-    09:32:55.555 [INFO] index loaded in 4.192051ms
-    09:32:55.555 [INFO]
-    09:32:55.555 [INFO] searching ...
+    19:24:36.194 [INFO] LexicMap v0.5.0 (c66e3a0)
+    19:24:36.194 [INFO]   https://github.com/shenwei356/LexicMap
+    19:24:36.195 [INFO] 
+    19:24:36.195 [INFO] checking input files ...
+    19:24:36.195 [INFO]   1 input file given: q.gene.fasta
+    19:24:36.195 [INFO] 
+    19:24:36.195 [INFO] loading index: demo.lmi/
+    19:24:36.195 [INFO]   reading masks...
+    19:24:36.199 [INFO]   reading indexes of seeds (k-mer-value) data...
+    19:24:38.925 [INFO]   creating genome reader pools, each batch with 16 readers...
+    19:24:38.926 [INFO] index loaded in 2.731115898s
+    19:24:38.926 [INFO] 
+    19:24:38.926 [INFO] searching with 16 threads...
 
-    09:32:55.596 [INFO]
-    09:32:55.596 [INFO] processed queries: 1, speed: 1467.452 queries per minute
-    09:32:55.596 [INFO] 100.0000% (1/1) queries matched
-    09:32:55.596 [INFO] done searching
-    09:32:55.596 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    09:32:55.596 [INFO]
-    09:32:55.596 [INFO] elapsed time: 45.230604ms
-    09:32:55.596 [INFO]
+    19:24:38.979 [INFO] 
+    19:24:38.979 [INFO] processed queries: 1, speed: 1118.616 queries per minute
+    19:24:38.979 [INFO] 100.0000% (1/1) queries matched
+    19:24:38.979 [INFO] done searching
+    19:24:38.979 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    19:24:38.979 [INFO] 
+    19:24:38.980 [INFO] elapsed time: 2.785031416s
+    19:24:38.980 [INFO]
 
 {{< /expand >}}
 

@@ -52,7 +52,7 @@ Input:
      The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
      (-G/--big-genomes).
      Changes since v0.5.0: 
-	   - Genomes with any single contig larger than the threshold will be skipped as before.
+       - Genomes with any single contig larger than the threshold will be skipped as before.
        - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
      You need to increase the value for indexing fungi genomes.

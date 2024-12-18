@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.5.0 - 2024-xx-xx
+### v0.5.0 - 2024-12-18
 
 - New commands:
     - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
@@ -26,7 +26,7 @@
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
     - Improve the speed of chaining for long queries.
     - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
-    - Improve the speed of alignment, and reduce the memory usage.
+    - **Improve the speed of alignment, and reduce the memory usage**.
     - Remain compatible after the change of `lexicmap index`.
     - Add a new flag `--debug`.
 - `lexicmap utils genomes`:

@@ -16,7 +16,7 @@ Flags:
   -h, --help             help for reindex-seeds
   -d, --index string     ► Index directory created by "lexicmap index".
       --partitions int   ► Number of partitions for re-indexing seeds (k-mer-value data) files. The
-                         value needs to be the power of 4. (default 1024)
+                         value needs to be the power of 4. (default 4096)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

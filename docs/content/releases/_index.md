@@ -7,6 +7,57 @@ weight: 30
 
 ## Latest version
 
+{{< hint type=note >}}
+
+- Please run `lexicmap version` to check update !!!
+- Please run `lexicmap autocompletion` to update shell autocompletion script !!!
+{{< /hint >}}
+
+
+### v0.5.0
+
+[v0.5.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.5.0) - 2015-12-18 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.5.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.5.0)
+
+- New commands:
+    - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
+- `lexicmap index`:
+    - **Big genomes with thousands of contigs (big yet fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
+    - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed-matching speed at the cost of 2 GiB more memory occupation**.
+      For existing lexicmap indexes, just run `lexicmap utils reindex-seeds --partitions 4096` to re-create seed indexes.
+    - **Do not save seeds of low-complexity**.
+    - Fix high memory usage in writting seed data.
+    - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
+    - Change the default value of `--max-open-files` from 512 to 1024.
+    - Add a new flag `--debug`.
+- `lexicmap search`:
+    - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
+    - **More accurate chainning score with better chaining of overlapped anchors, this produces more accurate results with `-n/--top-n-genomes`**: 
+         - Merging two overlapped non-gapped anchors into a longer one.
+         - For these with gaps, only the non-overlapped part of the second anchor is used to compute the weight.
+         - Using the score of the best chain (rather than the sum) for sorting genomes when using `-n`.
+    - Fix positions and alignment texts for queries with highly repetitive sequences in end regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
+    - Skip seeds of low-complexity.
+    - Change the default value of `--max-open-files` from 512 to 1024.
+    - Change the default value of `--align-band` from 50 to 100.
+    - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
+    - Improve the speed of chaining for long queries.
+    - Improve the speed of seed matching when using `-w/--load-whole-seeds`.
+    - **Improve the speed of alignment, and reduce the memory usage**.
+    - Remain compatible after the change of `lexicmap index`.
+    - Add a new flag `--debug`.
+- `lexicmap utils genomes`:
+    - Do not sort genome ids.
+    - Add a header line and add another column to show if the reference genome is chunked.
+- `lexicmap utils subseq`:
+    - Remain compatible after the change of `lexicmap index`.
+- `lexicmap utils seed-pos`:
+    - Remain compatible after the change of `lexicmap index`, while histograms are plotted separately for multiple genome chunks.
+- `lexicmap utils reindex-seeds`:
+    - Change the default value of `--partitions` from 1024 to 4096.
+
+
+## Previous versions
+    
 ### v0.4.0
 
 [v0.4.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0) - 2024-08-15 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.4.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.4.0)
@@ -53,13 +104,6 @@ weight: 30
     - Fix a bug when the given end position is larger than the sequence length.
     - Add the strand ("+" or "-") in the sequence header.
 
-{{< hint type=note >}}
-
-- Please run `lexicmap version` to check update !!!
-- Please run `lexicmap autocompletion` to update shell autocompletion script !!!
-{{< /hint >}}
-
-## Previous versions
 
 ### v0.3.0
 

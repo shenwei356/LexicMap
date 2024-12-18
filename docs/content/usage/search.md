@@ -65,7 +65,7 @@ Usage:
 
 Flags:
       --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
-                                       phase). (default 50)
+                                       phase). (default 100)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
                                        extracting query and target sequences for alignment. It should be
                                        <= contig interval length in database. (default 1000)

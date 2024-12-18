@@ -24,14 +24,15 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 ## Binary files
 
 {{< tabs "uniqueid" >}}
+
 {{< tab "Linux" >}}
 
 1.  Download the binary file.
 
     |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
     |:------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    |Linux  |**64-bit**|[**lexicmap_linux_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_linux_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_amd64.tar.gz)                  |
-    |Linux  |arm64     |[**lexicmap_linux_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_linux_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_arm64.tar.gz)                  |
+    |Linux  |**64-bit**|[**lexicmap_linux_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_linux_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_amd64.tar.gz)                  |
+    |Linux  |arm64     |[**lexicmap_linux_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_linux_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_linux_arm64.tar.gz)                  |
 
 2. Decompress it:
 
@@ -64,8 +65,8 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
     |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
     |:------|:---------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-    |macOS  |64-bit|[**lexicmap_darwin_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_amd64.tar.gz)               |
-    |macOS  |**arm64**     |[**lexicmap_darwin_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_darwin_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_arm64.tar.gz)               |
+    |macOS  |64-bit|[**lexicmap_darwin_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_darwin_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_amd64.tar.gz)               |
+    |macOS  |**arm64**     |[**lexicmap_darwin_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_darwin_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_darwin_arm64.tar.gz)               |
 
 2. Copy it to any directory in the environment variable `PATH`:
 
@@ -84,6 +85,17 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
 {{< /tab >}}
 
+{{< tab "FreeBSD" >}}
+
+1.  Download the binary file.
+
+    |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
+    |:------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    |FreeBSD|**64-bit**|[**lexicmap_freebsd_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_freebsd_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_freebsd_amd64.tar.gz)            |
+    |FreeBSD|arm64     |[**lexicmap_freebsd_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_freebsd_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_freebsd_arm64.tar.gz)            |
+
+{{< /tab >}}
+
 
 {{< tab "Windows" >}}
 
@@ -92,7 +104,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
     |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
     |:------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    |Windows|**64-bit**|[**lexicmap_windows_amd64.exe.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.4.0/lexicmap_windows_amd64.exe.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_windows_amd64.exe.tar.gz)|
+    |Windows|**64-bit**|[**lexicmap_windows_amd64.exe.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_windows_amd64.exe.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_windows_amd64.exe.tar.gz)|
 
 
 2. Decompress it.
@@ -118,9 +130,9 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
 1. [Install go](https://go.dev/doc/install) (go 1.22 or later versions).
 
-        wget https://go.dev/dl/go1.22.6.linux-amd64.tar.gz
+        wget https://go.dev/dl/go1.23.4.linux-amd64.tar.gz
 
-        tar -zxf go1.22.6.linux-amd64.tar.gz -C $HOME/
+        tar -zxf go1.23.4.linux-amd64.tar.gz -C $HOME/
 
         # or
         #   echo "export PATH=$PATH:$HOME/go/bin" >> ~/.bashrc

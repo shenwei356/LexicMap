@@ -46,5 +46,5 @@ Global Flags:
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
-                             (default 16
+                             (default 16)
 ```

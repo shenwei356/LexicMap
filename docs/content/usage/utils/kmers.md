@@ -43,7 +43,6 @@ Global Flags:
         $ lexicmap utils kmers --quiet -d demo.lmi/ | head -n 20 | csvtk pretty -t
         mask   kmer                              prefix   number   ref               pos       strand   reversed
         ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
-        1      AAAAAAAAAAAAAAAGACAACAAAAGACATA   8        1        GCF_002950215.1   3870418   -        yes
         1      AAAAAAAAACAAACATTTGCGGCGGGGCCAT   8        1        GCF_000742135.1   2043044   +        no
         1      AAAAAAAAACCAGAAATCACACGCCAACTCC   8        1        GCF_002949675.1   1345415   +        yes
         1      AAAAAAAAACGATTATCCTCAATTAATTTCT   8        1        GCF_000392875.1   814251    +        no
@@ -62,6 +61,7 @@ Global Flags:
         1      AAAAAAAACCTAATGGTAAATAACGTTTTGG   8        1        GCF_006742205.1   2346818   +        yes
         1      AAAAAAAACGAAAAACGGTAACACGGGAATT   8        1        GCF_001544255.1   1605298   +        yes
         1      AAAAAAAACGACTCCAGAGAGATCATCGTAT   8        1        GCF_000392875.1   1279686   +        yes
+        1      AAAAAAAACGAGTCATTTCCCCTACTGAACC   8        2        GCF_002949675.1   2284659   -        yes
 
     Only forward k-mers.
 
@@ -72,12 +72,10 @@ Global Flags:
         1      AAAAAAAAACGATTATCCTCAATTAATTTCT   8        1        GCF_000392875.1   814251    +        no
         1      AAAAAAAACCCGCCGAAGCGGGTTTTTTTAT   8        1        GCF_000742135.1   1612499   +        no
         1      AAAAAAAACGGTTCAGCTGACCAGCCAGCTG   8        1        GCF_002950215.1   401140    +        no
-        1      AAAAAAAAGAACAAATTCGAGGAAAAAGAAG   9        1        GCF_001027105.1   1268573   +        no
         1      AAAAAAAAGATATTGAAGTTAAAGTAATTTG   9        1        GCF_000742135.1   3038258   +        no
         1      AAAAAAAAGCCCACGAACCGGGGGCAATATC   9        1        GCF_002950215.1   3578394   +        no
         1      AAAAAAAAGCCCCGCCGAAGCGGGGCTTTTT   9        1        GCF_000017205.1   5110420   +        no
         1      AAAAAAAAGGATTATAACAAAATTTTGTCAT   9        1        GCF_001544255.1   426716    +        no
-        1      AAAAAAAAGGCTTTACGGATGATCCGATGGA   9        1        GCF_009759685.1   3033057   +        no
         1      AAAAAAAAGTAATTGCAGCTATTATTGGGAC   10       1        GCF_001027105.1   437272    +        no
         1      AAAAAAAAGTATTAAGCAACTGACTAAAAGT   10       1        GCF_006742205.1   1841209   +        no
         1      AAAAAAAAGTCACAATTATTGGTGCCGGTTT   13       1        GCF_000392875.1   1508457   -        no
@@ -87,6 +85,8 @@ Global Flags:
         1      AAAAAAAAGTCCATCCTGCAGCATAAAATAA   11       1        GCF_000742135.1   4671015   +        no
         1      AAAAAAAAGTCCCTGCTGTTTGCCCAGTCCT   11       1        GCF_000006945.2   3796      -        no
         1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_002949675.1   2356807   +        no
+        1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_002950215.1   3051946   +        no
+        1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_003697165.2   16156     +        no
 
 
 1. Specify the mask.

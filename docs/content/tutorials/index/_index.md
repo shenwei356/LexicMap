@@ -3,11 +3,13 @@ title: Step 1. Building a database
 weight: 0
 ---
 
+{{< hint type=note >}}
 Terminology differences:
 
 - On this page and in the LexicMap command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
 - In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
   Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
+{{< /hint >}}
 
 ## Table of contents
 

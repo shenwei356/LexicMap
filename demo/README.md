@@ -65,56 +65,57 @@ Overview
 
 ## Building an index
 
-
-    21:14:53.264 [INFO] LexicMap v0.4.0 (12c33a3)
-    21:14:53.264 [INFO]   https://github.com/shenwei356/LexicMap
-    21:14:53.264 [INFO]
-    21:14:53.264 [INFO] checking input files ...
-    21:14:53.265 [INFO]   15 input file(s) given
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] --------------------- [ main parameters ] ---------------------
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] input and output:
-    21:14:53.265 [INFO]   input directory: refs/
-    21:14:53.265 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    21:14:53.265 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    21:14:53.265 [INFO]     *regular expressions for filtering out sequences: []
-    21:14:53.265 [INFO]   min sequence length: 31
-    21:14:53.265 [INFO]   max genome size: 15000000
-    21:14:53.265 [INFO]   output directory: demo.lmi
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] mask generation:
-    21:14:53.265 [INFO]   k-mer size: 31
-    21:14:53.265 [INFO]   number of masks: 40000
-    21:14:53.265 [INFO]   rand seed: 1
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] seed data:
-    21:14:53.265 [INFO]   maximum sketching desert length: 200
-    21:14:53.265 [INFO]   distance of k-mers to fill deserts: 50
-    21:14:53.265 [INFO]   seeds data chunks: 16
-    21:14:53.265 [INFO]   seeds data indexing partitions: 1024
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] general:
-    21:14:53.265 [INFO]   genome batch size: 5000
-    21:14:53.265 [INFO]   batch merge threads: 8
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO]
-    21:14:53.265 [INFO] --------------------- [ generating masks ] ---------------------
-    21:14:53.277 [INFO]
-    21:14:53.277 [INFO] --------------------- [ building index ] ---------------------
-    21:14:53.418 [INFO]
-    21:14:53.418 [INFO]   ------------------------[ batch 1/1 ]------------------------
-    21:14:53.418 [INFO]   building index for batch 1 with 15 files...
+    19:13:55.369 [INFO] LexicMap v0.5.0 (c66e3a0)
+    19:13:55.369 [INFO]   https://github.com/shenwei356/LexicMap
+    19:13:55.369 [INFO] 
+    19:13:55.369 [INFO] checking input files ...
+    19:13:55.369 [INFO]   scanning files from directory: refs/
+    19:13:55.370 [INFO]   15 input file(s) given
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] --------------------- [ main parameters ] ---------------------
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] input and output:
+    19:13:55.370 [INFO]   input directory: refs/
+    19:13:55.370 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    19:13:55.370 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    19:13:55.370 [INFO]     *regular expressions for filtering out sequences: []
+    19:13:55.370 [INFO]   min sequence length: 31
+    19:13:55.370 [INFO]   max genome size: 15000000
+    19:13:55.370 [INFO]   output directory: demo.lmi
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] mask generation:
+    19:13:55.370 [INFO]   k-mer size: 31
+    19:13:55.370 [INFO]   number of masks: 40000
+    19:13:55.370 [INFO]   rand seed: 1
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] seed data:
+    19:13:55.370 [INFO]   maximum sketching desert length: 200
+    19:13:55.370 [INFO]   distance of k-mers to fill deserts: 50
+    19:13:55.370 [INFO]   seeds data chunks: 16
+    19:13:55.370 [INFO]   seeds data indexing partitions: 4096
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] general:
+    19:13:55.370 [INFO]   genome batch size: 5000
+    19:13:55.370 [INFO]   threads: 16
+    19:13:55.370 [INFO]   batch merge threads: 8
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] 
+    19:13:55.370 [INFO] --------------------- [ generating masks ] ---------------------
+    19:13:55.382 [INFO] 
+    19:13:55.382 [INFO] --------------------- [ building index ] ---------------------
+    19:13:56.018 [INFO] 
+    19:13:56.018 [INFO]   ------------------------[ batch 1/1 ]------------------------
+    19:13:56.018 [INFO]   building index for batch 1 with 15 files...
     processed files:  15 / 15 [======================================] ETA: 0s. done
-    21:14:58.041 [INFO]   writing seeds...
-    21:14:58.353 [INFO]   finished writing seeds in 312.385058ms
-    21:14:58.353 [INFO]   finished building index for batch 1 in: 4.935232077s
-    21:14:58.354 [INFO]
-    21:14:58.354 [INFO] finished building LexicMap index from 15 files with 40000 masks in 5.0896074s
-    21:14:58.354 [INFO] LexicMap index saved: demo.lmi
-    21:14:58.354 [INFO]
-    21:14:58.354 [INFO] elapsed time: 5.089632193s
-    21:14:58.354 [INFO]
+    19:14:00.601 [INFO]   writing seeds...
+    19:14:00.745 [INFO]   finished writing seeds in 143.225662ms
+    19:14:00.745 [INFO]   finished building index for batch 1 in: 4.72683742s
+    19:14:00.746 [INFO] 
+    19:14:00.746 [INFO] finished building LexicMap index from 15 files with 40000 masks in 5.392303552s
+    19:14:00.746 [INFO] LexicMap index saved: demo.lmi
+    19:14:00.746 [INFO] 
+    19:14:00.746 [INFO] elapsed time: 5.392329816s
+    19:14:00.746 [INFO]
 
 Overview of index files:
 
@@ -136,40 +137,41 @@ Overview of index files:
 
 
     $ dirsize demo.lmi/
-    demo.lmi/: 59.55 MB
-      46.31 MB      seeds
-      12.93 MB      genomes
-     312.53 KB      masks.bin
-      375.00 B      genomes.map.bin
-      322.00 B      info.toml
+    demo.lmi/: 73.24 MiB (76,801,302)
+     60.00 MiB      seeds
+     12.94 MiB      genomes
+    312.53 KiB      masks.bin
+         563 B      info.toml
+         375 B      genomes.map.bin
+           0 B      genomes.chunks.bin
 
 ## Searching
 
 ### A 16S rRNA gene sequence
 
     $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-    21:16:05.831 [INFO] LexicMap v0.4.0 (12c33a3)
-    21:16:05.832 [INFO]   https://github.com/shenwei356/LexicMap
-    21:16:05.832 [INFO]
-    21:16:05.832 [INFO] checking input files ...
-    21:16:05.832 [INFO]   1 input file given: q.gene.fasta
-    21:16:05.832 [INFO]
-    21:16:05.832 [INFO] loading index: demo.lmi/
-    21:16:05.832 [INFO]   reading masks...
-    21:16:05.835 [INFO]   reading indexes of seeds (k-mer-value) data...
-    21:16:06.521 [INFO]   creating genome reader pools, each batch with 16 readers...
-    21:16:06.522 [INFO] index loaded in 690.267508ms
-    21:16:06.522 [INFO]
-    21:16:06.522 [INFO] searching ...
+    19:16:55.757 [INFO] LexicMap v0.5.0 (c66e3a0)
+    19:16:55.757 [INFO]   https://github.com/shenwei356/LexicMap
+    19:16:55.757 [INFO] 
+    19:16:55.757 [INFO] checking input files ...
+    19:16:55.757 [INFO]   1 input file given: q.gene.fasta
+    19:16:55.757 [INFO] 
+    19:16:55.757 [INFO] loading index: demo.lmi/
+    19:16:55.758 [INFO]   reading masks...
+    19:16:55.762 [INFO]   reading indexes of seeds (k-mer-value) data...
+    19:16:58.781 [INFO]   creating genome reader pools, each batch with 16 readers...
+    19:16:58.781 [INFO] index loaded in 3.023370768s
+    19:16:58.781 [INFO] 
+    19:16:58.781 [INFO] searching with 16 threads...
 
-    21:16:06.569 [INFO]
-    21:16:06.569 [INFO] processed queries: 1, speed: 1278.719 queries per minute
-    21:16:06.569 [INFO] 100.0000% (1/1) queries matched
-    21:16:06.569 [INFO] done searching
-    21:16:06.569 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    21:16:06.569 [INFO]
-    21:16:06.569 [INFO] elapsed time: 737.449755ms
-    21:16:06.569 [INFO]
+    19:16:58.821 [INFO] 
+    19:16:58.821 [INFO] processed queries: 1, speed: 1506.171 queries per minute
+    19:16:58.821 [INFO] 100.0000% (1/1) queries matched
+    19:16:58.821 [INFO] done searching
+    19:16:58.821 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    19:16:58.821 [INFO] 
+    19:16:58.821 [INFO] elapsed time: 3.063458635s
+    19:16:58.821 [INFO]
 
 Result preview.
 Here we create a `species` column from the genome ID column (`sgenome`) and replace the assemby accessions with species names.
@@ -353,28 +355,28 @@ Sbjct  460059  CAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA  460100
 Here we use the flag `-w/--load-whole-seeds` to accelerate searching.
 
     $ lexicmap search -d demo.lmi/ q.long-reads.fasta.gz -o q.long-reads.fasta.gz.lexicmap.tsv.gz -w -q 70
-    21:19:44.244 [INFO] LexicMap v0.4.0 (12c33a3)
-    21:19:44.244 [INFO]   https://github.com/shenwei356/LexicMap
-    21:19:44.244 [INFO]
-    21:19:44.244 [INFO] checking input files ...
-    21:19:44.244 [INFO]   1 input file given: q.long-reads.fasta.gz
-    21:19:44.244 [INFO]
-    21:19:44.244 [INFO] loading index: demo.lmi/
-    21:19:44.245 [INFO]   reading masks...
-    21:19:44.248 [INFO]   reading seeds (k-mer-value) data into memory...
-    21:19:44.404 [INFO]   creating genome reader pools, each batch with 16 readers...
-    21:19:44.404 [INFO] index loaded in 159.465898ms
-    21:19:44.404 [INFO]
-    21:19:44.404 [INFO] searching ...
-    processed queries: 3584, speed: 3958.189 queries per minute
-    21:20:41.841 [INFO]
-    21:20:41.841 [INFO] processed queries: 3692, speed: 3856.741 queries per minute
-    21:20:41.841 [INFO] 76.2730% (2816/3692) queries matched
-    21:20:41.841 [INFO] done searching
-    21:20:41.841 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
-    21:20:41.846 [INFO]
-    21:20:41.846 [INFO] elapsed time: 57.601479821s
-    21:20:41.846 [INFO]
+    19:17:49.069 [INFO] LexicMap v0.5.0 (c66e3a0)
+    19:17:49.069 [INFO]   https://github.com/shenwei356/LexicMap
+    19:17:49.069 [INFO] 
+    19:17:49.069 [INFO] checking input files ...
+    19:17:49.069 [INFO]   1 input file given: q.long-reads.fasta.gz
+    19:17:49.069 [INFO] 
+    19:17:49.069 [INFO] loading index: demo.lmi/
+    19:17:49.069 [INFO]   reading masks...
+    19:17:49.073 [INFO]   reading seeds (k-mer-value) data into memory...
+    19:17:51.324 [INFO]   creating genome reader pools, each batch with 16 readers...
+    19:17:51.325 [INFO] index loaded in 2.256185788s
+    19:17:51.325 [INFO] 
+    19:17:51.325 [INFO] searching with 16 threads...
+    processed queries: 3584, speed: 2235.509 queries per minute
+    19:19:33.442 [INFO] 
+    19:19:33.442 [INFO] processed queries: 3692, speed: 2169.281 queries per minute
+    19:19:33.442 [INFO] 76.3543% (2819/3692) queries matched
+    19:19:33.442 [INFO] done searching
+    19:19:33.442 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
+    19:19:33.449 [INFO] 
+    19:19:33.449 [INFO] elapsed time: 1m44.380463612s
+    19:19:33.449 [INFO]
 
 Result overview:
 

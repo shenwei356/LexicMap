@@ -57,7 +57,7 @@ Running at this scale has previously only been achieved by [Phylign](https://git
 (prefiltering with [COBS](https://github.com/iqbal-lab-org/cobs) and alignment with [minimap2](https://github.com/lh3/minimap2)).
 1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
 
-    **With LexicMap** (48 CPUs),
+    **With LexicMap v0.4.0** (48 CPUs),
 
     |Query               |Genome hits|Time      |RAM    |
     |:-------------------|----------:|---------:|------:|
