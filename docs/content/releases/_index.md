@@ -18,6 +18,8 @@ weight: 30
 
 [v0.5.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.5.0) - 2015-12-18 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.5.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.5.0)
 
+This version is compatible with indexes created by LexicMap v0.4.0, but rebuilding the index is recommended for more accurate results.
+
 - New commands:
     - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
 - `lexicmap index`:

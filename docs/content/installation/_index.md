@@ -92,7 +92,6 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
     |OS     |Arch      |File, 中国镜像                                                                                                                                                                                                               |
     |:------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
     |FreeBSD|**64-bit**|[**lexicmap_freebsd_amd64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_freebsd_amd64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_freebsd_amd64.tar.gz)            |
-    |FreeBSD|arm64     |[**lexicmap_freebsd_arm64.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.5.0/lexicmap_freebsd_arm64.tar.gz), [中国镜像](http://app.shenwei.me/data/lexicmap/lexicmap_freebsd_arm64.tar.gz)            |
 
 {{< /tab >}}
 

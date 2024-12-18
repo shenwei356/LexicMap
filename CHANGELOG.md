@@ -2,6 +2,8 @@
 
 ### v0.5.0 - 2024-12-18
 
+This version is compatible with indexes created by LexicMap v0.4.0, but rebuilding the index is recommended for more accurate results.
+
 - New commands:
     - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
 - `lexicmap index`:
