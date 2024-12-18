@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.134.2">
+<meta name="generator" content="Hugo 0.139.4">
 
 
   <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
@@ -65,7 +65,7 @@ For short queries like genes or long reads, returning top N hits." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.",
-      "wordCount" : "3144",
+      "wordCount" : "3201",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -93,8 +93,8 @@ For short queries like genes or long reads, returning top N hits." />
 
 
     
-  <script src="/LexicMap/js/colortheme-5cd55a83.bundle.min.js"></script>
-<script src="/LexicMap/js/main-09678822.bundle.min.js"></script>
+  <script src="/LexicMap/js/colortheme-662de488.bundle.min.js"></script>
+<script src="/LexicMap/js/main-2e274343.bundle.min.js"></script>
 
 <link
   rel="preload"
@@ -113,12 +113,12 @@ For short queries like genes or long reads, returning top N hits." />
 
 <link
   rel="preload"
-  href="/LexicMap/main-c93819e1.min.css"
+  href="/LexicMap/main-4434ec39.min.css"
   as="style"
 />
 <link
   rel="stylesheet"
-  href="/LexicMap/main-c93819e1.min.css"
+  href="/LexicMap/main-4434ec39.min.css"
   media="all"
 />
 
@@ -1403,6 +1403,50 @@ For short queries like genes or long reads, returning top N hits." />
         
       
     
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/remerge/"
+                    class="gdoc-nav__entry"
+                  >
+                    remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
   </ul>
 
             
@@ -1700,6 +1744,7 @@ For short queries like genes or long reads, returning top N hits." />
     class="gdoc-markdown gdoc-markdown__align--left"
   >
     <h1>Step 2. Searching</h1>
+    
     <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="table-of-contents"
     >
@@ -1824,7 +1869,7 @@ However, short queries can also be aligned.</div>
 </li>
 <li><strong>Disk</strong>
 <ul>
-<li>Sufficient space is required to store the index size.</li>
+<li>SSD disks are preferred to store the index size, while HDD disks are also fast enough.</li>
 <li>No temporary files are generated during searching.</li>
 </ul>
 </li>
@@ -1957,10 +2002,16 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
           <td style="text-align: left">Use this if you want to output blast-style format with &ldquo;lexicmap utils 2blast&rdquo;</td>
       </tr>
       <tr>
-          <td style="text-align: left">-J/&ndash;max-query-conc</td>
+          <td style="text-align: left"><code>-J/--max-query-conc</code></td>
           <td style="text-align: left">Default 12, 0 for all</td>
           <td style="text-align: left">Maximum number of concurrent queries</td>
           <td style="text-align: left">Bigger values do not improve the batch searching speed and consume much memory.</td>
+      </tr>
+      <tr>
+          <td style="text-align: left"><code>--max-open-files</code></td>
+          <td style="text-align: left">Default: 1024</td>
+          <td style="text-align: left">Maximum number of open files</td>
+          <td style="text-align: left">It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger <code>ulimit -n</code> in shell if the value is &gt; 1024.</td>
       </tr>
   </tbody>
 </table> </div>
@@ -2012,10 +2063,10 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
           <td style="text-align: left"></td>
       </tr>
       <tr>
-          <td style="text-align: left"></td>
-          <td style="text-align: left"></td>
-          <td style="text-align: left"></td>
-          <td style="text-align: left"></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
       </tr>
   </tbody>
 </table> </div>
@@ -2068,7 +2119,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
       </tr>
       <tr>
           <td style="text-align: left"><code>--align-band</code></td>
-          <td style="text-align: left">Default 50</td>
+          <td style="text-align: left">Default 100</td>
           <td style="text-align: left">Band size in backtracking the score matrix.</td>
           <td style="text-align: left"></td>
       </tr>
@@ -2170,35 +2221,35 @@ chunks = 48
 </ul>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="0651434d-4">
+  <label class="gdoc-expand__head flex justify-between" for="e477c1b8-4">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="0651434d-4" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="e477c1b8-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code>$ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-09:32:55.551 [INFO] LexicMap v0.4.0
-09:32:55.551 [INFO]   https://github.com/shenwei356/LexicMap
-09:32:55.551 [INFO]
-09:32:55.551 [INFO] checking input files ...
-09:32:55.551 [INFO]   1 input file(s) given
-09:32:55.551 [INFO]
-09:32:55.551 [INFO] loading index: demo.lmi/
-09:32:55.551 [INFO]   reading masks...
-09:32:55.552 [INFO]   reading indexes of seeds (k-mer-value) data...
-09:32:55.555 [INFO]   creating genome reader pools, each batch with 16 readers...
-09:32:55.555 [INFO] index loaded in 4.192051ms
-09:32:55.555 [INFO]
-09:32:55.555 [INFO] searching ...
+19:24:36.194 [INFO] LexicMap v0.5.0 (c66e3a0)
+19:24:36.194 [INFO]   https://github.com/shenwei356/LexicMap
+19:24:36.195 [INFO] 
+19:24:36.195 [INFO] checking input files ...
+19:24:36.195 [INFO]   1 input file given: q.gene.fasta
+19:24:36.195 [INFO] 
+19:24:36.195 [INFO] loading index: demo.lmi/
+19:24:36.195 [INFO]   reading masks...
+19:24:36.199 [INFO]   reading indexes of seeds (k-mer-value) data...
+19:24:38.925 [INFO]   creating genome reader pools, each batch with 16 readers...
+19:24:38.926 [INFO] index loaded in 2.731115898s
+19:24:38.926 [INFO] 
+19:24:38.926 [INFO] searching with 16 threads...
 
-09:32:55.596 [INFO]
-09:32:55.596 [INFO] processed queries: 1, speed: 1467.452 queries per minute
-09:32:55.596 [INFO] 100.0000% (1/1) queries matched
-09:32:55.596 [INFO] done searching
-09:32:55.596 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-09:32:55.596 [INFO]
-09:32:55.596 [INFO] elapsed time: 45.230604ms
-09:32:55.596 [INFO]
+19:24:38.979 [INFO] 
+19:24:38.979 [INFO] processed queries: 1, speed: 1118.616 queries per minute
+19:24:38.979 [INFO] 100.0000% (1/1) queries matched
+19:24:38.979 [INFO] done searching
+19:24:38.979 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+19:24:38.979 [INFO] 
+19:24:38.980 [INFO] elapsed time: 2.785031416s
+19:24:38.980 [INFO]
 </code></pre>
 
   </div>
@@ -3359,6 +3410,39 @@ chunks = 48
     
 
   
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
 
         
       
@@ -3542,7 +3626,7 @@ chunks = 48
     </div>
 
     
-  <script defer src="/LexicMap/js/search-49cf88d4.bundle.min.js"></script>
+  <script defer src="/LexicMap/js/search-d0afef64.bundle.min.js"></script>
 
   </body>
 </html>
