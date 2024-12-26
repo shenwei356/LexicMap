@@ -529,6 +529,27 @@ func RecycleSubstrPairs(subs *[]*SubstrPair) {
 	poolSubs.Put(subs)
 }
 
+// type SubstrPairs []*SubstrPair
+
+// func (subs SubstrPairs) Len() int {
+// 	return len(subs)
+// }
+// func (subs SubstrPairs) Swap(i, j int) {
+// 	subs[i], subs[j] = subs[j], subs[i]
+// }
+// func (subs SubstrPairs) Less(i, j int) bool {
+// 	a := subs[i]
+// 	b := subs[j]
+// 	if a.QBegin == b.QBegin {
+// 		// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
+// 		if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
+// 			return a.TBegin <= b.TBegin
+// 		}
+// 		return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
+// 	}
+// 	return a.QBegin < b.QBegin
+// }
+
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
 func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 	if len(*subs) < 2 {
@@ -549,6 +570,7 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 		}
 		return a.QBegin < b.QBegin
 	})
+	// sort.Sort(SubstrPairs(*subs))
 
 	var p *SubstrPair
 	var upbound, vQEnd, vTEnd int32
@@ -1361,6 +1383,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			}
 
 			// check sequences from all chains
+			var nSeeds int
 			for _, chain := range *r.Chains { // for each lexichash chain
 				// ------------------------------------------------------------------------
 				// extract subsequence from the refseq for comparing
@@ -1370,6 +1393,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
 				// }
 
+				nSeeds = len(*chain)
+
 				// the first seed pair
 				sub = (*r.Subs)[(*chain)[0]]
 				// fmt.Printf("  first: %s\n", sub)
@@ -1377,13 +1402,16 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				tb = int(sub.TBegin)
 
 				// the last seed pair
-				sub = (*r.Subs)[(*chain)[len(*chain)-1]]
+				sub = (*r.Subs)[(*chain)[nSeeds-1]]
 				// fmt.Printf("  last: %s\n", sub)
 				qe = int(sub.QBegin) + int(sub.Len) - 1
 				te = int(sub.TBegin) + int(sub.Len) - 1
 				// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
 
-				if len(*chain) == 1 { // if there's only one seed, need to check the strand information
+				// recycle it ASAP
+				poolChain.Put(chain)
+
+				if nSeeds == 1 { // if there's only one seed, need to check the strand information
 					rc = sub.QRC != sub.TRC
 				} else { // check the strand according to coordinates of seeds
 					rc = tb > int(sub.TBegin)
@@ -1705,7 +1733,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 									sd.RC = rc
 									// sd.Chain = (*r.Chains)[i]
-									sd.NSeeds = len(*chain)
+									sd.NSeeds = nSeeds
 									sd.Similarity = r2
 									sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
 									sd.SeqID = sd.SeqID[:0]
@@ -1931,7 +1959,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						if hasResult {
 							sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 							sd.RC = rc
-							sd.NSeeds = len(*chain)
+							sd.NSeeds = nSeeds
 							sd.Similarity = r2
 							sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
 							sd.SeqID = sd.SeqID[:0]
@@ -1949,6 +1977,15 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				poolChains2.Put(cr.Chains)
 				// genome.RecycleGenome(tSeq)
 			}
+			// recyle chains ASAP
+			poolChains.Put(r.Chains)
+			r.Chains = nil
+
+			for _, sub := range *r.Subs {
+				poolSub.Put(sub)
+			}
+			poolSubs.Put(r.Subs)
+			r.Subs = nil
 
 			genome.RecycleGenome(tSeq)
 
@@ -2032,19 +2069,19 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			// we don't need these data for outputing results.
 			// If we do not do this, they will be in memory until the result is outputted.
 			// recycle the chain data
-			for _, sub := range *r.Subs {
-				poolSub.Put(sub)
-			}
-			poolSubs.Put(r.Subs)
-			r.Subs = nil
+			// for _, sub := range *r.Subs {
+			// 	poolSub.Put(sub)
+			// }
+			// poolSubs.Put(r.Subs)
+			// r.Subs = nil
 
-			if r.Chains != nil {
-				for _, chain := range *r.Chains {
-					poolChain.Put(chain)
-				}
-				poolChains.Put(r.Chains)
-				r.Chains = nil
-			}
+			// if r.Chains != nil {
+			// 	for _, chain := range *r.Chains {
+			// 		poolChain.Put(chain)
+			// 	}
+			// 	poolChains.Put(r.Chains)
+			// 	r.Chains = nil
+			// }
 
 			ch2 <- r
 		}(r)

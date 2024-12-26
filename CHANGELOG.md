@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.5.1 - 2025-xx-xx
+
+- `lexicmap search`:
+    - reduce memory in batch quering.
+
 ### v0.5.0 - 2024-12-18
 
 This version is compatible with indexes created by LexicMap v0.4.0, but rebuilding the index is recommended for more accurate results.

@@ -300,6 +300,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		}
 
 		if M < minScore { // no valid anchors
+			poolChain.Put(path) // very important
 			break
 		}
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
