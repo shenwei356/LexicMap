@@ -3,7 +3,7 @@
 ### v0.5.1 - 2025-xx-xx
 
 - `lexicmap search`:
-    - reduce memory in batch quering.
+    - reduce memory usage.
 
 ### v0.5.0 - 2024-12-18
 

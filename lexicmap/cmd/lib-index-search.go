@@ -523,7 +523,7 @@ var poolSubs = &sync.Pool{New: func() interface{} {
 }}
 
 // RecycleSubstrPairs recycles a list of SubstrPairs
-func RecycleSubstrPairs(subs *[]*SubstrPair) {
+func RecycleSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair) {
 	for _, sub := range *subs {
 		poolSub.Put(sub)
 	}
@@ -531,7 +531,7 @@ func RecycleSubstrPairs(subs *[]*SubstrPair) {
 }
 
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
-func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
+func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	if len(*subs) < 2 {
 		return
 	}
@@ -1201,7 +1201,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		wg.Add(1)
 
 		go func(r *SearchResult) {
-			ClearSubstrPairs(r.Subs, K) // remove duplicates and nested anchors
+			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
 
 			// -----------------------------------------------------
 			// chaining
