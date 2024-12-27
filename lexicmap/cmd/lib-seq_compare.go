@@ -22,7 +22,7 @@ package cmd
 
 import (
 	"math"
-	"sort"
+	"slices"
 	"sync"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
@@ -260,8 +260,11 @@ func coverageLen(regions *[]*[2]int) (r int) {
 	}
 
 	// sort by the start locations
-	sort.Slice(*regions, func(i, j int) bool {
-		return (*regions)[i][0] < (*regions)[j][0]
+	// sort.Slice(*regions, func(i, j int) bool {
+	// 	return (*regions)[i][0] < (*regions)[j][0]
+	// })
+	slices.SortFunc(*regions, func(a, b *[2]int) int {
+		return a[0] - b[0]
 	})
 
 	var region *[2]int // ccurent region
@@ -462,8 +465,11 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	r.AlignedFraction = af
 
 	// very important
-	sort.Slice(*chains, func(i, j int) bool {
-		return (*chains)[i].QBegin <= (*chains)[j].QBegin
+	// sort.Slice(*chains, func(i, j int) bool {
+	// 	return (*chains)[i].QBegin <= (*chains)[j].QBegin
+	// })
+	slices.SortFunc(*chains, func(a, b *Chain2Result) int {
+		return a.QBegin - b.QBegin
 	})
 
 	// fmt.Println("chain2:")

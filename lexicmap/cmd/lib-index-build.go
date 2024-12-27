@@ -30,7 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -958,8 +958,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						_itree.Insert(gap[0]-k+1, gap[1]-1, 1)
 					}
 
-					sort.Slice(*skipRegions, func(i, j int) bool {
-						return (*skipRegions)[i][0] < (*skipRegions)[j][0]
+					// sort.Slice(*skipRegions, func(i, j int) bool {
+					// 	return (*skipRegions)[i][0] < (*skipRegions)[j][0]
+					// })
+					slices.SortFunc(*skipRegions, func(a, b [2]int) int {
+						return a[0] - b[0]
 					})
 
 					_skipRegions = *skipRegions

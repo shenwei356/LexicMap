@@ -21,8 +21,9 @@
 package cmd
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -85,7 +86,7 @@ var poolChains = &sync.Pool{New: func() interface{} {
 }}
 
 var poolChain = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 0, 128)
+	tmp := make([]int, 0, 32)
 	return &tmp
 }}
 
@@ -130,8 +131,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 	directions := &ce.directions
 	*directions = (*directions)[:0]
-	score2idx := &ce.score2idx
-	*score2idx = (*score2idx)[:0]
+	score2idx := ce.score2idx
+	score2idx = score2idx[:0]
 	// for i = 0; i < n; i++ {
 	// 	maxscores = append(maxscores, 0)
 	// 	maxscoresIdxs = append(maxscoresIdxs, 0)
@@ -145,7 +146,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	*maxscores = append(*maxscores, seedWeight(float64((*subs)[0].Len)))
 	*maxscoresIdxs = append(*maxscoresIdxs, 0)
 	*directions = append(*directions, 0)
-	*score2idx = append(*score2idx, [2]float64{(*maxscores)[0], 0})
+	score2idx = append(score2idx, [2]float64{(*maxscores)[0], 0})
 
 	// compute scores
 	var length int32 // substr/anchor length
@@ -240,7 +241,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		*maxscores = append(*maxscores, m) // save the max score
 		*maxscoresIdxs = append(*maxscoresIdxs, mj)
 		*directions = append(*directions, mdir)
-		*score2idx = append(*score2idx, [2]float64{m, float64(i)})
+		score2idx = append(score2idx, [2]float64{m, float64(i)})
 	}
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
@@ -263,8 +264,12 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	var M float64
 	var Mi int
 
-	sort.Slice(*score2idx, func(i, j int) bool {
-		return (*score2idx)[i][0] > (*score2idx)[j][0]
+	// memory inefficient
+	// sort.Slice(score2idx, func(i, j int) bool {
+	// 	return score2idx[i][0] > score2idx[j][0]
+	// })
+	slices.SortFunc(score2idx, func(a, b [2]float64) int {
+		return cmp.Compare[float64](b[0], a[0])
 	})
 
 	var iMaxScore int
@@ -288,9 +293,9 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		M = 0
 		for iMaxScore < n {
 			M = 0
-			Mi = int((*score2idx)[iMaxScore][1])
+			Mi = int(score2idx[iMaxScore][1])
 			if !(*visited)[Mi] {
-				M = (*score2idx)[iMaxScore][0]
+				M = score2idx[iMaxScore][0]
 
 				iMaxScore++
 				break

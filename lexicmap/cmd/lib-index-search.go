@@ -22,13 +22,14 @@ package cmd
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -529,27 +530,6 @@ func RecycleSubstrPairs(subs *[]*SubstrPair) {
 	poolSubs.Put(subs)
 }
 
-// type SubstrPairs []*SubstrPair
-
-// func (subs SubstrPairs) Len() int {
-// 	return len(subs)
-// }
-// func (subs SubstrPairs) Swap(i, j int) {
-// 	subs[i], subs[j] = subs[j], subs[i]
-// }
-// func (subs SubstrPairs) Less(i, j int) bool {
-// 	a := subs[i]
-// 	b := subs[j]
-// 	if a.QBegin == b.QBegin {
-// 		// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
-// 		if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
-// 			return a.TBegin <= b.TBegin
-// 		}
-// 		return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
-// 	}
-// 	return a.QBegin < b.QBegin
-// }
-
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
 func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 	if len(*subs) < 2 {
@@ -558,19 +538,27 @@ func ClearSubstrPairs(subs *[]*SubstrPair, k int) {
 
 	// sort substrings/seeds in ascending order based on the starting position
 	// and in descending order based on the ending position.
-	sort.Slice(*subs, func(i, j int) bool {
-		a := (*subs)[i]
-		b := (*subs)[j]
+	// sort.Slice(*subs, func(i, j int) bool {
+	// 	a := (*subs)[i]
+	// 	b := (*subs)[j]
+	// 	if a.QBegin == b.QBegin {
+	// 		// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
+	// 		if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
+	// 			return a.TBegin <= b.TBegin
+	// 		}
+	// 		return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
+	// 	}
+	// 	return a.QBegin < b.QBegin
+	// })
+	slices.SortFunc(*subs, func(a, b *SubstrPair) int {
 		if a.QBegin == b.QBegin {
-			// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
 			if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
-				return a.TBegin <= b.TBegin
+				return int(a.TBegin - b.TBegin)
 			}
-			return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
+			return int(b.QBegin) + int(b.Len) - (int(a.QBegin) + int(a.Len))
 		}
-		return a.QBegin < b.QBegin
+		return int(a.QBegin - b.QBegin)
 	})
-	// sort.Sort(SubstrPairs(*subs))
 
 	var p *SubstrPair
 	var upbound, vQEnd, vTEnd int32
@@ -1207,6 +1195,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		done <- 1
 	}()
 
+	minScore := idx.chainingOptions.MinScore
 	for _, r := range *m {
 		tokens <- 1
 		wg.Add(1)
@@ -1226,7 +1215,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				wg.Done()
 			}()
 
-			if r.Score < idx.chainingOptions.MinScore {
+			if r.Score < minScore {
 				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 				return
 			}
@@ -1246,8 +1235,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	if topN > 0 && len(*rs) > topN {
 		// sort subjects in descending order based on the score
 		// just use the standard library for a few seed pairs.
-		sort.Slice(*rs, func(i, j int) bool {
-			return (*rs)[i].Score > (*rs)[j].Score
+		// sort.Slice(*rs, func(i, j int) bool {
+		// 	return (*rs)[i].Score > (*rs)[j].Score
+		// })
+		slices.SortFunc(*rs, func(a, b *SearchResult) int {
+			return cmp.Compare[float64](b.Score, a.Score)
 		})
 
 		var r *SearchResult
@@ -1296,7 +1288,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 	// sort genomes according to the index in a genome data file for slightly faster file seeking
 	if len(*rs) > 1 { // GenomeIndex
-		sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].GenomeIndex < (*rs)[j].GenomeIndex })
+		// sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].GenomeIndex < (*rs)[j].GenomeIndex })
+		slices.SortFunc(*rs, func(a, b *SearchResult) int {
+			return a.GenomeIndex - b.GenomeIndex
+		})
 	}
 
 	for _, r := range *rs { // multiple references
@@ -1377,8 +1372,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 			// sort chains according to coordinates for faster file seeking
 			if len(*r.Chains) > 1 {
-				sort.Slice(*r.Chains, func(i, j int) bool {
-					return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
+				// sort.Slice(*r.Chains, func(i, j int) bool {
+				// 	return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
+				// })
+				slices.SortFunc(*r.Chains, func(a, b *[]int) int {
+					return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
 				})
 			}
 
@@ -2050,9 +2048,13 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
 			// r.AlignResults = ars
-			sort.Slice(*sds, func(i, j int) bool {
-				return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
+			// sort.Slice(*sds, func(i, j int) bool {
+			// 	return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
+			// })
+			slices.SortFunc(*sds, func(a, b *SimilarityDetail) int {
+				return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
 			})
+
 			r.SimilarityDetails = sds
 
 			// recycle genome reader
@@ -2201,8 +2203,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
 			// r.AlignResults = ars
-			sort.Slice(*r.SimilarityDetails, func(i, j int) bool {
-				return (*r.SimilarityDetails)[i].SimilarityScore > (*r.SimilarityDetails)[j].SimilarityScore
+			// sort.Slice(*r.SimilarityDetails, func(i, j int) bool {
+			// 	return (*r.SimilarityDetails)[i].SimilarityScore > (*r.SimilarityDetails)[j].SimilarityScore
+			// })
+			slices.SortFunc(*r.SimilarityDetails, func(a, b *SimilarityDetail) int {
+				return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
 			})
 
 			(*rs2)[j] = r
@@ -2217,8 +2222,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	}
 
 	// sort all genomes, by qcovHSP*pident of the best alignment.
-	sort.Slice(*rs2, func(i, j int) bool {
-		return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
+	// sort.Slice(*rs2, func(i, j int) bool {
+	// 	return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
+	// })
+	slices.SortFunc(*rs2, func(a, b *SearchResult) int {
+		return cmp.Compare[float64]((*b.SimilarityDetails)[0].SimilarityScore, (*a.SimilarityDetails)[0].SimilarityScore)
 	})
 
 	// ----------------------------------
