@@ -106,13 +106,13 @@ Important parameters:
                             This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, etc.
  *1. -k/--kmer,             ► K-mer size (maximum: 32, default: 31).
                             ■ Bigger values improve the search specificity and do not increase the index size.
- *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
-                            ■ Bigger values improve the search sensitivity, increase the index size, and slow down
-                            the search speed.
+ *2. -m/--masks,            ► Number of LexicHash masks (default: 20000).
+                            ■ Bigger values improve the search sensitivity slightly, increase the index size,
+                            and slow down the search (seed matching) speed.
 
   --- Seeds data (k-mer-value data) ---
- *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
-                            The default value of 200 guarantees queries >=200 bp would match at least one seed.
+ *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 100).
+                            The default value of 100 guarantees queries >=200 bp would match at least two seeds.
                             ► Large regions with no seeds are called sketching deserts. Deserts with seed distance
                             larger than this value will be filled by choosing k-mers roughly every
                             --seed-in-desert-dist (50 by default) bases.
@@ -554,7 +554,7 @@ func init() {
 	indexCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	indexCmd.Flags().IntP("masks", "m", 40000,
+	indexCmd.Flags().IntP("masks", "m", 20000,
 		formatFlagUsage(`Number of LexicHash masks.`))
 
 	indexCmd.Flags().IntP("rand-seed", "s", 1,
@@ -570,7 +570,7 @@ func init() {
 		formatFlagUsage(`Disable sketching desert filling (only for debug).`))
 	// indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
 	// 	formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
-	indexCmd.Flags().IntP("seed-max-desert", "D", 200,
+	indexCmd.Flags().IntP("seed-max-desert", "D", 100,
 		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
 	indexCmd.Flags().IntP("seed-in-desert-dist", "d", 50,
 		formatFlagUsage(`Distance of k-mers to fill deserts.`))

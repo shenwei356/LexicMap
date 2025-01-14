@@ -2,6 +2,11 @@
 
 ### v0.5.1 - 2025-xx-xx
 
+- `lexicmap index`:
+    - Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
+      faster indexing speed, and faster seed-matching speed, at a cost of slightly larger index.
+        - `-m/--masks`: 40,000 -> 20,000.
+        - `-D/--seed-max-desert`: 200 -> 100.
 - `lexicmap search`:
     - reduce memory usage.
 
