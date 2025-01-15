@@ -81,15 +81,15 @@ Global Flags:
         $ head -n 10 seed_distance.tsv | csvtk pretty -t
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   90        90        -        89
-        GCF_000017205.1   NC_009656.1   133       133       +        43
-        GCF_000017205.1   NC_009656.1   137       137       -        4
-        GCF_000017205.1   NC_009656.1   139       139       -        2
-        GCF_000017205.1   NC_009656.1   160       160       -        21
-        GCF_000017205.1   NC_009656.1   300       300       -        140
-        GCF_000017205.1   NC_009656.1   338       338       +        38
-        GCF_000017205.1   NC_009656.1   360       360       +        22
-        GCF_000017205.1   NC_009656.1   361       361       +        1
+        GCF_000017205.1   NC_009656.1   90        90        -        89      
+        GCF_000017205.1   NC_009656.1   122       122       -        32      
+        GCF_000017205.1   NC_009656.1   160       160       -        38      
+        GCF_000017205.1   NC_009656.1   209       209       -        49      
+        GCF_000017205.1   NC_009656.1   259       259       -        50      
+        GCF_000017205.1   NC_009656.1   309       309       +        50      
+        GCF_000017205.1   NC_009656.1   357       357       +        48      
+        GCF_000017205.1   NC_009656.1   360       360       +        3       
+        GCF_000017205.1   NC_009656.1   387       387       -        27      
 
     Check the biggest seed distances.
 
@@ -100,29 +100,27 @@ Global Flags:
 
         distance   frequency
         --------   ---------
-        199        43
-        198        49
-        197        52
-        196        43
-        195        44
-        194        47
-        193        43
-        192        53
-        191        38
+        126        1        
+        99         32       
+        98         36       
+        97         40       
+        96         36       
+        95         40       
+        94         37       
+        93         48       
+        92         62       
 
     Or only list records with seed distances longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 190 \
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 100 \
             | csvtk pretty -t | head -n 5
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
-        GCF_000017205.1   NC_009656.1   13964     13964     -        197
-        GCF_000017205.1   NC_009656.1   27420     27420     +        191
-        GCF_000017205.1   NC_009656.1   30942     30942     +        193
+        GCF_000017205.1   NC_009656.1   168652    168652    +        126 
 
     Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance -w 250
 
     In the plot below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default.
 
@@ -132,24 +130,60 @@ Global Flags:
 
         $ lexicmap utils seed-pos -d demo.lmi/  -n GCF_000017205.1 -v \
             | head -n4 | csvtk pretty -t -W 40 --clip
-        ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
+        ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
         GCF_000017205.1   NC_009656.1   90        90        -        89         9         TTAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGC...
-        GCF_000017205.1   NC_009656.1   133       133       +        43         3         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTCTTGGT...
-        GCF_000017205.1   NC_009656.1   137       137       -        4          0         GGTT
+        GCF_000017205.1   NC_009656.1   122       122       -        32         3         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTC        
+        GCF_000017205.1   NC_009656.1   160       160       -        38         3         TTGGTTGGACCGGTTTCTGTGTATAACTCATTGAAAGC  
 
     Or only list records with seed distance longer than a threshold.
 
-        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 190 \
-            | head -n 2 \
+       $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
             | csvtk pretty -t -W 40
-        ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq
-        ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
-        GCF_000017205.1   NC_009656.1   13964     13964     -        197        8         ATTTGCCCATTGAGGCGCCGGTATTGCGCATGGAAGTGGT
-                                                                                          GCGCATCGACGCCGAGGGCGTCGGCCTGCGCTTCCTCGCC
-                                                                                          GATCAATGAAACCCGAGTTCCACGTGGAACCACGGTCCTG
-                                                                                          CCATCGATCAGCGAACGGGCGAATCCGCCGCCCGTTATCG
-                                                                                          GCTAGAATGCGCGCCGCTCGGCATGGGGCCGGGCATG
+       ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
+       ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
+       GCF_000017205.1   NC_009656.1   168652    168652    +        126        0         GGCGGCGTCGGCGGCGCCACGCTCGCTGGCTGTGGCTGTG
+                                                                                         GCTGTGGCTGTGGCTGTGGCTGTGGCTGTGGCTGTGGCTG
+                                                                                         TGGCTGTGGCTGTGGCTGTGGCTGTGGCGGCTGCTGGGTG
+                                                                                         ATCCCG
+    
+    It appears to be a highly repetitive region, specifically a tandem repeat with the unit sequence `CTGTGG`:
+    
+        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
+            | csvtk cut -t -f seqid,seq \
+            | csvtk del-header -t \
+            | seqkit tab2fx \
+            | seqkit locate --only-positive-strand --non-greedy --pattern CTGTGG \
+            | csvtk pretty
+
+        seqID         patternName   pattern   strand   start   end   matched
+        -----------   -----------   -------   ------   -----   ---   -------
+        NC_009656.1   CTGTGG        CTGTGG    +        30      35    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        36      41    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        42      47    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        48      53    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        54      59    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        60      65    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        66      71    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        72      77    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        78      83    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        84      89    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        90      95    CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        96      101   CTGTGG 
+        NC_009656.1   CTGTGG        CTGTGG    +        102     107   CTGTGG 
+    
+    A similar case in another genome.
+    
+       $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
+            | csvtk pretty -t -W 40
+       ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
+       ---------------   -------------   -------   -------   ------   --------   -------   ----------------------------------------
+       GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29        TAAGACTCAAGACTCAAGACTCAAGACTCAAGACTCAAGA
+                                                                                           CTCAAGACTCAAGACTCAAGACTCAAGACTCAAGACTCAA
+                                                                                           GACTCAAGACTCAAGACTCAAGACTCAAGACTCAAGACTC
+                                                                                           AAGACTCAAGACTCAAGACTCAAGACTCAAGACTCAAGAC
+                                                                                           TCAAGACTCAAGACTCAAGACTCAAGACTCAAGACTCAAG
+                                                                                           AC 
 
 3. Listing seed position of all genomes.
 
@@ -161,21 +195,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   134674
-        GCF_000742135.1   103882
-        GCF_003697165.2   92389
-        GCF_000006945.2   91007
-        GCF_002950215.1   89876
-        GCF_002949675.1   84731
-        GCF_009759685.1   72615
-        GCF_001027105.1   56806
-        GCF_000392875.1   55397
-        GCF_006742205.1   52670
-        GCF_001544255.1   49919
-        GCF_900638025.1   46654
-        GCF_001457655.1   46226
-        GCF_001096185.1   46222
-        GCF_000148585.2   44848
+        GCF_000017205.1   143165   
+        GCF_000742135.1   120758   
+        GCF_003697165.2   110132   
+        GCF_000006945.2   108387   
+        GCF_002950215.1   108272   
+        GCF_002949675.1   101098   
+        GCF_009759685.1   88632    
+        GCF_000392875.1   65403    
+        GCF_001027105.1   64176    
+        GCF_001544255.1   57167    
+        GCF_006742205.1   57086    
+        GCF_001096185.1   49482    
+        GCF_900638025.1   48959    
+        GCF_001457655.1   45771    
+        GCF_000148585.2   44752    
 
     Plot the histograms of distances between seeds for all genomes.
 

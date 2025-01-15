@@ -1,14 +1,19 @@
 # Changelog
 
-### v0.5.1 - 2025-xx-xx
+### v0.6.0 - 2025-xx-xx
 
 - `lexicmap index`:
+    - Fix seed desert filling near gap regions.
     - Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
       faster indexing speed, and faster seed-matching speed, at a cost of slightly larger index.
-        - `-m/--masks`: 40,000 -> 20,000.
-        - `-D/--seed-max-desert`: 200 -> 100.
+        - `-m/--masks`: 40,000 -> 20,000. 
+           40k is unnecessary especially for small genomes, where seeds would be very crowded,
+           with a big proportion of seed distance being between 0-50 bp.
+        - `-D/--seed-max-desert`: 200 -> 100. This provides a smaller window guarantee.
 - `lexicmap search`:
-    - reduce memory usage.
+    - Reduce memory usage.
+- `lexicmap utils seed-pos`:
+    - Change default option values of sliding window.
 
 ### v0.5.0 - 2024-12-18
 

@@ -124,53 +124,38 @@ CIGAR string, aligned query and subject sequences can be outputted as extra colu
 Export blast-style format:
 
 ```
-seqkit seq -M 500 q.long-reads.fasta.gz \
-    | seqkit head -n 1 \
+# here, we only align <=200 bp queries and show one low-similarity result.
+
+$ seqkit seq -g -M 200 q.long-reads.fasta.gz \
     | lexicmap search -d demo.lmi/ -a \
+    | csvtk filter2 -t -f '$pident >80 && $pident < 90' \
+    | csvtk head -t -n 1 \
     | lexicmap utils 2blast --kv-file-genome ass2species.map
 
-Query = GCF_006742205.1_r100
-Length = 431
+Query = GCF_003697165.2_r40
+Length = 186
 
-[Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
-Query coverage per genome = 92.575%
+[Subject genome #1/2] = GCF_002950215.1 Shigella flexneri
+Query coverage per genome = 88.710%
 
->NZ_AP019721.1
-Length = 2422602
+>NZ_CP026788.1 
+Length = 4659463
 
-HSP #1
-Query coverage per seq = 92.575%, Aligned length = 402, Identities = 98.507%, Gaps = 4
-Query range = 33-431, Subject range = 1321677-1322077, Strand = Plus/Minus
+ HSP #1
+ Query coverage per seq = 88.710%, Aligned length = 168, Identities = 89.286%, Gaps = 5
+ Query range = 13-177, Subject range = 1124816-1124981, Strand = Plus/Plus
 
-Query  33       TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  92
-                ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-Sbjct  1322077  TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  1322018
+Query  13       CGGAAACTGAAACA-CCAGATTCTACGATGATTATGATGATTTA-TGCTTTCTTTACTAA  70
+                |||||||||||||| |||||||||| | |||||||||||||||| |||||||||| ||||
+Sbjct  1124816  CGGAAACTGAAACAACCAGATTCTATGTTGATTATGATGATTTAATGCTTTCTTTGCTAA  1124875
 
-Query  93       GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTG-TACATTTGC  151
-                |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
-Sbjct  1322017  GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTGATACATTTGC  1321958
+Query  71       AAAGTAAGCGGCCAAAAAAATGAT-AACACCTGTAATGAGTATCAGAAAAGACACGGTAA  129
+                ||    |||||||||||||||||| |||||||||||||||||||||||||||||||||||
+Sbjct  1124876  AA--GCAGCGGCCAAAAAAATGATTAACACCTGTAATGAGTATCAGAAAAGACACGGTAA  1124933
 
-Query  152      TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCACAGGATGACCA  211
-                |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
-Sbjct  1321957  TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCAC-GGATGACCA  1321899
-
-Query  212      TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  271
-                ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-Sbjct  1321898  TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  1321839
-
-Query  272      AGTACCTTGTATTAATTTCTAATTCTAA-TACTCATTCTGTTGTGATTCAAATGGTGCTT  330
-                |||||||||||||||||||||||||||| ||||||||||||||||||||||||| |||||
-Sbjct  1321838  AGTACCTTGTATTAATTTCTAATTCTAAATACTCATTCTGTTGTGATTCAAATGTTGCTT  1321779
-
-Query  331      CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATAATCAG  390
-                |||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||
-Sbjct  1321778  CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATCATCAG  1321719
-
-Query  391      CCATCTTGTT-GACAATATGATTTCACGTTGATTATTAATGC  431
-                |||||||||| |||||||||||||||||||||||||||||||
-Sbjct  1321718  CCATCTTGTTTGACAATATGATTTCACGTTGATTATTAATGC  1321677
-
-
+Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTC  177
+                 || |||||||||    |||||  ||||||||||||||||||||||||
+Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTC  1124981
 ```
 
 

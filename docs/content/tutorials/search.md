@@ -177,29 +177,29 @@ Here are some tips to improve the search speed.
 
 {{< expand "Click to show the log of a demo run." "..." >}}
 
-    $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-    19:24:36.194 [INFO] LexicMap v0.5.0 (c66e3a0)
-    19:24:36.194 [INFO]   https://github.com/shenwei356/LexicMap
-    19:24:36.195 [INFO] 
-    19:24:36.195 [INFO] checking input files ...
-    19:24:36.195 [INFO]   1 input file given: q.gene.fasta
-    19:24:36.195 [INFO] 
-    19:24:36.195 [INFO] loading index: demo.lmi/
-    19:24:36.195 [INFO]   reading masks...
-    19:24:36.199 [INFO]   reading indexes of seeds (k-mer-value) data...
-    19:24:38.925 [INFO]   creating genome reader pools, each batch with 16 readers...
-    19:24:38.926 [INFO] index loaded in 2.731115898s
-    19:24:38.926 [INFO] 
-    19:24:38.926 [INFO] searching with 16 threads...
+        $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
+        10:53:20.200 [INFO] LexicMap v0.6.0 (3e249a2)
+        10:53:20.200 [INFO]   https://github.com/shenwei356/LexicMap
+        10:53:20.200 [INFO] 
+        10:53:20.200 [INFO] checking input files ...
+        10:53:20.200 [INFO]   1 input file given: q.gene.fasta
+        10:53:20.200 [INFO] 
+        10:53:20.200 [INFO] loading index: demo.lmi/
+        10:53:20.200 [INFO]   reading masks...
+        10:53:20.202 [INFO]   reading indexes of seeds (k-mer-value) data...
+        10:53:20.929 [INFO]   creating genome reader pools, each batch with 16 readers...
+        10:53:20.930 [INFO] index loaded in 729.488175ms
+        10:53:20.930 [INFO] 
+        10:53:20.930 [INFO] searching with 16 threads...
 
-    19:24:38.979 [INFO] 
-    19:24:38.979 [INFO] processed queries: 1, speed: 1118.616 queries per minute
-    19:24:38.979 [INFO] 100.0000% (1/1) queries matched
-    19:24:38.979 [INFO] done searching
-    19:24:38.979 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    19:24:38.979 [INFO] 
-    19:24:38.980 [INFO] elapsed time: 2.785031416s
-    19:24:38.980 [INFO]
+        10:53:20.968 [INFO] 
+        10:53:20.968 [INFO] processed queries: 1, speed: 1546.205 queries per minute
+        10:53:20.968 [INFO] 100.0000% (1/1) queries matched
+        10:53:20.968 [INFO] done searching
+        10:53:20.968 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+        10:53:20.969 [INFO] 
+        10:53:20.969 [INFO] elapsed time: 768.5836ms
+        10:53:20.969 [INFO]
 
 {{< /expand >}}
 
@@ -236,55 +236,38 @@ Here are some tips to improve the search speed.
     From stdin:
 
     ```text
-    # align only one long-read <= 500 bp
-
-    $ seqkit seq -M 500 q.long-reads.fasta.gz \
-        | seqkit head -n 1 \
+    # here, we only align <=200 bp queries and show one low-similarity result.
+    
+    $ seqkit seq -g -M 200 q.long-reads.fasta.gz \
         | lexicmap search -d demo.lmi/ -a \
+        | csvtk filter2 -t -f '$pident >80 && $pident < 90' \
+        | csvtk head -t -n 1 \
         | lexicmap utils 2blast --kv-file-genome ass2species.map
 
-    Query = GCF_006742205.1_r100
-    Length = 431
+    Query = GCF_003697165.2_r40
+    Length = 186
 
-    [Subject genome #1/1] = GCF_006742205.1 Staphylococcus epidermidis
-    Query coverage per genome = 92.575%
+    [Subject genome #1/2] = GCF_002950215.1 Shigella flexneri
+    Query coverage per genome = 88.710%
 
-    >NZ_AP019721.1
-    Length = 2422602
+    >NZ_CP026788.1 
+    Length = 4659463
 
     HSP #1
-    Query coverage per seq = 92.575%, Aligned length = 402, Identities = 98.507%, Gaps = 4
-    Query range = 33-431, Subject range = 1321677-1322077, Strand = Plus/Minus
+    Query coverage per seq = 88.710%, Aligned length = 168, Identities = 89.286%, Gaps = 5
+    Query range = 13-177, Subject range = 1124816-1124981, Strand = Plus/Plus
 
-    Query  33       TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  92
-                    ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-    Sbjct  1322077  TAAAACGATTGCTAATGAGTCACGTATTTCATCTGGTTCGGTAACTATACCGTCTACTAT  1322018
+    Query  13       CGGAAACTGAAACA-CCAGATTCTACGATGATTATGATGATTTA-TGCTTTCTTTACTAA  70
+                    |||||||||||||| |||||||||| | |||||||||||||||| |||||||||| ||||
+    Sbjct  1124816  CGGAAACTGAAACAACCAGATTCTATGTTGATTATGATGATTTAATGCTTTCTTTGCTAA  1124875
 
-    Query  93       GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTG-TACATTTGC  151
-                    |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
-    Sbjct  1322017  GGACTCAGTGTAACCCTGTAATAAAGAGATTGGCGTACGTAATTCATGTGATACATTTGC  1321958
+    Query  71       AAAGTAAGCGGCCAAAAAAATGAT-AACACCTGTAATGAGTATCAGAAAAGACACGGTAA  129
+                    ||    |||||||||||||||||| |||||||||||||||||||||||||||||||||||
+    Sbjct  1124876  AA--GCAGCGGCCAAAAAAATGATTAACACCTGTAATGAGTATCAGAAAAGACACGGTAA  1124933
 
-    Query  152      TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCACAGGATGACCA  211
-                    |||||||||||||||||||||||||||||||||||||||||||||||||| |||||||||
-    Sbjct  1321957  TATAAAATCTTTTTTCATTTGATCAAGATTATGTTCATTTGTCATATCAC-GGATGACCA  1321899
-
-    Query  212      TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  271
-                    ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-    Sbjct  1321898  TGACAATACCACTTCTACCATTTGTTTGAATTCTATCTATATAACTGGAGATAAATACAT  1321839
-
-    Query  272      AGTACCTTGTATTAATTTCTAATTCTAA-TACTCATTCTGTTGTGATTCAAATGGTGCTT  330
-                    |||||||||||||||||||||||||||| ||||||||||||||||||||||||| |||||
-    Sbjct  1321838  AGTACCTTGTATTAATTTCTAATTCTAAATACTCATTCTGTTGTGATTCAAATGTTGCTT  1321779
-
-    Query  331      CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATAATCAG  390
-                    |||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||
-    Sbjct  1321778  CAATTTGCTGTTCAATAGATTCTTTTGAAAAATCATCAATGTGACGCATAATATCATCAG  1321719
-
-    Query  391      CCATCTTGTT-GACAATATGATTTCACGTTGATTATTAATGC  431
-                    |||||||||| |||||||||||||||||||||||||||||||
-    Sbjct  1321718  CCATCTTGTTTGACAATATGATTTCACGTTGATTATTAATGC  1321677
-
-
+    Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTC  177
+                    || |||||||||    |||||  ||||||||||||||||||||||||
+    Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTC  1124981
     ```
 
 

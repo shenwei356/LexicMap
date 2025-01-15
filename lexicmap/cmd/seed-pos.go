@@ -815,10 +815,10 @@ func init() {
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
 		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows.`))
 
-	seedPosCmd.Flags().IntP("slid-step", "s", 200,
+	seedPosCmd.Flags().IntP("slid-step", "s", 100,
 		formatFlagUsage(`The step size of sliding windows for counting the number of seeds`))
 
-	seedPosCmd.Flags().IntP("slid-window", "w", 500,
+	seedPosCmd.Flags().IntP("slid-window", "w", 250,
 		formatFlagUsage(`The window size of sliding windows for counting the number of seeds`))
 
 	seedPosCmd.Flags().BoolP("force", "", false,

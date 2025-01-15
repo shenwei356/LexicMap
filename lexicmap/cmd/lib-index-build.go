@@ -1097,11 +1097,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 							continue
 						}
 
-						// there's a really big gap in it, it might be the interval between contigs or a assembly gap
-						if float64(lengthAAs(refseq.Seq[pre:pos]))/float64(d) >= 0.7 {
-							pre = pos
-							continue
-						}
+						// fmt.Println(pre, pos, d)
 
 						// range of desert region +- 1000 bp,
 						// as we don't want other kmers with the same prefix exist around.
@@ -1202,14 +1198,15 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 							ok = false
 							for ; _j > _end; _j-- {
-								// fmt.Printf("    test u %d\n", _j)
-
 								if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
 									continue
 								}
 
+								// fmt.Printf("    test u %d\n", _j)
+
 								// strand +
 								kmer = (*kmerList)[_j<<1]
+								// fmt.Printf("    kmer+, low-complexity: %v\n", util.IsLowComplexityDust(kmer, k8))
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
@@ -1230,6 +1227,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 								// strand -
 								kmer = (*kmerList)[(_j<<1)+1]
+								// fmt.Printf("    kmer-, low-complexity: %v\n", util.IsLowComplexityDust(kmer, k8))
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
@@ -1278,11 +1276,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								_end = posOfCur - 1
 							}
 							for _j = _start; _j < _end; _j++ {
-								// fmt.Printf("    test d %d\n", _j)
-
 								if _, inIntervalRegion = _itree.AnyIntersection(start+_j, start+_j); inIntervalRegion {
 									continue
 								}
+
+								// fmt.Printf("    test d %d\n", _j)
 
 								// strand +
 								kmer = (*kmerList)[_j<<1]
@@ -1346,8 +1344,9 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 							// it might fail to fill current region of the desert.
 							//   1. there's a gap here.
 							//   2. it's the interval region between two contigs.
+							//   3. it's a highly repetitive region
 
-							// fmt.Printf("desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
+							// fmt.Printf("  failed to fill desert %d: %d-%d, len: %d, region: %d-%d, list size: %d\n",
 							// 	iD, pre, pos, d, start, end, end-start+1)
 
 							_j += seedDist

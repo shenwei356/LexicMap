@@ -11,9 +11,9 @@ weight: 60
 LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
 However, short queries can also be aligned.
 
-If you just want to search long (>1kb) queries for highy similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (200 by default), e.g.,
+If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 50) and `-d/--seed-in-desert-dist` (default 50), e.g.,
 
-    --seed-max-desert 450 --seed-in-desert-dist 150
+    --seed-max-desert 300 --seed-in-desert-dist 150
 
 Bigger values decrease the search sensitivity for distant targets, speed up the indexing
 speed, decrease the indexing memory occupation and decrease the index size. While the

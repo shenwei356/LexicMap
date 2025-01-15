@@ -43,85 +43,84 @@ Global Flags:
         $ lexicmap utils kmers --quiet -d demo.lmi/ | head -n 20 | csvtk pretty -t
         mask   kmer                              prefix   number   ref               pos       strand   reversed
         ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
-        1      AAAAAAAAACAAACATTTGCGGCGGGGCCAT   8        1        GCF_000742135.1   2043044   +        no
-        1      AAAAAAAAACCAGAAATCACACGCCAACTCC   8        1        GCF_002949675.1   1345415   +        yes
-        1      AAAAAAAAACGATTATCCTCAATTAATTTCT   8        1        GCF_000392875.1   814251    +        no
-        1      AAAAAAAAACGCTTCTACATCGAGCAGCGAG   8        1        GCF_001457655.1   941619    +        yes
-        1      AAAAAAAAACGCTTTGTAACTCGATTGATAG   8        1        GCF_009759685.1   997945    +        yes
-        1      AAAAAAAAACTGCTGTCCCTGGTCCGTCAGG   8        1        GCF_002950215.1   4262890   -        yes
-        1      AAAAAAAAAGATTTGATTTTTTTCATTAATA   8        1        GCF_000392875.1   766998    -        yes
-        1      AAAAAAAAAGCATTTTTTCGATCTCTTTACG   8        1        GCF_000392875.1   1623731   +        yes
-        1      AAAAAAAAAGTTTCCGGGACACTACCTAACC   8        1        GCF_000017205.1   5804200   -        yes
-        1      AAAAAAAAATTATTTTGCTAATCAATAGGTC   8        1        GCF_000006945.2   4886411   -        yes
-        1      AAAAAAAACAAAGAATTATTACACAACATTC   8        1        GCF_003697165.2   4055655   +        yes
-        1      AAAAAAAACACGGACTTATTGAAATCGTATT   8        1        GCF_000392875.1   746746    +        yes
-        1      AAAAAAAACCAACTTTGAAAAAAGTAATGTA   8        1        GCF_000148585.2   917529    -        yes
-        1      AAAAAAAACCATATTATGTCCGATCCTCACA   8        1        GCF_000392875.1   1060650   +        yes
-        1      AAAAAAAACCCGCCGAAGCGGGTTTTTTTAT   8        1        GCF_000742135.1   1612499   +        no
-        1      AAAAAAAACCTAATGGTAAATAACGTTTTGG   8        1        GCF_006742205.1   2346818   +        yes
-        1      AAAAAAAACGAAAAACGGTAACACGGGAATT   8        1        GCF_001544255.1   1605298   +        yes
-        1      AAAAAAAACGACTCCAGAGAGATCATCGTAT   8        1        GCF_000392875.1   1279686   +        yes
-        1      AAAAAAAACGAGTCATTTCCCCTACTGAACC   8        2        GCF_002949675.1   2284659   -        yes
+        1      AAAAAAAAACGAAAAAGATTTTCCCTCATAC   7        1        GCF_000392875.1   2088530   +        yes     
+        1      AAAAAAAAACGCTTCTACATCGAGCAGCGAG   7        1        GCF_001457655.1   941619    +        yes     
+        1      AAAAAAAAACGTATCCCTCTTTATTACTTAT   7        1        GCF_000006945.2   3392260   -        yes     
+        1      AAAAAAAAAGATTTGATTTTTTTCATTAATA   7        1        GCF_000392875.1   766998    -        yes     
+        1      AAAAAAAAATCTATTTTAAAACCTAATCACG   7        1        GCF_000392875.1   2201506   +        yes     
+        1      AAAAAAAAATGTCACAACAGCCCAACCTCCA   7        1        GCF_000392875.1   860216    +        yes     
+        1      AAAAAAAACAAAAACTAGTTCGAGTGCCGAA   7        1        GCF_000006945.2   1587885   -        yes     
+        1      AAAAAAAACCATATTATGTCCGATCCTCACA   7        1        GCF_000392875.1   1060650   +        yes     
+        1      AAAAAAAACGAAAAACGGTAACACGGGAATT   7        1        GCF_001544255.1   1605298   +        yes     
+        1      AAAAAAAACGACGCAGAAAACGACATTGCGA   7        1        GCF_003697165.2   564733    +        yes     
+        1      AAAAAAAACGACTCCAGAGAGATCATCGTAT   7        1        GCF_000392875.1   1279686   +        yes     
+        1      AAAAAAAACGAGCGATTGGTTGCATTAAGGA   7        1        GCF_002949675.1   3914985   -        yes     
+        1      AAAAAAAACGAGCGCTCGGTTGCATTAAGGA   7        2        GCF_002949675.1   2061956   -        yes     
+        1      AAAAAAAACGAGCGCTCGGTTGCATTAAGGA   7        2        GCF_003697165.2   1514669   -        yes     
+        1      AAAAAAAACGCAACTTAAACAGTAAAACACG   7        1        GCF_002950215.1   1938205   +        yes     
+        1      AAAAAAAACGGGACGCGTAGTGCTGTGGTCT   7        1        GCF_000742135.1   2728620   -        yes     
+        1      AAAAAAAACGTAAATTTTTAAGATTGCGTCG   7        1        GCF_001457655.1   1547239   -        yes     
+        1      AAAAAAAACGTTAGAGAAAGCATCTAACACA   7        1        GCF_001027105.1   660296    +        yes     
+        1      AAAAAAAACGTTTTATCACTAATTTTCAGTT   7        1        GCF_000392875.1   1590621   -        yes     
 
     Only forward k-mers.
 
         $ lexicmap utils kmers --quiet -d demo.lmi/ -f | head -n 20 | csvtk pretty -t
         mask   kmer                              prefix   number   ref               pos       strand   reversed
         ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
-        1      AAAAAAAAACAAACATTTGCGGCGGGGCCAT   8        1        GCF_000742135.1   2043044   +        no
-        1      AAAAAAAAACGATTATCCTCAATTAATTTCT   8        1        GCF_000392875.1   814251    +        no
-        1      AAAAAAAACCCGCCGAAGCGGGTTTTTTTAT   8        1        GCF_000742135.1   1612499   +        no
-        1      AAAAAAAACGGTTCAGCTGACCAGCCAGCTG   8        1        GCF_002950215.1   401140    +        no
-        1      AAAAAAAAGATATTGAAGTTAAAGTAATTTG   9        1        GCF_000742135.1   3038258   +        no
-        1      AAAAAAAAGCCCACGAACCGGGGGCAATATC   9        1        GCF_002950215.1   3578394   +        no
-        1      AAAAAAAAGCCCCGCCGAAGCGGGGCTTTTT   9        1        GCF_000017205.1   5110420   +        no
-        1      AAAAAAAAGGATTATAACAAAATTTTGTCAT   9        1        GCF_001544255.1   426716    +        no
-        1      AAAAAAAAGTAATTGCAGCTATTATTGGGAC   10       1        GCF_001027105.1   437272    +        no
-        1      AAAAAAAAGTATTAAGCAACTGACTAAAAGT   10       1        GCF_006742205.1   1841209   +        no
-        1      AAAAAAAAGTCACAATTATTGGTGCCGGTTT   13       1        GCF_000392875.1   1508457   -        no
-        1      AAAAAAAAGTCATCAAGGATTATTTGAGTTA   12       1        GCF_001457655.1   1847867   +        no
-        1      AAAAAAAAGTCATCGCTTTATCTGTCAGTAT   12       1        GCF_001544255.1   156689    -        no
-        1      AAAAAAAAGTCATCTTCGGATGGCTTTTTTA   12       1        GCF_000148585.2   1363150   -        no
-        1      AAAAAAAAGTCCATCCTGCAGCATAAAATAA   11       1        GCF_000742135.1   4671015   +        no
-        1      AAAAAAAAGTCCCTGCTGTTTGCCCAGTCCT   11       1        GCF_000006945.2   3796      -        no
-        1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_002949675.1   2356807   +        no
-        1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_002950215.1   3051946   +        no
-        1      AAAAAAAAGTCCGCTGATAAGGCTTGAAAAG   11       3        GCF_003697165.2   16156     +        no
-
+        1      AAAAAAATAAAAACTTAGTTGTCCCATAACA   8        1        GCF_000392875.1   1044207   -        no      
+        1      AAAAAAATAAATCTGCGATGGCTGTTGATGG   8        1        GCF_002950215.1   462416    +        no      
+        1      AAAAAAATAACGTTGGCGATTACGATGCCAA   8        1        GCF_000392875.1   1422018   +        no      
+        1      AAAAAAATAACTCAATGAGGTTATGGGCATG   8        1        GCF_000742135.1   4160317   -        no      
+        1      AAAAAAATAACTGCTTTACTCTTTGCTCTTT   8        1        GCF_009759685.1   2134145   +        no      
+        1      AAAAAAATAAGAACACAAAAAAGGTATCTAG   8        1        GCF_001544255.1   1050935   +        no      
+        1      AAAAAAATAAGAAGGTAGCACCAATAACTTT   8        1        GCF_900638025.1   137037    -        no      
+        1      AAAAAAATAAGCTGGGCCGTTTGGGGAACGA   8        1        GCF_000742135.1   989338    -        no      
+        1      AAAAAAATAAGGGGAAATTATGGCAGGTAAT   8        1        GCF_001457655.1   883695    -        no      
+        1      AAAAAAATAAGTGAAAATCTATTTTCTGAAA   8        1        GCF_000392875.1   2823442   -        no      
+        1      AAAAAAATAATATTGTCCATTCTCCTAGCAA   8        1        GCF_001544255.1   173045    -        no      
+        1      AAAAAAATAATCAAAGGCCGGGGATTATACG   8        1        GCF_003697165.2   733341    -        no      
+        1      AAAAAAATACCCTGCGTGATGATGCGAGGTG   8        1        GCF_002950215.1   1422485   -        no      
+        1      AAAAAAATACTTGCCTTCGGGCTTATCTCAG   8        1        GCF_003697165.2   2823100   +        no      
+        1      AAAAAAATACTTGTTTGATTCTGTATTACGT   8        1        GCF_000392875.1   493472    +        no      
+        1      AAAAAAATAGAAAATGAGTCAACACCACTAT   8        1        GCF_006742205.1   1365300   +        no      
+        1      AAAAAAATAGAATTATATCGTGAACGTTTTG   8        1        GCF_009759685.1   2234982   +        no      
+        1      AAAAAAATAGAGGATTAAATGCTAATTCATA   8        1        GCF_001457655.1   671915    +        no      
+        1      AAAAAAATAGTATAAATCCGCCATATAAAAT   8        1        GCF_001457655.1   1222761   -        no      
 
 1. Specify the mask.
 
         $ lexicmap utils kmers --quiet -d demo.lmi/ --mask 12345 | head -n 20 | csvtk pretty -t
         mask    kmer                              prefix   number   ref               pos       strand   reversed
         -----   -------------------------------   ------   ------   ---------------   -------   ------   --------
-        12345   CATTAGTAAAAACCAACTTAGTTACGACACG   8        1        GCF_001027105.1   1823411   +        no
-        12345   CATTAGTAAAACATTTTGAACCTGTGATTGA   8        1        GCF_006742205.1   1192019   +        no
-        12345   CATTAGTAAAAGTCGTTTGGTAAAGCGATTA   8        1        GCF_001027105.1   1334989   +        yes
-        12345   CATTAGTAAACGTACAAAACTATTGGTTAGA   8        1        GCF_001027105.1   2037559   +        yes
-        12345   CATTAGTAAATCCAGGAATCCTAACCGACGA   8        1        GCF_001027105.1   963152    +        yes
-        12345   CATTAGTAACGCGTACGAAACCGTAGTAAGT   8        1        GCF_001027105.1   1958187   +        yes
-        12345   CATTAGTAAGTTGTCGGTCTAACGCGGATTA   8        1        GCF_002950215.1   2882180   +        yes
-        12345   CATTAGTACATTCAAGTATTATTCATTAAAC   8        1        GCF_009759685.1   665376    +        yes
-        12345   CATTAGTACCGATAGGACATCATGAACACAA   8        1        GCF_002950215.1   4677222   +        yes
-        12345   CATTAGTACCTTCATCGCTATCCCATTAGGC   8        1        GCF_000006945.2   92542     +        yes
-        12345   CATTAGTACGTGTCCCGCAAAGAGAAAGAAC   8        1        GCF_000006945.2   3412102   +        yes
-        12345   CATTAGTAGAAAAATACAAAGGCATTTATGA   11       1        GCF_900638025.1   665985    -        no
-        12345   CATTAGTAGAAAATTGATAATCTAAGAGTTC   11       1        GCF_002950215.1   2940281   +        no
-        12345   CATTAGTAGAAATGGGCAAAGAATAGGAAAA   11       1        GCF_000148585.2   81286     +        no
-        12345   CATTAGTAGAAGAAATTGCAGCAAGTATTAA   14       1        GCF_001027105.1   621160    +        no
-        12345   CATTAGTAGAAGAACTGAAGTTAGTGCCTAT   14       1        GCF_001096185.1   2113047   +        no
-        12345   CATTAGTAGAAGAAGACCAAGCACGACGCAT   15       1        GCF_000392875.1   891723    +        no
-        12345   CATTAGTAGAAGAGTTGTTCGTCAGTTACGG   13       1        GCF_001544255.1   831068    -        no
-        12345   CATTAGTAGAAGATTTAGTGGCAAGCTCAAT   13       1        GCF_001457655.1   1280653   +        no
+        12345   GCTGCACAAAGTACGATTACGATGCAAGCCC   8        1        GCF_002949675.1   716651    +        no      
+        12345   GCTGCACAACAAACGATTGTTGGTGAAATTT   8        1        GCF_000392875.1   836578    -        no      
+        12345   GCTGCACAACAACATGATAGTGTGAAATTAG   8        1        GCF_001027105.1   1150856   +        no      
+        12345   GCTGCACAACAGGCTGCGGCTGGTGTTGCGG   8        1        GCF_000742135.1   4128289   -        no      
+        12345   GCTGCACAACCAGGCAGAAAAAATAATGGGA   8        1        GCF_002950215.1   3009005   -        no      
+        12345   GCTGCACAACCTTTCCACAAGCCGTAAAACC   8        1        GCF_000006945.2   4306623   -        no      
+        12345   GCTGCACAACGATTAGAAAAAATGGGGTACG   8        1        GCF_001544255.1   2041481   -        no      
+        12345   GCTGCACAACTATCCCAATGCCGAGGTGGAA   8        1        GCF_000017205.1   5101754   +        no      
+        12345   GCTGCACAAGCACCCGGCCGTGGCCCTGGCG   8        1        GCF_000017205.1   1257468   +        no      
+        12345   GCTGCACAAGCGCTCGGTTTAGAGCAAACAC   8        1        GCF_009759685.1   1232954   -        no      
+        12345   GCTGCACAAGGGGCCACTTTCGTACATCGTC   8        1        GCF_000742135.1   3888020   +        yes     
+        12345   GCTGCACAAGTACCTGCTGGCCTACGCCTCG   8        1        GCF_000017205.1   1166094   +        no      
+        12345   GCTGCACAAGTTGCAAAACAGCTGATTAAGG   8        1        GCF_000392875.1   908172    +        no      
+        12345   GCTGCACAATATCGATTTGAACATTGCTCAG   8        1        GCF_003697165.2   3212441   +        no      
+        12345   GCTGCACAATATTTCATAATGACTTACGGCA   8        1        GCF_002950215.1   3443237   +        no      
+        12345   GCTGCACAATCCGCTGGGCTGGGTGCTCAAC   8        1        GCF_000742135.1   1083211   -        no      
+        12345   GCTGCACAATCGCCAGCCCCAGCCCTGTGCC   8        1        GCF_000006945.2   3658390   +        no      
+        12345   GCTGCACAATTACCACGTGAATTATTTGAAG   8        1        GCF_900638025.1   304434    -        no      
+        12345   GCTGCACAATTGCCAGCCCTAATCCCGTGCC   8        1        GCF_002950215.1   2671971   +        no      
 
     "reversed" means means if the k-mer is reversed for suffix matching.
-    E.g., `CATTAGTAAAAGTCGTTTGGTAAAGCGATTA` is reversed, so you need to reverse it before searching in the genome.
+    E.g., `GCTGCACAAGGGGCCACTTTCGTACATCGTC` is reversed, so you need to reverse it before searching in the genome.
 
 
-        $ seqkit locate -p $(echo CATTAGTAAAAGTCGTTTGGTAAAGCGATTA | rev) refs/GCF_001027105.1.fa.gz -M | csvtk pretty -t
-        seqID           patternName                       pattern                           strand   start     end
+        $ seqkit locate -p $(echo GCTGCACAAGGGGCCACTTTCGTACATCGTC | rev) refs/GCF_000742135.1.fa.gz -M | csvtk pretty -t
+        seqID           patternName                       pattern                           strand   start     end    
         -------------   -------------------------------   -------------------------------   ------   -------   -------
-        NZ_CP011526.1   ATTAGCGAAATGGTTTGCTGAAAATGATTAC   ATTAGCGAAATGGTTTGCTGAAAATGATTAC   +        1334989   1335019
+        NZ_KN046818.1   CTGCTACATGCTTTCACCGGGGAACACGTCG   CTGCTACATGCTTTCACCGGGGAACACGTCG   +        3888020   3888050
 
 
 1. For all masks. The result might be very big, therefore, writing to gzip format is recommended.
@@ -131,15 +130,15 @@ Global Flags:
 
         $ zcat kmers.tsv.gz | csvtk freq -t -f mask -nr | head -n 10
         mask    frequency
-        24088   322
-        15814   295
-        13923   293
-        27102   291
-        13922   282
-        15967   281
-        10001   280
-        15986   272
-        16440   269
+        8206    700
+        16230   636
+        4974    625
+        14979   620
+        11723   619
+        12043   593
+        12      589
+        18      589
+        17491   584
 
     a faster way
 

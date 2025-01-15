@@ -82,13 +82,13 @@ Important parameters:
                             This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, etc.
  *1. -k/--kmer,             ► K-mer size (maximum: 32, default: 31).
                             ■ Bigger values improve the search specificity and do not increase the index size.
- *2. -m/--masks,            ► Number of LexicHash masks (default: 40000).
-                            ■ Bigger values improve the search sensitivity, increase the index size, and slow down
-                            the search speed.
+ *2. -m/--masks,            ► Number of LexicHash masks (default: 20000).
+                            ■ Bigger values improve the search sensitivity slightly, increase the index size,
+                            and slow down the search (seed matching) speed.
 
   --- Seeds data (k-mer-value data) ---
- *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 200).
-                            The default value of 200 guarantees queries >=200 bp would match at least one seed.
+ *1. --seed-max-desert      ► Maximum length of distances between seeds (default: 100).
+                            The default value of 100 guarantees queries >=200 bp would match at least two seeds.
                             ► Large regions with no seeds are called sketching deserts. Deserts with seed distance
                             larger than this value will be filled by choosing k-mers roughly every
                             --seed-in-desert-dist (50 by default) bases.
@@ -138,7 +138,7 @@ Flags:
   -k, --kmer int                  ► Maximum k-mer size. K needs to be <= 32. (default 31)
   -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
                                   -s/--rand-seed etc.
-  -m, --masks int                 ► Number of LexicHash masks. (default 40000)
+  -m, --masks int                 ► Number of LexicHash masks. (default 20000)
   -g, --max-genome int            ► Maximum genome size. Genomes with any single contig larger than
                                   the threshold will be skipped, while fragmented (with many contigs)
                                   genomes larger than the threshold will be split into chunks and
@@ -168,7 +168,7 @@ Flags:
   -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
   -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
                                   Deserts with seed distance larger than this value will be filled by
-                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 200)
+                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 100)
   -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
                                   contents in FASTA/Q header/name, case ignored.
   -S, --skip-file-check           ► Skip input file checking when given files or a file list.
