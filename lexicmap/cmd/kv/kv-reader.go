@@ -1099,6 +1099,8 @@ type IndexReader struct {
 
 	buf  []byte
 	buf8 []uint8
+
+	Use3BytesForSeedPos bool
 }
 
 // NewIndexReader creates a index reader
@@ -1154,6 +1156,7 @@ func NewIndexReader(file string) (*IndexReader, error) {
 		return nil, ErrVersionMismatch
 	}
 	rdr.K = buf[2] // k-mer size
+	rdr.Use3BytesForSeedPos = buf[5]&MaskUse3BytesForSeedPos > 0
 
 	// index of the first mask in current chunk.
 	_, err = io.ReadFull(r, buf)
