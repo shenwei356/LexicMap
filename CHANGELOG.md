@@ -2,8 +2,9 @@
 
 ### v0.6.0 - 2025-xx-xx
 
-This version is compatible with indexes created by previous versions, but rebuilding the index is recommended for more accurate results.
-However, indexes created by this version is not compatible with prevous software when the number of batches is <= 512.
+This version is compatible with indexes created by previous versions,
+but rebuilding the index is recommended for more accurate results on short-queries.
+However, indexes created by this version is not compatible with previous versions when the number of batches is <= 512.
 
 - `lexicmap index`:
     - **Reduce index size by using 3 bytes rather than 4 for saving seed data when the number of batches is <= 512**,
