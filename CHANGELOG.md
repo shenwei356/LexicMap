@@ -2,10 +2,16 @@
 
 ### v0.6.0 - 2025-xx-xx
 
+This version is compatible with indexes created by previous versions, but rebuilding the index is recommended for more accurate results.
+However, indexes created by this version is not compatible with prevous software when the number of batches is <= 512.
+
 - `lexicmap index`:
-    - Fix seed desert filling near gap regions.
-    - Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
-      faster indexing speed, and faster seed-matching speed, at a cost of slightly larger index.
+    - **Reduce index size by using 3 bytes rather than 4 for saving seed data when the number of batches is <= 512**,
+      which requires only 9 (17-8) bytes to store the batch index. 
+      We also [recommend controlling the number of batches for better performance](https://bioinf.shenwei.me/LexicMap/tutorials/index/#notes-for-indexing-with-large-datasets).
+    - **Fix seed desert filling near gap regions**.
+    - **Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
+      faster indexing speed, and faster seed-matching speed, at a cost of slightly larger index**.
         - `-m/--masks`: 40,000 -> 20,000. 
            40k is unnecessary especially for small genomes, where seeds would be very crowded,
            with a big proportion of seed distance being between 0-50 bp.

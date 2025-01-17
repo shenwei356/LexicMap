@@ -56,7 +56,7 @@ var be = binary.BigEndian
 var MainVersion uint8 = 3
 
 // MinorVersion is less important
-var MinorVersion uint8 = 1
+var MinorVersion uint8 = 2
 
 // ExtTmpDir is the path extension for temporary files
 const ExtTmpDir = ".tmp"
@@ -1823,7 +1823,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix))
+			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}
