@@ -36,8 +36,6 @@ import (
 	"github.com/twotwotwo/sorts/sortutil"
 )
 
-var be = binary.BigEndian
-
 // Magic number for checking file format
 var Magic = [8]byte{'.', 'k', 'v', '-', 'd', 'a', 't', 'a'}
 
@@ -51,7 +49,7 @@ var KVIndexFileExt = ".idx"
 var MainVersion uint8 = 1
 
 // MinorVersion is less important
-var MinorVersion uint8 = 0
+var MinorVersion uint8 = 1
 
 // ErrInvalidFileFormat means invalid file format.
 var ErrInvalidFileFormat = errors.New("k-mer-value data: invalid binary format")
@@ -118,7 +116,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
-func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8) (int, error) {
+func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
@@ -129,7 +127,9 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	// 	return 0, errors.New("k-mer-value data: no data given")
 	// }
 
-	wtr, err := NewWriter(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix)
+	use3BytesForSeedPos := nbatches <= 512 // 17-8=9, 1<<9=512
+
+	wtr, err := NewWriter(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix, use3BytesForSeedPos)
 	if err != nil {
 		return 0, err
 	}
@@ -164,6 +164,8 @@ type Writer struct {
 	fh *os.File
 	w  *bufio.Writer
 
+	use3BytesForSeedPos bool
+
 	// for index file
 	fhi          *os.File
 	wi           *bufio.Writer
@@ -194,8 +196,10 @@ func (wtr *Writer) Close() (err error) {
 	return nil
 }
 
+const MaskUse3BytesForSeedPos uint8 = 1
+
 // NewWriter returns a new writer
-func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8) (*Writer, error) {
+func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool) (*Writer, error) {
 	if maskPrefix+anchorPrefix > k {
 		return nil, fmt.Errorf("maskPrefix + anchorPrefix should be <= k")
 	}
@@ -224,6 +228,8 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 		fhi:        fhi,
 		wi:         wi,
 
+		use3BytesForSeedPos: use3BytesForSeedPos,
+
 		maskPrefix:   maskPrefix,
 		anchorPrefix: anchorPrefix,
 		poolP2O: &sync.Pool{New: func() interface{} {
@@ -250,7 +256,11 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	N += 8
 
 	// 8-byte meta info
-	err = binary.Write(w, be, [8]uint8{MainVersion, MinorVersion, k})
+	var config1 uint8
+	if use3BytesForSeedPos {
+		config1 |= MaskUse3BytesForSeedPos
+	}
+	err = binary.Write(w, be, [8]uint8{MainVersion, MinorVersion, k, config1})
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +282,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k, maskPrefix, anchorPrefix})
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k, maskPrefix, anchorPrefix, config1})
 	if err != nil {
 		return nil, err
 	}
@@ -320,6 +330,8 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var even bool
 	var i, nm1 int
 	var j int
+
+	use3BytesForSeedPos := wtr.use3BytesForSeedPos
 
 	nKmers := len(m)
 
@@ -441,13 +453,24 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 		bufVals.Reset()
 
-		for _, _v = range *preVal {
-			be.PutUint64(buf8, _v)
-			bufVals.Write(buf8)
-		}
-		for _, _v = range *v {
-			be.PutUint64(buf8, _v)
-			bufVals.Write(buf8)
+		if !use3BytesForSeedPos {
+			for _, _v = range *preVal {
+				be.PutUint64(buf8, _v)
+				bufVals.Write(buf8)
+			}
+			for _, _v = range *v {
+				be.PutUint64(buf8, _v)
+				bufVals.Write(buf8)
+			}
+		} else {
+			for _, _v = range *preVal {
+				PutUint64ThreeBytes(buf8[:7], _v)
+				bufVals.Write(buf8[:7])
+			}
+			for _, _v = range *v {
+				PutUint64ThreeBytes(buf8[:7], _v)
+				bufVals.Write(buf8[:7])
+			}
 		}
 
 		_, err = w.Write(bufVals.Bytes())
@@ -507,9 +530,17 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		// values
 
 		bufVals.Reset()
-		for _, _v = range *preVal {
-			be.PutUint64(buf8, _v)
-			bufVals.Write(buf8)
+
+		if !use3BytesForSeedPos {
+			for _, _v = range *preVal {
+				be.PutUint64(buf8, _v)
+				bufVals.Write(buf8)
+			}
+		} else {
+			for _, _v = range *preVal {
+				PutUint64ThreeBytes(buf8[:7], _v)
+				bufVals.Write(buf8[:7])
+			}
 		}
 
 		_, err = w.Write(bufVals.Bytes())
@@ -570,10 +601,10 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 //
 // A list of k-mer and offset pairs are intermittently saved in a []uint64.
 // e.g., [k1, o1, k2, o2].
-func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
+func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
 	fh, err := os.Open(file)
 	if err != nil {
-		return 0, -1, nil, 0, 0, err
+		return 0, -1, nil, 0, 0, 0, err
 	}
 	r := bufio.NewReaderSize(fh, 16<<10)
 	// r := poolBufReader.Get().(*bufio.Reader)
@@ -593,10 +624,10 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	// check the magic number
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, err
+		return 0, -1, nil, 0, 0, 0, err
 	}
 	if n < 8 {
-		return 0, -1, nil, 0, 0, ErrBrokenFile
+		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
 	same := true
 	for i := 0; i < 8; i++ {
@@ -606,29 +637,30 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 		}
 	}
 	if !same {
-		return 0, -1, nil, 0, 0, ErrInvalidFileFormat
+		return 0, -1, nil, 0, 0, 0, ErrInvalidFileFormat
 	}
 	// read version information
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, err
+		return 0, -1, nil, 0, 0, 0, err
 	}
 	if n < 8 {
-		return 0, -1, nil, 0, 0, ErrBrokenFile
+		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
 	// check compatibility
 	if MainVersion != buf[0] {
-		return 0, -1, nil, 0, 0, ErrVersionMismatch
+		return 0, -1, nil, 0, 0, 0, ErrVersionMismatch
 	}
 	k := buf[2] // k-mer size
 	maskPrefix := buf[3]
 	anchorPrefix := buf[4]
+	config1 := buf[5]
 
 	// index of the first mask in current chunk.
 	var iFirstMask int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, err
+		return 0, -1, nil, 0, 0, 0, err
 	}
 	iFirstMask = int(be.Uint64(buf))
 
@@ -636,7 +668,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	var nMasks int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, err
+		return 0, -1, nil, 0, 0, 0, err
 	}
 	nMasks = int(be.Uint64(buf))
 
@@ -657,7 +689,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 	for i := 0; i < nMasks; i++ {
 		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return 0, -1, nil, 0, 0, err
+			return 0, -1, nil, 0, 0, 0, err
 		}
 		nAnchors = int(be.Uint64(buf))
 
@@ -671,7 +703,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf16)
 			if err != nil {
-				return 0, -1, nil, 0, 0, err
+				return 0, -1, nil, 0, 0, 0, err
 			}
 			kmer = be.Uint64(buf16[:8])
 
@@ -695,7 +727,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, error) {
 		data[i] = index
 	}
 
-	return k, iFirstMask, data, maskPrefix, anchorPrefix, nil
+	return k, iFirstMask, data, maskPrefix, anchorPrefix, config1, nil
 }
 
 // ReadKVIndexInfo read the information.
@@ -829,6 +861,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 	}
 
 	K := buf8[2] // k-mer size
+	config1 := buf8[3]
+	use3BytesForSeedPos := config1&MaskUse3BytesForSeedPos > 0
+
 	offset += 8
 
 	// index of the first mask in current chunk.
@@ -882,7 +917,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, uint8(anchorPrefix)})
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, uint8(anchorPrefix), config1})
 	if err != nil {
 		return err
 	}
@@ -1040,28 +1075,41 @@ func CreateKVIndex(file string, nAnchors int) error {
 			// 	}
 			// }
 			lenVal = lenVal1
-			for lenVal > 256 { // buffer size is 256*8=2048
-				nReaded, err = io.ReadFull(r, buf2048)
+			for lenVal > 256 {
+				if !use3BytesForSeedPos {
+					n = 2048
+				} else {
+					n = 1792
+				}
+
+				nReaded, err = io.ReadFull(r, buf2048[:n])
 				if err != nil {
 					return err
 				}
-				if nReaded < 2048 {
+				if nReaded < n {
 					return ErrBrokenFile
 				}
 
 				lenVal -= 256
+				offset += n
 			}
 			if lenVal > 0 {
-				nReaded, err = io.ReadFull(r, buf2048[:lenVal<<3])
+				if !use3BytesForSeedPos {
+					n = int(lenVal << 3)
+				} else {
+					n = int(lenVal * 7)
+				}
+
+				nReaded, err = io.ReadFull(r, buf2048[:n])
 				if err != nil {
 					return err
 				}
-				if nReaded < int(lenVal<<3) {
+				if nReaded < n {
 					return ErrBrokenFile
 				}
-			}
 
-			offset += int(lenVal1) << 3
+				offset += n
+			}
 
 			if lastPair && !hasKmer2 {
 				break
@@ -1086,28 +1134,41 @@ func CreateKVIndex(file string, nAnchors int) error {
 			// 	}
 			// }
 			lenVal = lenVal2
-			for lenVal > 256 { // buffer size is 256*8=2048
-				nReaded, err = io.ReadFull(r, buf2048)
+			for lenVal > 256 {
+				if !use3BytesForSeedPos {
+					n = 2048
+				} else {
+					n = 1792
+				}
+
+				nReaded, err = io.ReadFull(r, buf2048[:n])
 				if err != nil {
 					return err
 				}
-				if nReaded < 2048 {
+				if nReaded < n {
 					return ErrBrokenFile
 				}
 
 				lenVal -= 256
+				offset += n
 			}
 			if lenVal > 0 {
-				nReaded, err = io.ReadFull(r, buf2048[:lenVal<<3])
+				if !use3BytesForSeedPos {
+					n = int(lenVal << 3)
+				} else {
+					n = int(lenVal * 7)
+				}
+
+				nReaded, err = io.ReadFull(r, buf2048[:n])
 				if err != nil {
 					return err
 				}
-				if nReaded < int(lenVal<<3) {
+				if nReaded < n {
 					return ErrBrokenFile
 				}
-			}
 
-			offset += int(lenVal2) << 3
+				offset += n
+			}
 
 			if lastPair {
 				break

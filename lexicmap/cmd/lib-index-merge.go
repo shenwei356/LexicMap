@@ -133,7 +133,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				// outfile
 				file := filepath.Join(dirSeeds, chunkFile(chunk))
-				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, maskPrefix, anchorPrefix)
+				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, maskPrefix, anchorPrefix, rdrIdx.Use3BytesForSeedPos)
 				if err != nil {
 					checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
 				}

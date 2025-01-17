@@ -223,9 +223,18 @@ Attention:
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, _, _, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+			k, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+			}
+
+			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0
+
+			bytesPos := 8
+			fUint64 := be.Uint64
+			if use3BytesForSeedPos {
+				bytesPos = 7
+				fUint64 = kv.Uint64ThreeBytes
 			}
 
 			if len(indexes[iMask]) == 0 { // no k-mers
@@ -317,15 +326,15 @@ Attention:
 				// ------------------ values -------------------
 
 				for j = 0; j < lenVal1; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
+					nReaded, err = io.ReadFull(r, buf8[:bytesPos])
 					if err != nil {
 						checkError(err)
 					}
-					if nReaded < 8 {
+					if nReaded < bytesPos {
 						checkError(kv.ErrBrokenFile)
 					}
 
-					v = be.Uint64(buf8)
+					v = fUint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
 					rvFlag = int(v & BITS_REVERSE)
@@ -344,15 +353,15 @@ Attention:
 				}
 
 				for j = 0; j < lenVal2; j++ {
-					nReaded, err = io.ReadFull(r, buf8)
+					nReaded, err = io.ReadFull(r, buf8[:bytesPos])
 					if err != nil {
 						checkError(err)
 					}
-					if nReaded < 8 {
+					if nReaded < bytesPos {
 						checkError(kv.ErrBrokenFile)
 					}
 
-					v = be.Uint64(buf8)
+					v = fUint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
 					rvFlag = int(v & BITS_REVERSE)

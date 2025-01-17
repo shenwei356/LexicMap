@@ -51,6 +51,8 @@ type Reader struct {
 	readIndexInfo bool
 	maskPrefix    uint8
 	anchorPrefix  uint8
+
+	Use3BytesForSeedPos bool
 }
 
 // NewReader creates a reader.
@@ -109,6 +111,8 @@ func NewReader(file string) (*Reader, error) {
 		return nil, ErrVersionMismatch
 	}
 	rdr.K = buf[2] // k-mer size
+
+	rdr.Use3BytesForSeedPos = buf[3]&MaskUse3BytesForSeedPos > 0
 
 	// index of the first mask in current chunk.
 	_, err = io.ReadFull(r, buf)
@@ -182,6 +186,8 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	if nKmers == 0 {
 		return m, nil
 	}
+
+	use3BytesForSeedPos := rdr.Use3BytesForSeedPos
 
 	for {
 		// read the control byte
@@ -267,35 +273,68 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		// }
 
 		lenVal = lenVal1
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < 2048 {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 2048 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				*values = append(*values, v)
+					*values = append(*values, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 1792 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					*values = append(*values, v)
+				}
 			}
 
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < int(n) {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				*values = append(*values, v)
+					*values = append(*values, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					*values = append(*values, v)
+				}
 			}
 		}
 
@@ -323,35 +362,68 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		// }
 
 		lenVal = lenVal2
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < 2048 {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 2048 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				*values = append(*values, v)
+					*values = append(*values, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 1792 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					*values = append(*values, v)
+				}
 			}
 
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < int(n) {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				*values = append(*values, v)
+					*values = append(*values, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					*values = append(*values, v)
+				}
 			}
 		}
 
@@ -382,7 +454,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	var nBytes int
 	var nReaded, nDecoded int
 	var v1, v2 uint64
-	var kmer1, kmer2 uint64
+	var kmer, kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
 	var v uint64
@@ -409,6 +481,8 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	// multiping 2.2 is because that some k-mers would have more than one locations,
 	// it help to reduce slice growing, but it's slightly slower in batch querying, interesting.
 	// m := make([]uint64, 0, int(float64(nKmers)*2.2))
+
+	use3BytesForSeedPos := rdr.Use3BytesForSeedPos
 
 	for {
 		// read the control byte
@@ -490,37 +564,73 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		// }
 
 		lenVal = lenVal1
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < 2048 {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		kmer = kmer1
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 2048 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				m = append(m, kmer1)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 1792 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
 
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < int(n) {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				m = append(m, kmer1)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
 		}
 
@@ -544,37 +654,73 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		// }
 
 		lenVal = lenVal2
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < 2048 {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		kmer = kmer2
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 2048 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				m = append(m, kmer1)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < 1792 {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
 
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
-			if nReaded < int(n) {
-				return nil, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				m = append(m, kmer1)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, err
+				}
+				if nReaded < int(n) {
+					return nil, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
 		}
 
@@ -652,6 +798,8 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 	getAnchor := AnchorExtracter(rdr.K, rdr.maskPrefix, rdr.anchorPrefix)
 	var prefix, prefixPre uint64
 	first := true
+
+	use3BytesForSeedPos := rdr.Use3BytesForSeedPos
 
 	for {
 		// read the control byte
@@ -748,39 +896,75 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 
 		lenVal = lenVal1
 		kmer = kmer1
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
-			if nReaded < 2048 {
-				return nil, nil, 0, 0, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < 2048 {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				m = append(m, kmer)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < 1792 {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
+
 			iOffset += 512
-
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
-			if nReaded < int(n) {
-				return nil, nil, 0, 0, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < int(n) {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				m = append(m, kmer)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < int(n) {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
+
 			iOffset += lenVal << 1
 		}
 
@@ -814,39 +998,75 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 
 		lenVal = lenVal2
 		kmer = kmer2
-		for lenVal > 256 { // buffer size is 256*8=2048
-			nReaded, err = io.ReadFull(r, buf2048)
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
-			if nReaded < 2048 {
-				return nil, nil, 0, 0, ErrBrokenFile
-			}
-			for j = 0; j <= 2040; j += 8 {
-				v = be.Uint64(buf2048[j : j+8])
+		for lenVal > 256 {
+			if !use3BytesForSeedPos { // buffer size is 256*8=2048
+				nReaded, err = io.ReadFull(r, buf2048)
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < 2048 {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j <= 2040; j += 8 {
+					v = be.Uint64(buf2048[j : j+8])
 
-				m = append(m, kmer)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else { // buffer size is 256*7=1792
+				nReaded, err = io.ReadFull(r, buf2048[:1792])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < 1792 {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j <= 1785; j += 7 {
+					v = Uint64ThreeBytes(buf2048[j : j+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
+
 			iOffset += 512
-
 			lenVal -= 256
 		}
 		if lenVal > 0 {
-			n = lenVal << 3
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
-			if nReaded < int(n) {
-				return nil, nil, 0, 0, ErrBrokenFile
-			}
-			for j = 0; j < lenVal; j++ {
-				v = be.Uint64(buf2048[j<<3 : j<<3+8])
+			if !use3BytesForSeedPos {
+				n = lenVal << 3
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < int(n) {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j << 3
+					v = be.Uint64(buf2048[n : n+8])
 
-				m = append(m, kmer)
-				m = append(m, v)
+					m = append(m, kmer)
+					m = append(m, v)
+				}
+			} else {
+				n = lenVal * 7
+				nReaded, err = io.ReadFull(r, buf2048[:n])
+				if err != nil {
+					return nil, nil, 0, 0, err
+				}
+				if nReaded < int(n) {
+					return nil, nil, 0, 0, ErrBrokenFile
+				}
+				for j = 0; j < lenVal; j++ {
+					n = j * 7 // reuse n to store j*7
+					v = Uint64ThreeBytes(buf2048[n : n+7])
+
+					m = append(m, kmer)
+					m = append(m, v)
+				}
 			}
+
 			iOffset += lenVal << 1
 		}
 
@@ -879,6 +1099,8 @@ type IndexReader struct {
 
 	buf  []byte
 	buf8 []uint8
+
+	Use3BytesForSeedPos bool
 }
 
 // NewIndexReader creates a index reader
@@ -934,6 +1156,7 @@ func NewIndexReader(file string) (*IndexReader, error) {
 		return nil, ErrVersionMismatch
 	}
 	rdr.K = buf[2] // k-mer size
+	rdr.Use3BytesForSeedPos = buf[5]&MaskUse3BytesForSeedPos > 0
 
 	// index of the first mask in current chunk.
 	_, err = io.ReadFull(r, buf)

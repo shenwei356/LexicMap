@@ -53,7 +53,7 @@ func TestKVData(t *testing.T) {
 	// write data
 
 	file := "t.kv"
-	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2)
+	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2, 512)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
