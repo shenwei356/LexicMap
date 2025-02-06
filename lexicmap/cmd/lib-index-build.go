@@ -331,6 +331,10 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		checkError(fmt.Errorf("at most %d batches supported. current: %d", 1<<BITS_BATCH_IDX, nBatches))
 	}
 
+	if nBatches > 512 {
+		log.Warningf("batches > 512: %d, you might increase batch size (-b) for ~5%% smaller index size and better query performance", nBatches)
+	}
+
 	var begin, end int
 	var kvChunks int
 	var hasSomeGenomes bool

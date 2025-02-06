@@ -1116,6 +1116,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 				// suffix search
 				srs2, err = searchersIM[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
+				if err != nil {
+					checkError(err)
+				}
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)
 					*srs2 = (*srs2)[:0]
@@ -1131,6 +1134,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 				// suffix search
 				srs2, err = searchers[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
+				if err != nil {
+					checkError(err)
+				}
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)
 					*srs2 = (*srs2)[:0]

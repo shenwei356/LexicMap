@@ -72,6 +72,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //	Magic number, 8 bytes, ".kv-data".
 //	Main and minor versions, 2 bytes.
 //	K size, 1 byte.
+//	Config1, 1 byte, including one bit for use3BytesForSeedPos
 //	Blank, 5 bytes.
 //	Mask start index, 8 bytes. The index of the first index.
 //	Mask chunk size, 8 bytes. The number of masks in this file.
@@ -84,7 +85,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //		Delta values of the 2 k-mers, 2-16 bytes
 //		Control byte for numbers of values, 1 byte
 //		Numbers of values of the 2 k-mers, 2-16 bytes, 2 bytes for most cases.
-//		Values of the 2 k-mers, 8*n bytes, 16 bytes for most cases.
+//		Values of the 2 k-mers, 8*n bytes for batches>512, 7*n for batches <=512, 14 or 16 bytes for most cases.
 //
 // Index file stores 4^p' k-mers (anchors) and their offsets in
 // the kv-data file for fast access, the time complexity would be O(1) instead of previous O(log2N)
@@ -105,7 +106,8 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //	K size, 1 byte.
 //	Mask prefix length, 1  byte. e.g., 7
 //	Anchor prefix length, 1 byte. e.g., 5
-//	Blank, 3 bytes.
+//	Config1, 1 byte, including one bit for use3BytesForSeedPos
+//	Blank, 2 bytes.
 //	Mask start index, 8 bytes. The index of the first index.
 //	Mask chunk size, 8 bytes. The number of masks in this file.
 //
