@@ -435,7 +435,7 @@ Result ordering:
 				// should be relative small
 				MaxGap: maxAlignMaxGap,
 				// better be larger than MinPrefix
-				MinScore:    minAlignLen,
+				MinScore:    int(float64(minAlignLen) * minIdent / 100),
 				MinAlignLen: minAlignLen,
 				MinIdentity: minIdent,
 				// can not be < k
