@@ -9,6 +9,8 @@ LexicMap is a **nucleotide sequence alignment** tool for efficiently querying ge
 
 Documents: https://bioinf.shenwei.me/LexicMap
 
+For the latest features and improvements, please download the [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10).
+
 Preprint:
 
 > Wei Shen and Zamin Iqbal.
@@ -53,12 +55,12 @@ Running at this scale has previously only been achieved by [Phylign](https://git
     
     **With LexicMap v0.4.0** (48 CPUs),
 
-    |Query               |Genome hits|Time      |RAM    |
-    |:-------------------|----------:|---------:|------:|
-    |A 1.3-kb marker gene|37,164     |36 s      |4.1 GB |
-    |A 1.5-kb 16S rRNA   |1,949,496  |10 m 41 s |14.1 GB|
-    |A 52.8-kb plasmid   |544,619    |19 m 20 s |19.3 GB|
-    |1003 AMR genes      |25,702,419 |187 m 40 s|55.4 GB|
+    | Query                | Genome hits |       Time |     RAM |
+    | :------------------- | ----------: | ---------: | ------: |
+    | A 1.3-kb marker gene |      37,164 |       36 s |  4.1 GB |
+    | A 1.5-kb 16S rRNA    |   1,949,496 |  10 m 41 s | 14.1 GB |
+    | A 52.8-kb plasmid    |     544,619 |  19 m 20 s | 19.3 GB |
+    | 1003 AMR genes       |  25,702,419 | 187 m 40 s | 55.4 GB |
 
 
 More documents: https://bioinf.shenwei.me/LexicMap.
