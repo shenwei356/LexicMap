@@ -68,7 +68,8 @@ type IndexSearchingOptions struct {
 	MaxDistance float64 // e.g., 20k
 
 	// alignment
-	ExtendLength int // the length of extra sequence on the flanking of seeds.
+	ExtendLength  int // the length of extra sequence on the flanking of seeds.
+	ExtendLength2 int // the length of extra sequence on the flanking of pseudo-alignment region.
 	// seq similarity
 	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
 
@@ -114,6 +115,7 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MaxDistance: 10000,
 
 	ExtendLength:                     2000,
+	ExtendLength2:                    50,
 	MinQueryAlignedFractionInAGenome: 70,
 }
 
@@ -1317,6 +1319,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
 			minPIdent := idx.seqCompareOption.MinIdentity
 			extLen := idx.opt.ExtendLength
+			extLen2 := idx.opt.ExtendLength2
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
 			accurateAlign := idx.opt.MoreAccurateAlignment
@@ -1623,12 +1626,12 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								hasResult := false
 								j := 0
 								var start, end int
+								var _s1, _e1, _s2, _e2 int // extend length
 								for i, c := range *r2.Chains {
 									if accurateAlign {
 										if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 											continue
 										}
-										_qseq = s[c.QBegin : c.QEnd+1]
 
 										if rc {
 											start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
@@ -1640,7 +1643,13 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 											// fmt.Println(string(*tSeq.SeqIDs[0]))
 											continue
 										}
-										_tseq = tSeq.Seq[start:end]
+
+										// _qseq = s[c.QBegin : c.QEnd+1]
+										// _tseq = tSeq.Seq[start:end]
+										_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2)
+										if err != nil {
+											checkError(fmt.Errorf("fail to extend aligned region"))
+										}
 
 										// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 										cigar, err = algn.Align(_qseq, _tseq)
@@ -1649,12 +1658,21 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										}
 
 										// update sequence regions
+										c.QBegin -= _s1
+										c.QEnd += _e1
+
 										c.QBegin = c.QBegin + cigar.QBegin - 1
 										c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
 										if rc {
+											c.TBegin -= _e2
+											c.TEnd += _s2
+
 											c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
 											c.TEnd = c.TEnd - cigar.TBegin - 1
 										} else {
+											c.TBegin -= _s2
+											c.TEnd += _e2
+
 											c.TBegin = c.TBegin + cigar.TBegin - 1
 											c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
 										}
@@ -1839,13 +1857,13 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						hasResult := false
 						j := 0
 						var start, end int
+						var _s1, _e1, _s2, _e2 int // extend length
 						for i, c := range *r2.Chains {
 
 							if accurateAlign {
 								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 									continue
 								}
-								_qseq = s[c.QBegin : c.QEnd+1]
 
 								// Attention, it's different from previous code
 								if rc {
@@ -1857,25 +1875,36 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									// fmt.Println(string(*tSeq.SeqIDs[0]))
 									continue
 								}
-								_tseq = tSeq.Seq[start:end]
 
-								// fmt.Printf("q: %s\nt: %s\n", s[c.QBegin:c.QEnd+1], _tseq)
+								// _qseq = s[c.QBegin : c.QEnd+1]
+								// _tseq = tSeq.Seq[start:end]
+								_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2)
+								if err != nil {
+									checkError(fmt.Errorf("fail to extend aligned region"))
+								}
+
+								// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 								cigar, err = algn.Align(_qseq, _tseq)
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
 
 								// update sequence regions
-								// fmt.Println(len(_qseq), cigar.QBegin, cigar.QEnd)
-								// fmt.Println(len(_tseq), cigar.TBegin, cigar.TEnd)
-								// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+								c.QBegin -= _s1
+								c.QEnd += _e1
 
 								c.QBegin = c.QBegin + (cigar.QBegin - 1)
 								c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
 								if rc {
+									c.TBegin -= _e2
+									c.TEnd += _s2
+
 									c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
 									c.TEnd = c.TEnd - (cigar.TBegin - 1)
 								} else {
+									c.TBegin -= _s2
+									c.TEnd += _e2
+
 									c.TBegin = c.TBegin + (cigar.TBegin - 1)
 									c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
 								}

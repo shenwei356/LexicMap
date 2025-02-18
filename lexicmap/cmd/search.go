@@ -267,7 +267,8 @@ Result ordering:
 			MaxGap:      float64(maxGap),
 			MaxDistance: float64(maxDist),
 
-			ExtendLength: extLen,
+			ExtendLength:  extLen,
+			ExtendLength2: 50,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 
