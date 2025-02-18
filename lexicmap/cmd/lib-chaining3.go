@@ -149,11 +149,10 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 
 			b = (*subs)[j] // previous seed/anchor
 
-			// no need to clean as anchors have the same size 2
 			// filter out messed/crossed anchors
-			// if b.QBegin == a.QBegin || b.TBegin > a.TBegin {
-			// 	continue
-			// }
+			if b.QBegin == a.QBegin || b.TBegin > a.TBegin {
+				continue
+			}
 
 			_bCount++
 

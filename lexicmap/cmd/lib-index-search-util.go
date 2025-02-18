@@ -53,6 +53,7 @@ func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int) 
 	if start1 > int(m) && start2 > int(m) {
 		s1, s2 := max(start1-extLen, 0), max(start2-extLen, 0)
 		_seq1, _seq2 := reverseBytes(seq1[s1:start1]), reverseBytes(seq2[s2:start2])
+		// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
 
 		_s1, _s2 = _extendRight(*_seq1, *_seq2)
 		if _s1 > 0 || _s2 > 0 {
