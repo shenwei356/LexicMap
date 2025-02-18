@@ -246,28 +246,28 @@ Here are some tips to improve the search speed.
 
     Query = GCF_003697165.2_r40
     Length = 186
-
+    
     [Subject genome #1/2] = GCF_002950215.1 Shigella flexneri
-    Query coverage per genome = 88.710%
-
+    Query coverage per genome = 93.548%
+    
     >NZ_CP026788.1 
     Length = 4659463
-
-    HSP #1
-    Query coverage per seq = 88.710%, Aligned length = 168, Identities = 89.286%, Gaps = 5
-    Query range = 13-177, Subject range = 1124816-1124981, Strand = Plus/Plus
-
+    
+     HSP #1
+     Query coverage per seq = 93.548%, Aligned length = 177, Identities = 88.701%, Gaps = 6
+     Query range = 13-186, Subject range = 1124816-1124989, Strand = Plus/Plus
+    
     Query  13       CGGAAACTGAAACA-CCAGATTCTACGATGATTATGATGATTTA-TGCTTTCTTTACTAA  70
                     |||||||||||||| |||||||||| | |||||||||||||||| |||||||||| ||||
     Sbjct  1124816  CGGAAACTGAAACAACCAGATTCTATGTTGATTATGATGATTTAATGCTTTCTTTGCTAA  1124875
-
+    
     Query  71       AAAGTAAGCGGCCAAAAAAATGAT-AACACCTGTAATGAGTATCAGAAAAGACACGGTAA  129
                     ||    |||||||||||||||||| |||||||||||||||||||||||||||||||||||
     Sbjct  1124876  AA--GCAGCGGCCAAAAAAATGATTAACACCTGTAATGAGTATCAGAAAAGACACGGTAA  1124933
-
-    Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTC  177
-                    || |||||||||    |||||  ||||||||||||||||||||||||
-    Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTC  1124981
+    
+    Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTCTATGTTACT  186
+                     || |||||||||    |||||  |||||||||||||||||||||||| |||| |||
+    Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
     ```
 
 
