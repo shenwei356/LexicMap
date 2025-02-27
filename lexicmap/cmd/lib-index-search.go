@@ -1608,6 +1608,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									c.TEnd = tSeq.SeqSizes[iSeq] - 1
 								}
 							}
+							c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
 							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, iSeq: %d, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq, *tSeq.SeqIDs[iSeq])
 
 							// ------------------------------------------------------------
@@ -1646,7 +1647,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 										// _qseq = s[c.QBegin : c.QEnd+1]
 										// _tseq = tSeq.Seq[start:end]
-										_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2)
+										_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
 										if err != nil {
 											checkError(fmt.Errorf("fail to extend aligned region"))
 										}
@@ -1827,6 +1828,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							c.TEnd = tSeq.SeqSizes[iSeq] - 1
 						}
 					}
+					c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
 					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, *tSeq.SeqIDs[iSeq])
 
 					// ------------------------------------------------------------
@@ -1878,7 +1880,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 								// _qseq = s[c.QBegin : c.QEnd+1]
 								// _tseq = tSeq.Seq[start:end]
-								_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2)
+								_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
 								if err != nil {
 									checkError(fmt.Errorf("fail to extend aligned region"))
 								}

@@ -28,17 +28,24 @@ import (
 	"github.com/shenwei356/lexichash/iterator"
 )
 
-// extendMatch an alignment region using a chaining algorithm
-func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int) ([]byte, []byte, int, int, int, int, error) {
+// extendMatch an alignment region using a chaining algorithm.
+func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int, tBegin, maxExtLen int, rc bool) ([]byte, []byte, int, int, int, int, error) {
 	var m uint8 = 2
 
 	// fmt.Println("before:", start1, end1, start2, end2)
 
 	var _s1, _e1, _s2, _e2 int // extend length
+	var _extLen int
 
 	// 3', right
 	if end1+int(m) < len(seq1) && end2+int(m) < len(seq2) {
-		e1, e2 := min(end1+extLen, len(seq1)), min(end2+extLen, len(seq2))
+		if rc {
+			_extLen = min(extLen, tBegin)
+		} else {
+			_extLen = min(extLen, maxExtLen)
+		}
+
+		e1, e2 := min(end1+_extLen, len(seq1)), min(end2+_extLen, len(seq2))
 		_seq1, _seq2 := seq1[end1:e1], seq2[end2:e2]
 		// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
 
@@ -51,7 +58,13 @@ func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int) 
 
 	// 5', left
 	if start1 > int(m) && start2 > int(m) {
-		s1, s2 := max(start1-extLen, 0), max(start2-extLen, 0)
+		if rc {
+			_extLen = min(extLen, maxExtLen) // tBegin is 0-based
+		} else {
+			_extLen = min(extLen, tBegin) // tBegin is 0-based
+		}
+
+		s1, s2 := max(start1-_extLen, 0), max(start2-_extLen, 0)
 		_seq1, _seq2 := reverseBytes(seq1[s1:start1]), reverseBytes(seq2[s2:start2])
 		// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
 

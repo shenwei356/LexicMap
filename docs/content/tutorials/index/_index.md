@@ -394,12 +394,12 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes
-    gtdb_repr.lmi: 228.99 GB (228,994,303,115)
+    gtdb_repr.lmi: 228.99 GB (228,994,282,844)
      157.28 GB      seeds
       71.71 GB      genomes
        2.13 MB      genomes.map.bin
      160.03 kB      masks.bin
-         573 B      info.toml
+         572 B      info.toml
           48 B      genomes.chunks.bin
 
 {{< /tab>}}
@@ -421,12 +421,13 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Genbank+RefSeq" >}}
 
     # 2,340,672 genomes
-    genbank_refseq.lmi: 5.43 TB (5,428,003,631,182)
-       3.04 TB      seeds
+    genbank_refseq.lmi: 5.45 TB (5,454,543,021,236)
+       3.07 TB      seeds
        2.38 TB      genomes
       58.52 MB      genomes.map.bin
-     320.03 kB      masks.bin
-         332 B      info.toml
+     160.03 kB      masks.bin
+       3.68 kB      genomes.chunks.bin
+         577 B      info.toml
 
 {{< /tab>}}
 
@@ -434,12 +435,13 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
-    atb_hq.lmi: 4.26 TB (4,261,437,129,065)
-       2.32 TB      seeds
+    atb_hq.lmi: 4.30 TB (4,304,382,853,190)
+       2.36 TB      seeds
        1.94 TB      genomes
       41.12 MB      genomes.map.bin
-     320.03 kB      masks.bin
-         332 B      info.toml
+     160.03 kB      masks.bin
+         577 B      info.toml
+          24 B      genomes.chunks.bin
 
 
 {{< /tab>}}
