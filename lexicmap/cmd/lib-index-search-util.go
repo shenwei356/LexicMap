@@ -45,14 +45,16 @@ func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int, 
 			_extLen = min(extLen, maxExtLen)
 		}
 
-		e1, e2 := min(end1+_extLen, len(seq1)), min(end2+_extLen, len(seq2))
-		_seq1, _seq2 := seq1[end1:e1], seq2[end2:e2]
-		// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
+		if _extLen > 2 {
+			e1, e2 := min(end1+_extLen, len(seq1)), min(end2+_extLen, len(seq2))
+			_seq1, _seq2 := seq1[end1:e1], seq2[end2:e2]
+			// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
 
-		_e1, _e2 = _extendRight(_seq1, _seq2)
-		if _e1 > 0 || _e2 > 0 {
-			end1 += _e1
-			end2 += _e2
+			_e1, _e2 = _extendRight(_seq1, _seq2)
+			if _e1 > 0 || _e2 > 0 {
+				end1 += _e1
+				end2 += _e2
+			}
 		}
 	}
 
@@ -64,17 +66,19 @@ func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int, 
 			_extLen = min(extLen, tBegin) // tBegin is 0-based
 		}
 
-		s1, s2 := max(start1-_extLen, 0), max(start2-_extLen, 0)
-		_seq1, _seq2 := reverseBytes(seq1[s1:start1]), reverseBytes(seq2[s2:start2])
-		// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
+		if _extLen > 2 {
+			s1, s2 := max(start1-_extLen, 0), max(start2-_extLen, 0)
+			_seq1, _seq2 := reverseBytes(seq1[s1:start1]), reverseBytes(seq2[s2:start2])
+			// fmt.Printf("seq1: %s\nseq2: %s\n", _seq1, _seq2)
 
-		_s1, _s2 = _extendRight(*_seq1, *_seq2)
-		if _s1 > 0 || _s2 > 0 {
-			start1 -= _s1
-			start2 -= _s2
+			_s1, _s2 = _extendRight(*_seq1, *_seq2)
+			if _s1 > 0 || _s2 > 0 {
+				start1 -= _s1
+				start2 -= _s2
+			}
+			poolRevBytes.Put(_seq1)
+			poolRevBytes.Put(_seq2)
 		}
-		poolRevBytes.Put(_seq1)
-		poolRevBytes.Put(_seq2)
 	}
 
 	// fmt.Println("after:", start1, end1, start2, end2)
