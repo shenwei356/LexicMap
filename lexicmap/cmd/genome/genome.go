@@ -608,6 +608,52 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	return g, nil
 }
 
+// GenomeInfo returns the genome information of a genome (idx is 0-based),
+// Please call RecycleGenome() after using the result.
+func (r *Reader) TotalBases() (int64, error) {
+	buf := r.buf
+	br := r.bufReader
+
+	var totalBases int64
+
+	ngenomes := len(r.Index) >> 1
+	var n int
+	var err error
+	var offset int64
+
+	for idx := 0; idx < ngenomes; idx++ {
+		offset = int64(r.Index[idx<<1])
+
+		r.fhData.Seek(offset, 0)
+
+		br.Reset(r.fhData)
+
+		// ID length
+		n, err = io.ReadFull(br, buf[:2])
+		if err != nil {
+			return 0, err
+		}
+		if n < 2 {
+			return 0, ErrBrokenFile
+		}
+		idLen := be.Uint16(buf[:2])
+		br.Discard(int(idLen))
+		offset += 2 + int64(idLen)
+
+		// genome size
+		n, err = io.ReadFull(br, buf[:4])
+		if err != nil {
+			return 0, err
+		}
+		if n < 4 {
+			return 0, ErrBrokenFile
+		}
+		totalBases += int64(be.Uint32(buf[:4]))
+	}
+
+	return totalBases, nil
+}
+
 // SubSeq returns the subsequence of a genome (idx is 0-based),
 // from start to end (both are 0-based and included).
 // Please call RecycleGenome() after using the result.

@@ -293,6 +293,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			}
 
 			info.InputGenomes += info2.InputGenomes
+			info.InputBases += info2.InputBases
 			info.Genomes += info2.Genomes
 			info.GenomeBatches += info2.GenomeBatches
 		}

@@ -35,6 +35,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
@@ -194,6 +195,18 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 	if info.MainVersion != MainVersion {
 		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
+	}
+	if info.InputBases == 0 {
+		// checkError(fmt.Errorf(`please run "lexicmap utils recount-bases -d %s"`, outDir))
+		startTime := time.Now()
+		if opt.Verbose {
+			log.Info("  counting total bases for this index ...")
+		}
+		totalBases, err := updateInputBases(info, outDir, opt.NumCPUs)
+		checkError(err)
+		if opt.Verbose {
+			log.Infof("  done counting total bases (%s) in %s", humanize.Comma(totalBases), time.Since(startTime))
+		}
 	}
 
 	if idx.opt.MaxOpenFiles < info.Chunks+2 {

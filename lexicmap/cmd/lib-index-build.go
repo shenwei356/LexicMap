@@ -56,7 +56,7 @@ var be = binary.BigEndian
 var MainVersion uint8 = 3
 
 // MinorVersion is less important
-var MinorVersion uint8 = 2
+var MinorVersion uint8 = 3
 
 // ExtTmpDir is the path extension for temporary files
 const ExtTmpDir = ".tmp"
@@ -566,6 +566,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 	// 2.2) write genomes to file
 	var nFiles int // the total number of indexed files
+	var totalBases int64
 	go func() {
 
 		for refseq := range genomesW { // each genome, one by one
@@ -576,6 +577,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			if err != nil {
 				checkError(fmt.Errorf("failed to write genome: %s", err))
 			}
+
+			totalBases += int64(refseq.GenomeSize)
 
 			// --------------------------------
 			// seed positions
@@ -1779,6 +1782,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			Partitions: opt.Partitions,
 
 			InputGenomes:    len(mGenomeChunks), // original genome number. TODO
+			InputBases:      totalBases,
 			Genomes:         nFiles,
 			GenomeBatchSize: nFiles, // just for this batch
 			GenomeBatches:   1,      // just for this batch
@@ -1863,6 +1867,7 @@ type IndexInfo struct {
 	Chunks           int   `toml:"chunks" comment:"Seeds (k-mer-value data) files"`
 	Partitions       int   `toml:"index-partitions"`
 	InputGenomes     int   `toml:"input-genomes" comment:"Input genomes"`
+	InputBases       int64 `toml:"input-bases" comment:"Input bases"`
 	Genomes          int   `toml:"genomes" comment:"Genome data. \n'genomes' might be larger than 'input-genomes', as some big fragmented genomes are split into multiple chunks.\nIn this case, 'genome-batch-size' is not accurate, being variable in different batches."`
 	GenomeBatchSize  int   `toml:"genome-batch-size"`
 	GenomeBatches    int   `toml:"genome-batches"`
