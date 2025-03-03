@@ -122,6 +122,11 @@ type Chain2Result struct {
 	QSeq      []byte // query seq
 	TSeq      []byte // target seq
 	Alignment []byte // alignment text
+
+	// statistic
+	Score    int
+	BitScore int
+	Evalue   float64
 }
 
 // Reset resets a Chain2Result

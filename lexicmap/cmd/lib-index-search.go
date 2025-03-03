@@ -161,6 +161,9 @@ type Index struct {
 	genomeChunks                 [][]uint64 // original chunk information
 	poolGenomeChunksIdx2List     *sync.Pool
 	poolGenomeChunksPointer2List *sync.Pool
+
+	// totalBases
+	totalBases int64
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -207,7 +210,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		if opt.Verbose {
 			log.Infof("  done counting total bases (%s) in %s", humanize.Comma(totalBases), time.Since(startTime))
 		}
+		info.InputBases = totalBases
 	}
+	idx.totalBases = info.InputBases
 
 	if idx.opt.MaxOpenFiles < info.Chunks+2 {
 		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
@@ -1344,6 +1349,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			// 	MaxDistDiff: 50,
 			// })
 
+			// from blastn_values_2_3 in ncbi-blast-2.15.0+-src/c++/src/algo/blast/core/blast_stat.c
+			fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(idx.totalBases), 0.625, 0.41)
+
 			var _qseq, _tseq []byte
 			var cigar *wfa.AlignmentResult
 			// var op *wfa.CIGARRecord
@@ -1671,6 +1679,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 											checkError(fmt.Errorf("fail to align sequence"))
 										}
 
+										// score and e-value
+										c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+
 										// update sequence regions
 										c.QBegin -= _s1
 										c.QEnd += _e1
@@ -1903,6 +1914,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
+
+								// score and e-value
+								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
 
 								// update sequence regions
 								c.QBegin -= _s1

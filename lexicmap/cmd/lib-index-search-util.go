@@ -21,11 +21,13 @@
 package cmd
 
 import (
+	"math"
 	"slices"
 	"sync"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 	"github.com/shenwei356/lexichash/iterator"
+	"github.com/shenwei356/wfa"
 )
 
 // extendMatch an alignment region using a chaining algorithm.
@@ -215,3 +217,75 @@ var poolRevBytes = &sync.Pool{New: func() interface{} {
 	tmp := make([]byte, 128)
 	return &tmp
 }}
+
+// ------------------------------------------------------------------------------------------
+
+const OpM = uint64('M')
+const OpD = uint64('D')
+const OpI = uint64('I')
+const OpX = uint64('X')
+const OpH = uint64('H')
+
+// trimOps trim ops to keep only aligned region
+func trimOps(ops []uint64) []uint64 {
+	var start, end int
+	start, end = -1, -1
+	for i, op := range ops {
+		if op>>32 == OpM {
+			start = i
+			break
+		}
+	}
+	for i := len(ops) - 1; i >= 0; i-- {
+		if ops[i]>>32 == OpM {
+			end = i
+			break
+		}
+	}
+	return ops[start : end+1]
+}
+
+func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda, k float64) func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
+	// var Kn float64 = float64(k) * float64(totalBase)
+	lnK := math.Log(k)
+
+	return func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
+		ops := trimOps(cigar.Ops)
+		var score, n int
+		for _, op := range ops {
+			n = int(op & 4294967295)
+
+			// switch op.Op {
+			switch op >> 32 {
+			// match:
+			case OpM:
+				score += n * match
+			// mismatch
+			case OpX:
+				score += n * mismatch
+			// gap
+			case OpI:
+				score += gapOpen + n*gapExt
+			// case 'D', 'H':
+			case OpD, OpH:
+				score += gapOpen + n*gapExt
+			}
+		}
+
+		_score := score
+
+		// from blastn_values_2_3 in ncbi-blast-2.15.0+-src/c++/src/algo/blast/core/blast_stat.c
+		// Any odd score must be rounded down to the nearest even number before calculating the e-value
+		if _score&1 == 1 {
+			_score--
+		}
+
+		bitScore := (lambda*float64(_score) - lnK) / math.Ln2
+
+		// evalue := Kn * float64(qlen) * math.Pow(math.E, -lambda*float64(_score))
+
+		evalue := float64(totalBase) * math.Pow(2, -bitScore) * float64(qlen)
+
+		return score, int(math.Ceil(bitScore)), evalue
+	}
+}

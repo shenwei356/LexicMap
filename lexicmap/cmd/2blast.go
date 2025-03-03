@@ -104,10 +104,10 @@ Input:
 		var line string
 		var scanner *bufio.Scanner
 
-		ncols := 21
+		ncols := 23
 		items := make([]string, ncols)
 
-		var query, qlen, hits, sgenome, sseqid, qcovGnm, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen string
+		var query, qlen, hits, sgenome, sseqid, qcovGnm, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
 		var cigar, qseq, sseq, align string
 
 		var headerLine bool
@@ -164,10 +164,12 @@ Input:
 				send = items[14]
 				sstr = items[15]
 				slen = items[16]
-				cigar = items[17]
-				qseq = items[18]
-				sseq = items[19]
-				align = items[20]
+				evalue = items[17]
+				bitscore = items[18]
+				cigar = items[19]
+				qseq = items[20]
+				sseq = items[21]
+				align = items[22]
 
 				_qstart, _ = strconv.Atoi(qstart)
 				_qend, _ = strconv.Atoi(qend)
@@ -222,6 +224,7 @@ Input:
 				}
 
 				fmt.Fprintf(outfh, " HSP #%s\n", hsp)
+				fmt.Fprintf(outfh, " Score = %s bits, Expect = %s\n", bitscore, evalue)
 				fmt.Fprintf(outfh, " Query coverage per seq = %s%%, Aligned length = %s, Identities = %s%%, Gaps = %s\n",
 					qcovHSP, alenHSP, pident, gaps)
 				fmt.Fprintf(outfh, " Query range = %s-%s, Subject range = %s-%s, Strand = Plus/%s\n\n",

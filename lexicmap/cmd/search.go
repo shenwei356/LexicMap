@@ -85,10 +85,12 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+    18. evalue,   E value.
+	19. bitscore, bit score.
+    20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
   1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
@@ -326,7 +328,7 @@ Result ordering:
 		var speed float64 // k reads/second
 
 		// fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
-		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen")
+		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
 		if moreColumns {
 			fmt.Fprintf(outfh, "\tcigar\tqseq\tsseq\talign")
 		}
@@ -381,13 +383,14 @@ Result ordering:
 							strand = '+'
 						}
 
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
 							queryID, len(q.seq),
 							targets, r.ID, sd.SeqID, r.AlignedFraction,
 							j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
 							c.QBegin+1, c.QEnd+1,
 							c.TBegin+1, c.TEnd+1,
 							strand, sd.SeqLen,
+							c.Evalue, c.BitScore,
 						)
 						if moreColumns {
 							if onlyPseudoAlign {
