@@ -32,7 +32,7 @@ Alignment result relationship:
   > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
-  Tab-delimited format with 17+ columns, with 1-based positions.
+  Tab-delimited format with 19+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -51,10 +51,12 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+    18. evalue,   E value.
+    19. bitscore, bit score.
+    20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
   1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
@@ -98,7 +100,7 @@ Flags:
                                        pair of seeds matched. (default 17)
   -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
                                        phase. Value 1 is not recommended as the best chaining result
-                                       does not always bring the best alignment, so it better be >= 5.
+                                       does not always bring the best alignment, so it better be >= 10.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

@@ -203,7 +203,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		// checkError(fmt.Errorf(`please run "lexicmap utils recount-bases -d %s"`, outDir))
 		startTime := time.Now()
 		if opt.Verbose {
-			log.Info("  counting total bases for this index ...")
+			log.Info("  counting total bases for this index (run only once) ...")
 		}
 		totalBases, err := updateInputBases(info, outDir, opt.NumCPUs)
 		checkError(err)

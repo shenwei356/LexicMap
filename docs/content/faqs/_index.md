@@ -8,10 +8,9 @@ weight: 60
 
 ## Does LexicMap support short reads?
 
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
-However, short queries can also be aligned.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 100 bp by default.
 
-If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 50) and `-d/--seed-in-desert-dist` (default 50), e.g.,
+If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g.,
 
     --seed-max-desert 300 --seed-in-desert-dist 150
 
@@ -47,7 +46,7 @@ For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has m
 
 
 
-## How to resume the indexing as Slurm job limit is almost reached while lexicmap index is still in the merging step?
+## How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?
 
 Use [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/) (available since v0.5.0), which reruns the merging step for an unfinished index.
 
@@ -91,10 +90,10 @@ Yes, `lexicmap search` has a flag
 to output CIGAR string, aligned query and subject sequences.
 
 ```
-18. cigar,    CIGAR string of the alignment                       (optional with -a/--all)
-19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 ```
 
 An example:
@@ -106,7 +105,7 @@ An example:
         --min-qcov-per-hsp 90 --all
 
     # extract matched sequences as FASTA format
-    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' \
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$22;}' \
         | seqkit seq -g > results.fasta
 
     seqkit head -n 1 results.fasta | head -n 3
@@ -136,23 +135,9 @@ While for the query sequences, we don't convert them.
 ## Why is LexicMap slow for batch searching?
 
 LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 17 million) of genomes.
-There are some ways to improve the search speed of `lexicmap search`.
 
-- **Increasing the concurrency number**
-    - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
-
-          # Seeds (k-mer-value data) files
-          chunks = 48
-
-    - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
-    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
-- **Loading the entire seed data into memoy** (It's unnecessary if the index is stored in SSD)
-    - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
-- **Returning less results**
-    - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
-- Sacrificing accuracy
-    - Setting `--pseudo-align` to only perform pseudo alignment, which is slightly faster and uses less memory.
-    It can be used in searching with long and divergent query sequences like nanopore long-reads.
+There are some ways to improve the search speed of `lexicmap search`: 
+http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed
 
 {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
 

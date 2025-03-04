@@ -27,8 +27,7 @@ weight: 10
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
-However, short queries can also be aligned.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 100 bp by default.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
@@ -45,8 +44,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
 - **RAM**
     - More RAM (> 16 GB) is preferred. The memory usage in searching is mainly related to:
+        - The number and length of query sequences.
         - The number of matched genomes and sequences.
-        - The length of query sequences.
         - Similarities between query and target sequences.
         - The number of threads. It uses all CPUs by default (`-j/--threads`).
 - **Disk**
@@ -134,14 +133,24 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 LexicMap's searching speed is related to many factors:
 - **The number of similar sequences in the index/database**. More genome hits cost more time, e.g., 16S rRNA gene.
-- **Similarity between query and subject sequences**. Alignment of diverse sequences is slower than that of highly similar sequences.
+- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching (serial access) and extracting candidate subsequences for alignment (random access) require a large number of file readings in parallel.
+- **Similarity between query and subject sequences**. Alignment of diverse sequences is slightly slower than that of highly similar sequences.
 - **The length of query sequence**. Longer queries run with more time.
-- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching and extracting candidate subsequences for alignment require a large number of file readings in parallel.
 - **CPU frequency and the number of threads**. Faster CPUs and more threads cost less time.
 
 
 Here are some tips to improve the search speed.
 
+- **Returning less results**
+    - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17)
+      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%).
+      Don't worry if you only search highly similar matches.
+    - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. 
+      For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
+    - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
+     including `-q/--min-qcov-per-hsp`, `-Q/--min-qcov-per-genome`, and `-i/--align-min-match-pident`,
+     do not significantly accelerate the search speed. Hence, you can search with default
+     parameters and then filter the result with tools like `awk` or `csvtk`.
 - **Increasing the concurrency number**
     - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
 
@@ -150,10 +159,8 @@ Here are some tips to improve the search speed.
 
     - Increasing the value of `--max-open-files` (default 512). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
-- (If you have many queries) **Loading the entire seed data into memoy** (It's unnecessary if the index is stored in SSD)
+- **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored in SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
-- **Returning less results**
-    - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
 
 ## Steps
 
@@ -164,7 +171,7 @@ Here are some tips to improve the search speed.
           --min-match-pident 70 \
           --min-qcov-per-hsp 70 \
           --min-qcov-per-genome 70 \
-          --top-n-genomes 1000
+          --top-n-genomes 10000
 
 - For longer queries like plasmids, returning all hits.
 
@@ -210,7 +217,7 @@ Here are some tips to improve the search speed.
     lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta --min-qcov-per-hsp 90 --all -o results.tsv
 
     # extract matched sequences as FASTA format
-    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$20;}' | seqkit seq -g > results.fasta
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$22;}' | seqkit seq -g > results.fasta
 
     seqkit head -n 1 results.fasta | head -n 3
     >NZ_JALSCK010000007.1:39224-40522:-
@@ -254,6 +261,7 @@ Here are some tips to improve the search speed.
     Length = 4659463
     
      HSP #1
+     Score = 280 bits, Expect = 9.66e-75
      Query coverage per seq = 93.548%, Aligned length = 177, Identities = 88.701%, Gaps = 6
      Query range = 13-186, Subject range = 1124816-1124989, Strand = Plus/Plus
     
@@ -288,7 +296,7 @@ Here, the defination of HSP is similar with that in BLAST. Actually there are sm
 
 ### Output format
 
-Tab-delimited format with 17+ columns, with 1-based positions.
+Tab-delimited format with 19+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -307,10 +315,12 @@ Tab-delimited format with 17+ columns, with 1-based positions.
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    19. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    20. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    21. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+    18. evalue,   E value.
+    19. bitscore, bit score.
+    20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
 
@@ -325,18 +335,18 @@ Result ordering:
 {{< tab "A single-copy gene (SecY)" >}}
 
 ```plain
-query                                      qlen   hits   sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart   send     sstr   slen
-----------------------------------------   ----   ----   ---------------   --------------------   -------   ---   -------   -------   -------   ----   ------   ----   ------   ------   ----   -------
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_000395405.1   NZ_KB947497.1          100.000   1     100.000   1299      100.000   0      1        1299   232279   233577   +      274511
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_019731615.1   NZ_JAASJA010000010.1   100.000   1     100.000   1299      100.000   0      1        1299   2798     4096     +      42998
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCA_004103085.1   RPCL01000012.1         100.000   1     100.000   1299      100.000   0      1        1299   44095    45393    +      84242
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_023571745.1   NZ_JAMKBS010000014.1   100.000   1     100.000   1299      100.000   0      1        1299   44077    45375    +      84206
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_013248625.1   NZ_JABTDK010000002.1   100.000   1     100.000   1299      100.000   0      1        1299   9609     10907    +      49787
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_900092155.1   NZ_FLUS01000006.1      100.000   1     100.000   1299      100.000   0      1        1299   63161    64459    +      77366
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_902165815.1   NZ_CABHHZ010000005.1   100.000   1     100.000   1299      100.000   0      1        1299   39386    40684    -      200163
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_014243495.1   NZ_SJAV01000002.1      100.000   1     100.000   1299      100.000   0      1        1299   39085    40383    -      256772
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_900148695.1   NZ_FRXS01000009.1      100.000   1     100.000   1299      100.000   0      1        1299   39230    40528    -      96692
-lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_902164645.1   NZ_LR607334.1          100.000   1     100.000   1299      100.000   0      1        1299   236677   237975   +      3380663
+query                                      qlen   hits    sgenome           sseqid                 qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart   send     sstr   slen     evalue     bitscore
+----------------------------------------   ----   -----   ---------------   --------------------   -------   ---   -------   -------   -------   ----   ------   ----   ------   ------   ----   ------   --------   --------
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_003962555.1   QNGV01000003.1         100.000   1     100.000   1299      100.000   0      1        1299   39229    40527    -      271174   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_900148695.1   FRXS01000009.1         100.000   1     100.000   1299      100.000   0      1        1299   39230    40528    -      96692    0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_015919505.1   AAXTGP010000012.1      100.000   1     100.000   1299      100.000   0      1        1299   39064    40362    -      103670   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_028641435.1   DANIKN010000009.1      100.000   1     100.000   1299      100.000   0      1        1299   39290    40588    -      103925   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCF_902165815.1   NZ_CABHHZ010000005.1   100.000   1     100.000   1299      100.000   0      1        1299   39386    40684    -      200163   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_032868635.1   JAWKAC010000007.1      100.000   1     100.000   1299      100.000   0      1        1299   39280    40578    -      195040   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_031737035.1   JAVGUQ010000004.1      100.000   1     100.000   1299      100.000   0      1        1299   39191    40489    -      292887   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_014353145.1   JACIKK010000004.1      100.000   1     100.000   1299      100.000   0      1        1299   192734   194032   +      233180   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_005237765.1   QPWL01000004.1         100.000   1     100.000   1299      100.000   0      1        1299   10449    11747    -      228528   0.00e+00   2343    
+lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   41718   GCA_030342345.1   JATAAU010000007.1      100.000   1     100.000   1299      100.000   0      1        1299   134344   135642   +      154082   0.00e+00   2343  
 ```
 {{< /tab>}}
 
@@ -344,18 +354,18 @@ lcl|NZ_CP064374.1_cds_WP_002359350.1_906   1299   3580   GCF_902164645.1   NZ_LR
 
 
 ```plain
-query                         qlen   hits     sgenome           sseqid              qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
----------------------------   ----   ------   ---------------   -----------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
-NC_000913.3:4166659-4168200   1542   293398   GCF_002248685.1   NZ_NQBE01000079.1   100.000   1     100.000   1542      100.000   0      1        1542   40        1581      -      99259
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   1     100.000   1542      100.000   0      1        1542   1270211   1271752   +      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   2     100.000   1542      100.000   0      1        1542   5466287   5467828   -      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   3     100.000   1543      99.546    2      1        1542   557008    558549    +      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   4     100.000   1543      99.482    2      1        1542   4473658   4475199   -      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   5     100.000   1543      99.482    2      1        1542   5154150   5155691   -      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   6     100.000   1543      99.482    2      1        1542   5195176   5196717   -      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_017164795.1   NZ_CP062702.1       100.000   7     100.000   1543      99.482    2      1        1542   5369865   5371406   -      5483624
-NC_000913.3:4166659-4168200   1542   293398   GCF_000460355.1   NZ_KE701684.1       100.000   1     100.000   1542      100.000   0      1        1542   1108651   1110192   -      1914390
-NC_000913.3:4166659-4168200   1542   293398   GCF_000460355.1   NZ_KE701686.1       100.000   2     100.000   1542      99.741    0      1        1542   100680    102221    +      102235
+query                         qlen   hits      sgenome           sseqid              qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen      evalue     bitscore
+---------------------------   ----   -------   ---------------   -----------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------   --------   --------
+NC_000913.3:4166659-4168200   1542   1955162   GCA_907175715.1   CAJSIH010000102.1   100.000   1     100.000   1542      100.000   0      1        1542   147       1688      +      1702      0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   1     100.000   1542      100.000   0      1        1542   1162946   1164487   +      4809920   0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   2     100.000   1542      100.000   0      1        1542   3790963   3792504   -      4809920   0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   3     100.000   1542      100.000   0      1        1542   4484052   4485593   -      4809920   0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   4     100.000   1542      100.000   0      1        1542   4656667   4658208   -      4809920   0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   5     100.000   1542      99.741    0      1        1542   460127    461668    +      4809920   0.00e+00   2764    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   6     100.000   1542      99.676    0      1        1542   4525540   4527081   -      4809920   0.00e+00   2758    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_900174625.1   NZ_LT838196.1       100.000   7     100.000   1542      99.676    0      1        1542   4750295   4751836   -      4809920   0.00e+00   2758    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_013421655.1   NZ_WVHY01000001.1   100.000   1     100.000   1542      100.000   0      1        1542   279590    281131    -      2103828   0.00e+00   2782    
+NC_000913.3:4166659-4168200   1542   1955162   GCF_013421655.1   NZ_WVHY01000001.1   100.000   2     100.000   1542      99.741    0      1        1542   1116560   1118101   -      2103828   0.00e+00   2764
 ```
 
 
@@ -365,28 +375,18 @@ NC_000913.3:4166659-4168200   1542   293398   GCF_000460355.1   NZ_KE701686.1   
 
 
 ```plain
-query        qlen    hits    sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend    sstart    send      sstr   slen
-----------   -----   -----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   -----   -------   -------   ----   -------
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    1     75.792    40041     99.995    0      12069    52109   11439     51479     +      51479
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    2     20.316    10733     100.000   0      1        10733   722       11454     +      51479
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    3     1.365     721       100.000   0      52110    52830   1         721       +      51479
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086535.1   97.473    4     0.916     484       91.116    0      51686    52169   27192     27675     -      34058
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086535.1   97.473    5     0.829     438       90.868    1      52342    52779   26583     27019     -      34058
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    6     1.552     820       100.000   0      9049     9868    23092     23911     +      51479
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086534.1   97.473    7     0.502     265       100.000   0      19788    20052   29842     30106     +      47185
-CP115019.1   52830   58744   GCF_022759845.1   NZ_CP086533.1   97.473    8     0.159     84        97.619    0      8348     8431    19574     19657     +      51479
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    1     75.792    40041     99.995    0      12069    52109   11439     51479     +      51479
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    2     20.316    10733     100.000   0      1        10733   722       11454     +      51479
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    3     1.365     721       100.000   0      52110    52830   1         721       +      51479
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086547.1   97.473    4     0.916     484       91.116    0      51686    52169   3843      4326      +      34058
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086547.1   97.473    5     0.829     438       90.868    1      52342    52779   4499      4935      +      34058
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    6     1.552     820       100.000   0      9049     9868    23092     23911     +      51479
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086546.1   97.473    7     0.502     265       100.000   0      19788    20052   29842     30106     +      47185
-CP115019.1   52830   58744   GCF_022759905.1   NZ_CP086545.1   97.473    8     0.159     84        97.619    0      8348     8431    19574     19657     +      51479
-CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    1     77.157    40762     99.993    0      12069    52830   9513      50274     +      51480
-CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    2     18.033    9528      99.990    1      1207     10733   1         9528      +      51480
-CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058621.1   97.473    3     2.283     1206      100.000   0      1        1206    50275     51480     +      51480
-CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058618.1   97.473    4     2.497     1319      100.000   0      25153    26471   3019498   3020816   -      4718403
+query        qlen    hits     sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend    sstart   send    sstr   slen    evalue     bitscore
+----------   -----   ------   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   -----   ------   -----   ----   -----   --------   --------
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115019.1   100.000   1     100.000   52830     100.000   0      1        52830   1        52830   +      52830   0.00e+00   95273   
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115019.1   100.000   2     1.562     827       99.758    2      9044     9868    23715    24541   +      52830   0.00e+00   1496    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115019.1   100.000   3     1.565     827       99.758    2      23715    24541   9044     9868    +      52830   0.00e+00   1496    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115019.1   100.000   4     0.208     110       98.182    0      29827    29936   35931    36040   -      52830   4.13e-43   190     
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   5     5.397     2851      100.000   0      14179    17029   30028    32878   -      84227   0.00e+00   5142    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   6     2.996     1583      100.000   0      12069    13651   28264    29846   -      84227   0.00e+00   2856    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   7     1.556     822       100.000   0      23722    24543   24031    24852   +      84227   0.00e+00   1483    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   8     1.552     820       100.000   0      9049     9868    24031    24850   +      84227   0.00e+00   1480    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   9     1.552     820       99.878    0      23722    24541   27427    28246   -      84227   0.00e+00   1474    
+CP115019.1   52830   561754   GCF_030863845.1   NZ_CP115018.1   100.000   10    1.554     821       99.756    0      9048     9868    38304    39124   -      84227   0.00e+00   1472
 ```
 
 {{< /tab>}}
@@ -397,22 +397,24 @@ CP115019.1   52830   58744   GCF_014826015.1   NZ_CP058618.1   97.473    4     2
 Queries are a few Nanopore Q20 reads from a mock metagenomic community.
 
 ```plain
-query                qlen   hits   sgenome           sseqid          qcovGnm   hsp   qcovHSP   alenHSP   pident    gaps   qstart   qend   sstart    send      sstr   slen
-------------------   ----   ----   ---------------   -------------   -------   ---   -------   -------   -------   ----   ------   ----   -------   -------   ----   -------
-ERR5396170.1000016   740    1      GCF_013394085.1   NZ_CP040910.1   89.595    1     89.595    663       99.246    0      71       733    13515     14177     +      1887974
-ERR5396170.1000000   698    1      GCF_001457615.1   NZ_LN831024.1   85.673    1     85.673    603       98.010    5      53       650    4452083   4452685   +      6316979
-ERR5396170.1000017   516    1      GCF_013394085.1   NZ_CP040910.1   94.574    1     94.574    489       99.591    2      27       514    293509    293996    +      1887974
-ERR5396170.1000012   848    1      GCF_013394085.1   NZ_CP040910.1   95.165    1     95.165    811       97.411    7      22       828    190329    191136    -      1887974
-ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    1     60.000    973       95.889    13     365      1333   88793     89756     -      2884551
-ERR5396170.1000038   1615   1      GCA_000183865.1   CM001047.1      64.706    2     4.706     76        98.684    0      266      341    89817     89892     -      2884551
-ERR5396170.1000036   1159   1      GCF_013394085.1   NZ_CP040910.1   95.427    1     95.427    1107      99.729    1      32       1137   1400097   1401203   +      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    1     86.486    707       99.151    3      104      807    242235    242941    -      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    2     86.486    707       98.444    3      104      807    1138777   1139483   +      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    3     84.152    688       98.983    4      104      788    154620    155306    -      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    4     84.029    687       99.127    3      104      787    32477     33163     +      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    5     72.727    595       98.992    3      104      695    1280183   1280777   +      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    6     11.671    95        100.000   0      693      787    1282480   1282574   +      1887974
-ERR5396170.1000031   814    4      GCF_013394085.1   NZ_CP040910.1   86.486    7     82.064    671       99.106    3      120      787    1768782   1769452   +      1887974
+query                qlen   hits   sgenome                   sseqid              qcovGnm   hsp   qcovHSP   alenHSP   pident   gaps   qstart   qend   sstart    send      sstr   slen      evalue      bitscore
+------------------   ----   ----   -----------------------   -----------------   -------   ---   -------   -------   ------   ----   ------   ----   -------   -------   ----   -------   ---------   --------
+ERR5396170.1000004   190    1      GCF_000227465.1_genomic   NC_016047.1         84.211    1     84.211    165       89.091   5      14       173    4189372   4189536   -      4207222   1.93e-63    253     
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    1     99.623    801       97.628   9      4        796    1138907   1139706   +      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    2     99.623    801       97.628   9      4        796    32607     33406     +      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    3     99.623    801       97.628   9      4        796    134468    135267    -      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    4     99.623    801       97.503   9      4        796    1768896   1769695   +      1887974   0.00e+00    1427    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    5     99.623    801       97.378   9      4        796    242012    242811    -      1887974   0.00e+00    1422    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    6     99.623    801       96.879   12     4        796    154380    155176    -      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    7     57.915    469       95.736   9      4        464    1280313   1280780   +      1887974   3.71e-236   829     
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    8     42.839    341       99.120   0      456      796    1282477   1282817   +      1887974   6.91e-168   601     
+ERR5396170.1000006   796    3      GCF_009663775.1_genomic   NZ_RDBR01000008.1   99.623    1     99.623    801       93.383   9      4        796    21391     22190     -      52610     0.00e+00    1278    
+ERR5396170.1000006   796    3      GCF_003344625.1_genomic   NZ_QPKJ02000188.1   97.362    1     87.437    700       98.143   5      22       717    1         699       -      826       0.00e+00    1249    
+ERR5396170.1000006   796    3      GCF_003344625.1_genomic   NZ_QPKJ02000423.1   97.362    2     27.889    222       99.550   0      575      796    1         222       +      510       3.47e-106   396     
+ERR5396170.1000000   698    2      GCF_001457615.1_genomic   NZ_LN831024.1       92.264    1     92.264    656       96.341   13     53       696    4452083   4452737   +      6316979   0.00e+00    1169    
+ERR5396170.1000000   698    2      GCF_000949385.2_genomic   NZ_JYKO02000001.1   91.977    1     91.977    654       78.135   13     55       696    5638788   5639440   -      5912440   2.68e-176   630     
+ERR5396170.1000012   848    2      GCF_013394085.1_genomic   NZ_CP040910.1       98.585    1     98.585    841       96.671   10     13       848    190308    191143    -      1887974   0.00e+00    1472    
+ERR5396170.1000012   848    2      GCF_001293735.1_genomic   NZ_BCAH01000003.1   90.212    1     90.212    782       77.110   23     51       815    8230      9005      -      40321     3.19e-214   756
 ```
 
 {{< /tab>}}

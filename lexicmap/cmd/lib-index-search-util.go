@@ -248,6 +248,7 @@ func trimOps(ops []uint64) []uint64 {
 func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda, k float64) func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
 	// var Kn float64 = float64(k) * float64(totalBase)
 	lnK := math.Log(k)
+	ftotalBase := float64(totalBase)
 
 	return func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
 		ops := trimOps(cigar.Ops)
@@ -284,8 +285,8 @@ func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda,
 
 		// evalue := Kn * float64(qlen) * math.Pow(math.E, -lambda*float64(_score))
 
-		evalue := float64(totalBase) * math.Pow(2, -bitScore) * float64(qlen)
+		evalue := ftotalBase * math.Pow(2, -bitScore) * float64(qlen)
 
-		return score, int(math.Ceil(bitScore)), evalue
+		return score, int(bitScore), evalue
 	}
 }

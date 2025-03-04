@@ -66,7 +66,7 @@ Alignment result relationship:
   > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
-  Tab-delimited format with 17+ columns, with 1-based positions.
+  Tab-delimited format with 19+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -86,7 +86,7 @@ Output format:
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
     18. evalue,   E value.
-	19. bitscore, bit score.
+    19. bitscore, bit score.
     20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)

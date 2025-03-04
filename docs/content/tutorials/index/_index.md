@@ -30,14 +30,14 @@ Terminology differences:
 
     - From a file list with one file per line:
 
-          lexicmap index -X files.txt -O db.lmi
+          lexicmap index --skip-file-check -X files.txt -O db.lmi
 
 
 ## Input
 
 {{< hint type=note >}}
 **Genome size**\
-LexicMap is mainly suitable for small genomes like Archaea, Bacteria, Viruses and plasmids.
+LexicMap is mainly suitable for small genomes like Archaea, Bacteria, Viruses, fungi, and plasmids.
 
 Maximum genome size: 268 Mb (268,435,456).
 More precisely:
@@ -97,19 +97,20 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - More is better as LexicMap is a CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
     - More RAM (> 100 GB) is preferred. The memory usage in index building is mainly related to:
-        - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
+        - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
         - **The number of genomes**. More genomes consume more memory.
         - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
-        - **The genome batch size**  (`-b/--batch-size`, default 5,000). **This is the main parameter to adjust memory usage**. Bigger values increase indexing memory occupation.
+        - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory occupation.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 100),
           and the distance of k-mers to fill deserts (`-d/--seed-in-desert-dist`, default 50).
-          Bigger `-D/--seed-max-desert` values decrease the search sensitivity for distant targets, speed up the indexing speed,
+          <font color="#ff5733">This is the main parameter to adjust **search sensitivity**.</font>
+          Bigger `-D/--seed-max-desert` values decrease the search sensitivity, speed up the indexing speed,
           decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
     - **If the RAM is not sufficient**. Please:
         - **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
 - **Disk**
     - More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See [some examples](#index-size).
-        - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genomes bring higher compression rates.
+        - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genomes bring smaller compression rates.
     - SSD disks are preferred, while HDD disks are also fast enough.
 
 ## Algorithm
@@ -121,7 +122,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 1. **Generating *m* [LexicHash masks](https://doi.org/10.1093/bioinformatics/btad652)**.
 
     1. Generate *m* prefixes.
-        1. Generating all permutations of *p*-bp prefixes that can cover all possible k-mers, *p* is the biggest value for 4<sup>*p*</sup> <= *m* (desired number of masks), e.g., *p*=7 for 40,000 masks. (4<sup>*7*</sup> = 16384)
+        1. Generating all permutations of *p*-bp prefixes that can cover all possible k-mers, *p* is the biggest value for 4<sup>*p*</sup> <= *m* (desired number of masks), e.g., *p*=7 for 20,000 masks. (4<sup>*7*</sup> = 16384)
         3. Duplicating these prefixes to *m* prefixes.
     2. For each prefix,
         1. Randomly generating left *k*-*p* bases.
@@ -134,7 +135,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         2. Skipping genomes bigger than the value of `-g/--max-genome`.
         3. Concatenating all sequences, with intervals of 1000-bp N's.
         4. Capturing the most similar k-mer (in non-gap and non-interval regions) for each mask and recording the k-mer and its location(s) and strand information. Base N is treated as A.
-        5. Filling sketching deserts (genome regions longer than `--seed-max-desert` [default 200] without any captured k-mers/seeds).
+        5. Filling sketching deserts (genome regions longer than `--seed-max-desert` [default 100] without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.
            As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
             1. For a desert region (`start`, `end`), masking the extended region (`start-1000`, `end+1000`) with the masks.
@@ -195,7 +196,7 @@ alignment speed is almost not affected.
 | :--------------- | :------------------- | :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-M/--mask-file` | A file               | File with custom masks | File with custom masks, which could be exported from an existing index or newly generated by "lexicmap utils masks". This flag oversides `-k/--kmer`, `-m/--masks`, `-s/--rand-seed`, etc. |
 | **`-k/--kmer`**  | Max: 32, default: 31 | K-mer size             | ■ Bigger values improve the search specificity and do not increase the index size.                                                                                                         |
-| **`-m/--masks`** | Default: 20,000      | Number of masks        | ■  Bigger values improve the search sensitivity, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.                 |
+| **`-m/--masks`** | Default: 20,000      | Number of masks        | ■ Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.                 |
 
 
 {{< /tab>}}
@@ -268,82 +269,84 @@ We use a small dataset for demonstration.
         refs/GCF_000017205.1.fa.gz
         refs/GCF_000148585.2.fa.gz
 
-        lexicmap index -X files.txt -O demo.lmi
+        lexicmap index -S -X files.txt -O demo.lmi
 
     {{< expand "Click to show the log of a demo run." "..." >}}
 
         # here we set a small --batch-size 5
 
         $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-        16:22:49.745 [INFO] LexicMap v0.4.0 (14c2606)
-        16:22:49.745 [INFO]   https://github.com/shenwei356/LexicMap
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] checking input files ...
-        16:22:49.745 [INFO]   15 input file(s) given
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] --------------------- [ main parameters ] ---------------------
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] input and output:
-        16:22:49.745 [INFO]   input directory: refs/
-        16:22:49.745 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-        16:22:49.745 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-        16:22:49.745 [INFO]     *regular expressions for filtering out sequences: []
-        16:22:49.745 [INFO]   max genome size: 15000000
-        16:22:49.745 [INFO]   output directory: demo.lmi
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] mask generation:
-        16:22:49.745 [INFO]   k-mer size: 31
-        16:22:49.745 [INFO]   number of masks: 40000
-        16:22:49.745 [INFO]   rand seed: 1
-        16:22:49.745 [INFO]   prefix length for checking low-complexity in mask generation: 15
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] seed data:
-        16:22:49.745 [INFO]   maximum sketching desert length: 450
-        16:22:49.745 [INFO]   distance of k-mers to fill deserts: 150
-        16:22:49.745 [INFO]   seeds data chunks: 16
-        16:22:49.745 [INFO]   seeds data indexing partitions: 1024
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] general:
-        16:22:49.745 [INFO]   genome batch size: 5
-        16:22:49.745 [INFO]   batch merge threads: 8
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO]
-        16:22:49.745 [INFO] --------------------- [ generating masks ] ---------------------
-        16:22:50.180 [INFO]
-        16:22:50.180 [INFO] --------------------- [ building index ] ---------------------
-        16:22:50.328 [INFO]
-        16:22:50.328 [INFO]   ------------------------[ batch 1/3 ]------------------------
-        16:22:50.328 [INFO]   building index for batch 1 with 5 files...
+        09:44:36.593 [INFO] LexicMap v0.6.0 (9c48f56)
+        09:44:36.593 [INFO]   https://github.com/shenwei356/LexicMap
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] checking input files ...
+        09:44:36.593 [INFO]   scanning files from directory: refs/
+        09:44:36.593 [INFO]   15 input file(s) given
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] --------------------- [ main parameters ] ---------------------
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] input and output:
+        09:44:36.593 [INFO]   input directory: refs/
+        09:44:36.593 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+        09:44:36.593 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+        09:44:36.593 [INFO]     *regular expressions for filtering out sequences: []
+        09:44:36.593 [INFO]   min sequence length: 31
+        09:44:36.593 [INFO]   max genome size: 15000000
+        09:44:36.593 [INFO]   output directory: demo.lmi
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] mask generation:
+        09:44:36.593 [INFO]   k-mer size: 31
+        09:44:36.593 [INFO]   number of masks: 20000
+        09:44:36.593 [INFO]   rand seed: 1
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] seed data:
+        09:44:36.593 [INFO]   maximum sketching desert length: 100
+        09:44:36.593 [INFO]   distance of k-mers to fill deserts: 50
+        09:44:36.593 [INFO]   seeds data chunks: 16
+        09:44:36.593 [INFO]   seeds data indexing partitions: 4096
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] general:
+        09:44:36.593 [INFO]   genome batch size: 5
+        09:44:36.593 [INFO]   threads: 16
+        09:44:36.593 [INFO]   batch merge threads: 8
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] 
+        09:44:36.593 [INFO] --------------------- [ generating masks ] ---------------------
+        09:44:36.598 [INFO] 
+        09:44:36.598 [INFO] --------------------- [ building index ] ---------------------
+        09:44:36.778 [INFO] 
+        09:44:36.778 [INFO]   ------------------------[ batch 1/3 ]------------------------
+        09:44:36.778 [INFO]   building index for batch 1 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
-        16:22:51.192 [INFO]   writing seeds...
-        16:22:51.264 [INFO]   finished writing seeds in 71.756662ms
-        16:22:51.264 [INFO]   finished building index for batch 1 in: 935.464336ms
-        16:22:51.264 [INFO]
-        16:22:51.264 [INFO]   ------------------------[ batch 2/3 ]------------------------
-        16:22:51.264 [INFO]   building index for batch 2 with 5 files...
+        09:44:39.270 [INFO]   writing seeds...
+        09:44:39.354 [INFO]   finished writing seeds in 83.439262ms
+        09:44:39.354 [INFO]   finished building index for batch 1 in: 2.575661773s
+        09:44:39.354 [INFO] 
+        09:44:39.354 [INFO]   ------------------------[ batch 2/3 ]------------------------
+        09:44:39.354 [INFO]   building index for batch 2 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
-        16:22:53.126 [INFO]   writing seeds...
-        16:22:53.212 [INFO]   finished writing seeds in 86.823785ms
-        16:22:53.212 [INFO]   finished building index for batch 2 in: 1.948770015s
-        16:22:53.212 [INFO]
-        16:22:53.212 [INFO]   ------------------------[ batch 3/3 ]------------------------
-        16:22:53.212 [INFO]   building index for batch 3 with 5 files...
+        09:44:41.913 [INFO]   writing seeds...
+        09:44:41.975 [INFO]   finished writing seeds in 61.478898ms
+        09:44:41.975 [INFO]   finished building index for batch 2 in: 2.621098554s
+        09:44:41.975 [INFO] 
+        09:44:41.975 [INFO]   ------------------------[ batch 3/3 ]------------------------
+        09:44:41.975 [INFO]   building index for batch 3 with 5 files...
         processed files:  5 / 5 [======================================] ETA: 0s. done
-        16:22:54.350 [INFO]   writing seeds...
-        16:22:54.437 [INFO]   finished writing seeds in 87.058101ms
-        16:22:54.437 [INFO]   finished building index for batch 3 in: 1.224414126s
-        16:22:54.437 [INFO]
-        16:22:54.437 [INFO] merging 3 indexes...
-        16:22:54.437 [INFO]   [round 1]
-        16:22:54.437 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
-        16:22:54.613 [INFO]   [round 1] finished in 175.640164ms
-        16:22:54.613 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-        16:22:54.620 [INFO]
-        16:22:54.620 [INFO] finished building LexicMap index from 15 files with 40000 masks in 4.875616203s
-        16:22:54.620 [INFO] LexicMap index saved: demo.lmi
-        16:22:54.620 [INFO]
-        16:22:54.620 [INFO] elapsed time: 4.875654824s
-        16:22:54.620 [INFO]
+        09:44:44.421 [INFO]   writing seeds...
+        09:44:44.489 [INFO]   finished writing seeds in 67.328842ms
+        09:44:44.489 [INFO]   finished building index for batch 3 in: 2.513863923s
+        09:44:44.489 [INFO] 
+        09:44:44.489 [INFO] merging 3 indexes...
+        09:44:44.489 [INFO]   [round 1]
+        09:44:44.489 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
+        09:44:44.691 [INFO]   [round 1] finished in 201.445296ms
+        09:44:44.691 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+        09:44:44.708 [INFO] 
+        09:44:44.708 [INFO] finished building LexicMap index from 15 files with 20000 masks in 8.115840913s
+        09:44:44.708 [INFO] LexicMap index saved: demo.lmi
+        09:44:44.708 [INFO] 
+        09:44:44.708 [INFO] elapsed time: 8.115880865s
+        09:44:44.708 [INFO]
 
     {{< /expand >}}
 
@@ -366,7 +369,8 @@ The LexicMap index is a directory with multiple files.
     ... ... ...
     │   ├── chunk_015.bin        # the number of chunks is set by flag `-c/--chunks`, default: #cpus
     │   └── chunk_015.bin.idx
-    ├── genomes.map.bin          # mapping genome ID to batch number of genome number in the batch
+    ├── genomes.chunks.bin       # the list of genome chunks which belong to the same genome
+    ├── genomes.map.bin          # mapping genome ID to batch number and genome number in the batch
     ├── info.toml                # summary of the index
     └── masks.bin                # mask data
 
@@ -381,11 +385,11 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Demo data" >}}
 
     # 15 genomes
-    demo.lmi/: 82.16 MB (82,163,042)
+    demo.lmi/: 82.16 MB (82,163,079)
       68.43 MB      seeds
       13.57 MB      genomes
      160.03 kB      masks.bin
-         563 B      info.toml
+         600 B      info.toml
          375 B      genomes.map.bin
            0 B      genomes.chunks.bin
 
@@ -449,7 +453,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< /tabs >}}
 
 - Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize -k`, **base: 1000**).
-- Index building parameters: `-k 31 -m 40000`. Genome batch size: `-b 5000` for GTDB datasets, `-b 25000` for others.
+- Index building parameters: `-k 31 -m 20000 -D 100 -d 50`. Genome batch size: `-b 5000` for GTDB datasets, `-b 25000` for others.
 
 
 ## Explore the index
