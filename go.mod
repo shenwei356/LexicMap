@@ -1,6 +1,6 @@
 module github.com/shenwei356/LexicMap
 
-go 1.23
+go 1.24
 
 // replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
 // replace github.com/shenwei356/wfa => /home/shenwei/go/src/github.com/shenwei356/wfa/
@@ -42,7 +42,7 @@ require (
 	github.com/go-pdf/fpdf v0.8.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.17.3 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect

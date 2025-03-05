@@ -71,8 +71,10 @@ type IndexSearchingOptions struct {
 	// alignment
 	ExtendLength  int // the length of extra sequence on the flanking of seeds.
 	ExtendLength2 int // the length of extra sequence on the flanking of pseudo-alignment region.
-	// seq similarity
+
+	// alignment filtering
 	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
+	MaxEvalue                        float64
 
 	// WFA alignment
 	MoreAccurateAlignment bool
@@ -118,6 +120,7 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	ExtendLength:                     2000,
 	ExtendLength2:                    50,
 	MinQueryAlignedFractionInAGenome: 70,
+	MaxEvalue:                        10,
 }
 
 // Index creates a LexicMap index from a path
@@ -1336,6 +1339,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
 			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
 			minPIdent := idx.seqCompareOption.MinIdentity
+			maxEvalue := idx.opt.MaxEvalue
 			extLen := idx.opt.ExtendLength
 			extLen2 := idx.opt.ExtendLength2
 			contigInterval := idx.contigInterval
@@ -1681,6 +1685,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 										// score and e-value
 										c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+										if c.Evalue > maxEvalue {
+											poolChain2.Put(c)
+											(*r2.Chains)[i] = nil
+											continue
+										}
 
 										// update sequence regions
 										c.QBegin -= _s1
@@ -1917,6 +1926,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 								// score and e-value
 								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+								if c.Evalue > maxEvalue {
+									poolChain2.Put(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
 
 								// update sequence regions
 								c.QBegin -= _s1

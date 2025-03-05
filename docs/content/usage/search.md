@@ -51,8 +51,8 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. evalue,   E value.
-    19. bitscore, bit score.
+    18. evalue,   Expect value.
+    19. bitscore, Bit score.
     20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
@@ -80,6 +80,7 @@ Flags:
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
+  -e, --max-evalue float               ► Maximum evalue of a HSP segment. (default 10)
       --max-open-files int             ► Maximum opened files. It mainly affects candidate subsequence
                                        extraction. Increase this value if you have hundreds of genome
                                        batches or have multiple queries, and do not forgot to set a

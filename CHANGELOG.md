@@ -18,7 +18,7 @@ However, indexes created by this version is not compatible with previous version
       We also [recommend controlling the number of batches for better performance](https://bioinf.shenwei.me/LexicMap/tutorials/index/#notes-for-indexing-with-large-datasets).
     - **Fix seed desert filling near gap regions**.
 - `lexicmap search`:
-    - **Add two columns: evalue and bitscore**.
+    - **Add two columns: evalue and bitscore**, and a new option `-e/--max-evalue`.
     - **Improve pseudoalignment to produce longer alignment regions**.
     - Reduce memory usage.
 - `lexicmap utils seed-pos`:

@@ -315,8 +315,8 @@ Tab-delimited format with 19+ columns, with 1-based positions.
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. evalue,   E value.
-    19. bitscore, bit score.
+    18. evalue,   Expect value.
+    19. bitscore, Bit score.
     20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)

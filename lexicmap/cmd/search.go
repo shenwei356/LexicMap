@@ -85,8 +85,8 @@ Output format:
     15. send,     End of alignment in subject sequence.
     16. sstr,     Subject strand.
     17. slen,     Subject sequence length.
-    18. evalue,   E value.
-    19. bitscore, bit score.
+    18. evalue,   Expect value.
+    19. bitscore, Bit score.
     20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
     22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
@@ -186,6 +186,7 @@ Result ordering:
 		if minIdent < 60 || minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [60, 100]", minIdent))
 		}
+		maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
 
 		// } else if minIdent < 1 {
 		// 	log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
@@ -273,6 +274,7 @@ Result ordering:
 			ExtendLength2: 50,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
+			MaxEvalue:                        maxEvalue,
 
 			MoreAccurateAlignment: !onlyPseudoAlign,
 
@@ -593,6 +595,9 @@ func init() {
 
 	mapCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
 		formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
+
+	mapCmd.Flags().Float64P("max-evalue", "e", 10,
+		formatFlagUsage(`Maximum evalue of a HSP segment.`))
 
 	mapCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information.`))
