@@ -11,7 +11,6 @@ weight: 10
 
 LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences (>100 bp)** against up to **millions of prokaryotic genomes**.
 
-Documents: https://bioinf.shenwei.me/LexicMap
 
 For the latest features and improvements, please download the [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10).
 
@@ -59,19 +58,24 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 **Results**:
 
 1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million prokaryotic assemblies** respectively).
-1. For searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
+1. When searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
     
-    **With LexicMap v0.4.0** (48 CPUs),
+    **With LexicMap v0.6.0** (48 CPUs),
 
-    | Query                | Genome hits |       Time |     RAM |
-    | :------------------- | ----------: | ---------: | ------: |
-    | A 1.3-kb marker gene |      37,164 |       36 s |  4.1 GB |
-    | A 1.5-kb 16S rRNA    |   1,949,496 |  10 m 41 s | 14.1 GB |
-    | A 52.8-kb plasmid    |     544,619 |  19 m 20 s | 19.3 GB |
-    | 1003 AMR genes       |  25,702,419 | 187 m 40 s | 55.4 GB |
+    |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM   |
+    |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|-----:|
+    |A 1.3-kb marker gene|41,718     |11,746                           |112                                |29,860                          |1m:30s     |4.1GB |
+    |A 1.5-kb 16S rRNA   |1,955,164  |245,803                          |500,504                            |1,208,857                       |13m:59s    |12.7GB|
+    |A 52.8-kb plasmid   |561,731    |96                               |15,357                             |546,278                         |21m:54s    |18.3GB|
+    |1003 AMR genes      |30,938,889 |7,617,980                        |4,807,660                          |18,513,249                      |11h:31m:22s|24.3GB|
 
-
-More documents: https://bioinf.shenwei.me/LexicMap.
+    Notes:
+    1. Default paramters are used, for returning all possible matches.
+    1. Only the best alignment of a genome is used to evaluate alignment similarity:
+        - high-similarity: (a) qcov >= 90% (genes) or 70% (plasmids), (b) pident>=90%.
+        - medium-similarity: (a) not belong to high-similarity, (b) qcov >= 50% (genes) or 30% (plasmids), (c) pident>=80%.
+        - low-similarity: left.
+    1. The search time varies in different computing environments and mainly depends on the I/O speed.
 
 ## Quick start
 
@@ -182,7 +186,7 @@ Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [
 
 ## Performance
 
-See [performance](https://bioinf.shenwei.me/LexicMap/introduction/#performance).
+See the paper.
 
 ## Installation
 

@@ -16,7 +16,7 @@ weight: 10
     - For short queries like genes or long reads, returning top N hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-               --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 1000
+               --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 10000
 
     - For longer queries like plasmids, returning all hits.
 

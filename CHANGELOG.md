@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.6.0 - 2025-xx-xx
+### v0.6.0 - 2025-03-12
 
 This version is compatible with indexes created by previous versions,
 but rebuilding the index is recommended for more accurate results on short queries (<500bp).
@@ -14,11 +14,11 @@ However, indexes created by this version is not compatible with previous version
            with a big proportion of seed distance being between 0-50 bp.
         - `-D/--seed-max-desert`: 200 -> 100. This provides a smaller seed window guarantee.
     - **Reduce index size by using 3 bytes rather than 4 for saving seed data when the number of batches is <= 512**,
-      which requires only 9 (17-8) bits to store the batch index. 
+      which requires only 9 (17 minus 8) bits to store the batch index. 
       We also [recommend controlling the number of batches for better performance](https://bioinf.shenwei.me/LexicMap/tutorials/index/#notes-for-indexing-with-large-datasets).
     - **Fix seed desert filling near gap regions**.
 - `lexicmap search`:
-    - **Add two columns: evalue and bitscore**, and a new option `-e/--max-evalue`.
+    - **Add two extra columns: `evalue` and `bitscore`**, and a new option `-e/--max-evalue`.
     - **Improve pseudoalignment to produce longer alignment regions**.
     - Reduce memory usage.
 - `lexicmap utils seed-pos`:
