@@ -23,7 +23,18 @@ Preprint:
 
 ## Table of contents
 
-{{< toc format=html >}}
+- [Features](#features)
+- [Introduction](#introduction)
+- [Quick start](#quick-start)
+- [Performance](#performance)
+- [Installation](#installation)
+- [Algorithm overview](#algorithm-overview)
+- [Citation](#citation)
+- [Limitations](#limitations)
+- [Terminology differences](#terminology-differences)
+- [Support](#support)
+- [License](#license)
+- [Related projects](#related-projects)
 
 ## Features
 
@@ -209,6 +220,11 @@ Or install with `conda`:
 Wei Shen and Zamin Iqbal.
 (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
 bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+
+## Limitations
+
+- The queries need to be longer than 100 bp.
+- LexicMap is slow for batch searching with more than hundreds of queries. While, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on SSD.
 
 ## Terminology differences
 

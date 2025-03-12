@@ -17,6 +17,21 @@ Preprint:
 > (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
 > bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
 
+## Table of contents
+
+- [Features](#features)
+- [Introduction](#introduction)
+- [Quick start](#quick-start)
+- [Performance](#performance)
+- [Installation](#installation)
+- [Algorithm overview](#algorithm-overview)
+- [Citation](#citation)
+- [Limitations](#limitations)
+- [Terminology differences](#terminology-differences)
+- [Support](#support)
+- [License](#license)
+- [Related projects](#related-projects)
+
 ## Features
 
 1. **LexicMap is scalable to up to millions of prokaryotic genomes**.
@@ -100,23 +115,23 @@ Sample output (queries are a few Nanopore Q20 reads). See [output format details
 
 ```plain
 query                qlen   hits   sgenome                   sseqid              qcovGnm   hsp   qcovHSP   alenHSP   pident   gaps   qstart   qend   sstart    send      sstr   slen      evalue      bitscore
-------------------   ----   ----   -----------------------   -----------------   -------   ---   -------   -------   ------   ----   ------   ----   -------   -------   ----   -------   ---------   --------
-ERR5396170.1000004   190    1      GCF_000227465.1_genomic   NC_016047.1         84.211    1     84.211    165       89.091   5      14       173    4189372   4189536   -      4207222   1.93e-63    253     
+------------------ ---- ---- ----------------------- ----------------- ------- --- ------- ------- ------ ---- ------ ---- ------- ------- ---- ------- --------- --------
+ERR5396170.1000004   190    1      GCF_000227465.1_genomic   NC_016047.1         84.211    1     84.211    165       89.091   5      14       173    4189372   4189536   -    4207222   1.93e-63    253     
 ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    1     99.623    801       97.628   9      4        796    1138907   1139706   +      1887974   0.00e+00    1431    
 ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    2     99.623    801       97.628   9      4        796    32607     33406     +      1887974   0.00e+00    1431    
-ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    3     99.623    801       97.628   9      4        796    134468    135267    -      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    3     99.623    801       97.628   9      4        796    134468    135267    -    1887974   0.00e+00    1431    
 ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    4     99.623    801       97.503   9      4        796    1768896   1769695   +      1887974   0.00e+00    1427    
-ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    5     99.623    801       97.378   9      4        796    242012    242811    -      1887974   0.00e+00    1422    
-ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    6     99.623    801       96.879   12     4        796    154380    155176    -      1887974   0.00e+00    1431    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    5     99.623    801       97.378   9      4        796    242012    242811    -    1887974   0.00e+00    1422    
+ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    6     99.623    801       96.879   12     4        796    154380    155176    -    1887974   0.00e+00    1431    
 ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    7     57.915    469       95.736   9      4        464    1280313   1280780   +      1887974   3.71e-236   829     
 ERR5396170.1000006   796    3      GCF_013394085.1_genomic   NZ_CP040910.1       99.623    8     42.839    341       99.120   0      456      796    1282477   1282817   +      1887974   6.91e-168   601     
-ERR5396170.1000006   796    3      GCF_009663775.1_genomic   NZ_RDBR01000008.1   99.623    1     99.623    801       93.383   9      4        796    21391     22190     -      52610     0.00e+00    1278    
-ERR5396170.1000006   796    3      GCF_003344625.1_genomic   NZ_QPKJ02000188.1   97.362    1     87.437    700       98.143   5      22       717    1         699       -      826       0.00e+00    1249    
+ERR5396170.1000006   796    3      GCF_009663775.1_genomic   NZ_RDBR01000008.1   99.623    1     99.623    801       93.383   9      4        796    21391     22190     -    52610     0.00e+00    1278    
+ERR5396170.1000006   796    3      GCF_003344625.1_genomic   NZ_QPKJ02000188.1   97.362    1     87.437    700       98.143   5      22       717    1         699       -    826       0.00e+00    1249    
 ERR5396170.1000006   796    3      GCF_003344625.1_genomic   NZ_QPKJ02000423.1   97.362    2     27.889    222       99.550   0      575      796    1         222       +      510       3.47e-106   396     
 ERR5396170.1000000   698    2      GCF_001457615.1_genomic   NZ_LN831024.1       92.264    1     92.264    656       96.341   13     53       696    4452083   4452737   +      6316979   0.00e+00    1169    
-ERR5396170.1000000   698    2      GCF_000949385.2_genomic   NZ_JYKO02000001.1   91.977    1     91.977    654       78.135   13     55       696    5638788   5639440   -      5912440   2.68e-176   630     
-ERR5396170.1000012   848    2      GCF_013394085.1_genomic   NZ_CP040910.1       98.585    1     98.585    841       96.671   10     13       848    190308    191143    -      1887974   0.00e+00    1472    
-ERR5396170.1000012   848    2      GCF_001293735.1_genomic   NZ_BCAH01000003.1   90.212    1     90.212    782       77.110   23     51       815    8230      9005      -      40321     3.19e-214   756
+ERR5396170.1000000   698    2      GCF_000949385.2_genomic   NZ_JYKO02000001.1   91.977    1     91.977    654       78.135   13     55       696    5638788   5639440   -    5912440   2.68e-176   630     
+ERR5396170.1000012   848    2      GCF_013394085.1_genomic   NZ_CP040910.1       98.585    1     98.585    841       96.671   10     13       848    190308    191143    -    1887974   0.00e+00    1472    
+ERR5396170.1000012   848    2      GCF_001293735.1_genomic   NZ_BCAH01000003.1   90.212    1     90.212    782       77.110   23     51       815    8230      9005      -    40321     3.19e-214   756
 ```
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
@@ -204,6 +219,11 @@ Or install with `conda`:
 Wei Shen and Zamin Iqbal.
 (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
 bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+
+## Limitations
+
+- The queries need to be longer than 100 bp.
+- LexicMap is slow for batch searching with more than hundreds of queries. While, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on SSD.
 
 ## Terminology differences
 
