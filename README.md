@@ -223,7 +223,7 @@ bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/202
 ## Limitations
 
 - The queries need to be longer than 100 bp.
-- LexicMap is slow for batch searching with more than hundreds of queries. While, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on SSD.
+- LexicMap is slow for batch searching with more than hundreds of queries. While, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
 
 ## Terminology differences
 
