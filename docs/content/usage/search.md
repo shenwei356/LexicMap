@@ -9,7 +9,7 @@ Search sequences against an index
 
 Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
-  2. For multiple queries, the order of queries might be different from the input.
+  2. For multiple queries, the order of queries in output might be different from the input.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format
@@ -24,7 +24,7 @@ Alignment result relationship:
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── HSP Cluster (a cluster of neighboring HSPs)
+          ├── HSP cluster (a cluster of neighboring HSPs)
               ├── High-Scoring segment Pair (HSP)
 
   Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.

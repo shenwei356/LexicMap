@@ -286,7 +286,7 @@ Here are some tips to improve the search speed.
     Query
     ├── Subject genome
         ├── Subject sequence
-            ├── HSP Cluster (a cluster of neighboring HSPs)
+            ├── HSP cluster (a cluster of neighboring HSPs)
                 ├── High-Scoring segment Pair (HSP)
 
 Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
