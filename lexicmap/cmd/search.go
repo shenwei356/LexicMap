@@ -95,7 +95,7 @@ Output format:
     24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
-  For a HSP cluster, SimilarityScore = aligned_bases * weighted_pident.
+  For a HSP cluster, SimilarityScore = max(bitscore*pident)
   1. Within each HSP cluster, HSPs are sorted by sstart.
   2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
   3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.

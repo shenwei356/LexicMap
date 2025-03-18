@@ -1649,8 +1649,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								// j := 0
 								var start, end int
 								var _s1, _e1, _s2, _e2 int // extend length
-								var _sum_chain_alen int
-								var _sum_pident_m_hsp_len float64
+								var similarityScore, maxSimilarityScore float64
 								for i, c := range *r2.Chains {
 									if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 										continue
@@ -1758,11 +1757,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										wfa.RecycleAlignmentResult(cigar)
 									}
 
-									// if !hasResult {
-									// 	j = i
-									// }
-									_sum_chain_alen += c.AlignedLength
-									_sum_pident_m_hsp_len += float64(c.AlignedLength) * c.PIdent
+									similarityScore = float64(c.BitScore) * c.PIdent
+									if similarityScore > maxSimilarityScore {
+										maxSimilarityScore = similarityScore
+									}
 									hasResult = true
 								}
 
@@ -1773,7 +1771,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									sd.NSeeds = nSeeds
 									sd.Similarity = r2
 									// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
-									sd.SimilarityScore = float64(r2.AlignedBases) * _sum_pident_m_hsp_len / float64(_sum_chain_alen)
+									sd.SimilarityScore = maxSimilarityScore
 									sd.SeqID = sd.SeqID[:0]
 									// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 									sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
@@ -1875,8 +1873,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						// j := 0
 						var start, end int
 						var _s1, _e1, _s2, _e2 int // extend length
-						var _sum_chain_alen int
-						var _sum_pident_m_hsp_len float64
+						var similarityScore, maxSimilarityScore float64
 						for i, c := range *r2.Chains {
 							if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 								continue
@@ -1986,11 +1983,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								wfa.RecycleAlignmentResult(cigar)
 							}
 
-							// if !hasResult {
-							// 	j = i
-							// }
-							_sum_chain_alen += c.AlignedLength
-							_sum_pident_m_hsp_len += float64(c.AlignedLength) * c.PIdent
+							similarityScore = float64(c.BitScore) * c.PIdent
+							if similarityScore > maxSimilarityScore {
+								maxSimilarityScore = similarityScore
+							}
 							hasResult = true
 						}
 
@@ -2000,7 +1996,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							sd.NSeeds = nSeeds
 							sd.Similarity = r2
 							// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
-							sd.SimilarityScore = float64(r2.AlignedBases) * _sum_pident_m_hsp_len / float64(_sum_chain_alen)
+							sd.SimilarityScore = maxSimilarityScore
 							sd.SeqID = sd.SeqID[:0]
 							// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
