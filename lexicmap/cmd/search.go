@@ -545,10 +545,10 @@ func init() {
 	// seed searching
 
 	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
-		formatFlagUsage(`Minimum (prefix) length of matched seeds.`))
+		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors).`))
 
 	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
-		formatFlagUsage(`Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.`))
+		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors) if there's only one pair of seeds matched.`))
 
 	// mapCmd.Flags().IntP("seed-min-matches", "m", 20,
 	// 	formatFlagUsage(`Minimum matched bases in the only one pair of seeds.`))
@@ -557,15 +557,15 @@ func init() {
 	// 	formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
 
 	mapCmd.Flags().IntP("seed-max-gap", "", 200,
-		formatFlagUsage(`Max gap in seed chaining.`))
+		formatFlagUsage(`Minimum gap in seed chaining.`))
 	mapCmd.Flags().IntP("seed-max-dist", "", 1000,
-		formatFlagUsage(`Max distance between seeds in seed chaining. It should be <= contig interval length in database.`))
+		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
 		formatFlagUsage(`Keep top N genome matches for a query (0 for all) in chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 10.`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
-		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
+		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
 
 	// pseudo alignment
 	mapCmd.Flags().IntP("align-ext-len", "", 1000,
@@ -576,7 +576,7 @@ func init() {
 	// mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
 	// 	formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
 	mapCmd.Flags().IntP("align-band", "", 100,
-		formatFlagUsage(`Band size in backtracking the score matrix (pseduo alignment phase).`))
+		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
 	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 

@@ -61,7 +61,7 @@ Output format:
     24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
-  For a HSP cluster, SimilarityScore = aligned_bases * weighted_pident.
+  For a HSP cluster, SimilarityScore = max(bitscore*pident)
   1. Within each HSP cluster, HSPs are sorted by sstart.
   2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
   3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
@@ -70,7 +70,7 @@ Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
 
 Flags:
-      --align-band int                 ► Band size in backtracking the score matrix (pseduo alignment
+      --align-band int                 ► Band size in backtracking the score matrix (pseudo alignment
                                        phase). (default 100)
       --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
                                        extracting query and target sequences for alignment. It should be
@@ -83,7 +83,8 @@ Flags:
       --debug                          ► Print debug information.
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
-  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster search.
+  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster seed
+                                       matching. It will consume a lot of RAM.
   -e, --max-evalue float               ► Maximum evalue of a HSP segment. (default 10)
       --max-open-files int             ► Maximum opened files. It mainly affects candidate subsequence
                                        extraction. Increase this value if you have hundreds of genome
@@ -95,12 +96,13 @@ Flags:
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --seed-max-dist int              ► Max distance between seeds in seed chaining. It should be <=
-                                       contig interval length in database. (default 1000)
-      --seed-max-gap int               ► Max gap in seed chaining. (default 200)
-  -p, --seed-min-prefix int            ► Minimum (prefix) length of matched seeds. (default 15)
-  -P, --seed-min-single-prefix int     ► Minimum (prefix) length of matched seeds if there's only one
-                                       pair of seeds matched. (default 17)
+      --seed-max-dist int              ► Minimum distance between seeds in seed chaining. It should be
+                                       <= contig interval length in database. (default 1000)
+      --seed-max-gap int               ► Minimum gap in seed chaining. (default 200)
+  -p, --seed-min-prefix int            ► Minimum (prefix/suffix) length of matched seeds (anchors).
+                                       (default 15)
+  -P, --seed-min-single-prefix int     ► Minimum (prefix/suffix) length of matched seeds (anchors) if
+                                       there's only one pair of seeds matched. (default 17)
   -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
                                        phase. Value 1 is not recommended as the best chaining result
                                        does not always bring the best alignment, so it better be >= 10.
