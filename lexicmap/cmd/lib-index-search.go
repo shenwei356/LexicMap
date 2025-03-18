@@ -76,9 +76,6 @@ type IndexSearchingOptions struct {
 	MinQueryAlignedFractionInAGenome float64 // minimum query aligned fraction in the target genome
 	MaxEvalue                        float64
 
-	// WFA alignment
-	MoreAccurateAlignment bool
-
 	// Output
 	OutputSeq bool
 
@@ -1344,7 +1341,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			extLen2 := idx.opt.ExtendLength2
 			contigInterval := idx.contigInterval
 			outSeq := idx.opt.OutputSeq
-			accurateAlign := idx.opt.MoreAccurateAlignment
 
 			algn := wfa.New(wfa.DefaultPenalties, alignOption)
 			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
@@ -1650,83 +1646,80 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								// })
 
 								hasResult := false
-								j := 0
+								// j := 0
 								var start, end int
 								var _s1, _e1, _s2, _e2 int // extend length
+								var _sum_chain_alen int
+								var _sum_pident_m_hsp_len float64
 								for i, c := range *r2.Chains {
-									if accurateAlign {
-										if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
-											continue
-										}
+									if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+										continue
+									}
 
-										if rc {
-											start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
-										} else {
-											start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
-
-										}
-										if start >= end {
-											// fmt.Println(string(*tSeq.SeqIDs[0]))
-											continue
-										}
-
-										// _qseq = s[c.QBegin : c.QEnd+1]
-										// _tseq = tSeq.Seq[start:end]
-										_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
-										if err != nil {
-											checkError(fmt.Errorf("fail to extend aligned region"))
-										}
-
-										// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-										cigar, err = algn.Align(_qseq, _tseq)
-										if err != nil {
-											checkError(fmt.Errorf("fail to align sequence"))
-										}
-
-										// score and e-value
-										c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
-										if c.Evalue > maxEvalue {
-											poolChain2.Put(c)
-											(*r2.Chains)[i] = nil
-											continue
-										}
-
-										// update sequence regions
-										c.QBegin -= _s1
-										c.QEnd += _e1
-
-										c.QBegin = c.QBegin + cigar.QBegin - 1
-										c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
-										if rc {
-											c.TBegin -= _e2
-											c.TEnd += _s2
-
-											c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
-											c.TEnd = c.TEnd - cigar.TBegin - 1
-										} else {
-											c.TBegin -= _s2
-											c.TEnd += _e2
-
-											c.TBegin = c.TBegin + cigar.TBegin - 1
-											c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
-										}
-
-										c.AlignedBasesQ = c.QEnd - c.QBegin + 1
-										c.AlignedLength = int(cigar.AlignLen)
-										c.MatchedBases = int(cigar.Matches)
-										c.Gaps = int(cigar.Gaps)
-										c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
-										if c.AlignedFraction > 100 {
-											c.AlignedFraction = 100
-										}
-										c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
-
-										if !outSeq {
-											wfa.RecycleAlignmentResult(cigar)
-										}
+									if rc {
+										start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
 									} else {
-										c.AlignedLength = c.AlignedBasesQ
-										c.Gaps = -1
+										start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+
+									}
+									if start >= end {
+										// fmt.Println(string(*tSeq.SeqIDs[0]))
+										continue
+									}
+
+									// _qseq = s[c.QBegin : c.QEnd+1]
+									// _tseq = tSeq.Seq[start:end]
+									_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
+									if err != nil {
+										checkError(fmt.Errorf("fail to extend aligned region"))
+									}
+
+									// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
+									cigar, err = algn.Align(_qseq, _tseq)
+									if err != nil {
+										checkError(fmt.Errorf("fail to align sequence"))
+									}
+
+									// score and e-value
+									c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+									if c.Evalue > maxEvalue {
+										poolChain2.Put(c)
+										(*r2.Chains)[i] = nil
+										continue
+									}
+
+									// update sequence regions
+									c.QBegin -= _s1
+									c.QEnd += _e1
+
+									c.QBegin = c.QBegin + cigar.QBegin - 1
+									c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+									if rc {
+										c.TBegin -= _e2
+										c.TEnd += _s2
+
+										c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+										c.TEnd = c.TEnd - cigar.TBegin - 1
+									} else {
+										c.TBegin -= _s2
+										c.TEnd += _e2
+
+										c.TBegin = c.TBegin + cigar.TBegin - 1
+										c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+									}
+
+									c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+									c.AlignedLength = int(cigar.AlignLen)
+									c.MatchedBases = int(cigar.Matches)
+									c.Gaps = int(cigar.Gaps)
+									c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+									if c.AlignedFraction > 100 {
+										c.AlignedFraction = 100
+									}
+									c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+									if !outSeq {
+										wfa.RecycleAlignmentResult(cigar)
 									}
 
 									if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
@@ -1736,52 +1729,40 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									}
 
 									if outSeq {
-										if accurateAlign {
-											if c.CIGAR == nil {
-												c.CIGAR = make([]byte, 0, 1024)
-												c.QSeq = make([]byte, 0, cigar.AlignLen)
-												c.TSeq = make([]byte, 0, cigar.AlignLen)
-												c.Alignment = make([]byte, 0, cigar.AlignLen)
-											} else {
-												c.CIGAR = c.CIGAR[:0]
-												c.QSeq = c.QSeq[:0]
-												c.TSeq = c.TSeq[:0]
-												c.Alignment = c.Alignment[:0]
-											}
-
-											for _, op = range cigar.Ops {
-												// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-												c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
-												// c.CIGAR = append(c.CIGAR, op.Op)
-												c.CIGAR = append(c.CIGAR, byte(op>>32))
-											}
-
-											Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
-
-											c.QSeq = append(c.QSeq, *Q...)
-											c.TSeq = append(c.TSeq, *T...)
-											c.Alignment = append(c.Alignment, *A...)
-
-											wfa.RecycleAlignmentText(Q, A, T)
-											wfa.RecycleAlignmentResult(cigar)
+										if c.CIGAR == nil {
+											c.CIGAR = make([]byte, 0, 1024)
+											c.QSeq = make([]byte, 0, cigar.AlignLen)
+											c.TSeq = make([]byte, 0, cigar.AlignLen)
+											c.Alignment = make([]byte, 0, cigar.AlignLen)
 										} else {
-											if c.TSeq == nil {
-												c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
-											} else {
-												c.TSeq = c.TSeq[:0]
-											}
-											if rc {
-												_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
-											} else {
-												_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
-											}
-											c.TSeq = append(c.TSeq, _tseq...)
+											c.CIGAR = c.CIGAR[:0]
+											c.QSeq = c.QSeq[:0]
+											c.TSeq = c.TSeq[:0]
+											c.Alignment = c.Alignment[:0]
 										}
+
+										for _, op = range cigar.Ops {
+											// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+											c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+											// c.CIGAR = append(c.CIGAR, op.Op)
+											c.CIGAR = append(c.CIGAR, byte(op>>32))
+										}
+
+										Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
+
+										c.QSeq = append(c.QSeq, *Q...)
+										c.TSeq = append(c.TSeq, *T...)
+										c.Alignment = append(c.Alignment, *A...)
+
+										wfa.RecycleAlignmentText(Q, A, T)
+										wfa.RecycleAlignmentResult(cigar)
 									}
 
-									if !hasResult {
-										j = i
-									}
+									// if !hasResult {
+									// 	j = i
+									// }
+									_sum_chain_alen += c.AlignedLength
+									_sum_pident_m_hsp_len += float64(c.AlignedLength) * c.PIdent
 									hasResult = true
 								}
 
@@ -1791,7 +1772,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									// sd.Chain = (*r.Chains)[i]
 									sd.NSeeds = nSeeds
 									sd.Similarity = r2
-									sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
+									// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+									sd.SimilarityScore = float64(r2.AlignedBases) * _sum_pident_m_hsp_len / float64(_sum_chain_alen)
 									sd.SeqID = sd.SeqID[:0]
 									// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 									sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
@@ -1890,86 +1872,82 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						// })
 
 						hasResult := false
-						j := 0
+						// j := 0
 						var start, end int
 						var _s1, _e1, _s2, _e2 int // extend length
+						var _sum_chain_alen int
+						var _sum_pident_m_hsp_len float64
 						for i, c := range *r2.Chains {
+							if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+								continue
+							}
 
-							if accurateAlign {
-								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
-									continue
-								}
-
-								// Attention, it's different from previous code
-								if rc {
-									start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
-								} else {
-									start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
-								}
-								if start >= end {
-									// fmt.Println(string(*tSeq.SeqIDs[0]))
-									continue
-								}
-
-								// _qseq = s[c.QBegin : c.QEnd+1]
-								// _tseq = tSeq.Seq[start:end]
-								_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
-								if err != nil {
-									checkError(fmt.Errorf("fail to extend aligned region"))
-								}
-
-								// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-								cigar, err = algn.Align(_qseq, _tseq)
-								if err != nil {
-									checkError(fmt.Errorf("fail to align sequence"))
-								}
-
-								// score and e-value
-								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
-								if c.Evalue > maxEvalue {
-									poolChain2.Put(c)
-									(*r2.Chains)[i] = nil
-									continue
-								}
-
-								// update sequence regions
-								c.QBegin -= _s1
-								c.QEnd += _e1
-
-								c.QBegin = c.QBegin + (cigar.QBegin - 1)
-								c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
-								if rc {
-									c.TBegin -= _e2
-									c.TEnd += _s2
-
-									c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
-									c.TEnd = c.TEnd - (cigar.TBegin - 1)
-								} else {
-									c.TBegin -= _s2
-									c.TEnd += _e2
-
-									c.TBegin = c.TBegin + (cigar.TBegin - 1)
-									c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
-								}
-
-								// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
-
-								c.AlignedBasesQ = c.QEnd - c.QBegin + 1
-								c.AlignedLength = int(cigar.AlignLen)
-								c.MatchedBases = int(cigar.Matches)
-								c.Gaps = int(cigar.Gaps)
-								c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
-								if c.AlignedFraction > 100 {
-									c.AlignedFraction = 100
-								}
-								c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
-
-								if !outSeq {
-									wfa.RecycleAlignmentResult(cigar)
-								}
+							// Attention, it's different from previous code
+							if rc {
+								start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
 							} else {
-								c.AlignedLength = c.AlignedBasesQ
-								c.Gaps = -1
+								start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+							}
+							if start >= end {
+								// fmt.Println(string(*tSeq.SeqIDs[0]))
+								continue
+							}
+
+							// _qseq = s[c.QBegin : c.QEnd+1]
+							// _tseq = tSeq.Seq[start:end]
+							_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
+							if err != nil {
+								checkError(fmt.Errorf("fail to extend aligned region"))
+							}
+
+							// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
+							cigar, err = algn.Align(_qseq, _tseq)
+							if err != nil {
+								checkError(fmt.Errorf("fail to align sequence"))
+							}
+
+							// score and e-value
+							c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+							if c.Evalue > maxEvalue {
+								poolChain2.Put(c)
+								(*r2.Chains)[i] = nil
+								continue
+							}
+
+							// update sequence regions
+							c.QBegin -= _s1
+							c.QEnd += _e1
+
+							c.QBegin = c.QBegin + (cigar.QBegin - 1)
+							c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+							if rc {
+								c.TBegin -= _e2
+								c.TEnd += _s2
+
+								c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+								c.TEnd = c.TEnd - (cigar.TBegin - 1)
+							} else {
+								c.TBegin -= _s2
+								c.TEnd += _e2
+
+								c.TBegin = c.TBegin + (cigar.TBegin - 1)
+								c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+							}
+
+							// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+
+							c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+							c.AlignedLength = int(cigar.AlignLen)
+							c.MatchedBases = int(cigar.Matches)
+							c.Gaps = int(cigar.Gaps)
+							c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+							if c.AlignedFraction > 100 {
+								c.AlignedFraction = 100
+							}
+							c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+							if !outSeq {
+								wfa.RecycleAlignmentResult(cigar)
 							}
 
 							if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
@@ -1979,56 +1957,40 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							}
 
 							if outSeq {
-								if accurateAlign {
-									if c.CIGAR == nil {
-										c.CIGAR = make([]byte, 0, 1024)
-										c.QSeq = make([]byte, 0, cigar.AlignLen)
-										c.TSeq = make([]byte, 0, cigar.AlignLen)
-										c.Alignment = make([]byte, 0, cigar.AlignLen)
-									} else {
-										c.CIGAR = c.CIGAR[:0]
-										c.QSeq = c.QSeq[:0]
-										c.TSeq = c.TSeq[:0]
-										c.Alignment = c.Alignment[:0]
-									}
-
-									for _, op = range cigar.Ops {
-										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
-										// c.CIGAR = append(c.CIGAR, op.Op)
-										c.CIGAR = append(c.CIGAR, byte(op>>32))
-									}
-
-									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
-
-									c.QSeq = append(c.QSeq, *Q...)
-									c.TSeq = append(c.TSeq, *T...)
-									c.Alignment = append(c.Alignment, *A...)
-
-									wfa.RecycleAlignmentText(Q, A, T)
-									wfa.RecycleAlignmentResult(cigar)
+								if c.CIGAR == nil {
+									c.CIGAR = make([]byte, 0, 1024)
+									c.QSeq = make([]byte, 0, cigar.AlignLen)
+									c.TSeq = make([]byte, 0, cigar.AlignLen)
+									c.Alignment = make([]byte, 0, cigar.AlignLen)
 								} else {
-									if c.TSeq == nil {
-										c.TSeq = make([]byte, 0, c.TEnd-c.TBegin+1)
-									} else {
-										c.TSeq = c.TSeq[:0]
-									}
-									if !accurateAlign {
-										if rc {
-											// Attention, it's different from previous code
-											_tseq = tSeq.Seq[tEnd-c.TEnd-c.tPosOffsetBegin : tEnd-c.TBegin-c.tPosOffsetBegin+1]
-										} else {
-											_tseq = tSeq.Seq[c.tPosOffsetBegin+c.TBegin-tBegin : c.tPosOffsetBegin+c.TEnd-tBegin+1]
-										}
-									}
-									c.TSeq = append(c.TSeq, _tseq...)
+									c.CIGAR = c.CIGAR[:0]
+									c.QSeq = c.QSeq[:0]
+									c.TSeq = c.TSeq[:0]
+									c.Alignment = c.Alignment[:0]
 								}
 
+								for _, op = range cigar.Ops {
+									// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+									c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+									// c.CIGAR = append(c.CIGAR, op.Op)
+									c.CIGAR = append(c.CIGAR, byte(op>>32))
+								}
+
+								Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
+
+								c.QSeq = append(c.QSeq, *Q...)
+								c.TSeq = append(c.TSeq, *T...)
+								c.Alignment = append(c.Alignment, *A...)
+
+								wfa.RecycleAlignmentText(Q, A, T)
+								wfa.RecycleAlignmentResult(cigar)
 							}
 
-							if !hasResult {
-								j = i
-							}
+							// if !hasResult {
+							// 	j = i
+							// }
+							_sum_chain_alen += c.AlignedLength
+							_sum_pident_m_hsp_len += float64(c.AlignedLength) * c.PIdent
 							hasResult = true
 						}
 
@@ -2037,7 +1999,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							sd.RC = rc
 							sd.NSeeds = nSeeds
 							sd.Similarity = r2
-							sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent
+							// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+							sd.SimilarityScore = float64(r2.AlignedBases) * _sum_pident_m_hsp_len / float64(_sum_chain_alen)
 							sd.SeqID = sd.SeqID[:0]
 							// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)

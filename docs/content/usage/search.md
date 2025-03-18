@@ -24,7 +24,8 @@ Alignment result relationship:
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── High-Scoring segment Pair (HSP)
+          ├── HSP Cluster (a cluster of neighboring HSPs)
+              ├── High-Scoring segment Pair (HSP)
 
   Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
 
@@ -32,7 +33,7 @@ Alignment result relationship:
   > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
-  Tab-delimited format with 19+ columns, with 1-based positions.
+  Tab-delimited format with 20+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -40,27 +41,30 @@ Output format:
     4.  sgenome,  Subject genome ID.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    7.  hsp,      Nth HSP in the genome. (just for improving readability)
-    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    9.  alenHSP,  Aligned length in the current HSP.
-    10. pident,   Percentage of identical matches in the current HSP.
-    11. gaps,     Gaps in the current HSP.
-    12. qstart,   Start of alignment in query sequence.
-    13. qend,     End of alignment in query sequence.
-    14. sstart,   Start of alignment in subject sequence.
-    15. send,     End of alignment in subject sequence.
-    16. sstr,     Subject strand.
-    17. slen,     Subject sequence length.
-    18. evalue,   Expect value.
-    19. bitscore, Bit score.
-    20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+    7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
+    8.  hsp,      Nth HSP in the genome.         (just for improving readability)
+    9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+    10. alenHSP,  Aligned length in the current HSP.
+    11. pident,   Percentage of identical matches in the current HSP.
+    12. gaps,     Gaps in the current HSP.
+    13. qstart,   Start of alignment in query sequence.
+    14. qend,     End of alignment in query sequence.
+    15. sstart,   Start of alignment in subject sequence.
+    16. send,     End of alignment in subject sequence.
+    17. sstr,     Subject strand.
+    18. slen,     Subject sequence length.
+    19. evalue,   Expect value.
+    20. bitscore, Bit score.
+    21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    23. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
-  1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
-  2. Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.
+  For a HSP cluster, SimilarityScore = aligned_bases * weighted_pident.
+  1. Within each HSP cluster, HSPs are sorted by sstart.
+  2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
+  3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
 
 Usage:
   lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
@@ -91,8 +95,6 @@ Flags:
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --pseudo-align                   ► Only perform pseudo alignment, alignment metrics, including
-                                       qcovGnm, qcovSHP and pident, will be less accurate.
       --seed-max-dist int              ► Max distance between seeds in seed chaining. It should be <=
                                        contig interval length in database. (default 1000)
       --seed-max-gap int               ► Max gap in seed chaining. (default 200)

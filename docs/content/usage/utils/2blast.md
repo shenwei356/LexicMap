@@ -61,7 +61,7 @@ Query coverage per genome = 98.536%
 >NC_009656.1 
 Length = 6588339
 
- HSP #1
+ HSP cluster #1, HSP #1
  Score = 883 bits, Expect = 3.60e-256
  Query coverage per seq = 98.536%, Aligned length = 479, Identities = 94.990%, Gaps = 15
  Query range = 7-477, Subject range = 4866857-4867328, Strand = Plus/Plus
@@ -108,7 +108,7 @@ Query coverage per genome = 93.968%
 >NZ_AP019721.1 
 Length = 2422602
 
- HSP #1
+ HSP cluster #1, HSP #1
  Score = 740 bits, Expect = 2.39e-213
  Query coverage per seq = 93.968%, Aligned length = 408, Identities = 98.284%, Gaps = 4
  Query range = 27-431, Subject range = 1321677-1322083, Strand = Plus/Minus

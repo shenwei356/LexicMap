@@ -1,8 +1,8 @@
 # Changelog
 
-### v0.6.0 - 2025-03-12
+### v0.6.0 - 2025-03-xx
 
-This version is compatible with indexes created by previous versions,
+This version is compatible with indexes created by previous versions (needs a one-time preprocessing),
 but rebuilding the index is recommended for more accurate results on short queries (<500bp).
 However, indexes created by this version is not compatible with previous versions when the number of batches is <= 512.
 
@@ -18,9 +18,10 @@ However, indexes created by this version is not compatible with previous version
       We also [recommend controlling the number of batches for better performance](https://bioinf.shenwei.me/LexicMap/tutorials/index/#notes-for-indexing-with-large-datasets).
     - **Fix seed desert filling near gap regions**.
 - `lexicmap search`:
-    - **Add two extra columns: `evalue` and `bitscore`**, and a new option `-e/--max-evalue`.
+    - **Add 3 extra columns: `cls`, `evalue` and `bitscore`**, and a new option `-e/--max-evalue`.
     - **Improve pseudoalignment to produce longer alignment regions**.
     - Reduce memory usage.
+    - Remove flag `--pseudo-align`.
 - `lexicmap utils seed-pos`:
     - Change default option values of sliding window.
 

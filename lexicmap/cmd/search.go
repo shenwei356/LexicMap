@@ -58,7 +58,8 @@ Alignment result relationship:
   Query
   ├── Subject genome
       ├── Subject sequence
-          ├── High-Scoring segment Pair (HSP)
+          ├── HSP Cluster (a cluster of neighboring HSPs)
+              ├── High-Scoring segment Pair (HSP)
 
   Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
 
@@ -66,7 +67,7 @@ Alignment result relationship:
   > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
-  Tab-delimited format with 19+ columns, with 1-based positions.
+  Tab-delimited format with 20+ columns, with 1-based positions.
 
     1.  query,    Query sequence ID.
     2.  qlen,     Query sequence length.
@@ -74,27 +75,30 @@ Output format:
     4.  sgenome,  Subject genome ID.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    7.  hsp,      Nth HSP in the genome. (just for improving readability)
-    8.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    9.  alenHSP,  Aligned length in the current HSP.
-    10. pident,   Percentage of identical matches in the current HSP.
-    11. gaps,     Gaps in the current HSP.
-    12. qstart,   Start of alignment in query sequence.
-    13. qend,     End of alignment in query sequence.
-    14. sstart,   Start of alignment in subject sequence.
-    15. send,     End of alignment in subject sequence.
-    16. sstr,     Subject strand.
-    17. slen,     Subject sequence length.
-    18. evalue,   Expect value.
-    19. bitscore, Bit score.
-    20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+    7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
+    8.  hsp,      Nth HSP in the genome.         (just for improving readability)
+    9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
+    10. alenHSP,  Aligned length in the current HSP.
+    11. pident,   Percentage of identical matches in the current HSP.
+    12. gaps,     Gaps in the current HSP.
+    13. qstart,   Start of alignment in query sequence.
+    14. qend,     End of alignment in query sequence.
+    15. sstart,   Start of alignment in subject sequence.
+    16. send,     End of alignment in subject sequence.
+    17. sstr,     Subject strand.
+    18. slen,     Subject sequence length.
+    19. evalue,   Expect value.
+    20. bitscore, Bit score.
+    21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    23. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
 
 Result ordering:
-  1. Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident.
-  2. Results of multiple subject genomes are sorted by qcovHSP*pident of the best alignment.
+  For a HSP cluster, SimilarityScore = aligned_bases * weighted_pident.
+  1. Within each HSP cluster, HSPs are sorted by sstart.
+  2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
+  3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -161,8 +165,6 @@ Result ordering:
 		// }
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
-
-		onlyPseudoAlign := getFlagBool(cmd, "pseudo-align")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < minSinglePrefix {
@@ -276,8 +278,6 @@ Result ordering:
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
 
-			MoreAccurateAlignment: !onlyPseudoAlign,
-
 			OutputSeq: moreColumns,
 
 			Debug: getFlagBool(cmd, "debug"),
@@ -329,8 +329,7 @@ Result ordering:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		// fmt.Fprintf(outfh, "query\tqlen\tqstart\tqend\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\talenSeg\tpident\tslen\tsstart\tsend\tsstr\tseeds\n")
-		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
+		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\tcls\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
 		if moreColumns {
 			fmt.Fprintf(outfh, "\tcigar\tqseq\tsseq\talign")
 		}
@@ -362,17 +361,18 @@ Result ordering:
 			matched++
 
 			var strand byte
-			var j int
+			var _c, j int
 			for _, r := range *q.result { // each genome
+				_c = 1
 				j = 1
 				for _, sd = range *r.SimilarityDetails { // each chain
 					cr = sd.Similarity
 
-					if sd.RC {
-						strand = '-'
-					} else {
-						strand = '+'
-					}
+					// if sd.RC {
+					// 	strand = '-'
+					// } else {
+					// 	strand = '+'
+					// }
 
 					for _, c = range *cr.Chains { // each match
 						if c == nil {
@@ -385,9 +385,10 @@ Result ordering:
 							strand = '+'
 						}
 
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
 							queryID, len(q.seq),
 							targets, r.ID, sd.SeqID, r.AlignedFraction,
+							_c,
 							j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
 							c.QBegin+1, c.QEnd+1,
 							c.TBegin+1, c.TEnd+1,
@@ -395,17 +396,14 @@ Result ordering:
 							c.Evalue, c.BitScore,
 						)
 						if moreColumns {
-							if onlyPseudoAlign {
-								fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, q.seq[c.QBegin:c.QEnd+1], c.TSeq, c.Alignment)
-							} else {
-								fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
-							}
+							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
 						}
 
 						fmt.Fprintln(outfh)
 
 						j++
 					}
+					_c++
 				}
 				outfh.Flush()
 			}
@@ -570,9 +568,6 @@ func init() {
 		formatFlagUsage(`Load the whole seed data into memory for faster search.`))
 
 	// pseudo alignment
-	mapCmd.Flags().BoolP("pseudo-align", "", false,
-		formatFlagUsage(`Only perform pseudo alignment, alignment metrics, including qcovGnm, qcovSHP and pident, will be less accurate.`))
-
 	mapCmd.Flags().IntP("align-ext-len", "", 1000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 

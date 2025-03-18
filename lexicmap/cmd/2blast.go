@@ -104,10 +104,10 @@ Input:
 		var line string
 		var scanner *bufio.Scanner
 
-		ncols := 23
+		ncols := 24
 		items := make([]string, ncols)
 
-		var query, qlen, hits, sgenome, sseqid, qcovGnm, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
+		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
 		var cigar, qseq, sseq, align string
 
 		var headerLine bool
@@ -144,7 +144,7 @@ Input:
 
 				stringSplitNByByte(line, '\t', ncols, &items)
 				if len(items) < ncols {
-					checkError(fmt.Errorf("the input has only %d columns, did you forget to add -a/--all for 'lexicmap search'?", len(items)))
+					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", ncols, len(items)))
 				}
 
 				query = items[0]
@@ -153,23 +153,24 @@ Input:
 				sgenome = items[3]
 				sseqid = items[4]
 				qcovGnm = items[5]
-				hsp = items[6]
-				qcovHSP = items[7]
-				alenHSP = items[8]
-				pident = items[9]
-				gaps = items[10]
-				qstart = items[11]
-				qend = items[12]
-				sstart = items[13]
-				send = items[14]
-				sstr = items[15]
-				slen = items[16]
-				evalue = items[17]
-				bitscore = items[18]
-				cigar = items[19]
-				qseq = items[20]
-				sseq = items[21]
-				align = items[22]
+				cls = items[6]
+				hsp = items[7]
+				qcovHSP = items[8]
+				alenHSP = items[9]
+				pident = items[10]
+				gaps = items[11]
+				qstart = items[12]
+				qend = items[13]
+				sstart = items[14]
+				send = items[15]
+				sstr = items[16]
+				slen = items[17]
+				evalue = items[18]
+				bitscore = items[19]
+				cigar = items[20]
+				qseq = items[21]
+				sseq = items[22]
+				align = items[23]
 
 				_qstart, _ = strconv.Atoi(qstart)
 				_qend, _ = strconv.Atoi(qend)
@@ -223,7 +224,7 @@ Input:
 					fmt.Fprintf(outfh, ">%s %s\nLength = %s\n\n", sseqid, value, slen)
 				}
 
-				fmt.Fprintf(outfh, " HSP #%s\n", hsp)
+				fmt.Fprintf(outfh, " HSP cluster #%s, HSP #%s\n", cls, hsp)
 				fmt.Fprintf(outfh, " Score = %s bits, Expect = %s\n", bitscore, evalue)
 				fmt.Fprintf(outfh, " Query coverage per seq = %s%%, Aligned length = %s, Identities = %s%%, Gaps = %s\n",
 					qcovHSP, alenHSP, pident, gaps)
