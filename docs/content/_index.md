@@ -59,7 +59,6 @@ Step 2: searching
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
 {{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}
-{{< button size="small" relref="notes/motivation" >}}Notes{{< /button >}}
 
 <--->
 

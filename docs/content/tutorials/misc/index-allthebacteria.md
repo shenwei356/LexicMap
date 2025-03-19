@@ -3,6 +3,80 @@ title: Indexing AllTheBacteria
 weight: 15
 ---
 
+## Table of contents
+
+{{< toc format=html >}}
+
+## Searching with the pre-built index on AWS
+
+### Run on EC2
+
+1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html).
+    - OS: Amazon Linux 2023
+    - Instance type: c8g.8xlarge (32 vCPU, 64 GiB memory). You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request).
+    - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
+
+2. [Connect to the instance via online console or a ssh client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).
+
+3. Mount the LexicMap index.
+
+        # install mount-s3. You might need to replace arm64 with x86_64 for other architectures
+        wget https://s3.amazonaws.com/mountpoint-s3-release/latest/arm64/mount-s3.rpm
+        
+        sudo yum install -y ./mount-s3.rpm
+        rm ./mount-s3.rpm
+        
+        # mount
+        mkdir -p atb.lmi
+        mount-s3 --read-only allthebacteria-lexicmap atb.lmi --no-sign-request
+        
+4. Install LexicMap.
+
+        # binary path depends on the architecture of the CPUs: amd64 or arm64
+        wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
+        mkdir -p bin
+        tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
+        rm lexicmap_linux_arm64.tar.gz    
+    
+5. [Upload queries](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/linux-file-transfer-scp.html).
+    
+6. Run LexicMap (very slow due to the slow I/O performance of s3).
+        
+        # create and enter an screen session
+        screen -S lexicmap
+        
+        # run
+        lexicmap search -d atb.lmi/202408/ b.gene_E_faecalis_SecY.fasta -o t.txt --debug
+
+7. Unmount the index.
+
+        umount atb.lmi
+
+### Only download it and run locally
+
+Install `awscli` by
+
+    conda install -c conda-forge awscli
+    
+Test access
+
+    aws s3 ls s3://allthebacteria-lexicmap/202408/ --no-sign-request
+    
+    # output
+                               PRE genomes/
+                               PRE seeds/
+    2025-02-12 17:29:56          0 
+    2025-02-12 17:32:39      62488 genomes.chunks.bin
+    2025-02-12 17:32:39   54209660 genomes.map.bin
+    2025-03-04 21:55:15        619 info.toml
+    2025-02-12 20:38:52     160032 masks.bin
+
+Download the index
+    
+    aws s3 cp s3://allthebacteria-lexicmap/202408/ atb.lmi --recursive --no-sign-request
+
+## Steps for v0.2 and later versions hosted at OSF
+
 **Make sure you have enough disk space, at least 8 TB, >10 TB is preferred.**
 
 Tools:
@@ -14,8 +88,6 @@ Info:
 - [AllTheBacteria](https://github.com/AllTheBacteria/AllTheBacteria), All WGS isolate bacterial INSDC data to June 2023 uniformly assembled, QC-ed, annotated, searchable.
 - Preprint: [AllTheBacteria - all bacterial genomes assembled, available and searchable](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1)
 - Data on OSF: https://osf.io/xv7q9/
-
-## Steps for v0.2 and later versions hosted at OSF
 
 After v0.2, AllTheBacteria releases incremental datasets periodically, with all data stored at [OSF](https://osf.io/xv7q9/).
 
