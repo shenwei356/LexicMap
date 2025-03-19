@@ -146,21 +146,21 @@ Here are some tips to improve the search speed.
       increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%).
       Don't worry if you only search highly similar matches.
     - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. 
-      For queries with a large number of genome hits, a resonable value such as 1000 would reduce the computation time.
+      For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
      including `-q/--min-qcov-per-hsp`, `-Q/--min-qcov-per-genome`, and `-i/--align-min-match-pident`,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like `awk` or `csvtk`.
 - **Increasing the concurrency number**
     - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
-
-          # Seeds (k-mer-value data) files
-          chunks = 48
-
-    - Increasing the value of `--max-open-files` (default 512). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+        ```
+        # Seeds (k-mer-value data) files
+        chunks = 48
+        ```
+    - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
 - **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored in SSD)
-    - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster search. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
+    - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
 ## Steps
 
@@ -326,10 +326,10 @@ Tab-delimited format with 20+ columns, with 1-based positions.
 
 **Result ordering:**
 
-  For a HSP cluster, SimilarityScore = aligned_bases * weighted_pident.
-  1. Within each HSP cluster, HSPs are sorted by sstart.
-  2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
-  3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
+  For a HSP cluster, `SimilarityScore = aligned_bases * weighted_pident`.
+  1. Within each HSP cluster, HSPs are sorted by `sstart`.
+  2. Within each subject genome, HSP clusters are sorted in descending order by `SimilarityScore`.
+  3. Results of multiple subject genomes are sorted by the highest `SimilarityScore` of HSP clusters.
 
 
 

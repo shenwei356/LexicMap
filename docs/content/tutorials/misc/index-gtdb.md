@@ -40,7 +40,7 @@ Data:
     # redownload them:
     # run the genome_updater command again, with the flag -i
 
-Indexing. On a 48-CPU machine, time: 11 h, ram: 64 GB, index size: 906 GB.
+Indexing. On a 48-CPU machine, time: 8h:19m:28s, ram: 73 GB, index size: 906 GB.
 If you don't have enough memory, please decrease the value of `-b`.
 
     lexicmap index \
@@ -56,10 +56,10 @@ Files:
     907G    gtdb_complete.lmi
 
     $ dirsize gtdb_complete.lmi
-    gtdb_complete.lmi: 906.14 GiB (972,962,162,476)
-    543.06 GiB      seeds
-    362.98 GiB      genomes
-    102.37 MiB      kmers-m12345.tsv
+    gtdb_complete.lmi: 905.32 GiB (972,076,048,287)
+    542.32 GiB      seeds
+    362.99 GiB      genomes
       9.60 MiB      genomes.map.bin
-    312.53 KiB      masks.bin
-         330 B      info.toml
+    156.28 KiB      masks.bin
+         616 B      info.toml
+         168 B      genomes.chunks.bin

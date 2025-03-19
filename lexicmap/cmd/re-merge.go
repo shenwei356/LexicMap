@@ -208,7 +208,7 @@ func init() {
 	remergeCmd.Flags().IntP("seed-data-threads", "J", 8,
 		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are >100 batches, please also increase the value of --max-open-files and set a bigger "ulimit -n" in shell.`))
 
-	remergeCmd.Flags().IntP("max-open-files", "", 768,
+	remergeCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files, used in merging indexes. If there are >100 batches, please increase this value and set a bigger "ulimit -n" in shell.`))
 
 	remergeCmd.SetUsageTemplate(usageTemplate("[flags] -d <index path>"))

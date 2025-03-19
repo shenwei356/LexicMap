@@ -18,11 +18,11 @@ Terminology differences:
 ## TL;DR
 
 1. Prepare input files:
-    - **Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers (no tab symbols) in the file names**.
+    - **Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names**.
       E.g., GCF_000006945.2.fna.gz
         - A regular expression is also available to extract reference id from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
-    - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish targe genomes.
+    - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
 2. Run:
     - From a directory with multiple genome files:
 
@@ -49,7 +49,8 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 {{< /hint >}}
 
 
-**Sequences of each reference genome should be saved in separate FASTA/Q files, with identifiers in the file names**. While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish targe genomes.
+<font color="red">**Sequences of each reference genome should be saved in separate FASTA files, with identifiers in the file names**.</font> 
+While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
 
 - **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
@@ -71,8 +72,8 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
         - **Changes since v0.5.0**:
             - Genomes with any single contig larger than the threshold will be skipped as before.
             - However, **fragmented (with many contigs) genomes with the total bases larger than the threshold will
-              be split into chunks** and alignments from these chunks will be merged in "lexicmap search".
-        - **For fungi genomes, please increase the value**.
+              be split into chunks** and alignments from these chunks will be merged in `lexicmap search`.
+        - **For fungi genomes, please increase the value of `-g/--max-genome`**.
     - **Minimum sequence length**. A flag `-l/--min-seq-len` can filter out sequences shorter than the threshold (default is the `k` value).
 - **At most 17,179,869,184 (2<sup>34</sup>) genomes are supported**. For more genomes, please create a file list and split it into multiple parts, and build an index for each part.
 
@@ -81,7 +82,8 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 - **Positional arguments**. For a few input files.
 - A **file list** via the flag `-X/--infile-list`  with one file per line.
   **It can be STDIN (`-`)**, e.g., you can filter a file list and pass it to `lexicmap index`.
-  *The flag `-S/--skip-file-check` is optional for skiping input file checking if you believe these files do exist*.
+    - **The flag `-S/--skip-file-check` is optional for skiping input file checking if you believe these files do exist**.
+    Because, by default, LexicMap checks the existence of all input files, which would take tens of minutes for >1M files.
 - A **directory** containing input files via the flag `-I/--in-dir`.
     - **Multiple-level directories are supported**. So you don't need to saved hundreds of thousand files into one directoy.
     - **Directory and file symlinks are followed**.
@@ -96,14 +98,14 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
     - More is better as LexicMap is a CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
-    - More RAM (> 100 GB) is preferred. The memory usage in index building is mainly related to:
+    - More RAM (> 200 GB) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
-        - **The number of genomes**. More genomes consume more memory.
-        - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
+        - **The number of genomes**. Generally, more genomes consume more memory, but we can control the genome batch size.
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory occupation.
+        - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 100),
           and the distance of k-mers to fill deserts (`-d/--seed-in-desert-dist`, default 50).
-          <font color="#ff5733">This is the main parameter to adjust **search sensitivity**.</font>
+          <font color="#ff5733">These are the main parameters to adjust **search sensitivity**.</font>
           Bigger `-D/--seed-max-desert` values decrease the search sensitivity, speed up the indexing speed,
           decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
     - **If the RAM is not sufficient**. Please:

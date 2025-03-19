@@ -38,7 +38,7 @@ Data:
     # redownload them:
     # run the genome_updater command again, with the flag -i
 
-Indexing. On a 48-CPU machine, time: 54 h, ram: 178 GB, index size: 4.94 TB.
+Indexing. On a 48-CPU machine, time: 56 h, ram: 181 GB, index size: 4.96 TiB.
 If you don't have enough memory, please decrease the value of `-b`.
 
     lexicmap index \
@@ -46,3 +46,12 @@ If you don't have enough memory, please decrease the value of `-b`.
         --ref-name-regexp '^(\w{3}_\d{9}\.\d+)' \
         -O genbank_refseq.lmi --log genbank_refseq.lmi.log \
         -b 25000
+
+    # dirsize genbank_refseq.lmi
+    genbank_refseq.lmi: 4.96 TiB (5,454,543,021,278)
+      2.79 TiB      seeds
+      2.17 TiB      genomes
+     55.81 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+      3.59 KiB      genomes.chunks.bin
+         619 B      info.toml

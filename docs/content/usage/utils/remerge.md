@@ -33,7 +33,7 @@ Flags:
   -d, --index string            ► Index directory created by "lexicmap index".
       --max-open-files int      ► Maximum opened files, used in merging indexes. If there are >100
                                 batches, please increase this value and set a bigger "ulimit -n" in
-                                shell. (default 768)
+                                shell. (default 1024)
   -J, --seed-data-threads int   ► Number of threads for writing seed data and merging seed chunks from
                                 all batches, the value should be in range of [1, -c/--chunks]. If there
                                 are >100 batches, please also increase the value of --max-open-files and

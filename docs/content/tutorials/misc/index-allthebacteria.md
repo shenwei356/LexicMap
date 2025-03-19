@@ -83,6 +83,8 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
 1. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
 
         lexicmap index -S -X files.txt -O atb.lmi -b 25000 --log atb.lmi.log
+        
+   It took 47h40m and 145GB RAM with 48 CPUs for 2.44m ATB genomes.
 
 ## Steps for v0.2 hosted at EBI ftp
 

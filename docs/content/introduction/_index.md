@@ -59,9 +59,9 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 
 **Methods**: ([algorithm overview](#algorithm-overview))
 
-1. An [rewritten and improved version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds accurately and efficiently.
-    1. **We solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to provide a [window guarantee](https://doi.org/10.1093/bioinformatics/btab790)**.
-    2. **We added the support of suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched.
+1. A [rewritten and improved version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds accurately and efficiently.
+    - **We solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to provide a [window guarantee](https://doi.org/10.1093/bioinformatics/btab790)**.
+    - **We added the support of suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched.
 2. **A hierarchical index enables fast and low-memory variable-length seed matching** (prefix + suffix matching).
 3. A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.
 4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
@@ -197,11 +197,13 @@ Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  11249
 ```
 
 
-Learn more [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
+Learn more: [demo](https://github.com/shenwei356/LexicMap/tree/main/demo),
+[tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/),
+or [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
 
 ## Performance
 
-See the paper.
+See the [paper](#citation).
 
 ## Installation
 

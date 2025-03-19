@@ -89,12 +89,11 @@ Yes, `lexicmap search` has a flag
 
 to output CIGAR string, aligned query and subject sequences.
 
-```
-20. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-21. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-22. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-23. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
-```
+    21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
+    22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
+    23. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
+    24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
+
 
 An example:
 
@@ -105,7 +104,7 @@ An example:
         --min-qcov-per-hsp 90 --all
 
     # extract matched sequences as FASTA format
-    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$14"-"$15":"$16"\n"$22;}' \
+    sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$15"-"$16":"$17"\n"$23;}' \
         | seqkit seq -g > results.fasta
 
     seqkit head -n 1 results.fasta | head -n 3
