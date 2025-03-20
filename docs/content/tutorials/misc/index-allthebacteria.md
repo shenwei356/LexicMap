@@ -45,7 +45,7 @@ weight: 15
     
 5. [Upload queries](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/linux-file-transfer-scp.html).
 
-        wget https://github.com/shenwei356/LexicMap/blob/main/demo/bench/b.gene_E_faecalis_SecY.fasta
+        wget https://github.com/shenwei356/LexicMap/raw/refs/heads/main/demo/bench/b.gene_E_faecalis_SecY.fasta
     
 6. Run LexicMap.
         
