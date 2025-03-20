@@ -11,14 +11,15 @@ weight: 15
 
 ### Run on EC2
 
-1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html).
+1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html)
+   **in Europe-Longon region (eu-west-2)** where the index is located.
     - OS: Amazon Linux 2023
-    - Instance type: c8g.8xlarge (32 vCPU, 64 GiB memory). You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request).
+    - Instance type: c7g.8xlarge (32 vCPU, 64 GiB memory). You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request).
     - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
 
 2. [Connect to the instance via online console or a ssh client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).
 
-3. Mount the LexicMap index.
+3. Mount the LexicMap index with [mount-s3](https://github.com/awslabs/mountpoint-s3):
 
         # install mount-s3. You might need to replace arm64 with x86_64 for other architectures
         wget https://s3.amazonaws.com/mountpoint-s3-release/latest/arm64/mount-s3.rpm
@@ -33,16 +34,22 @@ weight: 15
 4. Install LexicMap.
 
         # binary path depends on the architecture of the CPUs: amd64 or arm64
-        wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
+        # wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
+        # use a pre-release here:
+        wget https://github.com/user-attachments/files/19311872/lexicmap_linux_arm64.tar.gz
+        
         mkdir -p bin
         tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
-        rm lexicmap_linux_arm64.tar.gz    
+        rm lexicmap_linux_arm64.tar.gz
+        
     
 5. [Upload queries](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/linux-file-transfer-scp.html).
+
+        wget https://github.com/shenwei356/LexicMap/blob/main/demo/bench/b.gene_E_faecalis_SecY.fasta
     
-6. Run LexicMap (very slow due to the slow I/O performance of s3).
+6. Run LexicMap.
         
-        # create and enter an screen session
+        # create and enter a screen session
         screen -S lexicmap
         
         # run
@@ -50,7 +57,7 @@ weight: 15
 
 7. Unmount the index.
 
-        umount atb.lmi
+        sudo umount atb.lmi
 
 ### Only download it and run locally
 
