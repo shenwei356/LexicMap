@@ -404,7 +404,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			n = opt.NumCPUs
 		}
 		if opt.Verbose || opt.Log2File {
-			log.Infof("  creating genome reader pools, each batch with %d readers...", n)
+			log.Infof("  creating reader pools for %d genome batches, each with %d readers...", info.GenomeBatches, n)
 		}
 		idx.poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
 		for i := 0; i < info.GenomeBatches; i++ {

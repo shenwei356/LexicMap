@@ -12,8 +12,8 @@ weight: 15
 ### Run on EC2
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html)
-   **in Europe-Longon region (eu-west-2)** where the index is located.
-    - OS: Amazon Linux 2023
+   **in Europe London region (eu-west-2)** where the index is located.
+    - OS: Amazon Linux 2023 64-bit(**Arm**)
     - Instance type: c7g.8xlarge (32 vCPU, 64 GiB memory). You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request).
     - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
 
@@ -28,9 +28,9 @@ weight: 15
         rm ./mount-s3.rpm
         
         # mount
-        mkdir -p atb.lmi
-        mount-s3 --read-only allthebacteria-lexicmap atb.lmi --no-sign-request
-        
+        mkdir -p atb.lmi logqq
+        mount-s3 --read-only --prefix 202408/ allthebacteria-lexicmap atb.lmi --no-sign-request
+                
 4. Install LexicMap.
 
         # binary path depends on the architecture of the CPUs: amd64 or arm64
@@ -42,7 +42,6 @@ weight: 15
         tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
         rm lexicmap_linux_arm64.tar.gz
         
-    
 5. [Upload queries](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/linux-file-transfer-scp.html).
 
         wget https://github.com/shenwei356/LexicMap/raw/refs/heads/main/demo/bench/b.gene_E_faecalis_SecY.fasta
@@ -53,7 +52,7 @@ weight: 15
         screen -S lexicmap
         
         # run
-        lexicmap search -d atb.lmi/202408/ b.gene_E_faecalis_SecY.fasta -o t.txt --debug
+        lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug
 
 7. Unmount the index.
 
