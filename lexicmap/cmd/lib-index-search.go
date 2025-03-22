@@ -1352,6 +1352,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		}()
 	}
 
+	fcpus := float64(idx.opt.NumCPUs)
 	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
@@ -1360,7 +1361,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			timeStart := time.Now()
 			defer func() {
 				<-tokens
-				chDuration <- time.Since(timeStart)
+				chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 				wg.Done()
 			}()
 
