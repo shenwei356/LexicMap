@@ -36,8 +36,7 @@ weight: 15
 
         # binary path depends on the architecture of the CPUs: amd64 or arm64
         # wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
-        # use a pre-release here:
-        wget https://github.com/user-attachments/files/19404052/lexicmap_linux_arm64.tar.gz
+        # or download a pre-release here: https://github.com/shenwei356/LexicMap/issues/10
         
         mkdir -p bin
         tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
