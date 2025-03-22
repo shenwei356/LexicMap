@@ -28,8 +28,9 @@ weight: 15
         rm ./mount-s3.rpm
         
         # mount
-        mkdir -p atb.lmi logqq
-        mount-s3 --read-only --prefix 202408/ allthebacteria-lexicmap atb.lmi --no-sign-request
+        mkdir -p atb.lmi
+        UNSTABLE_MOUNTPOINT_MAX_PREFETCH_WINDOW_SIZE=8388608 \
+            mount-s3 --read-only --prefix 202408/ allthebacteria-lexicmap atb.lmi --no-sign-request
                 
 4. Install LexicMap.
 
@@ -51,7 +52,7 @@ weight: 15
         # create and enter a screen session
         screen -S lexicmap
         
-        # run
+        # run, it takes 20 minutes
         lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug
 
 7. Unmount the index.
