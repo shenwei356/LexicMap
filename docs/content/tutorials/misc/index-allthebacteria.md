@@ -78,9 +78,18 @@ Test access
     2025-03-04 21:55:15        619 info.toml
     2025-02-12 20:38:52     160032 masks.bin
 
-Download the index
+Download the index (it's 5.24 TiB!!!).
     
     aws s3 cp s3://allthebacteria-lexicmap/202408/ atb.lmi --recursive --no-sign-request
+    
+    # dirsize atb.lmi
+    atb.lmi: 5.24 TiB (5,758,698,088,389)
+      2.87 TiB      seeds
+      2.37 TiB      genomes
+     51.70 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+     61.02 KiB      genomes.chunks.bin
+         619 B      info.toml
 
 ## Steps for v0.2 and later versions hosted at OSF
 
@@ -162,6 +171,15 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
 1. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
 
         lexicmap index -S -X files.txt -O atb.lmi -b 25000 --log atb.lmi.log
+        
+        # dirsize atb.lmi
+        atb.lmi: 5.24 TiB (5,758,698,088,389)
+          2.87 TiB      seeds
+          2.37 TiB      genomes
+         51.70 MiB      genomes.map.bin
+        156.28 KiB      masks.bin
+         61.02 KiB      genomes.chunks.bin
+             619 B      info.toml
         
    It took 47h40m and 145GB RAM with 48 CPUs for 2.44m ATB genomes.
 
