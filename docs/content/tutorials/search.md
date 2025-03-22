@@ -185,28 +185,34 @@ Here are some tips to improve the search speed.
 {{< expand "Click to show the log of a demo run." "..." >}}
 
         $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-        10:53:20.200 [INFO] LexicMap v0.6.0 (3e249a2)
-        10:53:20.200 [INFO]   https://github.com/shenwei356/LexicMap
-        10:53:20.200 [INFO] 
-        10:53:20.200 [INFO] checking input files ...
-        10:53:20.200 [INFO]   1 input file given: q.gene.fasta
-        10:53:20.200 [INFO] 
-        10:53:20.200 [INFO] loading index: demo.lmi/
-        10:53:20.200 [INFO]   reading masks...
-        10:53:20.202 [INFO]   reading indexes of seeds (k-mer-value) data...
-        10:53:20.929 [INFO]   creating genome reader pools, each batch with 16 readers...
-        10:53:20.930 [INFO] index loaded in 729.488175ms
-        10:53:20.930 [INFO] 
-        10:53:20.930 [INFO] searching with 16 threads...
+        00:12:58.547 [INFO] LexicMap v0.6.0 (19844cc)
+        00:12:58.547 [INFO]   https://github.com/shenwei356/LexicMap
+        00:12:58.547 [INFO] 
+        00:12:58.547 [INFO] checking input files ...
+        00:12:58.547 [INFO]   1 input file given: q.gene.fasta
+        00:12:58.547 [INFO] 
+        00:12:58.547 [INFO] loading index: demo.lmi/
+        00:12:58.556 [INFO]   reading masks...
+        00:12:58.563 [INFO]   reading indexes of seeds (k-mer-value) data...
+        00:13:00.573 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+        00:13:00.574 [INFO] index loaded in 2.027094688s
+        00:13:00.574 [INFO] 
+        00:13:00.574 [INFO] searching with 16 threads...
+        00:13:00.575 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): start to search
+        00:13:00.589 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished seed-matching (15 genome hits) in 14.622755ms
+        00:13:00.593 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished chaining (15 genome hits) in 3.286315ms
+        checked genomes:  15 / 15 [======================================] ETA: 0s. done
+        00:13:00.651 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished alignment (15 genome hits) in 57.784923ms
+        00:13:00.651 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished sorting alignment results (15 genome hits) in 17.669µs
 
-        10:53:20.968 [INFO] 
-        10:53:20.968 [INFO] processed queries: 1, speed: 1546.205 queries per minute
-        10:53:20.968 [INFO] 100.0000% (1/1) queries matched
-        10:53:20.968 [INFO] done searching
-        10:53:20.968 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-        10:53:20.969 [INFO] 
-        10:53:20.969 [INFO] elapsed time: 768.5836ms
-        10:53:20.969 [INFO]
+        00:13:00.651 [INFO] 
+        00:13:00.651 [INFO] processed queries: 1, speed: 774.101 queries per minute
+        00:13:00.651 [INFO] 100.0000% (1/1) queries matched
+        00:13:00.651 [INFO] done searching
+        00:13:00.651 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+        00:13:00.652 [INFO] 
+        00:13:00.652 [INFO] elapsed time: 2.105031915s
+        00:13:00.652 [INFO]
 
 {{< /expand >}}
 
