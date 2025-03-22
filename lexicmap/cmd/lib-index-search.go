@@ -43,6 +43,8 @@ import (
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/shenwei356/wfa"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 	"github.com/zeebo/wyhash"
 )
 
@@ -1320,13 +1322,45 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		})
 	}
 
+	// process bar
+	var pbs *mpb.Progress
+	var bar *mpb.Bar
+	var chDuration chan time.Duration
+	var doneDuration chan int
+	if debug {
+		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+		bar = pbs.AddBar(int64(len(*rs)),
+			mpb.PrependDecorators(
+				decor.Name("checked genomes: ", decor.WC{W: len("checked genomes: "), C: decor.DindentRight}),
+				decor.Name("", decor.WCSyncSpaceR),
+				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+			),
+			mpb.AppendDecorators(
+				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+				decor.EwmaETA(decor.ET_STYLE_GO, 10),
+				decor.OnComplete(decor.Name(""), ". done"),
+			),
+		)
+
+		chDuration = make(chan time.Duration, idx.opt.NumCPUs)
+		doneDuration = make(chan int)
+		go func() {
+			for t := range chDuration {
+				bar.EwmaIncrBy(1, t)
+			}
+			doneDuration <- 1
+		}()
+	}
+
 	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
 
 		go func(r *SearchResult) { // for a reference genome
+			timeStart := time.Now()
 			defer func() {
 				<-tokens
+				chDuration <- time.Since(timeStart)
 				wg.Done()
 			}()
 
@@ -2129,6 +2163,12 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	wg.Wait()
 	close(ch2)
 	<-done
+	// process bar
+	if debug {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+	}
 	poolSearchResults.Put(rs)
 
 	// recycle this comparator

@@ -22,6 +22,7 @@ However, indexes created by this version is not compatible with previous version
     - **Add 3 extra columns: `cls`, `evalue` and `bitscore`**, and a new option `-e/--max-evalue`.
     - Reduce memory usage.
     - Remove flag `--pseudo-align`.
+    - Add a progress bar for `--debug`.
 - `lexicmap utils seed-pos`:
     - Change default option values of sliding window.
 

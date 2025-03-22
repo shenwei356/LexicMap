@@ -80,7 +80,8 @@ Flags:
   -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
   -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
                                        want to output blast-style format with "lexicmap utils 2blast".
-      --debug                          ► Print debug information.
+      --debug                          ► Print debug information, including a progress bar.
+                                       (recommended when searching with one query).
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster seed
