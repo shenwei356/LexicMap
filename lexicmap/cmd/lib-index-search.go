@@ -1337,7 +1337,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			),
 			mpb.AppendDecorators(
 				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 10),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
 				decor.OnComplete(decor.Name(""), ". done"),
 			),
 		)
@@ -1361,7 +1361,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			timeStart := time.Now()
 			defer func() {
 				<-tokens
-				chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+				if debug {
+					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+				}
 				wg.Done()
 			}()
 
@@ -1540,6 +1542,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 				if len(r.ID) == 0 { // record genome information, do it once
 					r.ID = append(r.ID, tSeq.ID...)
+					if debug {
+						log.Debugf("  checking genome: %s", r.ID)
+					}
 					r.GenomeSize = tSeq.GenomeSize
 				}
 
@@ -1764,7 +1769,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 									if outSeq {
 										if c.CIGAR == nil {
-											c.CIGAR = make([]byte, 0, 1024)
+											c.CIGAR = make([]byte, 0, 128)
 											c.QSeq = make([]byte, 0, cigar.AlignLen)
 											c.TSeq = make([]byte, 0, cigar.AlignLen)
 											c.Alignment = make([]byte, 0, cigar.AlignLen)
@@ -1990,7 +1995,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 							if outSeq {
 								if c.CIGAR == nil {
-									c.CIGAR = make([]byte, 0, 1024)
+									c.CIGAR = make([]byte, 0, 128)
 									c.QSeq = make([]byte, 0, cigar.AlignLen)
 									c.TSeq = make([]byte, 0, cigar.AlignLen)
 									c.Alignment = make([]byte, 0, cigar.AlignLen)
