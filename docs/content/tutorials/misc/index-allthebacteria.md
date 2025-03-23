@@ -14,12 +14,14 @@ weight: 15
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html)
    **in Europe London region (eu-west-2)** where the index is located.
     - OS: Amazon Linux 2023 64-bit(**Arm**)
-    - Instance type: c7g.8xlarge (32 vCPU, 64 GiB memory). You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request).
+    - Instance type (You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request)):
+        - c7g.8xlarge (32 vCPU, 64 GiB memory, 15 Gigabit, 1.3738 USD per Hour)
+        - c6gn.12xlarge (48 vCPU, 96 GiB memory, 75 Gigabit, 2.46 USD per Hour) (recommended)
     - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
 
 2. [Connect to the instance via online console or a ssh client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).
 
-3. Mount the LexicMap index with [mount-s3](https://github.com/awslabs/mountpoint-s3):
+3. Mount the LexicMap index with [mount-s3](https://github.com/awslabs/mountpoint-s3) (it's fast but still slower than local disks):
 
         # install mount-s3. You might need to replace arm64 with x86_64 for other architectures
         wget https://s3.amazonaws.com/mountpoint-s3-release/latest/arm64/mount-s3.rpm
@@ -28,7 +30,8 @@ weight: 15
         rm ./mount-s3.rpm
         
         # mount
-        mkdir -p atb.lmi
+        #     --log-directory log --debug --log-metrics
+        mkdir -p atb.lmi log
         UNSTABLE_MOUNTPOINT_MAX_PREFETCH_WINDOW_SIZE=65536 \
             mount-s3 --read-only --prefix 202408/ allthebacteria-lexicmap atb.lmi --no-sign-request
                 
@@ -36,6 +39,7 @@ weight: 15
 
         # binary path depends on the architecture of the CPUs: amd64 or arm64
         # wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
+        
         # or download a pre-release here: https://github.com/shenwei356/LexicMap/issues/10
         
         mkdir -p bin
@@ -51,9 +55,10 @@ weight: 15
         # create and enter a screen session
         screen -S lexicmap
         
-        # run, it takes 20 minutes
-        lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug \
-            --threads 64 --max-open-files 2048
+        # run
+        # it takes 20 minutes with c7g.8xlarge, 12.5 miniutes with c6gn.12xlarge
+        # b.gene_E_coli_16S.fasta takes 1h54m with c6gn.12xlarge.
+        lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug
 
 7. Unmount the index.
 

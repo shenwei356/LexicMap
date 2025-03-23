@@ -1542,9 +1542,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 				if len(r.ID) == 0 { // record genome information, do it once
 					r.ID = append(r.ID, tSeq.ID...)
-					if debug {
-						log.Debugf("  checking genome: %s", r.ID)
-					}
+					// if debug {
+					// 	log.Debugf("  checking genome: %s", r.ID)
+					// }
 					r.GenomeSize = tSeq.GenomeSize
 				}
 
