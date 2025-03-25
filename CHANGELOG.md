@@ -4,7 +4,7 @@
 
 This version is compatible with indexes created by previous versions (requires a one-time, automatic preprocessing),
 but rebuilding the index is recommended for more accurate results on short queries (<500bp).
-However, indexes created by this version is not compatible with previous versions when the number of batches is <= 512.
+However, indexes created by this version are not compatible with previous versions when the number of batches is <= 512.
 
 - `lexicmap index`:
     - **Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
