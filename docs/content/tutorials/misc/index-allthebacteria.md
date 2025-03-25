@@ -13,10 +13,10 @@ weight: 15
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html)
    **in Europe London region (eu-west-2)** where the index is located.
-    - OS: Amazon Linux 2023 64-bit(**Arm**)
+    - OS: Amazon Linux 2023 64-bit (**Arm**)
     - Instance type (You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request)):
         - c7g.8xlarge (32 vCPU, 64 GiB memory, 15 Gigabit, 1.3738 USD per Hour)
-        - c6gn.12xlarge (48 vCPU, 96 GiB memory, 75 Gigabit, 2.46 USD per Hour) (recommended)
+        - c6gn.12xlarge (48 vCPU, 96 GiB memory, 75 Gigabit, 2.46 USD per Hour) (**recommended**)
     - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
 
 2. [Connect to the instance via online console or a ssh client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).

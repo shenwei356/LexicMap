@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.6.0 - 2025-03-xx
+### v0.6.0 - 2025-03-25
 
 This version is compatible with indexes created by previous versions (requires a one-time, automatic preprocessing),
 but rebuilding the index is recommended for more accurate results on short queries (<500bp).

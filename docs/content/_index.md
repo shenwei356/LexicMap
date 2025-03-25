@@ -66,12 +66,12 @@ Step 2: searching
 
 Using LexicMap to search in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
 
-|Query               |Genome hits|Time       |RAM   |
-|:-------------------|----------:|----------:|-----:|
-|1.3-kb          gene|41,718     |1m:30s     |4.1GB |
-|1.5-kb 16S rRNA     |1,955,164  |13m:59s    |12.7GB|
-|52.8-kb plasmid     |561,731    |21m:54s    |18.3GB|
-|1003 AMR genes      |30,938,889 |11h:31m:22s|24.3GB|
+|Query               |Genome hits|Time       |RAM    |
+|:-------------------|----------:|----------:|------:|
+|A 1.3-kb marker gene|41,718     |3m:09s     |3.84GB |
+|A 1.5-kb 16S rRNA   |1,955,160  |37m:52s    |10.82GB|
+|A 52.8-kb plasmid   |561,717    |51m:59s    |13.96GB|
+|1003 AMR genes      |30,938,862 |23h:13m:35s|22.5GB |
 
 
 ***Blastn** is unable to run with the same dataset on common servers as it requires >2000 GB RAM*.

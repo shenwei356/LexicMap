@@ -73,13 +73,13 @@ However, given the increasing rate at which genomes are sequenced, **existing to
     
     **With LexicMap v0.6.0** (48 CPUs),
 
-    |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM   |
-    |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|-----:|
-    |A 1.3-kb marker gene|41,718     |11,746                           |112                                |29,860                          |1m:30s     |4.1GB |
-    |A 1.5-kb 16S rRNA   |1,955,164  |245,803                          |500,504                            |1,208,857                       |13m:59s    |12.7GB|
-    |A 52.8-kb plasmid   |561,731    |96                               |15,357                             |546,278                         |21m:54s    |18.3GB|
-    |1003 AMR genes      |30,938,889 |7,617,980                        |4,807,660                          |18,513,249                      |11h:31m:22s|24.3GB|
-
+    |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM    |
+    |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|------:|
+    |A 1.3-kb marker gene|41,718     |11,746                           |114                                |29,848                          |3m:09s     |3.84GB |
+    |A 1.5-kb 16S rRNA   |1,955,160  |245,669                          |501,177                            |1,208,314                       |37m:52s    |10.82GB|
+    |A 52.8-kb plasmid   |561,717    |96                               |15,359                             |546,262                         |51m:59s    |13.96GB|
+    |1003 AMR genes      |30,938,862 |7,635,500                        |4,855,759                          |18,447,603                      |23h:13m:35s|22.5GB |
+    
     Notes:
     1. Default paramters are used, for returning all possible matches.
     1. Only the best alignment of a genome is used to evaluate alignment similarity:
