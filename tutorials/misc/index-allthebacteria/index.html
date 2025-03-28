@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/",
       "headline": "Indexing AllTheBacteria",
       "description": " Table of contents Table of contents Searching with the pre-built index on AWS Run on EC2 Only download it and run locally Steps for v0.2 and later versions hosted at OSF Steps for v0.2 hosted at EBI ftp Searching with the pre-built index on AWS Run on EC2 Launch an EC2 instance in Europe London region (eu-west-2) where the index is located.",
-      "wordCount" : "1135",
+      "wordCount" : "1131",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1865,7 +1865,7 @@
  screen -S lexicmap
 
  # run
- # it takes 20 minutes with c7g.8xlarge, 12.5 miniutes with c6gn.12xlarge
+ # it takes 20 minutes with c7g.8xlarge, 12.5 minutes with c6gn.12xlarge
  # b.gene_E_coli_16S.fasta takes 1h54m with c6gn.12xlarge.
  lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug
 </code></pre>
@@ -1950,10 +1950,10 @@ atb.lmi: 5.24 TiB (5,758,698,088,389)
 >OSF</a>.</p>
 <ol>
 <li>
-<p>Downloading the list file of all assemblies in the latest version (v0.2 plus incremental versions). <a
+<p>Downloading the list file of all <a
   class="gdoc-markdown__link"
   href="https://osf.io/zxfmy/"
->assemblies</a>.</p>
+>assemblies</a> in the latest version (v0.2 plus incremental versions).</p>
 <pre><code> mkdir -p atb;
  cd atb;
 
@@ -2014,10 +2014,14 @@ You can also give a file list with selected assemblies.</p>
 </li>
 <li>
 <p>(Optional) Only keep assemblies of high-quality.
-Please manually download the <code>hq_set.sample_list.txt.gz</code> file from <a
+Please <a
   class="gdoc-markdown__link"
-  href="https://osf.io/xv7q9/"
->this path</a>, e.g., <code>AllTheBacteria/Metadata/OSF Storage/Aggregated/Latest_2024-08/</code> (choose the latest date).</p>
+  href="https://osf.io/download/m26zn/"
+>click this link</a> to download the <code>hq_set.sample_list.txt.gz</code> file,
+or from <a
+  class="gdoc-markdown__link"
+  href="https://osf.io/h7wzy/files/osfstorage"
+>this page</a>.</p>
 <pre><code>  find atb/ -name &quot;*.fa.gz&quot; | grep -w -f &lt;(zcat hq_set.sample_list.txt.gz) &gt; files.txt
 </code></pre>
 </li>
