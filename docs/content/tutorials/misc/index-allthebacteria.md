@@ -55,7 +55,7 @@ weight: 15
         screen -S lexicmap
         
         # run
-        # it takes 20 minutes with c7g.8xlarge, 12.5 miniutes with c6gn.12xlarge
+        # it takes 20 minutes with c7g.8xlarge, 12.5 minutes with c6gn.12xlarge
         # b.gene_E_coli_16S.fasta takes 1h54m with c6gn.12xlarge.
         lexicmap search -d atb.lmi b.gene_E_faecalis_SecY.fasta -o t.txt --debug
 
@@ -112,7 +112,7 @@ Info:
 After v0.2, AllTheBacteria releases incremental datasets periodically, with all data stored at [OSF](https://osf.io/xv7q9/).
 
 
-1. Downloading the list file of all assemblies in the latest version (v0.2 plus incremental versions). [assemblies](https://osf.io/zxfmy/).
+1. Downloading the list file of all [assemblies](https://osf.io/zxfmy/) in the latest version (v0.2 plus incremental versions).
 
         mkdir -p atb;
         cd atb;
@@ -168,7 +168,8 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
             atb/atb.assembly.r0.2.batch.1/SAMD00049594.fa.gz
 
     - (Optional) Only keep assemblies of high-quality.
-      Please manually download the `hq_set.sample_list.txt.gz` file from [this path](https://osf.io/xv7q9/), e.g., `AllTheBacteria/Metadata/OSF Storage/Aggregated/Latest_2024-08/` (choose the latest date).
+      Please [click this link](https://osf.io/download/m26zn/) to download the `hq_set.sample_list.txt.gz` file,
+      or from [this page](https://osf.io/h7wzy/files/osfstorage).
 
             find atb/ -name "*.fa.gz" | grep -w -f <(zcat hq_set.sample_list.txt.gz) > files.txt
 
