@@ -151,7 +151,7 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         │   ├── SAMD00195911.fa.gz
         │   ├── SAMD00195914.fa.gz
 
-1. Parepare a file list of assemblies.
+1. Prepare a file list of assemblies.
 
     -  Just use `find` or [fd](https://github.com/sharkdp/fd) (much faster).
 

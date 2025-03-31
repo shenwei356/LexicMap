@@ -1,5 +1,12 @@
 # Changelog
 
+### v0.6.0 - 2025-04-01
+
+- `lexicmap search`:
+    - Fix the program hang when no chaining result is returned.
+- `lexicmap version`:
+    - Do not show commit hash by default.
+
 ### v0.6.0 - 2025-03-25
 
 This version is compatible with indexes created by previous versions (requires a one-time, automatic preprocessing),

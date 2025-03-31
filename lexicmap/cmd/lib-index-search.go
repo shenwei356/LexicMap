@@ -1285,6 +1285,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		startTime = time.Now()
 	}
 
+	if len(*rs) == 0 { // It happens when there's only one anchor which is shorter than MinSinglePrefix.
+		return nil, nil
+	}
+
 	// 3.3) alignment
 
 	rs2 := poolSearchResults.Get().(*[]*SearchResult)
