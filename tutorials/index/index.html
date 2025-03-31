@@ -62,7 +62,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
       "description": " Note Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp \u0027^(\\w{3}_\\d{9}\\.\\d\u002b)\u0027 extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:",
-      "wordCount" : "3382",
+      "wordCount" : "3381",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2329,16 +2329,16 @@ of <code>--max-open-files</code> is not big enough.</li>
 </code></pre>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="4c06832c-6">
+  <label class="gdoc-expand__head flex justify-between" for="befed277-6">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="4c06832c-6" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="befed277-6" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
     <pre><code>    # here we set a small --batch-size 5
 
     $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-    09:44:36.593 [INFO] LexicMap v0.6.0 (9c48f56)
+    09:44:36.593 [INFO] LexicMap v0.6.0
     09:44:36.593 [INFO]   https://github.com/shenwei356/LexicMap
     09:44:36.593 [INFO] 
     09:44:36.593 [INFO] checking input files ...
