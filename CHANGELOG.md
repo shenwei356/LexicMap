@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.6.0 - 2025-04-01
+### v0.6.1 - 2025-03-31
 
 - `lexicmap search`:
     - Fix the program hang in the debug mode when no chaining result is returned.
