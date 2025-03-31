@@ -3,7 +3,7 @@
 ### v0.6.0 - 2025-04-01
 
 - `lexicmap search`:
-    - Fix the program hang when no chaining result is returned.
+    - Fix the program hang in the debug mode when no chaining result is returned.
 - `lexicmap version`:
     - Do not show commit hash by default.
 
