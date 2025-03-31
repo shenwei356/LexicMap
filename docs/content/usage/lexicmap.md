@@ -8,7 +8,7 @@ $ lexicmap -h
 
    LexicMap: efficient sequence alignment against millions of prokaryotic genomes
 
-    Version: v0.6.0 (9c48f56)
+    Version: v0.6.0
   Documents: https://bioinf.shenwei.me/LexicMap
 Source code: https://github.com/shenwei356/LexicMap
 

@@ -185,7 +185,7 @@ Here are some tips to improve the search speed.
 {{< expand "Click to show the log of a demo run." "..." >}}
 
         $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-        00:12:58.547 [INFO] LexicMap v0.6.0 (19844cc)
+        00:12:58.547 [INFO] LexicMap v0.6.0
         00:12:58.547 [INFO]   https://github.com/shenwei356/LexicMap
         00:12:58.547 [INFO] 
         00:12:58.547 [INFO] checking input files ...

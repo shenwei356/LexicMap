@@ -35,11 +35,11 @@ var RootCmd = &cobra.Command{
 	Long: fmt.Sprintf(`
    LexicMap: efficient sequence alignment against millions of prokaryotic genomes
 
-    Version: v%s (%s)
+    Version: v%s
   Documents: https://bioinf.shenwei.me/LexicMap
 Source code: https://github.com/shenwei356/LexicMap
 
-`, VERSION, COMMIT),
+`, VERSION),
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

@@ -203,7 +203,7 @@ Result ordering:
 		// ---------------------------------------------------------------
 
 		if outputLog {
-			log.Infof("LexicMap v%s (%s)", VERSION, COMMIT)
+			log.Infof("LexicMap v%s", VERSION)
 			log.Info("  https://github.com/shenwei356/LexicMap")
 			log.Info()
 		}
