@@ -432,7 +432,7 @@ Result ordering:
 		K := idx.k
 
 		idx.SetSeqCompareOptions(&SeqComparatorOptions{
-			K:         uint8(K),
+			K:         uint8(31),
 			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
 
 			Chaining2Options: Chaining2Options{

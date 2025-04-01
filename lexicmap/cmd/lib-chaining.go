@@ -156,6 +156,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
 	maxDistanceInt32 := int32(maxDistance)
+
+	allowChangeDirection := n < 1000
+	var changeDirection, mChangeDirection bool
+	var mjScore float64
+
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
@@ -166,6 +171,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		// w = seedWeight(float64(a.Len))
 		// m, mj, mdir = w, i, 0
 		m, mj, mdir = seedWeight(float64(a.Len)), i, 0
+		mChangeDirection = false
 
 		// for j = 0; j < i; j++ { // try all previous seeds, no bound
 		j = i
@@ -220,11 +226,19 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 			dir = direction(a, b)
 
+			changeDirection = false
+
 			if (*directions)[j] == 0 {
 				s = (*maxscores)[j] + w - gapScore(g)
 			} else if (*directions)[j] != dir {
 				// fmt.Printf("   different directions: pre: %f, ab: %f\n", (*directions)[j], dir)
-				continue
+				if !allowChangeDirection {
+					continue
+				}
+
+				// the previous chain might be wrong in repetitive region.
+				s = seedWeight(float64(b.Len)) + w - gapScore(g)
+				changeDirection = true
 			} else {
 				s = (*maxscores)[j] + w - gapScore(g)
 			}
@@ -236,11 +250,24 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				m = s
 				mj = j
 				mdir = dir
+				mChangeDirection = false
+				if allowChangeDirection && changeDirection {
+					// fmt.Printf("   different directions: m:%f, i:%d, j:%d, pre: %f, ab: %f\n", m, i, j, (*directions)[j], dir)
+					mChangeDirection = true
+					mjScore = seedWeight(float64(b.Len))
+				}
 			}
 		}
 		*maxscores = append(*maxscores, m) // save the max score
 		*maxscoresIdxs = append(*maxscoresIdxs, mj)
 		*directions = append(*directions, mdir)
+		if allowChangeDirection && mChangeDirection {
+			// reset info of the previous anchor
+			// fmt.Printf("   reset: %d\n", mj)
+			(*maxscores)[mj] = mjScore
+			(*maxscoresIdxs)[mj] = mj
+			(*directions)[mj] = 0
+		}
 		score2idx = append(score2idx, [2]float64{m, float64(i)})
 	}
 	// print the score matrix

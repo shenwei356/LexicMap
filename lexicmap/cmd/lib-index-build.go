@@ -1095,6 +1095,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 					pre = 0
 					var iD int
+					*locs = append(*locs, uint32(len(refseq.Seq)-k)<<1) // add a pseudo position
 					for _, pos2str = range *locs {
 						pos = pos2str >> 1
 						d = pos - pre
@@ -1361,7 +1362,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 						pre = pos
 					}
-
+					*locs = (*locs)[:len(*locs)-1] // remove the pseudo position
 				}
 
 				if opt.SaveSeedPositions {

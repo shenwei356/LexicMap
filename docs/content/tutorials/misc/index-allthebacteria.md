@@ -37,9 +37,10 @@ weight: 15
                 
 4. Install LexicMap.
 
-        # binary path depends on the architecture of the CPUs: amd64 or arm64
-        # you can also check the pre-release here: https://github.com/shenwei356/LexicMap/issues/10
-        wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.0/lexicmap_linux_arm64.tar.gz
+        # Binary's path depends on the architecture of the CPUs: amd64 or arm64
+        # Please check the latest version here: https://github.com/shenwei356/LexicMap/releases
+        #              or the pre-release here: https://github.com/shenwei356/LexicMap/issues/10
+        wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.1/lexicmap_linux_arm64.tar.gz
         
         mkdir -p bin
         tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
