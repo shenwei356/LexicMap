@@ -157,10 +157,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	maxDistance := ce.options.MaxDistance
 	maxDistanceInt32 := int32(maxDistance)
 
-	allowChangeDirection := n < 1000
-	var changeDirection, mChangeDirection bool
-	var mjScore float64
-
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
@@ -171,7 +167,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		// w = seedWeight(float64(a.Len))
 		// m, mj, mdir = w, i, 0
 		m, mj, mdir = seedWeight(float64(a.Len)), i, 0
-		mChangeDirection = false
 
 		// for j = 0; j < i; j++ { // try all previous seeds, no bound
 		j = i
@@ -226,48 +221,28 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 			dir = direction(a, b)
 
-			changeDirection = false
-
-			if (*directions)[j] == 0 {
+			if (*directions)[j] == 0 || (*directions)[j] == dir {
 				s = (*maxscores)[j] + w - gapScore(g)
-			} else if (*directions)[j] != dir {
-				// fmt.Printf("   different directions: pre: %f, ab: %f\n", (*directions)[j], dir)
-				if !allowChangeDirection {
-					continue
-				}
+			} else {
+				// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+				// 	continue
 
 				// the previous chain might be wrong in repetitive region.
 				s = seedWeight(float64(b.Len)) + w - gapScore(g)
-				changeDirection = true
-			} else {
-				s = (*maxscores)[j] + w - gapScore(g)
 			}
 
-			// fmt.Printf("  j:%d, b: %s, seedweight:%.0f, gapscore:%.0f\n", j, b, w, gapScore(g))
-			// fmt.Printf("  j:%d, b: %s, dir_j:%.0f, dir_ab:%.0f, s:%f\n", j, b, (*directions)[j], dir, s)
+			// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
 
 			if s >= minScore && s > m { //
+				// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
 				m = s
 				mj = j
 				mdir = dir
-				mChangeDirection = false
-				if allowChangeDirection && changeDirection {
-					// fmt.Printf("   different directions: m:%f, i:%d, j:%d, pre: %f, ab: %f\n", m, i, j, (*directions)[j], dir)
-					mChangeDirection = true
-					mjScore = seedWeight(float64(b.Len))
-				}
 			}
 		}
 		*maxscores = append(*maxscores, m) // save the max score
 		*maxscoresIdxs = append(*maxscoresIdxs, mj)
 		*directions = append(*directions, mdir)
-		if allowChangeDirection && mChangeDirection {
-			// reset info of the previous anchor
-			// fmt.Printf("   reset: %d\n", mj)
-			(*maxscores)[mj] = mjScore
-			(*maxscoresIdxs)[mj] = mj
-			(*directions)[mj] = 0
-		}
 		score2idx = append(score2idx, [2]float64{m, float64(i)})
 	}
 	// print the score matrix
@@ -304,6 +279,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	// for computing the score for sorting
 	var maxScore float64
 	first := true // best chain
+	var changeDirection bool
 	for {
 		// find the next highest score
 
@@ -345,8 +321,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 		for {
 			j = (*maxscoresIdxs)[i] // previous anchor
+
+			changeDirection = (i != j && (*directions)[j] != 0 && (*directions)[i] != (*directions)[j])
+
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
-			if (*visited)[j] { // current anchor is abandoned
+			if (*visited)[j] && !changeDirection { // current anchor is abandoned
 				// if len(*path) == 0 && !(*visited)[i] && (*subs)[i].Len >= minLen {
 				// 	*path = append(*path, i) // record the anchor
 				// 	// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
@@ -378,9 +357,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			// else {
 			// fmt.Printf("  add %d, %s\n", i, (*subs)[i])
 			// }
-			if i != j {
-				i = j
-			} else { // the path starts here
+			if i == j || changeDirection { // the path starts here
+				if changeDirection {
+					*path = append(*path, j)
+				}
+
 				reverseInts(*path)
 				*paths = append(*paths, path)
 				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
@@ -389,6 +370,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				*path = (*path)[:0]
 
 				break
+			} else {
+				i = j
 			}
 		}
 

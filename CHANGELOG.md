@@ -3,9 +3,10 @@
 ### v0.7.0 - 2025-04-01
 
 - `lexicmap index`:
-    - **Fix a little bug in seed desert filling** -- forgot to fill the region behind the last seed.
+    - **Fix a little bug in seed desert filling** -- forgot to fill the region (a few hundred bases) behind the last seed.
 - `lexicmap search`:
-    - **Improving seed chaining and pseudoalignment in repetitive regions**.
+    - **Improve seed chaining**
+    - **Improve pseudoalignment in repetitive regions**.
 
 ### v0.6.1 - 2025-03-31
 

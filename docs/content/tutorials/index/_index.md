@@ -278,7 +278,7 @@ We use a small dataset for demonstration.
         # here we set a small --batch-size 5
 
         $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-        09:44:36.593 [INFO] LexicMap v0.6.0
+        09:44:36.593 [INFO] LexicMap v0.7.0
         09:44:36.593 [INFO]   https://github.com/shenwei356/LexicMap
         09:44:36.593 [INFO] 
         09:44:36.593 [INFO] checking input files ...
