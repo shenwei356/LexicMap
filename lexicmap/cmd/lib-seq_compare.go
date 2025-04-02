@@ -542,7 +542,7 @@ func TrimSubStrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int, minDist flo
 	for i, p = range (*subs)[1:] {
 		if distance(p, _p) < minDist &&
 			((p.QBegin == _p.QBegin || p.TBegin == _p.TBegin) || // case 1
-				(gap(_p, p) > 11 && float64(overlap(_p, p))/float64(_p.Len) > 0.8)) { // case 2
+				(gap2(_p, p) > 11 && float64(overlap(_p, p))/float64(_p.Len) > 0.8)) { // case 2
 			start = i
 			_p = p
 			continue
@@ -560,7 +560,7 @@ func TrimSubStrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int, minDist flo
 
 		if distance(p, _p) < minDist &&
 			((p.QBegin == _p.QBegin || p.TBegin == _p.TBegin) || // case 1
-				(gap(p, _p) > 11 && float64(overlap(p, _p))/float64(_p.Len) > 0.8 && distance(p, _p) < minDist)) { // case 2
+				(gap2(p, _p) > 11 && float64(overlap(p, _p))/float64(_p.Len) > 0.8)) { // case 2
 			end = i
 			_p = p
 			continue
