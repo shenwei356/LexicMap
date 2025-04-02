@@ -5,7 +5,7 @@
 - `lexicmap index`:
     - **Fix a little bug in seed desert filling** -- forgot to fill the region (a few hundred bases) behind the last seed.
 - `lexicmap search`:
-    - **Improve seed chaining**
+    - **Improve seed chaining** -- more accurate for complex anchors.
     - **Improve pseudoalignment in repetitive regions**.
 
 ### v0.6.1 - 2025-03-31
