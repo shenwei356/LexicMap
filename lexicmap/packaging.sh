@@ -1,6 +1,12 @@
 #!/usr/bin/env sh
 
-CGO_ENABLED=0 gox -os="windows darwin linux freebsd" -arch="amd64 arm64" -tags netgo -ldflags '-w -s' -asmflags '-trimpath' \
+commit=""
+
+if [ $# -gt 0 ]; then
+    commit=" -X github.com/shenwei356/LexicMap/lexicmap/cmd.COMMIT=$(git rev-parse --short HEAD)"
+fi
+
+CGO_ENABLED=0 gox -os="windows darwin linux freebsd" -arch="amd64 arm64" -tags netgo -ldflags "-w -s $commit" -asmflags '-trimpath' \
     -output "lexicmap_{{.OS}}_{{.Arch}}"
 
 dir=binaries

@@ -7,6 +7,7 @@
 - `lexicmap search`:
     - **Improve seed chaining** -- more accurate for complex anchors.
     - **Improve pseudoalignment in repetitive regions**.
+    - Change the default value of `--seed-max-gap` from 200 to 50.
 
 ### v0.6.1 - 2025-03-31
 

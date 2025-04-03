@@ -387,10 +387,10 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "Demo data" >}}
 
     # 15 genomes
-    demo.lmi/: 82.16 MB (82,163,079)
-      68.43 MB      seeds
-      13.57 MB      genomes
-     160.03 kB      masks.bin
+    demo.lmi/: 78.36 MiB (82,165,269)
+     65.26 MiB      seeds
+     12.94 MiB      genomes
+    156.28 KiB      masks.bin
          600 B      info.toml
          375 B      genomes.map.bin
            0 B      genomes.chunks.bin
@@ -400,12 +400,12 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes
-    gtdb_repr.lmi: 228.99 GB (228,994,282,844)
-     157.28 GB      seeds
-      71.71 GB      genomes
-       2.13 MB      genomes.map.bin
-     160.03 kB      masks.bin
-         572 B      info.toml
+    gtdb_repr.lmi: 213.27 GiB (228,999,914,466)
+    146.49 GiB      seeds
+     66.78 GiB      genomes
+      2.03 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+         613 B      info.toml
           48 B      genomes.chunks.bin
 
 {{< /tab>}}
@@ -413,12 +413,12 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "GTDB complete" >}}
 
     # 402,538 genomes
-    gtdb_complete.lmi: 972.08 GB (972,076,050,813)
-     582.31 GB      seeds
-     389.76 GB      genomes
-      10.06 MB      genomes.map.bin
-     160.03 kB      masks.bin
-         574 B      info.toml
+    gtdb_complete.lmi: 905.34 GiB (972,098,200,328)
+    542.34 GiB      seeds
+    362.99 GiB      genomes
+      9.60 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+         616 B      info.toml
          168 B      genomes.chunks.bin
 
 {{< /tab>}}

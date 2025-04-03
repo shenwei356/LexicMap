@@ -107,7 +107,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-p, --seed-min-prefix`**       |Default 15  |Minimum (prefix) length of matched seeds.                                                       |Smaller values produce more results at the cost of slow speed.|
 |**`-P, --seed-min-single-prefix`**|Default 17  |Minimum (prefix) length of matched seeds if there's only one pair of seeds matched.             |Smaller values produce more results at the cost of slow speed.|
 |`--seed-max-dist`                 |Default 1000|Max distance between seeds in seed chaining. It should be <= contig interval length in database.|                                                              |
-|`--seed-max-gap`                  |Default 200 |Max gap in seed chaining.                                                                       |                                                              |
+|`--seed-max-gap`                  |Default 50  |Max gap in seed chaining.                                                                       |                                                              |
                                                  |
 
 {{< /tab>}}

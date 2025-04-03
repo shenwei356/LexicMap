@@ -556,7 +556,7 @@ func init() {
 	// mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
 	// 	formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
 
-	mapCmd.Flags().IntP("seed-max-gap", "", 200,
+	mapCmd.Flags().IntP("seed-max-gap", "", 50,
 		formatFlagUsage(`Minimum gap in seed chaining.`))
 	mapCmd.Flags().IntP("seed-max-dist", "", 1000,
 		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))

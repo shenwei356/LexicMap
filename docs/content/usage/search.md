@@ -99,7 +99,7 @@ Flags:
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
       --seed-max-dist int              ► Minimum distance between seeds in seed chaining. It should be
                                        <= contig interval length in database. (default 1000)
-      --seed-max-gap int               ► Minimum gap in seed chaining. (default 200)
+      --seed-max-gap int               ► Minimum gap in seed chaining. (default 50)
   -p, --seed-min-prefix int            ► Minimum (prefix/suffix) length of matched seeds (anchors).
                                        (default 15)
   -P, --seed-min-single-prefix int     ► Minimum (prefix/suffix) length of matched seeds (anchors) if
