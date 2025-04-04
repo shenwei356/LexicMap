@@ -106,7 +106,8 @@ Flags:
                                        there's only one pair of seeds matched. (default 17)
   -n, --top-n-genomes int              ► Keep top N genome matches for a query (0 for all) in chaining
                                        phase. Value 1 is not recommended as the best chaining result
-                                       does not always bring the best alignment, so it better be >= 10.
+                                       does not always bring the best alignment, so it better be >= 100.
+                                       (default 0)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
