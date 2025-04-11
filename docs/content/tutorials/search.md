@@ -133,7 +133,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 LexicMap's searching speed is related to many factors:
 - **The number of similar sequences in the index/database**. More genome hits cost more time, e.g., 16S rRNA gene.
-- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching (serial access) and extracting candidate subsequences for alignment (random access) require a large number of file readings in parallel.
+- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching (sequential reading) and extracting candidate subsequences for alignment (**random access**) require a large number of file readings in parallel.
 - **Similarity between query and subject sequences**. Alignment of diverse sequences is slightly slower than that of highly similar sequences.
 - **The length of query sequence**. Longer queries run with more time.
 - **CPU frequency and the number of threads**. Faster CPUs and more threads cost less time.
@@ -141,6 +141,7 @@ LexicMap's searching speed is related to many factors:
 
 Here are some tips to improve the search speed.
 
+- **Storing the index on SSD** (It would be very fast!)
 - **Returning less results**
     - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17)
       increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%).
@@ -150,7 +151,7 @@ Here are some tips to improve the search speed.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
      including `-q/--min-qcov-per-hsp`, `-Q/--min-qcov-per-genome`, and `-i/--align-min-match-pident`,
      do not significantly accelerate the search speed. Hence, you can search with default
-     parameters and then filter the result with tools like `awk` or `csvtk`.
+     parameters and then filter the result with tools such as [csvtk](https://github.com/shenwei356/csvtk).
 - **Increasing the concurrency number**
     - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
         ```
@@ -159,7 +160,7 @@ Here are some tips to improve the search speed.
         ```
     - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
-- **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored in SSD)
+- **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored on SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
 ## Steps
@@ -312,6 +313,7 @@ Tab-delimited format with 20+ columns, with 1-based positions.
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
+                  It's useful to show if multiple adjacent HSPs are collinear.
     8.  hsp,      Nth HSP in the genome.         (just for improving readability)
     9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     10. alenHSP,  Aligned length in the current HSP.
@@ -332,7 +334,7 @@ Tab-delimited format with 20+ columns, with 1-based positions.
 
 **Result ordering:**
 
-  For a HSP cluster, `SimilarityScore = aligned_bases * weighted_pident`.
+  For a HSP cluster, `SimilarityScore = max(bit_score * pident)`.
   1. Within each HSP cluster, HSPs are sorted by `sstart`.
   2. Within each subject genome, HSP clusters are sorted in descending order by `SimilarityScore`.
   3. Results of multiple subject genomes are sorted by the highest `SimilarityScore` of HSP clusters.
@@ -421,6 +423,23 @@ CP115019.1   52830   65311   GCF_016803855.1   NZ_CP048009.1          98.158    
 
 {{< /tab>}}
 
+
+{{< tab "A prophage" >}}
+
+```plain
+query         qlen    hits   sgenome           sseqid          qcovGnm   cls   hsp   qcovHSP   alenHSP   pident   gaps   qstart   qend    sstart    send      sstr   slen      evalue      bitscore   species             
+-----------   -----   ----   ---------------   -------------   -------   ---   ---   -------   -------   ------   ----   ------   -----   -------   -------   ----   -------   ---------   --------   --------------------
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     1     27.890    9371      97.716   2      1        9369    1864411   1873781   +      4903501   0.00e+00    15953      Escherichia coli    
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     2     0.301     101       98.020   0      10308    10408   1873846   1873946   +      4903501   1.72e-43    174        Escherichia coli    
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    2     3     20.665    6942      96.528   4      17441    24382   1882011   1888948   +      4903501   0.00e+00    11459      Escherichia coli    
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    3     4     17.685    5941      97.980   0      24355    30295   1853098   1859038   +      4903501   0.00e+00    10174      Escherichia coli    
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    4     5     8.993     3021      91.526   0      10308    13328   1873846   1876866   +      4903501   0.00e+00    4295       Escherichia coli    
+NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    5     6     2.438     820       84.390   1      14540    15358   1878798   1879617   +      4903501   1.29e-264   911        Escherichia coli    
+NC_001895.1   33593   2      GCF_002949675.1   NZ_CP026774.1   0.976     1     1     0.976     331       85.801   3      13919    14246   3704319   3704649   -      4395762   6.35e-112   403        Shigella dysenteriae
+```
+
+{{< /tab>}}
+
 {{< tab "Long reads" >}}
 
 
@@ -453,6 +472,7 @@ ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858 
 
 {{< /tab>}}
 
+
 {{< /tabs >}}
 
 Search results (TSV format) above are formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
@@ -471,7 +491,7 @@ If you would like to summarize alignment results, e.g., the number of species, h
         GCF_000762265.1 Methanobacterium formicicum
         GCF_029601605.1 Methanobacterium formicicum
 
-2. Add information to the alignment result with [csvtk](https://github.com/shenwei356/csvtk) or other tools.
+2. Add information to the alignment results with [csvtk](https://github.com/shenwei356/csvtk) or other tools.
 
         # add species
         cat b.gene_E_coli_16S.fasta.lexicmap.tsv \
@@ -479,7 +499,7 @@ If you would like to summarize alignment results, e.g., the number of species, h
             | csvtk replace -t -f species -p "(.+)" -r "{kv}" -k ass2species.tsv \
             > result.with_species.tsv
 
-        # filter result with query coverage >= 80 and count the species
+        # filter results with query coverage >= 80 and count the species
         cat result.with_species.tsv \
             | csvtk uniq -t -f sgenome \
             | csvtk filter2 -t -f "\$qcovHSP >= 80" \

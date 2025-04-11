@@ -1,6 +1,8 @@
 # Changelog
 
-### v0.7.0 - 2025-04-01
+### v0.7.0 - 2025-04-11
+
+Please rebuild the index, as some seeds in the genome end regions were missed during computation.
 
 - `lexicmap index`:
     - **Fix a little bug in seed desert filling** -- forgot to fill the region (a few hundred bases) behind the last seed.

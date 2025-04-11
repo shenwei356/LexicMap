@@ -40,7 +40,7 @@ weight: 15
         # Binary's path depends on the architecture of the CPUs: amd64 or arm64
         # Please check the latest version here: https://github.com/shenwei356/LexicMap/releases
         #              or the pre-release here: https://github.com/shenwei356/LexicMap/issues/10
-        wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.1/lexicmap_linux_arm64.tar.gz
+        wget https://github.com/shenwei356/LexicMap/releases/download/v0.7.0/lexicmap_linux_arm64.tar.gz
         
         mkdir -p bin
         tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
@@ -88,7 +88,7 @@ Download the index (it's 5.24 TiB!!!).
     aws s3 cp s3://allthebacteria-lexicmap/202408/ atb.lmi --recursive --no-sign-request
     
     # dirsize atb.lmi
-    atb.lmi: 5.24 TiB (5,758,698,088,389)
+    atb.lmi: 5.24 TiB (5,758,875,365,595)
       2.87 TiB      seeds
       2.37 TiB      genomes
      51.70 MiB      genomes.map.bin

@@ -48,7 +48,7 @@ If you don't have enough memory, please decrease the value of `-b`.
         -b 25000
 
     # dirsize genbank_refseq.lmi
-    genbank_refseq.lmi: 4.96 TiB (5,454,543,021,278)
+    genbank_refseq.lmi: 4.96 TiB (5,454,659,703,138)
       2.79 TiB      seeds
       2.17 TiB      genomes
      55.81 MiB      genomes.map.bin

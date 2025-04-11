@@ -160,7 +160,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 200 bp by default.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 100 bp by default.
 However, short queries can also be aligned.
 
 If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 50) and `-d/--seed-in-desert-dist` (default 50), e.g.,
@@ -362,16 +362,20 @@ The LexicMap index is a directory with multiple files.
     $ tree demo.lmi/
     demo.lmi/                    # the index directory
     ├── genomes                  # directory of genome data
-    │   └── batch_0000           # genome data of one batch
-    │       ├── genomes.bin      # genome data file, containing genome ID, size, sequence lengths, bit-packed sequences
-    │       └── genomes.bin.idx  # index of genome data file, for fast subsequence extraction
+    │   ├── batch_0000           # genome data of one batch
+    │   │   ├── genomes.bin      # genome data file, containing genome ID, size, sequence lengths, bit-packed sequences
+    │   │   └── genomes.bin.idx  # index of genome data file, for fast subsequence extraction
+    │   └── batch_0001
+    │   │   ├── genomes.bin
+    │   │   └── genomes.bin.idx
+    │   ... ...
     ├── seeds                    # seed data: pairs of k-mer and its location information (genome batch, genome number, location, strand)
     │   ├── chunk_000.bin        # seed data file
     │   ├── chunk_000.bin.idx    # index of seed data file, for fast seed searching and data extraction
-    ... ... ...
+    │   ... ...
     │   ├── chunk_015.bin        # the number of chunks is set by flag `-c/--chunks`, default: #cpus
     │   └── chunk_015.bin.idx
-    ├── genomes.chunks.bin       # the list of genome chunks which belong to the same genome
+    ├── genomes.chunks.bin       # lists of genome chunks which belong to the same genome
     ├── genomes.map.bin          # mapping genome ID to batch number and genome number in the batch
     ├── info.toml                # summary of the index
     └── masks.bin                # mask data
@@ -380,13 +384,14 @@ The LexicMap index is a directory with multiple files.
 
 LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance.
 
-**Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genome bring higher compression rates.
+**Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genome bring smaller compression rates (smaller is good).
 
 {{< tabs "t2" >}}
 
 {{< tab "Demo data" >}}
 
     # 15 genomes
+    
     demo.lmi/: 78.36 MiB (82,165,269)
      65.26 MiB      seeds
      12.94 MiB      genomes
@@ -400,6 +405,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "GTDB repr" >}}
 
     # 85,205 genomes
+    
     gtdb_repr.lmi: 213.27 GiB (228,999,914,466)
     146.49 GiB      seeds
      66.78 GiB      genomes
@@ -413,6 +419,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "GTDB complete" >}}
 
     # 402,538 genomes
+    
     gtdb_complete.lmi: 905.34 GiB (972,098,200,328)
     542.34 GiB      seeds
     362.99 GiB      genomes
@@ -424,16 +431,17 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< /tab>}}
 
 
-{{< tab "Genbank+RefSeq" >}}
+{{< tab "GenBank+RefSeq" >}}
 
     # 2,340,672 genomes
-    genbank_refseq.lmi: 5.45 TB (5,454,543,021,236)
-       3.07 TB      seeds
-       2.38 TB      genomes
-      58.52 MB      genomes.map.bin
-     160.03 kB      masks.bin
-       3.68 kB      genomes.chunks.bin
-         577 B      info.toml
+         
+    genbank_refseq.lmi: 4.96 TiB (5,454,659,703,138)
+      2.79 TiB      seeds
+      2.17 TiB      genomes
+     55.81 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+      3.59 KiB      genomes.chunks.bin
+         619 B      info.toml
 
 {{< /tab>}}
 
@@ -441,12 +449,13 @@ LexicMap index size is related to the number of input genomes, the divergence be
 {{< tab "AllTheBacteria HQ" >}}
 
     # 1,858,610 genomes
-    atb_hq.lmi: 4.30 TB (4,304,382,853,190)
-       2.36 TB      seeds
-       1.94 TB      genomes
-      41.12 MB      genomes.map.bin
-     160.03 kB      masks.bin
-         577 B      info.toml
+    
+    atb_hq.lmi: 3.91 TiB (4,304,515,140,156)
+      2.15 TiB      seeds
+      1.77 TiB      genomes
+     39.22 MiB      genomes.map.bin
+    156.28 KiB      masks.bin
+         619 B      info.toml
           24 B      genomes.chunks.bin
 
 
@@ -454,8 +463,8 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< /tabs >}}
 
-- Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize -k`, **base: 1000**).
-- Index building parameters: `-k 31 -m 20000 -D 100 -d 50`. Genome batch size: `-b 5000` for GTDB datasets, `-b 25000` for others.
+- Directory/file sizes are counted with https://github.com/shenwei356/dirsize v1.2.1 (`dirsize $file`, **base: 1024**).
+- Index building parameters: `-k 31 -m 20000 -D 100 -d 50`. Genome batch size: `-b 25000` for GenBank+RefSeq and AllTheBacteria datasets, `-b 5000` (default) for others.
 
 
 ## Explore the index

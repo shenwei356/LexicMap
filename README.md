@@ -67,14 +67,14 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million prokaryotic assemblies** respectively).
 1. When searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
     
-    **With LexicMap v0.6.0** (48 CPUs),
+    **With LexicMap v0.7.0** (48 CPUs),
 
-    |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM    |
-    |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|------:|
-    |A 1.3-kb marker gene|41,718     |11,746                           |114                                |29,848                          |3m:09s     |3.84GB |
-    |A 1.5-kb 16S rRNA   |1,955,160  |245,669                          |501,177                            |1,208,314                       |37m:52s    |10.82GB|
-    |A 52.8-kb plasmid   |561,717    |96                               |15,359                             |546,262                         |51m:59s    |13.96GB|
-    |1003 AMR genes      |30,938,862 |7,635,500                        |4,855,759                          |18,447,603                      |23h:13m:35s|22.5GB |
+    |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM     |
+    |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|-------:|
+    |A 1.3-kb marker gene|41,718     |11,746                           |115                                |29,857                          |3m:06s     |3.97 GB |
+    |A 1.5-kb 16S rRNA   |1,955,167  |245,884                          |501,691                            |1,207,592                       |32m:59s    |11.09 GB|
+    |A 52.8-kb plasmid   |560,330    |96                               |15,370                             |544,864                         |52m:22s    |14.48 GB|
+    |1003 AMR genes      |30,967,882 |7,636,386                        |4,858,063                          |18,473,433                      |15h:52m:08s|24.86 GB|
 
     Notes:
     1. Default paramters are used, for returning all possible matches.
@@ -104,7 +104,7 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
 ```plain
 # For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-hsp 70 --min-qcov-per-genome 70  --top-n-genomes 1000
+    --min-qcov-per-hsp 70 --min-qcov-per-genome 70  --top-n-genomes 10000
 
 # For longer queries like plasmids, returning all hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
@@ -210,7 +210,7 @@ LexicMap is implemented in [Go](https://go.dev/) programming language,
 executable binary files **for most popular operating systems** are freely available
 in [release page](https://github.com/shenwei356/lexicmap/releases).
 
-Or install with `conda`:
+Or install with conda or pixi:
 
     conda install -c bioconda lexicmap
 
@@ -228,9 +228,9 @@ bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/202
 
 ## Limitations
 
-- The queries need to be longer than 100 bp.
+- The queries need to be longer than 100 bp, though some shorter one can also be aligned.
 - LexicMap is slow for >1Mb queries, and the alignment might be fragmented.
-- LexicMap is slow for batch searching with more than hundreds of queries. While, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
+- LexicMap is slow for batch searching with more than hundreds of queries. However, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
 
 ## Terminology differences
 

@@ -13,18 +13,29 @@ weight: 30
 - Please run `lexicmap autocompletion` to update shell autocompletion script !!!
 {{< /hint >}}
 
+### v0.7.0 - 2025-04-11
+
+[v0.7.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0) - 2025-04-10 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.7.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0)
+
+Please rebuild the index, as some seeds in the genome end regions were missed during computation.
+
+- `lexicmap index`:
+    - **Fix a little bug in seed desert filling** -- forgot to fill the region (a few hundred bases) behind the last seed.
+- `lexicmap search`:
+    - **Improve seed chaining** -- more accurate for complex anchors.
+    - **Improve pseudoalignment in repetitive regions**.
+    - Change the default value of `--seed-max-gap` from 200 to 50.
+
+## Previous versions
 
 ### v0.6.1 - 2025-03-31
 
-[v0.6.1](https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1) - 2025-03-25 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.6.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1)
+[v0.6.1](https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1) - 2025-03-31 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.6.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1)
 
 - `lexicmap search`:
     - Fix the program hang in the debug mode when no chaining result is returned.
 - `lexicmap version`:
     - Do not show commit hash by default.
-    
-    
-## Previous versions
     
 ### v0.6.0 - 2025-03-25
 

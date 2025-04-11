@@ -42,6 +42,7 @@ Output format:
     5.  sseqid,   Subject sequence ID.
     6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
     7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
+                  It's useful to show if multiple adjacent HSPs are collinear.
     8.  hsp,      Nth HSP in the genome.         (just for improving readability)
     9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
     10. alenHSP,  Aligned length in the current HSP.
