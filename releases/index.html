@@ -12,7 +12,7 @@
 <meta name="generator" content="Hugo 0.145.0">
 
 
-  <meta name="description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.6.1 - 2025-03-31 v0.6.1 - 2025-03-25 " />
+  <meta name="description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.6.1 - 2025-03-31 v0.6.1 - 2025-03-25 " />
+  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.6.1 - 2025-03-31 v0.6.1 - 2025-03-25 " />
+  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": " Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.6.1 - 2025-03-31 v0.6.1 - 2025-03-25 ",
-      "wordCount" : "1247",
+      "description": " Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 ",
+      "wordCount" : "1319",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1760,6 +1760,50 @@
 </blockquote>
 
 <div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="v070---2025-04-11"
+    >
+        v0.7.0 - 2025-04-11
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v070---2025-04-11" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.7.0 - 2025-04-11" aria-label="Anchor to: v0.7.0 - 2025-04-11" href="#v070---2025-04-11">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p><a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0"
+>v0.7.0</a> - 2025-04-10 <a
+  class="gdoc-markdown__link--raw"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0"
+><img
+  src="https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.7.0/total.svg"
+  alt="Github Releases (by Release)"
+  
+/></a></p>
+<p>Please rebuild the index, as some seeds in the genome end regions were missed during computation.</p>
+<ul>
+<li><code>lexicmap index</code>:
+<ul>
+<li><strong>Fix a little bug in seed desert filling</strong> &ndash; forgot to fill the region (a few hundred bases) behind the last seed.</li>
+</ul>
+</li>
+<li><code>lexicmap search</code>:
+<ul>
+<li><strong>Improve seed chaining</strong> &ndash; more accurate for complex anchors.</li>
+<li><strong>Improve pseudoalignment in repetitive regions</strong>.</li>
+<li>Change the default value of <code>--seed-max-gap</code> from 200 to 50.</li>
+</ul>
+</li>
+</ul>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="previous-versions"
+    >
+        Previous versions
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v061---2025-03-31"
     >
         v0.6.1 - 2025-03-31
@@ -1771,7 +1815,7 @@
 <p><a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1"
->v0.6.1</a> - 2025-03-25 <a
+>v0.6.1</a> - 2025-03-31 <a
   class="gdoc-markdown__link--raw"
   href="https://github.com/shenwei356/LexicMap/releases/tag/v0.6.1"
 ><img
@@ -1791,15 +1835,6 @@
 </ul>
 </li>
 </ul>
-<div class="flex align-center gdoc-page__anchorwrap">
-    <h2 id="previous-versions"
-    >
-        Previous versions
-    </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
-        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
-    </a>
-</div>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v060---2025-03-25"
     >

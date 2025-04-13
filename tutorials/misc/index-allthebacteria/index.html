@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-allthebacteria/",
       "headline": "Indexing AllTheBacteria",
       "description": " Table of contents Table of contents Searching with the pre-built index on AWS Run on EC2 Only download it and run locally Steps for v0.2 and later versions hosted at OSF Steps for v0.2 hosted at EBI ftp Searching with the pre-built index on AWS Run on EC2 Launch an EC2 instance in Europe London region (eu-west-2) where the index is located.",
-      "wordCount" : "1136",
+      "wordCount" : "1133",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1845,7 +1845,7 @@
 <pre><code> # Binary's path depends on the architecture of the CPUs: amd64 or arm64
  # Please check the latest version here: https://github.com/shenwei356/LexicMap/releases
  #              or the pre-release here: https://github.com/shenwei356/LexicMap/issues/10
- wget https://github.com/shenwei356/LexicMap/releases/download/v0.6.1/lexicmap_linux_arm64.tar.gz
+ wget https://github.com/shenwei356/LexicMap/releases/download/v0.7.0/lexicmap_linux_arm64.tar.gz
 
  mkdir -p bin
  tar -zxvf lexicmap_linux_arm64.tar.gz -C bin
@@ -1895,17 +1895,16 @@
 # output
                            PRE genomes/
                            PRE seeds/
-2025-02-12 17:29:56          0 
-2025-02-12 17:32:39      62488 genomes.chunks.bin
-2025-02-12 17:32:39   54209660 genomes.map.bin
-2025-03-04 21:55:15        619 info.toml
-2025-02-12 20:38:52     160032 masks.bin
+2025-04-08 16:39:17      62488 genomes.chunks.bin
+2025-04-08 16:39:17   54209660 genomes.map.bin
+2025-04-08 22:32:35        619 info.toml
+2025-04-08 22:32:36     160032 masks.bin
 </code></pre>
 <p>Download the index (it&rsquo;s 5.24 TiB!!!).</p>
 <pre><code>aws s3 cp s3://allthebacteria-lexicmap/202408/ atb.lmi --recursive --no-sign-request
 
 # dirsize atb.lmi
-atb.lmi: 5.24 TiB (5,758,698,088,389)
+atb.lmi: 5.24 TiB (5,758,875,365,595)
   2.87 TiB      seeds
   2.37 TiB      genomes
  51.70 MiB      genomes.map.bin

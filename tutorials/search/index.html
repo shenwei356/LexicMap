@@ -65,7 +65,7 @@ For short queries like genes or long reads, returning top N hits." />
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.",
-      "wordCount" : "3872",
+      "wordCount" : "4090",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1998,7 +1998,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
           <td style="text-align: left"><strong><code>-n/--top-n-genomes</code></strong></td>
           <td style="text-align: left">Default 0, 0 for all</td>
           <td style="text-align: left">Keep top N genome matches for a query in the chaining phase</td>
-          <td style="text-align: left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
+          <td style="text-align: left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 100. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
       </tr>
       <tr>
           <td style="text-align: left"><strong><code>-a/--all</code></strong></td>
@@ -2063,7 +2063,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
       </tr>
       <tr>
           <td style="text-align: left"><code>--seed-max-gap</code></td>
-          <td style="text-align: left">Default 200</td>
+          <td style="text-align: left">Default 50</td>
           <td style="text-align: left">Max gap in seed chaining.</td>
           <td style="text-align: left"></td>
       </tr>
@@ -2158,13 +2158,14 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 <p>LexicMap&rsquo;s searching speed is related to many factors:</p>
 <ul>
 <li><strong>The number of similar sequences in the index/database</strong>. More genome hits cost more time, e.g., 16S rRNA gene.</li>
-<li><strong>The I/O performance and load</strong>. LexicMap is I/O bound, because seeds matching (serial access) and extracting candidate subsequences for alignment (random access) require a large number of file readings in parallel.</li>
+<li><strong>The I/O performance and load</strong>. LexicMap is I/O bound, because seeds matching (sequential reading) and extracting candidate subsequences for alignment (<strong>random access</strong>) require a large number of file readings in parallel.</li>
 <li><strong>Similarity between query and subject sequences</strong>. Alignment of diverse sequences is slightly slower than that of highly similar sequences.</li>
 <li><strong>The length of query sequence</strong>. Longer queries run with more time.</li>
 <li><strong>CPU frequency and the number of threads</strong>. Faster CPUs and more threads cost less time.</li>
 </ul>
 <p>Here are some tips to improve the search speed.</p>
 <ul>
+<li><strong>Storing the index on SSD</strong> (It would be very fast!)</li>
 <li><strong>Returning less results</strong>
 <ul>
 <li>Bigger <code>-p/--seed-min-prefix</code> (default 15) and <code>-P/--seed-min-single-prefix</code> (default 17)
@@ -2175,7 +2176,10 @@ For queries with a large number of genome hits, a resonable value such as 1000 w
 <li><strong>Note that</strong>: alignment result filtering is performed in the final phase, so stricter filtering criteria,
 including <code>-q/--min-qcov-per-hsp</code>, <code>-Q/--min-qcov-per-genome</code>, and <code>-i/--align-min-match-pident</code>,
 do not significantly accelerate the search speed. Hence, you can search with default
-parameters and then filter the result with tools like <code>awk</code> or <code>csvtk</code>.</li>
+parameters and then filter the result with tools such as <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/csvtk"
+>csvtk</a>.</li>
 </ul>
 </li>
 <li><strong>Increasing the concurrency number</strong>
@@ -2191,7 +2195,7 @@ chunks = 48
 <li>(If you have many queries) Increase the value of <code>-J/--max-query-conc</code> (default 12), it will increase the memory.</li>
 </ul>
 </li>
-<li><strong>Loading the entire seed data into memoy</strong> (If you have many queries and the index is not very big. It&rsquo;s unnecessary if the index is stored in SSD)
+<li><strong>Loading the entire seed data into memoy</strong> (If you have many queries and the index is not very big. It&rsquo;s unnecessary if the index is stored on SSD)
 <ul>
 <li>Setting <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.</li>
 </ul>
@@ -2228,41 +2232,41 @@ chunks = 48
 </ul>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="5ae6bc3b-4">
+  <label class="gdoc-expand__head flex justify-between" for="91c7ea9f-4">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="5ae6bc3b-4" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="91c7ea9f-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
-    <pre><code>    $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-    00:12:58.547 [INFO] LexicMap v0.6.0
-    00:12:58.547 [INFO]   https://github.com/shenwei356/LexicMap
-    00:12:58.547 [INFO] 
-    00:12:58.547 [INFO] checking input files ...
-    00:12:58.547 [INFO]   1 input file given: q.gene.fasta
-    00:12:58.547 [INFO] 
-    00:12:58.547 [INFO] loading index: demo.lmi/
-    00:12:58.556 [INFO]   reading masks...
-    00:12:58.563 [INFO]   reading indexes of seeds (k-mer-value) data...
-    00:13:00.573 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-    00:13:00.574 [INFO] index loaded in 2.027094688s
-    00:13:00.574 [INFO] 
-    00:13:00.574 [INFO] searching with 16 threads...
-    00:13:00.575 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): start to search
-    00:13:00.589 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished seed-matching (15 genome hits) in 14.622755ms
-    00:13:00.593 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished chaining (15 genome hits) in 3.286315ms
+    <pre><code>    $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv --debug
+    09:56:48.464 [INFO] LexicMap v0.7.0
+    09:56:48.464 [INFO]   https://github.com/shenwei356/LexicMap
+    09:56:48.464 [INFO] 
+    09:56:48.464 [INFO] checking input files ...
+    09:56:48.464 [INFO]   1 input file given: q.gene.fasta
+    09:56:48.464 [INFO] 
+    09:56:48.464 [INFO] loading index: demo.lmi/
+    09:56:48.464 [INFO]   reading masks...
+    09:56:48.467 [INFO]   reading indexes of seeds (k-mer-value) data...
+    09:56:49.434 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    09:56:49.434 [INFO] index loaded in 969.583422ms
+    09:56:49.434 [INFO] 
+    09:56:49.434 [INFO] searching with 16 threads...
+    09:56:49.435 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): start to search
+    09:56:49.440 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished seed-matching (15 genome hits) in 5.354981ms
+    09:56:49.441 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished chaining (15 genome hits) in 1.045575ms
     checked genomes:  15 / 15 [======================================] ETA: 0s. done
-    00:13:00.651 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished alignment (15 genome hits) in 57.784923ms
-    00:13:00.651 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished sorting alignment results (15 genome hits) in 17.669µs
+    09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished alignment (15 genome hits) in 32.005224ms
+    09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished sorting alignment results (15 genome hits) in 13.758µs
 
-    00:13:00.651 [INFO] 
-    00:13:00.651 [INFO] processed queries: 1, speed: 774.101 queries per minute
-    00:13:00.651 [INFO] 100.0000% (1/1) queries matched
-    00:13:00.651 [INFO] done searching
-    00:13:00.651 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    00:13:00.652 [INFO] 
-    00:13:00.652 [INFO] elapsed time: 2.105031915s
-    00:13:00.652 [INFO]
+    09:56:49.473 [INFO] 
+    09:56:49.473 [INFO] processed queries: 1, speed: 1512.560 queries per minute
+    09:56:49.473 [INFO] 100.0000% (1/1) queries matched
+    09:56:49.473 [INFO] done searching
+    09:56:49.473 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    09:56:49.474 [INFO] 
+    09:56:49.474 [INFO] elapsed time: 1.009536088s
+    09:56:49.474 [INFO]
 </code></pre>
 
   </div>
@@ -2372,6 +2376,7 @@ chunks = 48
 5.  sseqid,   Subject sequence ID.
 6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
 7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
+              It's useful to show if multiple adjacent HSPs are collinear.
 8.  hsp,      Nth HSP in the genome.         (just for improving readability)
 9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
 10. alenHSP,  Aligned length in the current HSP.
@@ -2391,7 +2396,7 @@ chunks = 48
 24. align,    Alignment text (&quot;|&quot; and &quot; &quot;) between qseq and sseq. (optional with -a/--all)
 </code></pre>
 <p><strong>Result ordering:</strong></p>
-<p>For a HSP cluster, <code>SimilarityScore = aligned_bases * weighted_pident</code>.</p>
+<p>For a HSP cluster, <code>SimilarityScore = max(bit_score * pident)</code>.</p>
 <ol>
 <li>Within each HSP cluster, HSPs are sorted by <code>sstart</code>.</li>
 <li>Within each subject genome, HSP clusters are sorted in descending order by <code>SimilarityScore</code>.</li>
@@ -2512,6 +2517,28 @@ chunks = 48
       
     />
     <label for="tabs-t2-3" class="gdoc-tabs__label">
+      A prophage
+    </label>
+    <div class="gdoc-markdown--nested gdoc-tabs__content">
+      <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">query         qlen    hits   sgenome           sseqid          qcovGnm   cls   hsp   qcovHSP   alenHSP   pident   gaps   qstart   qend    sstart    send      sstr   slen      evalue      bitscore   species             
+</span></span><span class="line"><span class="cl">-----------   -----   ----   ---------------   -------------   -------   ---   ---   -------   -------   ------   ----   ------   -----   -------   -------   ----   -------   ---------   --------   --------------------
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     1     27.890    9371      97.716   2      1        9369    1864411   1873781   +      4903501   0.00e+00    15953      Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     2     0.301     101       98.020   0      10308    10408   1873846   1873946   +      4903501   1.72e-43    174        Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    2     3     20.665    6942      96.528   4      17441    24382   1882011   1888948   +      4903501   0.00e+00    11459      Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    3     4     17.685    5941      97.980   0      24355    30295   1853098   1859038   +      4903501   0.00e+00    10174      Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    4     5     8.993     3021      91.526   0      10308    13328   1873846   1876866   +      4903501   0.00e+00    4295       Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    5     6     2.438     820       84.390   1      14540    15358   1878798   1879617   +      4903501   1.29e-264   911        Escherichia coli    
+</span></span><span class="line"><span class="cl">NC_001895.1   33593   2      GCF_002949675.1   NZ_CP026774.1   0.976     1     1     0.976     331       85.801   3      13919    14246   3704319   3704649   -      4395762   6.35e-112   403        Shigella dysenteriae
+</span></span></code></pre></div>
+    </div>
+    <input
+      type="radio"
+      class="gdoc-tabs__control hidden"
+      name="tabs-t2"
+      id="tabs-t2-4"
+      
+    />
+    <label for="tabs-t2-4" class="gdoc-tabs__label">
       Long reads
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
@@ -2569,7 +2596,7 @@ chunks = 48
 </code></pre>
 </li>
 <li>
-<p>Add information to the alignment result with <a
+<p>Add information to the alignment results with <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/csvtk"
 >csvtk</a> or other tools.</p>
@@ -2579,7 +2606,7 @@ chunks = 48
      | csvtk replace -t -f species -p &quot;(.+)&quot; -r &quot;{kv}&quot; -k ass2species.tsv \
      &gt; result.with_species.tsv
 
- # filter result with query coverage &gt;= 80 and count the species
+ # filter results with query coverage &gt;= 80 and count the species
  cat result.with_species.tsv \
      | csvtk uniq -t -f sgenome \
      | csvtk filter2 -t -f &quot;\$qcovHSP &gt;= 80&quot; \
