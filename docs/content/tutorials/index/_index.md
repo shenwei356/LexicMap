@@ -390,7 +390,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "Demo data" >}}
 
-    # 15 genomes
+    # 15 genomes, 54 Mb (54,142,446 bp)
     
     demo.lmi/: 78.36 MiB (82,165,269)
      65.26 MiB      seeds
@@ -404,7 +404,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "GTDB repr" >}}
 
-    # 85,205 genomes
+    # 85,205 genomes, 274 Gbp (273,848,490,566 bp)
     
     gtdb_repr.lmi: 213.27 GiB (228,999,914,466)
     146.49 GiB      seeds
@@ -418,7 +418,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "GTDB complete" >}}
 
-    # 402,538 genomes
+    # 402,538 genomes, 1.5 Tbp (1,501,864,915,560 bp)
     
     gtdb_complete.lmi: 905.34 GiB (972,098,200,328)
     542.34 GiB      seeds
@@ -433,7 +433,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "GenBank+RefSeq" >}}
 
-    # 2,340,672 genomes
+    # 2,340,672 genomes, 9.2 Tbp (9,192,651,650,196 bp)
          
     genbank_refseq.lmi: 4.96 TiB (5,454,659,703,138)
       2.79 TiB      seeds
@@ -448,7 +448,7 @@ LexicMap index size is related to the number of input genomes, the divergence be
 
 {{< tab "AllTheBacteria HQ" >}}
 
-    # 1,858,610 genomes
+    # 1,858,610 genomes, 7.5 Tbp (7,493,622,021,123 bp)
     
     atb_hq.lmi: 3.91 TiB (4,304,515,140,156)
       2.15 TiB      seeds

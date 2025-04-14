@@ -143,7 +143,8 @@ Here are some tips to improve the search speed.
 
 - **Storing the index on SSD** (It would be very fast!)
 - **Returning less results**
-    - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17)
+    - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
+      e.g., `-p 17 -P 19`,
       increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%).
       Don't worry if you only search highly similar matches.
     - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. 

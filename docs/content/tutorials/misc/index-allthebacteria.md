@@ -77,11 +77,10 @@ Test access
     # output
                                PRE genomes/
                                PRE seeds/
-    2025-02-12 17:29:56          0 
-    2025-02-12 17:32:39      62488 genomes.chunks.bin
-    2025-02-12 17:32:39   54209660 genomes.map.bin
-    2025-03-04 21:55:15        619 info.toml
-    2025-02-12 20:38:52     160032 masks.bin
+    2025-04-08 16:39:17      62488 genomes.chunks.bin
+    2025-04-08 16:39:17   54209660 genomes.map.bin
+    2025-04-08 22:32:35        619 info.toml
+    2025-04-08 22:32:36     160032 masks.bin
 
 Download the index (it's 5.24 TiB!!!).
     
