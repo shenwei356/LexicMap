@@ -62,7 +62,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
       "description": " Note Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp \u0027^(\\w{3}_\\d{9}\\.\\d\u002b)\u0027 extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:",
-      "wordCount" : "3402",
+      "wordCount" : "3422",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2482,7 +2482,7 @@ demo.lmi/                    # the index directory
       Demo data
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 15 genomes
+      <pre><code># 15 genomes, 54 Mb (54,142,446 bp)
 
 demo.lmi/: 78.36 MiB (82,165,269)
  65.26 MiB      seeds
@@ -2505,7 +2505,7 @@ demo.lmi/: 78.36 MiB (82,165,269)
       GTDB repr
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 85,205 genomes
+      <pre><code># 85,205 genomes, 274 Gbp (273,848,490,566 bp)
 
 gtdb_repr.lmi: 213.27 GiB (228,999,914,466)
 146.49 GiB      seeds
@@ -2528,7 +2528,7 @@ gtdb_repr.lmi: 213.27 GiB (228,999,914,466)
       GTDB complete
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 402,538 genomes
+      <pre><code># 402,538 genomes, 1.5 Tbp (1,501,864,915,560 bp)
 
 gtdb_complete.lmi: 905.34 GiB (972,098,200,328)
 542.34 GiB      seeds
@@ -2551,7 +2551,7 @@ gtdb_complete.lmi: 905.34 GiB (972,098,200,328)
       GenBank&#43;RefSeq
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 2,340,672 genomes
+      <pre><code># 2,340,672 genomes, 9.2 Tbp (9,192,651,650,196 bp)
      
 genbank_refseq.lmi: 4.96 TiB (5,454,659,703,138)
   2.79 TiB      seeds
@@ -2574,7 +2574,7 @@ genbank_refseq.lmi: 4.96 TiB (5,454,659,703,138)
       AllTheBacteria HQ
     </label>
     <div class="gdoc-markdown--nested gdoc-tabs__content">
-      <pre><code># 1,858,610 genomes
+      <pre><code># 1,858,610 genomes, 7.5 Tbp (7,493,622,021,123 bp)
 
 atb_hq.lmi: 3.91 TiB (4,304,515,140,156)
   2.15 TiB      seeds
