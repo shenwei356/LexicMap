@@ -136,10 +136,15 @@ func (r *Genome) Reset() {
 
 }
 
+const TwentyMB = 20 << 20
+
 // RecycleGenome recycle a Genome
 func RecycleGenome(g *Genome) {
 	if g == nil {
 		return
+	}
+	if cap(g.Seq) > TwentyMB {
+		g.Seq = make([]byte, 0, 1<<20)
 	}
 	if g.TwoBit != nil {
 		RecycleTwoBit(g.TwoBit)

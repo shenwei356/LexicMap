@@ -1555,7 +1555,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						if outputBigGenomes {
 							chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
 						}
-						genome.PoolGenome.Put(refseq) // important
+						// genome.PoolGenome.Put(refseq) // important
+						genome.RecycleGenome(refseq) // important
 						if opt.Verbose || opt.Log2File {
 							log.Warningf("  skipping a big genome with a sequence of %d bp: %s", len(record.Seq.Seq), file)
 							if !opt.Log2File {
