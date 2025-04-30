@@ -21,18 +21,21 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
+	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
 )
 
@@ -201,6 +204,75 @@ Result ordering:
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
+		// taxonomy
+		taxdumpDir := getFlagString(cmd, "taxdump")
+		genome2taxidFile := getFlagString(cmd, "genome2taxid")
+		taxidsStr := getFlagStringSlice(cmd, "taxids")
+		keepGenomesWithoutTaxId := getFlagBool(cmd, "keep-genomes-without-taxid")
+		var taxids []uint32
+		taxidFile := getFlagString(cmd, "taxid-file")
+
+		var m map[uint32]interface{}
+		var ok bool
+
+		if len(taxidsStr) > 0 {
+			if !(taxdumpDir != "" && genome2taxidFile != "") {
+				checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are need if -t/--taxids is given"))
+			}
+			m = make(map[uint32]interface{}, len(taxidsStr))
+			taxids = make([]uint32, 0, len(taxidsStr))
+
+			for _, tmp := range taxidsStr {
+				val, err := strconv.ParseUint(tmp, 10, 32)
+				if err != nil {
+					checkError(fmt.Errorf("invalid TaxId: %s", tmp))
+				}
+
+				if _, ok = m[uint32(val)]; !ok {
+					taxids = append(taxids, uint32(val))
+					m[uint32(val)] = struct{}{}
+				}
+			}
+		}
+		if taxidFile != "" {
+			if m == nil {
+				m = make(map[uint32]interface{}, len(taxidsStr))
+			}
+
+			fh, err := xopen.Ropen(taxidFile)
+			if err != nil {
+				checkError(fmt.Errorf("failed to read taxid file: %s", taxidFile))
+			}
+
+			scanner := bufio.NewScanner(fh)
+			var line string
+			var val uint64
+			for scanner.Scan() {
+				line = strings.TrimSpace(strings.TrimRight(scanner.Text(), "\r\n"))
+				if line == "" {
+					continue
+				}
+
+				val, err = strconv.ParseUint(line, 10, 32)
+				if err != nil {
+					checkError(fmt.Errorf("invalid TaxId: %s", line))
+				}
+
+				if _, ok = m[uint32(val)]; !ok {
+					taxids = append(taxids, uint32(val))
+					m[uint32(val)] = struct{}{}
+				}
+			}
+			if err = scanner.Err(); err != nil {
+				checkError(fmt.Errorf("failed to read taxid file: %s", taxidFile))
+			}
+		}
+		// } else if taxdumpDir != "" {
+		// 	checkError(fmt.Errorf("the flag -T/--taxdump is given, but -t/--taxids is not"))
+		// } else if genome2taxidFile != "" {
+		// 	checkError(fmt.Errorf("the flag -G/--genome2taxid is given, but -t/--taxids is not"))
+		// }
+
 		// ---------------------------------------------------------------
 
 		if outputLog {
@@ -282,6 +354,11 @@ Result ordering:
 			OutputSeq: moreColumns,
 
 			Debug: getFlagBool(cmd, "debug"),
+
+			TaxdumpDir:              taxdumpDir,
+			Genome2TaxIdFile:        genome2taxidFile,
+			TaxIds:                  taxids,
+			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
 		}
 
 		// read info file to get the contig interval size
@@ -310,6 +387,9 @@ Result ordering:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
+			if len(taxids) > 0 {
+				log.Infof("  filtering genomes by %d TaxIds", len(taxids))
+			}
 		}
 
 		// ---------------------------------------------------------------
@@ -599,6 +679,19 @@ func init() {
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
 
 	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
+
+	// filter by taxids
+
+	mapCmd.Flags().StringP("taxdump", "T", "",
+		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp), needed for filtering results with TaxIds.`))
+	mapCmd.Flags().StringP("genome2taxid", "G", "",
+		formatFlagUsage(`Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. Genome IDs in the index can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut"`))
+	mapCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,
+		formatFlagUsage(`Keep genome hits without TaxId, i.e., those without TaxId in the --genome2taxid file.`))
+	mapCmd.Flags().StringSliceP("taxids", "t", []string{},
+		formatFlagUsage(`TaxIds(s) for filtering results, where the taxids are equal to or are the children of the given taxids.`))
+	mapCmd.Flags().StringP("taxid-file", "", "",
+		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids.`))
 
 }
 
