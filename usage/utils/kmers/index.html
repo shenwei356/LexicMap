@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.145.0">
+<meta name="generator" content="Hugo 0.147.0">
 
 
   <meta name="description" content="$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d &lt;index path&gt; [-m &lt;mask index&gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -m, --mask int ► View k-mers captured by Xth mask. (0 for all) (default 1) -f, --only-forward ► Only output forward k-mers. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples The default output is captured k-mers of the first mask." />

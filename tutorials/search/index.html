@@ -9,12 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.145.0">
+<meta name="generator" content="Hugo 0.147.0">
 
 
-  <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
-Run:
-For short queries like genes or long reads, returning top N hits." />
+  <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index." />
 
     <title>Step 2. Searching | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,9 +38,7 @@ For short queries like genes or long reads, returning top N hits." />
     content="Step 2. Searching"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
-Run:
-For short queries like genes or long reads, returning top N hits." />
+  <meta property="og:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/search/" />
 
@@ -51,9 +47,7 @@ For short queries like genes or long reads, returning top N hits." />
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 2. Searching" />
-  <meta name="twitter:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.
-Run:
-For short queries like genes or long reads, returning top N hits." />
+  <meta name="twitter:description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index." />
 
 
   <script type="application/ld+json">
@@ -64,8 +58,8 @@ For short queries like genes or long reads, returning top N hits." />
       "name": "Step 2. Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
-      "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.\nRun:\nFor short queries like genes or long reads, returning top N hits.",
-      "wordCount" : "4095",
+      "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.",
+      "wordCount" : "4260",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1771,6 +1765,7 @@ For short queries like genes or long reads, returning top N hits." />
         <li><a href="#parameters">Parameters</a>
           <ul>
             <li><a href="#improving-searching-speed">Improving searching speed</a></li>
+            <li><a href="#searching-with-plasmids-or-other-longer-queries">Searching with plasmids or other longer queries</a></li>
           </ul>
         </li>
         <li><a href="#steps">Steps</a></li>
@@ -2170,8 +2165,8 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 <ul>
 <li>Bigger <code>-p/--seed-min-prefix</code> (default 15) and <code>-P/--seed-min-single-prefix</code> (default 17),
 e.g., <code>-p 17 -P 19</code>,
-increase the search speed at the cost of decreased sensitivity for distant matches (similarity &lt; 90%).
-Don&rsquo;t worry if you only search highly similar matches.</li>
+increase the search speed at the cost of decreased sensitivity for distant matches (similarity &lt; 90%) or short queries.
+Don&rsquo;t worry if you only search highly similar matches or long queries.</li>
 <li>Setting <code>-n/--top-n-genomes</code> to keep top N genome matches for a query (0 for all) in chaining phase.
 For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.</li>
 <li><strong>Note that</strong>: alignment result filtering is performed in the final phase, so stricter filtering criteria,
@@ -2201,6 +2196,30 @@ chunks = 48
 <li>Setting <code>-w/--load-whole-seeds</code> to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.</li>
 </ul>
 </li>
+</ul>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="searching-with-plasmids-or-other-longer-queries"
+    >
+        Searching with plasmids or other longer queries
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/tutorials/search/#searching-with-plasmids-or-other-longer-queries" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Searching with plasmids or other longer queries" aria-label="Anchor to: Searching with plasmids or other longer queries" href="#searching-with-plasmids-or-other-longer-queries">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>For long queries, such as plasmids, a few parameters can be adjusted for better performance.</p>
+<ul>
+<li>Bigger <code>-p/--seed-min-prefix</code> (default 15) and <code>-P/--seed-min-single-prefix</code> (default 17),
+e.g., <code>-p 19 -P 21</code>. The search sensitivity will not be affected for long queries or high similarity subjects.</li>
+<li>Bigger <code>-l/--align-min-match-len</code> (default 50), such as <code>1000</code>, because small matches are less informative.</li>
+</ul>
+<p>When searching with plasmids, it&rsquo;s recommended to use a strict criterion of <code>-Q/--min-qcov-per-genome</code> (<code>qcovGnm</code>, default 0), such as 90,
+and further filter results with a loose criterion of <code>-q/--min-qcov-per-hsp</code> (<code>qcovHSP</code>, default 0) after searching, such as 50/60/70.
+The reasons are:</p>
+<ul>
+<li>Plasmids are circular, while they are stored linearly.
+The different starting positions in query and subject sequences would result in two alignment segments (small <code>qcovHSP</code>).</li>
+<li>Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
+Therefore, a plasmid might be aligned to multiple contigs with small <code>qcovHSP</code>.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="steps"
