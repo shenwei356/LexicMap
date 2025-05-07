@@ -55,6 +55,15 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
+  3. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
+     Only genomes with descendant TaxIds of the specific ones or themselves are searched,
+     in a similar way with BLAST+ 2.15.0 or later versions.
+     For example, searching Escherichia and Shigella genera with -t 561,620.
+
+     Users only need to provide NCBI-format taxdump files (-T/--taxdump, can also create from
+     any taxonomy data with TaxonKit https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump )
+     and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
+     There's no need to rebuild the index.
 
 Alignment result relationship:
 

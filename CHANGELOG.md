@@ -5,7 +5,14 @@
 - `lexicmap index`:
     - Reduce memory usage for huge genomes like Logan contigs.
 - `lexicmap search`:
-    - Support filtering genomes by TaxId(s).
+    - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
+      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
+      in a similar way with BLAST+ 2.15.0 or later versions.
+      For example, searching Escherichia and Shigella genera with `-t 561,620`.
+      Users only need to provide NCBI-format taxdump files (`-T/--taxdump`, can also create from
+      any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
+      and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
+      There's no need to rebuild the index.
 
 ### v0.7.0 - 2025-04-11
 
