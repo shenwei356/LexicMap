@@ -683,7 +683,7 @@ func init() {
 	// filter by taxids
 
 	mapCmd.Flags().StringP("taxdump", "T", "",
-		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp), needed for filtering results with TaxIds.`))
+		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp, etc.), needed for filtering results with TaxIds. For other non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to create taxdump files.`))
 	mapCmd.Flags().StringP("genome2taxid", "G", "",
 		formatFlagUsage(`Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. Genome IDs in the index can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut"`))
 	mapCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,

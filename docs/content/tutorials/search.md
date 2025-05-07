@@ -145,8 +145,8 @@ Here are some tips to improve the search speed.
 - **Returning less results**
     - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
       e.g., `-p 17 -P 19`,
-      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%).
-      Don't worry if you only search highly similar matches.
+      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
+      Don't worry if you only search highly similar matches or long queries.
     - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. 
       For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
@@ -164,6 +164,24 @@ Here are some tips to improve the search speed.
 - **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored on SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
+
+### Searching with plasmids or other longer queries
+
+For long queries, such as plasmids, a few parameters can be adjusted for better performance.
+
+- Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
+      e.g., `-p 19 -P 21`. The search sensitivity will not be affected for long queries or high similarity subjects.
+- Bigger `-l/--align-min-match-len` (default 50), such as `1000`, because small matches are less informative.
+
+When searching with plasmids, it's recommended to use a strict criterion of `-Q/--min-qcov-per-genome` (`qcovGnm`, default 0), such as 90,
+and further filter results with a loose criterion of `-q/--min-qcov-per-hsp` (`qcovHSP`, default 0) after searching, such as 50/60/70.
+The reasons are:
+
+- Plasmids are circular, while they are stored linearly. 
+  The different starting positions in query and subject sequences would result in two alignment segments (small `qcovHSP`).
+- Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
+  Therefore, a plasmid might be aligned to multiple contigs with small `qcovHSP`.
+    
 ## Steps
 
 
