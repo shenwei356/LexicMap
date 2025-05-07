@@ -30,7 +30,7 @@ import (
 )
 
 // VERSION is the version
-var VERSION = "0.7.0"
+var VERSION = "0.7.1"
 
 // COMMIT is the last commit
 // var COMMIT = func() string {

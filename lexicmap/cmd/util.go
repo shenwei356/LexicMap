@@ -398,3 +398,43 @@ func readKVs(file string, ignoreCase bool) (map[string]string, error) {
 
 	return m, fh.Close()
 }
+
+func readKVsUint32(file string, ignoreCase bool) (map[string]uint32, error) {
+	fh, err := xopen.Ropen(file)
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[string]uint32, 1024)
+
+	items := make([]string, 2)
+	scanner := bufio.NewScanner(fh)
+	var line string
+	var val uint64
+	for scanner.Scan() {
+		line = strings.TrimRight(scanner.Text(), "\r\n")
+		if line == "" {
+			continue
+		}
+
+		stringSplitNByByte(line, '\t', 2, &items)
+		if len(items) < 2 {
+			continue
+		}
+
+		val, err = strconv.ParseUint(items[1], 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		if ignoreCase {
+			m[strings.ToLower(items[0])] = uint32(val)
+		} else {
+			m[items[0]] = uint32(val)
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return m, fh.Close()
+}

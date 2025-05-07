@@ -1,5 +1,12 @@
 # Changelog
 
+### v0.7.1 - 2025-xx-xx
+
+- `lexicmap index`:
+    - Reduce memory usage for huge genomes like Logan contigs.
+- `lexicmap search`:
+    - Support filtering genomes by TaxId(s).
+
 ### v0.7.0 - 2025-04-11
 
 Please rebuild the index, as some seeds in the genome end regions were missed during computation.

@@ -21,9 +21,11 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"cmp"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"os"
@@ -39,6 +41,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/shenwei356/bio/taxdump"
 	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/util/pathutil"
@@ -81,8 +84,14 @@ type IndexSearchingOptions struct {
 	// Output
 	OutputSeq bool
 
-	//
+	// debug
 	Debug bool
+
+	// filter results by taxid
+	TaxdumpDir              string
+	Genome2TaxIdFile        string
+	TaxIds                  []uint32
+	KeepGenomesWithoutTaxId bool
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -166,6 +175,12 @@ type Index struct {
 
 	// totalBases
 	totalBases int64
+
+	// filter results by taxid
+	filterByTaxId   bool
+	genomeIdx2TaxId map[uint64]uint32
+	Taxonomy        *taxdump.Taxonomy
+	poolTaxIDfilter *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -222,6 +237,110 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	idx.contigInterval = info.ContigInterval
+
+	// -----------------------------------------------------
+	// taxid-related files
+
+	var wgT sync.WaitGroup
+	if len(idx.opt.TaxIds) > 0 {
+		idx.filterByTaxId = true
+
+		wgT.Add(1)
+		go func() {
+			defer wgT.Done()
+
+			idx.Taxonomy, err = taxdump.NewTaxonomyFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+			if err != nil {
+				checkError(fmt.Errorf("  failed to load taxonomy data: %s", idx.opt.TaxdumpDir))
+			}
+			idx.Taxonomy.CacheLCA()
+
+			if opt.Verbose || opt.Log2File {
+				log.Infof("  taxonomy data loaded from: %s", idx.opt.TaxdumpDir)
+			}
+		}()
+
+		wgT.Add(1)
+		go func() {
+			defer wgT.Done()
+
+			idx.genomeIdx2TaxId = make(map[uint64]uint32, info.Genomes)
+
+			// genome2taxid
+			genome2taxids, err := readKVsUint32(idx.opt.Genome2TaxIdFile, false)
+			if err != nil {
+				checkError(fmt.Errorf("  failed to read genome2taxid file: %s", idx.opt.Genome2TaxIdFile))
+			}
+			if opt.Verbose || opt.Log2File {
+				log.Infof("  %d genome2taxid records loaded", len(genome2taxids))
+			}
+
+			// genomes.map.bin
+			fh, err := os.Open(filepath.Join(idx.path, FileGenomeIndex))
+			if err != nil {
+				checkError(fmt.Errorf("  failed to read genome index mapping file: %s", err))
+			}
+			defer fh.Close()
+
+			r := bufio.NewReader(fh)
+
+			buf := make([]byte, 8)
+			var n, lenID int
+			var batchIDAndRefID uint64
+			var ok bool
+			var taxid uint32
+
+			for {
+				n, err = io.ReadFull(r, buf[:2])
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
+				}
+				if n < 2 {
+					checkError(fmt.Errorf("broken genome map file"))
+				}
+				lenID = int(be.Uint16(buf[:2]))
+				genomeId := make([]byte, lenID)
+
+				n, err = io.ReadFull(r, genomeId)
+				if err != nil {
+					checkError(fmt.Errorf("broken genome map file"))
+				}
+				if n < lenID {
+					checkError(fmt.Errorf("broken genome map file"))
+				}
+
+				n, err = io.ReadFull(r, buf)
+				if err != nil {
+					checkError(fmt.Errorf("broken genome map file"))
+				}
+				if n < 8 {
+					checkError(fmt.Errorf("broken genome map file"))
+				}
+
+				batchIDAndRefID = be.Uint64(buf)
+
+				if taxid, ok = genome2taxids[string(genomeId)]; ok {
+					idx.genomeIdx2TaxId[batchIDAndRefID] = taxid
+				} else {
+					if opt.Verbose || opt.Log2File {
+						log.Warningf("  taxid of %s is not given in the genome2taxid file: %s", genomeId, idx.opt.Genome2TaxIdFile)
+					}
+				}
+			}
+
+			if opt.Verbose || opt.Log2File {
+				log.Infof("  taxid information loaded")
+			}
+		}()
+
+		idx.poolTaxIDfilter = &sync.Pool{New: func() interface{} {
+			tmp := make(map[uint64]bool, max(1024, len(idx.genomeIdx2TaxId)/10))
+			return &tmp
+		}}
+	}
 
 	// -----------------------------------------------------
 	// read masks
@@ -452,6 +571,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.poolChainers = &sync.Pool{New: func() interface{} {
 		return NewChainer(co)
 	}}
+
+	if idx.filterByTaxId {
+		wgT.Wait()
+	}
 
 	return idx, nil
 }
@@ -1003,6 +1126,19 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var sr *kv.SearchResult
 		var ok bool
 
+		var refBatchAndIdxUint64 uint64
+		var filter *map[uint64]bool
+		filterByTaxId := idx.filterByTaxId
+		if filterByTaxId {
+			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
+		}
+		var keepGenome, matchOne bool
+		taxon := idx.Taxonomy
+		genomeIdx2TaxId := idx.genomeIdx2TaxId
+		keepGenomesWithoutTaxId := idx.opt.KeepGenomesWithoutTaxId
+		var _taxid, taxid uint32
+		taxids := idx.opt.TaxIds
+
 		for srs := range ch {
 			// different k-mers in subjects,
 			// most of cases, there are more than one
@@ -1034,7 +1170,38 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					// but most of cases, there's only one.
 					for _, refpos = range sr.Values {
 						// refBatchAndIdx = int(refpos >> 30) // batch+refIdx
-						refBatchAndIdx = int(refpos >> BITS_NONE_IDX) // batch+refIdx
+						refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
+						refBatchAndIdx = int(refBatchAndIdxUint64)
+
+						// filter by taxid
+						if filterByTaxId {
+							if keepGenome, ok = (*filter)[refBatchAndIdxUint64]; ok {
+								if !keepGenome {
+									continue
+								}
+							} else {
+								if taxid, ok = genomeIdx2TaxId[refBatchAndIdxUint64]; ok {
+									matchOne = false
+									for _, _taxid = range taxids {
+										if taxon.LCA(taxid, _taxid) == _taxid {
+											matchOne = true
+											break
+										}
+									}
+									if matchOne {
+										(*filter)[refBatchAndIdxUint64] = true
+									} else {
+										(*filter)[refBatchAndIdxUint64] = false
+										continue
+									}
+								} else if !keepGenomesWithoutTaxId {
+									(*filter)[refBatchAndIdxUint64] = false
+									continue
+								}
+								(*filter)[refBatchAndIdxUint64] = true
+							}
+						}
+
 						// posT = int(refpos << 34 >> 35)
 						posT = int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
 						rvT = refpos&BITS_REVERSE > 0
@@ -1106,6 +1273,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			}
 
 			kv.RecycleSearchResults(srs)
+		}
+
+		if filterByTaxId {
+			clear(*filter)
+			idx.poolTaxIDfilter.Put(filter)
 		}
 		done <- 1
 	}()
@@ -1188,7 +1360,12 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	idx.poolLocses.Put(_locsesR)
 
 	if debug {
-		log.Debugf("%s (%d bp): finished seed-matching (%d genome hits) in %s", query.seqID, len(query.seq), len(*m), time.Since(startTime))
+		if idx.filterByTaxId {
+			log.Debugf("%s (%d bp): finished seed-matching with filtering by TaxId (%d genome hits) in %s", query.seqID, len(query.seq), len(*m), time.Since(startTime))
+		} else {
+			log.Debugf("%s (%d bp): finished seed-matching (%d genome hits) in %s", query.seqID, len(query.seq), len(*m), time.Since(startTime))
+		}
+
 		startTime = time.Now()
 	}
 
