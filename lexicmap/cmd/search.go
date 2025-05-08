@@ -118,8 +118,21 @@ Result ordering:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		outFile := getFlagString(cmd, "out-file")
+
 		var fhLog *os.File
 		if opt.Log2File {
+			ro, err := filepath.Abs(outFile)
+			if err != nil {
+				checkError(fmt.Errorf("failed to check output file: %s", err))
+			}
+			rl, err := filepath.Abs(opt.LogFile)
+			if err != nil {
+				checkError(fmt.Errorf("failed to check log file: %s", err))
+			}
+			if ro == rl {
+				checkError(fmt.Errorf("output file and log file should not be the same: %s", outFile))
+			}
 			fhLog = addLog(opt.LogFile, opt.Verbose)
 		}
 
@@ -146,7 +159,6 @@ Result ordering:
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
-		outFile := getFlagString(cmd, "out-file")
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
