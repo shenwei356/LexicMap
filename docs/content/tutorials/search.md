@@ -48,6 +48,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - The number of matched genomes and sequences.
         - Similarities between query and target sequences.
         - The number of threads. It uses all CPUs by default (`-j/--threads`).
+        - The number of concurrent queries (`-J/--max-query-conc`, default 12).
 - **Disk**
     - SSD disks are preferred to store the index size, while HDD disks are also fast enough.
     - No temporary files are generated during searching.
@@ -306,6 +307,9 @@ The reasons are:
 
 
 ## Output
+
+The default format is tab-delimited (see details below).
+Blast-style pair-wise alignment format can be achieved by searching with `-a/--all` and converting with [lexicmap utils 2blast](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/).
 
 ### Alignment result relationship
 
