@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.",
-      "wordCount" : "4260",
+      "wordCount" : "4293",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1863,6 +1863,7 @@ LexicMap is mainly designed for sequence alignment with a small number of querie
 <li>The number of matched genomes and sequences.</li>
 <li>Similarities between query and target sequences.</li>
 <li>The number of threads. It uses all CPUs by default (<code>-j/--threads</code>).</li>
+<li>The number of concurrent queries (<code>-J/--max-query-conc</code>, default 12).</li>
 </ul>
 </li>
 </ul>
@@ -2357,6 +2358,11 @@ Therefore, a plasmid might be aligned to multiple contigs with small <code>qcovH
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
+<p>The default format is tab-delimited (see details below).
+Blast-style pair-wise alignment format can be achieved by searching with <code>-a/--all</code> and converting with <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/"
+>lexicmap utils 2blast</a>.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="alignment-result-relationship"
     >
