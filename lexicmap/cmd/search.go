@@ -58,7 +58,10 @@ Tips:
   3. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
      in a similar way with BLAST+ 2.15.0 or later versions.
-     For example, searching Escherichia and Shigella genera with -t 561,620.
+     Negative values are allowed as a black list.
+
+     For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with
+     -t 543,-561.
 
      Users only need to provide NCBI-format taxdump files (-T/--taxdump, can also create from
      any taxonomy data with TaxonKit https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump )
@@ -230,28 +233,41 @@ Result ordering:
 		genome2taxidFile := getFlagString(cmd, "genome2taxid")
 		taxidsStr := getFlagStringSlice(cmd, "taxids")
 		keepGenomesWithoutTaxId := getFlagBool(cmd, "keep-genomes-without-taxid")
-		var taxids []uint32
+		var taxids, negativeTaxids []uint32
 		taxidFile := getFlagString(cmd, "taxid-file")
 
-		var m map[uint32]interface{}
+		var m, negativeM map[uint32]interface{}
 		var ok bool
+		var v uint32
 
 		if len(taxidsStr) > 0 {
 			if !(taxdumpDir != "" && genome2taxidFile != "") {
 				checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are need if -t/--taxids is given"))
 			}
 			m = make(map[uint32]interface{}, len(taxidsStr))
+			negativeM = make(map[uint32]interface{}, len(taxidsStr))
 			taxids = make([]uint32, 0, len(taxidsStr))
+			negativeTaxids = make([]uint32, 0, len(taxidsStr))
 
+			var val int64
 			for _, tmp := range taxidsStr {
-				val, err := strconv.ParseUint(tmp, 10, 32)
+				val, err = strconv.ParseInt(tmp, 10, 32)
 				if err != nil {
 					checkError(fmt.Errorf("invalid TaxId: %s", tmp))
 				}
 
-				if _, ok = m[uint32(val)]; !ok {
-					taxids = append(taxids, uint32(val))
-					m[uint32(val)] = struct{}{}
+				if val > 0 {
+					v = uint32(val)
+					if _, ok = m[v]; !ok {
+						taxids = append(taxids, v)
+						m[v] = struct{}{}
+					}
+				} else if val < 0 {
+					v = uint32(-val)
+					if _, ok = negativeM[v]; !ok {
+						negativeTaxids = append(negativeTaxids, v)
+						negativeM[v] = struct{}{}
+					}
 				}
 			}
 		}
@@ -267,21 +283,30 @@ Result ordering:
 
 			scanner := bufio.NewScanner(fh)
 			var line string
-			var val uint64
+			var val int64
 			for scanner.Scan() {
 				line = strings.TrimSpace(strings.TrimRight(scanner.Text(), "\r\n"))
 				if line == "" {
 					continue
 				}
 
-				val, err = strconv.ParseUint(line, 10, 32)
+				val, err = strconv.ParseInt(line, 10, 32)
 				if err != nil {
 					checkError(fmt.Errorf("invalid TaxId: %s", line))
 				}
 
-				if _, ok = m[uint32(val)]; !ok {
-					taxids = append(taxids, uint32(val))
-					m[uint32(val)] = struct{}{}
+				if val > 0 {
+					v = uint32(val)
+					if _, ok = m[v]; !ok {
+						taxids = append(taxids, v)
+						m[v] = struct{}{}
+					}
+				} else if val < 0 {
+					v = uint32(-val)
+					if _, ok = negativeM[v]; !ok {
+						negativeTaxids = append(negativeTaxids, v)
+						negativeM[v] = struct{}{}
+					}
 				}
 			}
 			if err = scanner.Err(); err != nil {
@@ -379,6 +404,7 @@ Result ordering:
 			TaxdumpDir:              taxdumpDir,
 			Genome2TaxIdFile:        genome2taxidFile,
 			TaxIds:                  taxids,
+			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
 		}
 
@@ -408,8 +434,8 @@ Result ordering:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
-			if len(taxids) > 0 {
-				log.Infof("  filtering genomes by %d TaxIds", len(taxids))
+			if len(taxids)+len(negativeTaxids) > 0 {
+				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
 			}
 		}
 
@@ -710,9 +736,9 @@ func init() {
 	mapCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,
 		formatFlagUsage(`Keep genome hits without TaxId, i.e., those without TaxId in the --genome2taxid file.`))
 	mapCmd.Flags().StringSliceP("taxids", "t", []string{},
-		formatFlagUsage(`TaxIds(s) for filtering results, where the taxids are equal to or are the children of the given taxids.`))
+		formatFlagUsage(`TaxIds(s) for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 	mapCmd.Flags().StringP("taxid-file", "", "",
-		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids.`))
+		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
 }
 

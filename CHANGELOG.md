@@ -8,12 +8,13 @@
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,
       in a similar way with BLAST+ 2.15.0 or later versions.
-      For example, searching Escherichia and Shigella genera with `-t 561,620`.
+      Negative values are allowed as a black list.
+      For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with `-t 543,-561`.
       Users only need to provide NCBI-format taxdump files (`-T/--taxdump`, can also create from
       any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
       and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
       There's no need to rebuild the index.
-    - Reduce memory usage for long queries.
+    - **Reduce memory usage of batch quering**.
     - Check if the output file and the log file are the same.
 
 ### v0.7.0 - 2025-04-11

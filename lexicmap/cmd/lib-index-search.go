@@ -91,6 +91,7 @@ type IndexSearchingOptions struct {
 	TaxdumpDir              string
 	Genome2TaxIdFile        string
 	TaxIds                  []uint32
+	NegativeTaxIds          []uint32
 	KeepGenomesWithoutTaxId bool
 }
 
@@ -177,10 +178,12 @@ type Index struct {
 	totalBases int64
 
 	// filter results by taxid
-	filterByTaxId   bool
-	genomeIdx2TaxId map[uint64]uint32
-	Taxonomy        *taxdump.Taxonomy
-	poolTaxIDfilter *sync.Pool
+	filterByTaxId         bool
+	filterByPositiveTaxId bool
+	filterByNegativeTaxId bool
+	genomeIdx2TaxId       map[uint64]uint32
+	Taxonomy              *taxdump.Taxonomy
+	poolTaxIDfilter       *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -242,8 +245,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// taxid-related files
 
 	var wgT sync.WaitGroup
-	if len(idx.opt.TaxIds) > 0 {
+	if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 {
 		idx.filterByTaxId = true
+		idx.filterByPositiveTaxId = len(idx.opt.TaxIds) > 0
+		idx.filterByNegativeTaxId = len(idx.opt.NegativeTaxIds) > 0
 
 		wgT.Add(1)
 		go func() {
@@ -1135,6 +1140,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var refBatchAndIdxUint64 uint64
 		var filter *map[uint64]bool
 		filterByTaxId := idx.filterByTaxId
+		filterByPositiveTaxId := idx.filterByPositiveTaxId
+		filterByNegativeTaxId := idx.filterByNegativeTaxId
 		if filterByTaxId {
 			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
 		}
@@ -1144,6 +1151,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		keepGenomesWithoutTaxId := idx.opt.KeepGenomesWithoutTaxId
 		var _taxid, taxid uint32
 		taxids := idx.opt.TaxIds
+		negativeTaxids := idx.opt.NegativeTaxIds
 
 		for srs := range ch {
 			// different k-mers in subjects,
@@ -1186,19 +1194,41 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 									continue
 								}
 							} else {
+
 								if taxid, ok = genomeIdx2TaxId[refBatchAndIdxUint64]; ok {
-									matchOne = false
-									for _, _taxid = range taxids {
-										if taxon.LCA(taxid, _taxid) == _taxid {
-											matchOne = true
-											break
+									// black list
+									if filterByNegativeTaxId {
+										matchOne = false
+										for _, _taxid = range negativeTaxids {
+											if taxon.LCA(taxid, _taxid) == _taxid {
+												matchOne = true
+												break
+											}
+										}
+										if matchOne {
+											(*filter)[refBatchAndIdxUint64] = false
+											continue
+										} else if !filterByPositiveTaxId {
+											(*filter)[refBatchAndIdxUint64] = true
+											continue
 										}
 									}
-									if matchOne {
-										(*filter)[refBatchAndIdxUint64] = true
-									} else {
-										(*filter)[refBatchAndIdxUint64] = false
-										continue
+
+									// white list
+									if filterByPositiveTaxId {
+										matchOne = false
+										for _, _taxid = range taxids {
+											if taxon.LCA(taxid, _taxid) == _taxid {
+												matchOne = true
+												break
+											}
+										}
+										if matchOne {
+											(*filter)[refBatchAndIdxUint64] = true
+										} else {
+											(*filter)[refBatchAndIdxUint64] = false
+											continue
+										}
 									}
 								} else if !keepGenomesWithoutTaxId {
 									(*filter)[refBatchAndIdxUint64] = false
