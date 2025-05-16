@@ -76,7 +76,7 @@ type SeqComparator struct {
 	poolChainers *sync.Pool
 
 	// each comparator has its own pool
-	poolSub *sync.Pool
+	// poolSub *sync.Pool
 
 	// a prefix tree for matching k-mers
 	tree *rtree.Tree
@@ -94,9 +94,9 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 		// }},
 		poolChainers: poolChainers,
 
-		poolSub: &sync.Pool{New: func() interface{} {
-			return &SubstrPair{}
-		}},
+		// poolSub: &sync.Pool{New: func() interface{} {
+		// 	return &SubstrPair{}
+		// }},
 
 		ccc: util.Ns(0b01, options.K),
 		ggg: util.Ns(0b10, options.K),
@@ -182,7 +182,6 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	r.MatchedBases = 0
 
 	regions := poolRegions.Get().(*[]*[2]int)
-	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
 		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 		region := poolRegion.Get().(*[2]int)
@@ -225,7 +224,6 @@ func (r *SeqComparatorResult) Update2(chains *[]*Chain2Result, queryLen int) {
 	r.MatchedBases = 0
 
 	regions := poolRegions.Get().(*[]*[2]int)
-	*regions = (*regions)[:0]
 	for _, c := range *r.Chains {
 		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 
@@ -254,6 +252,7 @@ func recycleRegions(regions *[]*[2]int) {
 	for _, r := range *regions {
 		poolRegion.Put(r)
 	}
+	*regions = (*regions)[:0]
 	poolRegions.Put(regions)
 }
 
@@ -314,6 +313,7 @@ var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
 // RecycleSeqComparatorResult recycles a SeqComparatorResult
 func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 	RecycleChaining2Result(r.Chains)
+	r.Chains = nil
 	poolSeqComparatorResult.Put(r)
 }
 
@@ -341,11 +341,12 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	var srs *[]*rtree.SearchResult
 	var sr *rtree.SearchResult
 
-	poolSub2 := cpr.poolSub
+	// poolSub2 := cpr.poolSub
+	poolSub2 := poolSub
 
 	// substring pairs/seeds/anchors
-	subs := poolSubs.Get().(*[]*SubstrPair)
-	*subs = (*subs)[:0]
+	subs := poolSubsLong.Get().(*[]*SubstrPair)
+	defer RecycleSubstrPairs(poolSub2, poolSubsLong, subs)
 
 	ccc := cpr.ccc
 	ggg := cpr.ggg
@@ -436,7 +437,6 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	TrimSubStrPairs(poolSub2, subs, k, 100)
 	if len(*subs) == 0 {
-		RecycleSubstrPairs(poolSub2, subs)
 		return nil, nil
 	}
 
@@ -455,14 +455,12 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 		cpr.poolChainers.Put(chainer)
 	}()
 	if chains == nil {
-		RecycleSubstrPairs(poolSub2, subs)
 		return nil, nil
 	}
 
 	af := float64(nAlignedBasesQ) / float64(queryLen) * 100
 	// if af < cpr.options.MinAlignedFraction {
 	// 	RecycleChaining2Result(chains)
-	// 	RecycleSubstrPairs(subs)
 	// 	return nil, nil
 	// }
 
@@ -491,8 +489,6 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// r.TBegin = tB
 	// r.TEnd = tE
 	r.Chains = chains
-
-	RecycleSubstrPairs(poolSub2, subs)
 
 	return r, nil
 }

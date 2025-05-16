@@ -179,7 +179,7 @@ func _extendRight(s1, s2 []byte) (int, int) {
 	chainer := poolChainers3.Get().(*Chainer3)
 	chain := chainer.Chain(subs)
 
-	RecycleSubstrPairs(poolSub, subs)
+	RecycleSubstrPairs(poolSub, poolSubs, subs)
 	poolChainers3.Put(chainer)
 
 	if chain != nil {

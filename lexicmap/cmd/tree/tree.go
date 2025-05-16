@@ -240,6 +240,7 @@ func (idx *Tree) RecycleSearchResult(sr *[]*SearchResult) {
 	for _, r := range *sr {
 		poolSearchResult.Put(r)
 	}
+	*sr = (*sr)[:0]
 	poolSearchResults.Put(sr)
 }
 
@@ -319,7 +320,6 @@ func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
 	// output all leaves below n
 	// results := make([]SearchResult, 0, 8)
 	results := poolSearchResults.Get().(*[]*SearchResult)
-	*results = (*results)[:0]
 
 	var shift int = int(k0 - 32) // pre calculate it, a little bit faster
 	recursiveWalk(target, func(key uint64, v []uint32) bool {

@@ -69,7 +69,7 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 
 		// scores:        make([]int, 0, 10240),
 		// maxscores:     make([]int, 0, 51200),
-		maxscoresIdxs: make([]uint64, 0, 51200),
+		maxscoresIdxs: make([]uint64, 0, 102400),
 		// bounds:        make([]int32, 128),
 	}
 	return c
@@ -83,6 +83,7 @@ func RecycleChaining2Result(chains *[]*Chain2Result) {
 			poolChain2.Put(chain)
 		}
 	}
+	*chains = (*chains)[:0]
 	poolChains2.Put(chains)
 }
 
@@ -149,7 +150,6 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	if n == 1 { // for one seed, just check the seed weight
 		paths := poolChains2.Get().(*[]*Chain2Result)
-		*paths = (*paths)[:0]
 
 		sub := (*subs)[0]
 		slen := int(sub.Len)
@@ -299,7 +299,6 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	}
 
 	paths := poolChains2.Get().(*[]*Chain2Result)
-	*paths = (*paths)[:0]
 
 	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
 	// ce.bounds = ce.bounds[:0]

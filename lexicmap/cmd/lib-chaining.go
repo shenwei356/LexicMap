@@ -75,8 +75,13 @@ func NewChainer(options *ChainingOptions) *Chainer {
 // Please remember to call this after using the results.
 func RecycleChainingResult(chains *[]*[]int) {
 	for _, chain := range *chains {
-		poolChain.Put(chain)
+		if chain != nil {
+			*chain = (*chain)[:0]
+			poolChain.Put(chain)
+		}
 	}
+
+	*chains = (*chains)[:0]
 	poolChains.Put(chains)
 }
 
@@ -97,12 +102,10 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 
 	if n == 1 { // for one seed, just check the seed weight
 		paths := poolChains.Get().(*[]*[]int)
-		*paths = (*paths)[:0]
 
 		w := seedWeight(float64((*subs)[0].Len))
 		if w >= ce.options.MinScore {
 			path := poolChain.Get().(*[]int)
-			*path = (*path)[:0]
 
 			*path = append(*path, 0)
 
@@ -258,10 +261,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		*visited = append(*visited, false)
 	}
 	paths := poolChains.Get().(*[]*[]int)
-	*paths = (*paths)[:0]
 
 	path := poolChain.Get().(*[]int)
-	*path = (*path)[:0]
 
 	var M float64
 	var Mi int
@@ -308,6 +309,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		}
 
 		if M < minScore { // no valid anchors
+			*path = (*path)[:0]
 			poolChain.Put(path) // very important
 			break
 		}
@@ -338,7 +340,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				// 	// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
 				// 	path = poolChain.Get().(*[]int)
-				// 	*path = (*path)[:0]
 				// }
 
 				*path = (*path)[:0]
@@ -367,7 +368,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
 				path = poolChain.Get().(*[]int)
-				*path = (*path)[:0]
 
 				break
 			} else {

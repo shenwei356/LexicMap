@@ -13,6 +13,7 @@
       any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
       and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
       There's no need to rebuild the index.
+    - Reduce memory usage for long queries.
     - Check if the output file and the log file are the same.
 
 ### v0.7.0 - 2025-04-11
