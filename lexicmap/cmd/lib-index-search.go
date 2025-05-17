@@ -688,9 +688,6 @@ var poolSubsLong = &sync.Pool{New: func() interface{} {
 
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
 func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
-	if len(*subs) < 2 {
-		return
-	}
 
 	// sort substrings/seeds in ascending order based on the starting position
 	// and in descending order based on the ending position.
@@ -738,7 +735,6 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
 				v.TBegin >= p.TBegin && vTEnd <= p.TBegin+int32(p.Len) {
-				poolSub.Put(v)         // do not forget to recycle the object
 				(*markers)[i+1] = true // because of: range (*subs)[1:]
 				break
 			}
@@ -752,6 +748,8 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		if !embedded {
 			(*subs)[j] = (*subs)[i]
 			j++
+		} else {
+			poolSub.Put((*subs)[i]) // do not forget to recycle the object
 		}
 	}
 	if j > 0 {
@@ -911,7 +909,6 @@ func (idx *Index) RecycleSearchResult(r *SearchResult) {
 	// yes, it might be nil for some failed in chaining
 	if r.SimilarityDetails != nil {
 		idx.RecycleSimilarityDetails(r.SimilarityDetails)
-
 		r.SimilarityDetails = nil
 	}
 
@@ -1441,7 +1438,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		wg.Add(1)
 
 		go func(r *SearchResult) {
-			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+			if len(*r.Subs) > 1 {
+				ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+			}
 
 			// -----------------------------------------------------
 			// chaining
@@ -1752,7 +1751,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				if err != nil {
 					checkError(err)
 				}
-				if cr == nil {
+				if cr == nil { // no matches in the pseudo alignment
 					// recycle target sequence
 					// genome.RecycleGenome(tSeq)
 
@@ -2042,7 +2041,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 									*sds = append(*sds, sd)
 								} else {
-									RecycleChaining2Result(r2.Chains)
+									RecycleSeqComparatorResult(r2)
 								}
 							}
 
@@ -2274,7 +2273,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 							*sds = append(*sds, sd)
 						} else {
-							RecycleChaining2Result(r2.Chains)
+							RecycleSeqComparatorResult(r2)
 						}
 					}
 				}
@@ -2283,6 +2282,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 				*cr.Chains = (*cr.Chains)[:0]
 				poolChains2.Put(cr.Chains)
+				cr.Chains = nil
 				// genome.RecycleGenome(tSeq)
 			}
 

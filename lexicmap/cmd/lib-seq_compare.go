@@ -420,14 +420,16 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 		}
 	}
 
-	if len(*subs) < 1 { // no way
-		return nil, err
+	if len(*subs) < 1 { // no way, no matches in the pseudo alignment
+		return nil, nil
 	}
 
 	// --------------------------------------------------------------
 	// clear matched substrings
 
-	ClearSubstrPairs(poolSub2, subs, k)
+	if len(*subs) > 1 {
+		ClearSubstrPairs(poolSub2, subs, k)
+	}
 
 	// fmt.Println("----------- cleared anchors ----------")
 	// for i, sub := range *subs {
