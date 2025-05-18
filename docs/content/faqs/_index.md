@@ -133,7 +133,7 @@ While for the query sequences, we don't convert them.
 
 ## Why is LexicMap slow for batch searching?
 
-LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (up to 17 million) of genomes.
+LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (millions) of genomes.
 
 There are some ways to improve the search speed of `lexicmap search`: 
 http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed
