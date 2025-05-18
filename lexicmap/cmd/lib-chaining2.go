@@ -149,11 +149,12 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
-		paths := poolChains2.Get().(*[]*Chain2Result)
 
 		sub := (*subs)[0]
 		slen := int(sub.Len)
 		if slen >= ce.options.MinScore && slen >= ce.options.MinAlignLen { // the length of anchor (max 32)
+			paths := poolChains2.Get().(*[]*Chain2Result)
+
 			path := poolChain2.Get().(*Chain2Result)
 			path.Reset()
 
@@ -171,7 +172,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			return paths, slen, slen, slen, qb, qe, tb, te
 		}
 
-		return paths, 0, 0, 0, 0, 0, 0, 0
+		return nil, 0, 0, 0, 0, 0, 0, 0
 	}
 
 	var i, j int
@@ -319,6 +320,11 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		nil, // &ce.bounds,
 	)
 
+	if len(*paths) == 0 {
+		poolChains2.Put(paths)
+		return nil, 0, 0, 0, 0, 0, 0, 0
+	}
+
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
 }
 
@@ -377,8 +383,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	// var overlapped bool
 	// var nb, bi, bj int // index of bounds
 	firstAnchorOfAChain := true
-	path := poolChain2.Get().(*Chain2Result)
-	path.Reset()
+	var nAnchors int
 	for {
 		// j = (*maxscoresIdxs)[i] - offset // previous seed
 		j = int((*maxscoresIdxs)[i]&4294967295) - offset // previous seed
@@ -418,7 +423,8 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		// 	// can not continue here, must check if i == j
 		// } else {
 		// path.Chain = append(path.Chain, i+offset) // record the seed
-		path.NAnchors++
+		// path.NAnchors++
+		nAnchors++
 
 		// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
 
@@ -469,6 +475,9 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 				pident = 100
 			}
 
+			path := poolChain2.Get().(*Chain2Result)
+			path.Reset()
+			path.NAnchors = nAnchors
 			// reverseInts(path.Chain)
 			path.AlignedBasesQ = nAlignedBasesQ
 			path.AlignedBasesT = nAlignedBasesT
@@ -495,9 +504,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	if j < 0 { // the first anchor is not in current region
 		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", path.NAnchors)
 		// if len(path.Chain) == 0 {
-		if path.NAnchors == 0 {
-			poolChain2.Put(path)
-		} else {
+		if nAnchors > 0 {
 			nAlignedBasesQ += int(qe) - int(qb) + 1
 			nAlignedBasesT += int(te) - int(tb) + 1
 
@@ -508,6 +515,9 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 						pident = 100
 					}
 
+					path := poolChain2.Get().(*Chain2Result)
+					path.Reset()
+					path.NAnchors = nAnchors
 					// reverseInts(path.Chain)
 					path.AlignedBasesQ = nAlignedBasesQ
 					path.AlignedBasesT = nAlignedBasesT

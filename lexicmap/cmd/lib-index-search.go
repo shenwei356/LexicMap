@@ -1752,9 +1752,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					checkError(err)
 				}
 				if cr == nil { // no matches in the pseudo alignment
-					// recycle target sequence
-					// genome.RecycleGenome(tSeq)
-
 					continue
 				}
 
@@ -2278,12 +2275,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					}
 				}
 
-				// recycle target sequence
-
 				*cr.Chains = (*cr.Chains)[:0]
 				poolChains2.Put(cr.Chains)
 				cr.Chains = nil
-				// genome.RecycleGenome(tSeq)
 			}
 
 			// recyle chains ASAP

@@ -91,7 +91,7 @@ var poolChains = &sync.Pool{New: func() interface{} {
 }}
 
 var poolChain = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 0, 32)
+	tmp := make([]int, 0, 8)
 	return &tmp
 }}
 
@@ -262,8 +262,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	}
 	paths := poolChains.Get().(*[]*[]int)
 
-	path := poolChain.Get().(*[]int)
-
 	var M float64
 	var Mi int
 
@@ -309,10 +307,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 		}
 
 		if M < minScore { // no valid anchors
-			*path = (*path)[:0]
-			poolChain.Put(path) // very important
 			break
 		}
+
+		path := poolChain.Get().(*[]int)
+
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
 		i = Mi
@@ -366,8 +365,6 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				reverseInts(*path)
 				*paths = append(*paths, path)
 				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
-
-				path = poolChain.Get().(*[]int)
 
 				break
 			} else {

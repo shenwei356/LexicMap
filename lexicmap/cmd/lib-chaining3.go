@@ -215,8 +215,7 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 	var beginOfNextAnchor int
 	var pident float64
 	firstAnchorOfAChain := true
-	path := poolChain3.Get().(*Chain3Result)
-	path.Reset()
+	var nAnchors int
 	for {
 		j = int((*maxscoresIdxs)[i] & 4294967295) // previous seed
 
@@ -226,7 +225,7 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 
 		sub = (*subs)[i]
 
-		path.NAnchors++
+		nAnchors++
 
 		// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
 
@@ -276,6 +275,8 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 				pident = 100
 			}
 
+			path := poolChain3.Get().(*Chain3Result)
+			path.Reset()
 			// reverseInts(path.Chain)
 			path.AlignedBasesQ = nAlignedBasesQ
 			path.AlignedBasesT = nAlignedBasesT
@@ -288,11 +289,11 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 			// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
 
 			firstAnchorOfAChain = true
-			break
+			return path
 		}
 
 		i = j
 	}
 
-	return path
+	return nil
 }

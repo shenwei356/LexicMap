@@ -117,6 +117,7 @@ func _extendRight(s1, s2 []byte) (int, int) {
 
 	subs := poolSubs.Get().(*[]*SubstrPair)
 	*subs = (*subs)[:0]
+	defer RecycleSubstrPairs(poolSub, poolSubs, subs)
 
 	var v, p uint32
 	var srs *[]*tree.SearchResult
@@ -179,7 +180,6 @@ func _extendRight(s1, s2 []byte) (int, int) {
 	chainer := poolChainers3.Get().(*Chainer3)
 	chain := chainer.Chain(subs)
 
-	RecycleSubstrPairs(poolSub, poolSubs, subs)
 	poolChainers3.Put(chainer)
 
 	if chain != nil {
