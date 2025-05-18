@@ -73,7 +73,7 @@ func NewChainer(options *ChainingOptions) *Chainer {
 
 // RecycleChainingResult reycles the chaining results.
 // Please remember to call this after using the results.
-func RecycleChainingResult(chains *[]*[]int) {
+func RecycleChainingResult(chains *[]*[]int32) {
 	for _, chain := range *chains {
 		if chain != nil {
 			*chain = (*chain)[:0]
@@ -86,26 +86,26 @@ func RecycleChainingResult(chains *[]*[]int) {
 }
 
 var poolChains = &sync.Pool{New: func() interface{} {
-	tmp := make([]*[]int, 0, 8)
+	tmp := make([]*[]int32, 0, 8)
 	return &tmp
 }}
 
 var poolChain = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 0, 8)
+	tmp := make([]int32, 0, 8)
 	return &tmp
 }}
 
 // Chain finds the possible seed paths.
 // Please remember to call RecycleChainingResult after using the results.
-func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
+func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
-		paths := poolChains.Get().(*[]*[]int)
+		paths := poolChains.Get().(*[]*[]int32)
 
 		w := seedWeight(float64((*subs)[0].Len))
 		if w >= ce.options.MinScore {
-			path := poolChain.Get().(*[]int)
+			path := poolChain.Get().(*[]int32)
 
 			*path = append(*path, 0)
 
@@ -260,7 +260,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 	for i = 0; i < n; i++ {
 		*visited = append(*visited, false)
 	}
-	paths := poolChains.Get().(*[]*[]int)
+	paths := poolChains.Get().(*[]*[]int32)
 
 	var M float64
 	var Mi int
@@ -310,7 +310,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			break
 		}
 
-		path := poolChain.Get().(*[]int)
+		path := poolChain.Get().(*[]int32)
 
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
@@ -347,8 +347,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 				break
 			}
 
-			*path = append(*path, i) // record the anchor
-			(*visited)[i] = true     // mark as visited
+			*path = append(*path, int32(i)) // record the anchor
+			(*visited)[i] = true            // mark as visited
 
 			// if firstAnchor {
 			// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
@@ -359,10 +359,10 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int, float64) {
 			// }
 			if i == j || changeDirection { // the path starts here
 				if changeDirection {
-					*path = append(*path, j)
+					*path = append(*path, int32(j))
 				}
 
-				reverseInts(*path)
+				reverseInt32s(*path)
 				*paths = append(*paths, path)
 				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
 
@@ -413,6 +413,12 @@ func gapScore(gap float64) float64 {
 }
 
 func reverseInts(s []int) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
+func reverseInt32s(s []int32) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}

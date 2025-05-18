@@ -801,7 +801,7 @@ type SearchResult struct {
 	Subs *[]*SubstrPair // matched substring pairs (query,target)
 
 	Score  float64 //  score for soring
-	Chains *[]*[]int
+	Chains *[]*[]int32
 
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
@@ -1657,7 +1657,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// sort.Slice(*r.Chains, func(i, j int) bool {
 				// 	return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
 				// })
-				slices.SortFunc(*r.Chains, func(a, b *[]int) int {
+				slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
 					return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
 				})
 			}
