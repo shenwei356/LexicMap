@@ -140,3 +140,7 @@ http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed
 
 {{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
 
+## How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index?
+
+LexicMap is under active development, but we are striving to preserve index compatibility as we implement new features and improvements. 
+The change history and compatibility information are available [here](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog).
