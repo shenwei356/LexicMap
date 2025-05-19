@@ -5,6 +5,7 @@
 - `lexicmap index`:
     - Reduce memory usage for huge genomes like Logan contigs.
 - `lexicmap search`:
+    - **Reduce memory usage, especially for batch searching with long queries**.
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,
       in a similar way with BLAST+ 2.15.0 or later versions.
@@ -14,7 +15,6 @@
       any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
       and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
       There's no need to rebuild the index.
-    - **Reduce memory usage of batch quering**.
     - Check if the output file and the log file are the same.
 
 ### v0.7.0 - 2025-04-11
