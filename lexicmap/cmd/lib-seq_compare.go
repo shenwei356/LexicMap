@@ -358,8 +358,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 			break
 		}
 
-		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
-			util.IsLowComplexityDust(kmer, k8) {
+		// if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+		// 	util.IsLowComplexityDust(kmer, k8) {
+		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt {
 			continue
 		}
 
