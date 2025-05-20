@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.1">
+<meta name="generator" content="Hugo 0.147.3">
 
 
   <meta name="description" content=" Usage $ lexicmap utils 2blast -h Convert the default search output to blast-style format LexicMap only stores genome IDs and sequence IDs, without description information. But the option -g/--kv-file-genome enables adding description data after the genome ID with a tabular key-value mapping file. Input: - Output of &#39;lexicmap search&#39; with the flag -a/--all. Usage: lexicmap utils 2blast [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for 2blast -i, --ignore-case ► Ignore cases of sgenome and sseqid -g, --kv-file-genome string ► Two-column tabular file for mapping the target genome ID (sgenome) to the corresponding value -s, --kv-file-seq string ► Two-column tabular file for mapping the target sequence ID (sseqid) to the corresponding value -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples From stdin." />
