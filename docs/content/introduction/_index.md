@@ -38,13 +38,20 @@ Preprint:
 
 ## Features
 
-1. **LexicMap is scalable to up to millions of prokaryotic genomes**.
-1. **The sensitivity of LexicMap is comparable with Blastn**.
-1. **The alignment is fast and memory-efficient**.
+1. **The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2**. It
+    - performs **base-level alignment**, with `qcovGnm`, `qcovHSP`, `pident`, `evalue` and `bitscore` returned,
+      both in TSV and pairwise alignment format ([output format](https://bioinf.shenwei.me/LexicMap/tutorials/search/#output)).
+        - provides a genome-wide query coverage metric (`qcovGnm`), 
+          which enables accurate interpretation of search results - particularly for [circular queries (such as plasmid, virus, and mtDNA)](https://bioinf.shenwei.me/LexicMap/tutorials/search/#searching-with-plasmids-or-other-longer-queries)
+           against both complete and fragmented assemblies.
+    - returns all possible matches, including multiple copies of a gene in a genome.
+1. **The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes**.
 1. LexicMap is **easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
    we provide [binary files](https://github.com/shenwei356/LexicMap/releases/)** with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
-2. LexicMap is **easy to use** ([tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/) and [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/)). Both tabular and Blast-style output formats are available.
-3. Besides, we provide [several commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) to explore the index data and extract indexed subsequences.
+2. LexicMap is **easy to use** (see [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/), [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/), and [FAQs](https://bioinf.shenwei.me/LexicMap/faqs/)).
+    - [Database building](https://bioinf.shenwei.me/LexicMap/tutorials/index/) requires only a simple command, accepting input from files, a file list, or even a directory.
+    - [Sequence searching](https://bioinf.shenwei.me/LexicMap/tutorials/search/) supports limiting search by TaxId(s), provides a progress bar.
+    - [Several utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available to resume unfinished indexing, and explore the index data, extract indexed subsequences.
 
 ## Introduction
 
