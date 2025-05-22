@@ -1905,6 +1905,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								var start, end int
 								var _s1, _e1, _s2, _e2 int // extend length
 								var similarityScore, maxSimilarityScore float64
+								var _extLen2 int
 								for i, c := range *r2.Chains {
 									if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 										poolChain2.Put(c)
@@ -1927,7 +1928,17 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 									// _qseq = s[c.QBegin : c.QEnd+1]
 									// _tseq = tSeq.Seq[start:end]
-									_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
+									_extLen2 = extLen2 // 50
+									if c.AlignedBasesQ > 1000000 {
+										_extLen2 += 80
+									} else if c.AlignedBasesQ > 250000 {
+										_extLen2 += 40
+									} else if c.AlignedBasesQ > 50000 {
+										_extLen2 += 20
+									} else if c.AlignedBasesQ > 10000 {
+										_extLen2 += 10
+									}
+									_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
 									if err != nil {
 										checkError(fmt.Errorf("fail to extend aligned region"))
 									}
@@ -2136,6 +2147,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						var start, end int
 						var _s1, _e1, _s2, _e2 int // extend length
 						var similarityScore, maxSimilarityScore float64
+						var _extLen2 int
 						for i, c := range *r2.Chains {
 							if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 								poolChain2.Put(c)
@@ -2158,7 +2170,17 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 							// _qseq = s[c.QBegin : c.QEnd+1]
 							// _tseq = tSeq.Seq[start:end]
-							_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, extLen2, c.TBegin, c.MaxExtLen, rc)
+							_extLen2 = extLen2 // 50
+							if c.AlignedBasesQ > 1000000 {
+								_extLen2 += 80
+							} else if c.AlignedBasesQ > 250000 {
+								_extLen2 += 40
+							} else if c.AlignedBasesQ > 50000 {
+								_extLen2 += 20
+							} else if c.AlignedBasesQ > 10000 {
+								_extLen2 += 10
+							}
+							_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
 							if err != nil {
 								checkError(fmt.Errorf("fail to extend aligned region"))
 							}

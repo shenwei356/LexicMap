@@ -323,7 +323,17 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*SeqComparatorResult, error) {
 	k8 := cpr.options.K
 	k := int(k8)
-	m := cpr.options.MinPrefix
+
+	m := cpr.options.MinPrefix // 11
+	if len(s) >= 1000000 {
+		m += 8 // 19
+	} else if len(s) >= 250000 {
+		m += 6 // 17
+	} else if len(s) >= 50000 {
+		m += 4 // 15
+	} else if len(s) >= 10000 {
+		m += 2 // 13
+	}
 
 	// --------------------------------------------------------------
 	// search on the tree
