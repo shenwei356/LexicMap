@@ -168,6 +168,8 @@ type Index struct {
 	poolGenomeRdrs []chan *genome.Reader
 	hasGenomeRdrs  bool
 
+	BatchGenomeIndex2GenomeID map[uint64][]byte
+
 	// genome chunks
 	hasGenomeChunks              bool       // file FileGenomeChunks exists and it's not empty
 	genomeChunks                 [][]uint64 // original chunk information
@@ -490,6 +492,19 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 	var wg sync.WaitGroup
 	tokens := make(chan int, threads)
+
+	// BatchGenomeIndex2GenomeID
+	wg.Add(1)
+	tokens <- 1
+	go func() {
+		idx.BatchGenomeIndex2GenomeID, err = readGenomeMapIdx2Name(filepath.Join(idx.path, FileGenomeIndex))
+		if err != nil {
+			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(idx.path, FileGenomeIndex), err))
+		}
+		wg.Done()
+		<-tokens
+	}()
+
 	for _, file := range fileSeeds {
 		wg.Add(1)
 		tokens <- 1
@@ -780,7 +795,7 @@ var poolSimilarityDetails = &sync.Pool{New: func() interface{} {
 
 var poolSearchResult = &sync.Pool{New: func() interface{} {
 	return &SearchResult{
-		ID: make([]byte, 0, 128),
+		// ID: make([]byte, 0, 128),
 	}
 }}
 
@@ -795,8 +810,8 @@ type SearchResult struct {
 
 	GenomeBatch int
 	GenomeIndex int
-	ID          []byte
-	GenomeSize  int
+	// ID          []byte
+	GenomeSize int
 
 	Subs *[]*SubstrPair // matched substring pairs (query,target)
 
@@ -885,7 +900,7 @@ type SimilarityDetail struct {
 func (r *SearchResult) Reset() {
 	r.GenomeBatch = -1
 	r.GenomeIndex = -1
-	r.ID = r.ID[:0]
+	// r.ID = r.ID[:0]
 	r.GenomeSize = 0
 	r.Subs = nil
 	r.Score = 0
@@ -1288,7 +1303,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							r.BatchGenomeIndex = uint64(refBatchAndIdx)
 							r.GenomeBatch = refBatchAndIdx >> BITS_GENOME_IDX
 							r.GenomeIndex = refBatchAndIdx & MASK_GENOME_IDX
-							r.ID = r.ID[:0] // extract it from genome file later
+							// r.ID = r.ID[:0] // extract it from genome file later
 							r.GenomeSize = 0
 							r.Subs = subs
 							r.Score = 0
@@ -1755,8 +1770,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					continue
 				}
 
-				if len(r.ID) == 0 { // record genome information, do it once
-					r.ID = append(r.ID, tSeq.ID...)
+				// if len(r.ID) == 0 { // record genome information, do it once
+				if r.GenomeSize == 0 {
+					// r.ID = append(r.ID, tSeq.ID...)
 					// if debug {
 					// 	log.Debugf("  checking genome: %s", r.ID)
 					// }

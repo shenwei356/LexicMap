@@ -442,6 +442,8 @@ Result ordering:
 		// ---------------------------------------------------------------
 		// mapping
 
+		id2name := idx.BatchGenomeIndex2GenomeID
+
 		timeStart1 := time.Now()
 
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
@@ -515,7 +517,8 @@ Result ordering:
 
 						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
 							queryID, len(q.seq),
-							targets, r.ID, sd.SeqID, r.AlignedFraction,
+							// targets, r.ID, sd.SeqID, r.AlignedFraction,
+							targets, id2name[r.BatchGenomeIndex], sd.SeqID, r.AlignedFraction,
 							_c,
 							j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
 							c.QBegin+1, c.QEnd+1,

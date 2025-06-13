@@ -21,7 +21,8 @@ Terminology differences:
     - **Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names**.
       E.g., GCF_000006945.2.fna.gz
         - A regular expression is also available to extract reference id from the file name.
-          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
+          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
+        - Even if you forgot to use `-N/--ref-name-regexp`, [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) can fix this without re-building the index.
     - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
 2. Run:
     - From a directory with multiple genome files:
@@ -56,7 +57,8 @@ While if you save *a few* **small** (viral) **complete** genomes (one sequence p
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
     - **Genome ID**: **they must not contain tab ("\t") symbols, and should be distinct for accurate result interpretation**, which will be shown in the search result.
         - A regular expression is also available to extract reference id from the file name.
-          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`
+          E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
+        - **If you forgot to use `-N/--ref-name-regexp`, [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) can fix this without re-building the index**.
 - **File extention**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
       The default value supports common sequence file extentions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
 - **Sequences**:
