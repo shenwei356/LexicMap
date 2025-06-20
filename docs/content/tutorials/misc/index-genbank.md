@@ -14,7 +14,7 @@ Tools:
 Data:
 
     time genome_updater.sh -d "refseq,genbank" -g "archaea,bacteria" \
-        -f "genomic.fna.gz" -o "genbank" -M "ncbi" -t 12 -m -L curl
+        -f "genomic.fna.gz" -o "genbank" -M "ncbi" -t 12 -a -m -L curl
 
     cd genbank/2024-02-15_11-00-51/
 
@@ -37,6 +37,16 @@ Data:
 
     # redownload them:
     # run the genome_updater command again, with the flag -i
+    
+         
+Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+
+    # Taxonomy taxdump files.
+    mkdir taxdump
+    tar -zxvf taxdump.tar.gz -C taxdump/
+    
+    # A file mapping assembly accession to TaxId
+    cut -f 1,6 assembly_summary.txt > taxid.map
 
 Indexing. On a 48-CPU machine, time: 56 h, ram: 181 GB, index size: 4.96 TiB.
 If you don't have enough memory, please decrease the value of `-b`.
@@ -55,3 +65,4 @@ If you don't have enough memory, please decrease the value of `-b`.
     156.28 KiB      masks.bin
       3.59 KiB      genomes.chunks.bin
          619 B      info.toml
+

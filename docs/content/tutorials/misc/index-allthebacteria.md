@@ -126,10 +126,10 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
 1. Downloading assembly tarball files.
 
         # tarball file names and their URLs
-        zcat file_list.all.latest.tsv.gz | awk 'NR>1 {print $3"\t"$4}' | uniq > tar2url.tsv
+        zcat file_list.all.latest.tsv.gz | awk -F'\t' 'NR>1 {print $5"\t"$6}' | uniq > tar2url.tsv
 
         # download
-        cat tar2url.tsv | rush --eta -j 2 -c -C download.rush 'wget -O {1} {2}'
+        cat tar2url.tsv | rush --eta -j 4 -c -C download.rush 'wget -O {1} {2}'
 
 1. Decompressing all tarballs. The decompressed genomes are stored in plain text,
    so we use `gzip` (can be replaced with faster `pigz` ) to compress them to save disk space.
@@ -187,6 +187,27 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
              619 B      info.toml
         
    It took 47h40m and 145GB RAM with 48 CPUs for 2.44m ATB genomes.
+   
+1. (Optional) Prepare Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+
+        # Download species_calls.tsv.gz file in the directory (Latest_2024-08) of this page:
+        # https://osf.io/h7wzy/files/osfstorage#
+        wget https://osf.io/download/7t9qd/ -O species_calls.tsv.gz
+        
+        # Download gtdb-taxdump files of version r214 that was used in
+        # taxonomic classification of AllTheBacteria v2.0 and incremental 202408
+        # from here: https://github.com/shenwei356/gtdb-taxdump/releases/tag/v0.4.0
+        wget https://github.com/shenwei356/gtdb-taxdump/releases/download/v0.4.0/gtdb-taxdump.tar.gz
+        
+        tar -zxvf gtdb-taxdump.tar.gz
+        mv gtdb-taxdump/R214 taxdump
+        
+        # Prepare A file mapping assembly accession to TaxId
+        # using TaxonKit: https://github.com/shenwei356/taxonkit
+        cat species_calls.tsv.gz | sed 1d | cut -f 1,2 \
+            | taxonkit name2taxid --data-dir taxdump/ -i 2 \
+            | cut -f 1,3 \
+            > taxid.map
 
 ## Steps for v0.2 hosted at EBI ftp
 

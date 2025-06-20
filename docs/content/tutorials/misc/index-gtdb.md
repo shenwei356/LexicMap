@@ -16,7 +16,7 @@ Tools:
 Data:
 
     time genome_updater.sh -d "refseq,genbank" -g "archaea,bacteria" \
-        -f "genomic.fna.gz" -o "GTDB_complete" -M "gtdb" -t 12 -m -L curl
+        -f "genomic.fna.gz" -o "GTDB_complete" -M "gtdb" -t 12 -a -m -L curl
 
     cd GTDB_complete/2024-01-30_19-34-40/
 
@@ -39,6 +39,16 @@ Data:
 
     # redownload them:
     # run the genome_updater command again, with the flag -i
+    
+Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+
+    # Download gtdb-taxdump files here: https://github.com/shenwei356/gtdb-taxdump
+    wget https://github.com/shenwei356/gtdb-taxdump/releases/download/v0.6.0/gtdb-taxdump-R226.tar.gz
+    tar -zxvf gtdb-taxdump-R226.tar.gz
+    mv gtdb-taxdump-R226 taxdump/
+    
+    # It has a file mapping assembly accession to TaxId
+    ln -s taxdump/taxid.map
 
 Indexing. On a 48-CPU machine, time: 8h:19m:28s, ram: 73 GB, index size: 906 GB.
 If you don't have enough memory, please decrease the value of `-b`.
