@@ -3,12 +3,12 @@
 ### v0.7.1 - 2025-xx-xx
 
 - New commands:
-    - `lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression.
+    - **`lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression**.
       It's helpful when users forgot to use the flag `-N/--ref-name-regexp`
       to extract the genome ID from the sequence file during indexing.
       This command help to fix it without rebuilding the index.
 - `lexicmap index`:
-    - Reduce memory usage for huge genomes like Logan contigs.
+    - Reduce memory usage for huge data, such as long-reads and contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, especially for batch searching with long queries**.
     - Slightly improve the search speed.
