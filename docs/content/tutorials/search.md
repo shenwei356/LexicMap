@@ -27,7 +27,7 @@ weight: 10
 
 {{< hint type=note >}}
 **Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 100 bp by default.
+LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.

@@ -5,7 +5,7 @@
 [![Cross-platform](https://img.shields.io/badge/platform-any-ec2eb4.svg?style=flat)](http://bioinf.shenwei.me/LexicMap/installation/)
 [![license](https://img.shields.io/github/license/shenwei356/taxonkit.svg?maxAge=2592000)](https://github.com/shenwei356/taxonkit/blob/master/LICENSE)
 
-LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences (>100 bp)** against up to **millions of prokaryotic genomes**.
+LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, viral, or long-read sequences (>150 bp)** against up to **millions of prokaryotic genomes**.
 
 Documents: https://bioinf.shenwei.me/LexicMap
 
@@ -13,12 +13,14 @@ For the latest features and improvements, please download the [pre-release binar
 
 Preprint:
 
-> Wei Shen and Zamin Iqbal.
+> Wei Shen, John A. Lees, Zamin Iqbal.
 > (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
 > bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
 
 ## Table of contents
 
+- [ LexicMap: efficient sequence alignment against millions of prokaryotic genomes​](#-lexicmap-efficient-sequence-alignment-against-millions-of-prokaryotic-genomes)
+- [Table of contents](#table-of-contents)
 - [Features](#features)
 - [Introduction](#introduction)
 - [Quick start](#quick-start)

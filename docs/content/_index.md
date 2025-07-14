@@ -16,7 +16,7 @@ geekdocAnchor: false
 
 
 
-<font size=5rem>LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, virus, or long-read sequences (>100 bp)** against up to **millions** of **prokaryotic genomes**.</font>
+<font size=5rem>LexicMap is a **nucleotide sequence alignment** tool for efficiently querying **gene, plasmid, virus, or long-read sequences (>150 bp)** against up to **millions** of **prokaryotic genomes**.</font>
 
 
 {{< button size="medium" relref="introduction" >}}Introduction{{< /button >}}
