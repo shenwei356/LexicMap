@@ -1,0 +1,6 @@
+Flag	Value	Function	Comment
+`-T/--taxdump`		Directory containing taxdump files (nodes.dmp, names.dmp, etc.), needed for filtering results with TaxIds. 	For other non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to create taxdump files.
+`-G/--genome2taxid`		Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. 	"Genome IDs in the index can be exported via ""lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut"""
+`-t/--taxids`		TaxIds(s) for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.	
+`--taxid-file`		TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.	
+`-k/--keep-genomes-without-taxid`		Keep genome hits without TaxId, i.e., those without TaxId in the --genome2taxid file.	

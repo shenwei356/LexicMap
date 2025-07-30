@@ -1,7 +1,10 @@
 Flag	Value	Function	Comment
+**`-d/--index`**		"Index directory created by ""lexicmap index""."	
+**`-o/--out-file`**	Default: - (stdout)	"Out file, supports a "".gz"" suffix (""-"" for stdout)."	
 **`-j/--threads`**	Default: all available cpus	Number of CPU cores to use.	The value should be >= the number of seed chunk files (“chunks” in info.toml, set by `-c/--chunks` in `lexicmap index`).
-**`-w/--load-whole-seeds`**		Load the whole seed data into memory for faster search	Use this if the index is not big and many queries are needed to search.
-**`-n/--top-n-genomes`**	Default 0, 0 for all	Keep top N genome matches for a query in the chaining phase	Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.
 **`-a/--all`**		Output more columns, e.g., matched sequences.	"Use this if you want to output blast-style format with ""lexicmap utils 2blast"""
+**`-n/--top-n-genomes`**	Default 0, 0 for all	Keep top N genome matches for a query in the chaining phase	Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.
 `-J/--max-query-conc` 	Default 12, 0 for all	Maximum number of concurrent queries	Bigger values do not improve the batch searching speed and consume much memory.
 `--max-open-files`	Default: 1024	Maximum number of open files	It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger `ulimit -n` in shell if the value is > 1024.
+`-w/--load-whole-seeds`		Load the whole seed data into memory for faster batch searching	Use this if the index is not big and many queries are needed to search.
+`--debug`		Print debug information, including a progress bar.	Recommended when searching with one query.
