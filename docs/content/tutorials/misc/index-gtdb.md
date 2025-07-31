@@ -12,6 +12,7 @@ Tools:
 - https://github.com/pirovc/genome_updater, for downloading genomes
 - https://github.com/shenwei356/seqkit, for checking sequence files
 - https://github.com/shenwei356/rush, for running jobs
+- https://github.com/sharkdp/fd, faster `find`, available as `fd-find` in [conda-forge](https://anaconda.org/conda-forge/fd-find)
 
 Data:
 
@@ -28,11 +29,13 @@ Data:
     # corrupted files
     # find $genomes -name "*.gz" \
     fd ".gz$" $genomes \
-        | rush --eta 'seqkit seq -w 0 {} > /dev/null; if [ $? -ne 0 ]; then echo {}; fi' \
+        | rush --eta 'seqkit seq -w 0 {} > /dev/null; if [ $? -ne 0 ]; then echo {}; exit 1; fi' \
+            -c -C check-files.rush \
         > failed.txt
 
     # empty files
-    find $genomes -name "*.gz" -size 0 >> failed.txt
+    # find $genomes -name "*.gz" -size 0 >> failed.txt
+    fd --size 0b $genomes >> failed.txt
 
     # delete these files
     cat failed.txt | rush '/bin/rm {}'
