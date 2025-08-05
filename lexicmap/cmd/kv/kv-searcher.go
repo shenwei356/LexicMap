@@ -84,7 +84,7 @@ func NewSearcher(file string) (*Searcher, error) {
 		maxKmer: 1<<(k<<1) - 1,
 		buf:     make([]byte, 64),
 		// buf8:    make([]uint8, 8),
-		buf2048: make([]uint8, 2048),
+		buf2048: make([]uint8, seedPosBatchSize<<3), // 256*8
 
 		r: bufio.NewReaderSize(nil, 4096),
 
@@ -125,6 +125,8 @@ func RecycleSearchResults(sr *[]*SearchResult) {
 	}
 	poolSearchResults.Put(sr)
 }
+
+const seedPosBatchSize = 256
 
 // Search queries a k-mer and returns k-mers with a minimum prefix of p,
 // and maximum m mismatches.
@@ -184,7 +186,13 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	buf2048 := scr.buf2048
 	var n uint64
 
-	use3BytesForSeedPos := scr.Use3BytesForSeedPos
+	var nSeedPosBytes uint64 = 8
+	fUint64 := be.Uint64
+	if scr.Use3BytesForSeedPos {
+		nSeedPosBytes = 7
+		fUint64 = Uint64ThreeBytes
+	}
+	batchSizeBytes := uint64(seedPosBatchSize) * nSeedPosBytes
 
 	var err error
 
@@ -192,7 +200,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
-	var sr, sr1, sr2 *SearchResult
+	var sr *SearchResult
 
 	var kmer uint64
 	prefixSearch := p < k
@@ -390,116 +398,67 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 			// ------------------ values -------------------
 
-			// saveKmer = false
-			// if found && kmer1 >= leftBound {
-			// 	// if checkMismatch {
-			// 	// 	mismatch = util.MustSharingPrefixKmersMismatch(kmer, kmer1, k, p)
-			// 	// 	if mismatch <= m8 {
-			// 	// 		saveKmer = true
-			// 	// 	}
-			// 	// } else {
-			// 	saveKmer = true
-			// 	// }
-			// }
 			saveKmer = found && kmer1 >= leftBound
+
+			lenVal = lenVal1
+			sr = nil
 			if saveKmer {
-				sr1 = poolSearchResult.Get().(*SearchResult)
-				sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				// sr1.Kmer = kmer1
-				sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
-				sr1.IsSuffix = reversedKmer
-				// sr1.Mismatch = mismatch
-				sr1.Values = sr1.Values[:0]
-
-				// for j = 0; j < lenVal1; j++ {
-				// 	nReaded, err = io.ReadFull(r, buf8)
-				// 	if err != nil {
-				// 		return nil, err
-				// 	}
-				// 	if nReaded < 8 {
-				// 		return nil, ErrBrokenFile
-				// 	}
-
-				// 	v = be.Uint64(buf8)
-
-				// 	if !checkFlag || v&MASK_REVERSE == rvflag {
-				// 		sr1.Values = append(sr1.Values, v)
-				// 	}
-				// }
-
-				lenVal = lenVal1
-				sr = sr1
-				for lenVal > 256 {
-					if !use3BytesForSeedPos { // buffer size is 256*8=2048
-						nReaded, err = io.ReadFull(r, buf2048)
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 2048 {
-							return nil, ErrBrokenFile
-						}
-
-						if checkFlag {
-							for j = 0; j <= 2040; j += 8 {
-								if buf2048[j+7]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-								}
-							}
-						} else {
-							for j = 0; j <= 2040; j += 8 {
-								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-							}
-						}
-					} else { // buffer size is 256*7=1792
-						nReaded, err = io.ReadFull(r, buf2048[:1792])
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 1792 {
-							return nil, ErrBrokenFile
-						}
-
-						if checkFlag {
-							for j = 0; j <= 1785; j += 7 {
-								if buf2048[j+6]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-								}
-							}
-						} else {
-							for j = 0; j <= 1785; j += 7 {
-								sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-							}
-						}
+				// check the reverse flag of the first seed data
+				if checkFlag {
+					nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
+					if err != nil {
+						return nil, err
+					}
+					if nReaded < int(nSeedPosBytes) {
+						return nil, ErrBrokenFile
 					}
 
-					lenVal -= 256
-				}
-				if lenVal > 0 {
-					if !use3BytesForSeedPos {
-						n = lenVal << 3
-						nReaded, err = io.ReadFull(r, buf2048[:n])
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < int(n) {
-							return nil, ErrBrokenFile
-						}
+					if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
+						saveKmer = false
 
-						if checkFlag {
-							for j = 0; j < lenVal; j++ {
-								n = j << 3
-								if buf2048[n+7]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-								}
-							}
-						} else {
-							for j = 0; j < lenVal; j++ {
-								n = j << 3
-								sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-							}
-						}
+						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						n = lenVal * 7
+						sr = poolSearchResult.Get().(*SearchResult)
+						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+						// sr.Kmer = kmer1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+						sr.IsSuffix = reversedKmer
+						// sr.Mismatch = mismatch
+						sr.Values = sr.Values[:0]
+
+						sr.Values = append(sr.Values, fUint64(buf2048[:nSeedPosBytes]))
+
+						lenVal-- // skip the checked one
+					}
+				} else {
+					sr = poolSearchResult.Get().(*SearchResult)
+					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+					// sr.Kmer = kmer1
+					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+					sr.IsSuffix = reversedKmer
+					// sr.Mismatch = mismatch
+					sr.Values = sr.Values[:0]
+				}
+
+				if saveKmer {
+					for lenVal >= seedPosBatchSize {
+						nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(batchSizeBytes) {
+							return nil, ErrBrokenFile
+						}
+
+						for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
+							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
+						}
+
+						lenVal -= seedPosBatchSize
+					}
+					if lenVal > 0 {
+						n = lenVal * uint64(nSeedPosBytes)
+
 						nReaded, err = io.ReadFull(r, buf2048[:n])
 						if err != nil {
 							return nil, err
@@ -508,39 +467,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 							return nil, ErrBrokenFile
 						}
 
-						if checkFlag {
-							for j = 0; j < lenVal; j++ {
-								n = j * 7
-								if buf2048[n+6]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-								}
-							}
-						} else {
-							for j = 0; j < lenVal; j++ {
-								n = j * 7
-								sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-							}
+						for j = 0; j < n; j += nSeedPosBytes {
+							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 						}
 					}
-				}
 
-				*results = append(*results, sr1)
-			} else {
-				// for j = 0; j < lenVal1; j++ {
-				// 	nReaded, err = io.ReadFull(r, buf8)
-				// 	if err != nil {
-				// 		return nil, err
-				// 	}
-				// 	if nReaded < 8 {
-				// 		return nil, ErrBrokenFile
-				// 	}
-				// }
-				if !use3BytesForSeedPos {
-					// r.Seek(int64(lenVal1<<3), 1)
-					r.Discard(int(lenVal1 << 3))
-				} else {
-					r.Discard(int(lenVal1 * 7))
+					*results = append(*results, sr)
 				}
+			} else {
+				r.Discard(int(lenVal * nSeedPosBytes))
 			}
 
 			if kmer2 > rightBound { // only record kmer1
@@ -566,103 +501,66 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			// 	// }
 			// }
 			saveKmer = found
+
+			lenVal = lenVal2
+			sr = nil
 			if saveKmer {
-				sr2 = poolSearchResult.Get().(*SearchResult)
-				sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
-				// sr2.Kmer = kmer2
-				sr2.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
-				sr2.IsSuffix = reversedKmer
-				// sr2.Mismatch = mismatch
-				sr2.Values = sr2.Values[:0]
-
-				// for j = 0; j < lenVal2; j++ {
-				// 	nReaded, err = io.ReadFull(r, buf8)
-				// 	if err != nil {
-				// 		return nil, err
-				// 	}
-				// 	if nReaded < 8 {
-				// 		return nil, ErrBrokenFile
-				// 	}
-
-				// 	v = be.Uint64(buf8)
-				// 	if !checkFlag || v&MASK_REVERSE == rvflag {
-				// 		sr2.Values = append(sr2.Values, v)
-				// 	}
-				// }
-
-				lenVal = lenVal2
-				sr = sr2
-				for lenVal > 256 {
-					if !use3BytesForSeedPos { // buffer size is 256*8=2048
-						nReaded, err = io.ReadFull(r, buf2048)
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 2048 {
-							return nil, ErrBrokenFile
-						}
-
-						if checkFlag {
-							for j = 0; j <= 2040; j += 8 {
-								if buf2048[j+7]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-								}
-							}
-						} else {
-							for j = 0; j <= 2040; j += 8 {
-								sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-							}
-						}
-					} else { // buffer size is 256*7=1792
-						nReaded, err = io.ReadFull(r, buf2048[:1792])
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < 1792 {
-							return nil, ErrBrokenFile
-						}
-
-						if checkFlag {
-							for j = 0; j <= 1785; j += 7 {
-								if buf2048[j+6]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-								}
-							}
-						} else {
-							for j = 0; j <= 1785; j += 7 {
-								sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-							}
-						}
+				// check the reverse flag of the first seed data
+				if checkFlag {
+					nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
+					if err != nil {
+						return nil, err
+					}
+					if nReaded < int(nSeedPosBytes) {
+						return nil, ErrBrokenFile
 					}
 
-					lenVal -= 256
-				}
-				if lenVal > 0 {
-					if !use3BytesForSeedPos {
-						n = lenVal << 3
-						nReaded, err = io.ReadFull(r, buf2048[:n])
-						if err != nil {
-							return nil, err
-						}
-						if nReaded < int(n) {
-							return nil, ErrBrokenFile
-						}
+					if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
+						saveKmer = false
 
-						if checkFlag {
-							for j = 0; j < lenVal; j++ {
-								n = j << 3
-								if buf2048[n+7]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-								}
-							}
-						} else {
-							for j = 0; j < lenVal; j++ {
-								n = j << 3
-								sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-							}
-						}
+						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						n = lenVal * 7
+						sr = poolSearchResult.Get().(*SearchResult)
+						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+						// sr.Kmer = kmer1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32 // kmer 2
+						sr.IsSuffix = reversedKmer
+						// sr.Mismatch = mismatch
+						sr.Values = sr.Values[:0]
+
+						sr.Values = append(sr.Values, fUint64(buf2048[:nSeedPosBytes]))
+
+						lenVal-- // skip the checked one
+					}
+				} else {
+					sr = poolSearchResult.Get().(*SearchResult)
+					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+					// sr.Kmer = kmer1
+					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32 // kmer 2
+					sr.IsSuffix = reversedKmer
+					// sr.Mismatch = mismatch
+					sr.Values = sr.Values[:0]
+				}
+
+				if saveKmer {
+					for lenVal >= seedPosBatchSize {
+						nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(batchSizeBytes) {
+							return nil, ErrBrokenFile
+						}
+
+						for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
+							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
+						}
+
+						lenVal -= seedPosBatchSize
+					}
+					if lenVal > 0 {
+						n = lenVal * uint64(nSeedPosBytes)
+
 						nReaded, err = io.ReadFull(r, buf2048[:n])
 						if err != nil {
 							return nil, err
@@ -671,39 +569,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 							return nil, ErrBrokenFile
 						}
 
-						if checkFlag {
-							for j = 0; j < lenVal; j++ {
-								n = j * 7
-								if buf2048[n+6]&MASK_REVERSE == rvflag {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-								}
-							}
-						} else {
-							for j = 0; j < lenVal; j++ {
-								n = j * 7
-								sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-							}
+						for j = 0; j < n; j += nSeedPosBytes {
+							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 						}
 					}
-				}
 
-				*results = append(*results, sr2)
-			} else {
-				// for j = 0; j < lenVal2; j++ {
-				// 	nReaded, err = io.ReadFull(r, buf8)
-				// 	if err != nil {
-				// 		return nil, err
-				// 	}
-				// 	if nReaded < 8 {
-				// 		return nil, ErrBrokenFile
-				// 	}
-				// }
-				if !use3BytesForSeedPos {
-					// r.Seek(int64(lenVal2<<3), 1)
-					r.Discard(int(lenVal2 << 3))
-				} else {
-					r.Discard(int(lenVal2 * 7))
+					*results = append(*results, sr)
 				}
+			} else {
+				r.Discard(int(lenVal * nSeedPosBytes))
 			}
 
 			if lastPair {
@@ -772,7 +646,13 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	buf2048 := scr.buf2048
 	var n uint64
 
-	use3BytesForSeedPos := scr.Use3BytesForSeedPos
+	var nSeedPosBytes uint64 = 8
+	fUint64 := be.Uint64
+	if scr.Use3BytesForSeedPos {
+		nSeedPosBytes = 7
+		fUint64 = Uint64ThreeBytes
+	}
+	batchSizeBytes := uint64(seedPosBatchSize) * nSeedPosBytes
 
 	var err error
 
@@ -780,7 +660,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
-	var sr, sr1, sr2 *SearchResult
+	var sr *SearchResult
 
 	var kmer uint64
 	prefixSearch := p < k
@@ -980,104 +860,68 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				// 	// }
 				// }
 				saveKmer = found && kmer1 >= leftBound
+
+				lenVal = lenVal1
+				sr = nil
 				if saveKmer {
-					sr1 = poolSearchResult.Get().(*SearchResult)
-					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
-					// sr1.Kmer = kmer1
-					sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
-					sr1.IsSuffix = reversedKmer
-					sr1.IQuery2 = iKmer
-					// sr1.Mismatch = mismatch
-					sr1.Values = sr1.Values[:0]
-
-					// for j = 0; j < lenVal1; j++ {
-					// 	nReaded, err = io.ReadFull(r, buf8)
-					// 	if err != nil {
-					// 		return nil, err
-					// 	}
-					// 	if nReaded < 8 {
-					// 		return nil, ErrBrokenFile
-					// 	}
-
-					// 	v = be.Uint64(buf8)
-					// 	if !checkFlag || v&MASK_REVERSE == rvflag {
-					// 		sr1.Values = append(sr1.Values, v)
-					// 	}
-					// }
-
-					lenVal = lenVal1
-					sr = sr1
-					for lenVal > 256 {
-						if !use3BytesForSeedPos { // buffer size is 256*8=2048
-							nReaded, err = io.ReadFull(r, buf2048)
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < 2048 {
-								return nil, ErrBrokenFile
-							}
-
-							if checkFlag {
-								for j = 0; j <= 2040; j += 8 {
-									if buf2048[j+7]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-									}
-								}
-							} else {
-								for j = 0; j <= 2040; j += 8 {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-								}
-							}
-						} else { // buffer size is 256*7=1792
-							nReaded, err = io.ReadFull(r, buf2048[:1792])
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < 1792 {
-								return nil, ErrBrokenFile
-							}
-
-							if checkFlag {
-								for j = 0; j <= 1785; j += 7 {
-									if buf2048[j+6]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-									}
-								}
-							} else {
-								for j = 0; j <= 1785; j += 7 {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-								}
-							}
+					// check the reverse flag of the first seed data
+					if checkFlag {
+						nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(nSeedPosBytes) {
+							return nil, ErrBrokenFile
 						}
 
-						lenVal -= 256
-					}
-					if lenVal > 0 {
-						if !use3BytesForSeedPos {
-							n = lenVal << 3
-							nReaded, err = io.ReadFull(r, buf2048[:n])
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < int(n) {
-								return nil, ErrBrokenFile
-							}
+						if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
+							saveKmer = false
 
-							if checkFlag {
-								for j = 0; j < lenVal; j++ {
-									n = j << 3
-									if buf2048[n+7]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-									}
-								}
-							} else {
-								for j = 0; j < lenVal; j++ {
-									n = j << 3
-									sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-								}
-							}
+							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							n = lenVal * 7
+							sr = poolSearchResult.Get().(*SearchResult)
+							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+							// sr.Kmer = kmer1
+							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+							sr.IsSuffix = reversedKmer
+							sr.IQuery2 = iKmer // difrrent from those in Search()
+							// sr.Mismatch = mismatch
+							sr.Values = sr.Values[:0]
+
+							sr.Values = append(sr.Values, fUint64(buf2048[:nSeedPosBytes]))
+
+							lenVal-- // skip the checked one
+						}
+					} else {
+						sr = poolSearchResult.Get().(*SearchResult)
+						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+						// sr.Kmer = kmer1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+						sr.IsSuffix = reversedKmer
+						sr.IQuery2 = iKmer // difrrent from those in Search()
+						// sr.Mismatch = mismatch
+						sr.Values = sr.Values[:0]
+					}
+
+					if saveKmer {
+						for lenVal >= seedPosBatchSize {
+							nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
+							if err != nil {
+								return nil, err
+							}
+							if nReaded < int(batchSizeBytes) {
+								return nil, ErrBrokenFile
+							}
+
+							for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
+								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
+							}
+
+							lenVal -= seedPosBatchSize
+						}
+						if lenVal > 0 {
+							n = lenVal * uint64(nSeedPosBytes)
+
 							nReaded, err = io.ReadFull(r, buf2048[:n])
 							if err != nil {
 								return nil, err
@@ -1086,40 +930,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 								return nil, ErrBrokenFile
 							}
 
-							if checkFlag {
-								for j = 0; j < lenVal; j++ {
-									n = j * 7
-									if buf2048[n+6]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-									}
-								}
-							} else {
-								for j = 0; j < lenVal; j++ {
-									n = j * 7
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-								}
+							for j = 0; j < n; j += nSeedPosBytes {
+								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 							}
 						}
-					}
 
-					*results = append(*results, sr1)
+						*results = append(*results, sr)
+					}
 				} else {
-					// for j = 0; j < lenVal1; j++ {
-					// 	nReaded, err = io.ReadFull(r, buf8)
-					// 	if err != nil {
-					// 		return nil, err
-					// 	}
-					// 	if nReaded < 8 {
-					// 		return nil, ErrBrokenFile
-					// 	}
-					// }
-
-					if !use3BytesForSeedPos {
-						// r.Seek(int64(lenVal1<<3), 1)
-						r.Discard(int(lenVal1 << 3))
-					} else {
-						r.Discard(int(lenVal1 * 7))
-					}
+					r.Discard(int(lenVal * nSeedPosBytes))
 				}
 
 				if kmer2 > rightBound { // only record kmer1
@@ -1145,104 +964,68 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				// 	// }
 				// }
 				saveKmer = found
+
+				lenVal = lenVal2
+				sr = nil
 				if saveKmer {
-					sr2 = poolSearchResult.Get().(*SearchResult)
-					sr2.IQuery = iQ + chunkIndex // do not forget to add mask offset
-					// sr2.Kmer = kmer2
-					sr2.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
-					sr2.IsSuffix = reversedKmer
-					sr2.IQuery2 = iKmer
-					// sr2.Mismatch = mismatch
-					sr2.Values = sr2.Values[:0]
-
-					// for j = 0; j < lenVal2; j++ {
-					// 	nReaded, err = io.ReadFull(r, buf8)
-					// 	if err != nil {
-					// 		return nil, err
-					// 	}
-					// 	if nReaded < 8 {
-					// 		return nil, ErrBrokenFile
-					// 	}
-
-					// 	v = be.Uint64(buf8)
-					// 	if !checkFlag || v&MASK_REVERSE == rvflag {
-					// 		sr2.Values = append(sr2.Values, v)
-					// 	}
-					// }
-
-					lenVal = lenVal2
-					sr = sr2
-					for lenVal > 256 {
-						if !use3BytesForSeedPos { // buffer size is 256*8=2048
-							nReaded, err = io.ReadFull(r, buf2048)
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < 2048 {
-								return nil, ErrBrokenFile
-							}
-
-							if checkFlag {
-								for j = 0; j <= 2040; j += 8 {
-									if buf2048[j+7]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-									}
-								}
-							} else {
-								for j = 0; j <= 2040; j += 8 {
-									sr.Values = append(sr.Values, be.Uint64(buf2048[j:j+8]))
-								}
-							}
-						} else { // buffer size is 256*7=1792
-							nReaded, err = io.ReadFull(r, buf2048[:1792])
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < 1792 {
-								return nil, ErrBrokenFile
-							}
-
-							if checkFlag {
-								for j = 0; j <= 1785; j += 7 {
-									if buf2048[j+6]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-									}
-								}
-							} else {
-								for j = 0; j <= 1785; j += 7 {
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[j:j+7]))
-								}
-							}
+					// check the reverse flag of the first seed data
+					if checkFlag {
+						nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
+						if err != nil {
+							return nil, err
+						}
+						if nReaded < int(nSeedPosBytes) {
+							return nil, ErrBrokenFile
 						}
 
-						lenVal -= 256
-					}
-					if lenVal > 0 {
-						if !use3BytesForSeedPos {
-							n = lenVal << 3
-							nReaded, err = io.ReadFull(r, buf2048[:n])
-							if err != nil {
-								return nil, err
-							}
-							if nReaded < int(n) {
-								return nil, ErrBrokenFile
-							}
+						if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
+							saveKmer = false
 
-							if checkFlag {
-								for j = 0; j < lenVal; j++ {
-									n = j << 3
-									if buf2048[n+7]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-									}
-								}
-							} else {
-								for j = 0; j < lenVal; j++ {
-									n = j << 3
-									sr.Values = append(sr.Values, be.Uint64(buf2048[n:n+8]))
-								}
-							}
+							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							n = lenVal * 7
+							sr = poolSearchResult.Get().(*SearchResult)
+							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+							// sr.Kmer = kmer1
+							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+							sr.IsSuffix = reversedKmer
+							sr.IQuery2 = iKmer // difrrent from those in Search()
+							// sr.Mismatch = mismatch
+							sr.Values = sr.Values[:0]
+
+							sr.Values = append(sr.Values, fUint64(buf2048[:nSeedPosBytes]))
+
+							lenVal-- // skip the checked one
+						}
+					} else {
+						sr = poolSearchResult.Get().(*SearchResult)
+						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
+						// sr.Kmer = kmer1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+						sr.IsSuffix = reversedKmer
+						sr.IQuery2 = iKmer // difrrent from those in Search()
+						// sr.Mismatch = mismatch
+						sr.Values = sr.Values[:0]
+					}
+
+					if saveKmer {
+						for lenVal >= seedPosBatchSize {
+							nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
+							if err != nil {
+								return nil, err
+							}
+							if nReaded < int(batchSizeBytes) {
+								return nil, ErrBrokenFile
+							}
+
+							for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
+								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
+							}
+
+							lenVal -= seedPosBatchSize
+						}
+						if lenVal > 0 {
+							n = lenVal * uint64(nSeedPosBytes)
+
 							nReaded, err = io.ReadFull(r, buf2048[:n])
 							if err != nil {
 								return nil, err
@@ -1251,39 +1034,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 								return nil, ErrBrokenFile
 							}
 
-							if checkFlag {
-								for j = 0; j < lenVal; j++ {
-									n = j * 7
-									if buf2048[n+6]&MASK_REVERSE == rvflag {
-										sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-									}
-								}
-							} else {
-								for j = 0; j < lenVal; j++ {
-									n = j * 7
-									sr.Values = append(sr.Values, Uint64ThreeBytes(buf2048[n:n+7]))
-								}
+							for j = 0; j < n; j += nSeedPosBytes {
+								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 							}
 						}
-					}
 
-					*results = append(*results, sr2)
-				} else {
-					// for j = 0; j < lenVal2; j++ {
-					// 	nReaded, err = io.ReadFull(r, buf8)
-					// 	if err != nil {
-					// 		return nil, err
-					// 	}
-					// 	if nReaded < 8 {
-					// 		return nil, ErrBrokenFile
-					// 	}
-					// }
-					if !use3BytesForSeedPos {
-						// r.Seek(int64(lenVal2<<3), 1)
-						r.Discard(int(lenVal2 << 3))
-					} else {
-						r.Discard(int(lenVal2 * 7))
+						*results = append(*results, sr)
 					}
+				} else {
+					r.Discard(int(lenVal * nSeedPosBytes))
 				}
 
 				if lastPair {
