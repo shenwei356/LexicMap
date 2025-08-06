@@ -672,7 +672,8 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	getAnchor := scr.getAnchor
 	var is2ndKmer bool
 
-	r := bufio.NewReader(nil)
+	// r := bufio.NewReader(nil)
+	r := scr.r
 
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask

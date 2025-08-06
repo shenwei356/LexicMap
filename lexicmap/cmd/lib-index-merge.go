@@ -307,7 +307,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		// masks.bin, just copy one
 		err = os.Rename(filepath.Join(pathB[0], FileMasks), filepath.Join(outdir1, FileMasks))
 		if err != nil {
-			checkError(fmt.Errorf("failed to move genome data"))
+			checkError(fmt.Errorf("failed to move mask data"))
 		}
 
 	}
