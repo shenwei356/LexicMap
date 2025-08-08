@@ -169,8 +169,8 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 		}
 
 		// fmt.Printf("k:%d, m:%d\n", k, m)
-		// fmt.Printf("kmer: %s\n", lexichash.MustDecode(kmer, k))
-		// fmt.Printf("left bound: %s\n", lexichash.MustDecode(leftBound, k))
+		// fmt.Printf("\n\nkmer: %s\n", lexichash.MustDecode(kmer, k))
+		// fmt.Printf(" left bound: %s\n", lexichash.MustDecode(leftBound, k))
 		// fmt.Printf("right bound: %s\n", lexichash.MustDecode(rightBound, k))
 
 		// -----------------------------------------------------
@@ -182,16 +182,24 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 			continue
 		}
 		// fmt.Printf("\nquery: i: %d, kmer:%s\n", i, lexichash.MustDecode(leftBound, k))
-		// fmt.Printf("before: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+		// fmt.Printf("begin: i: %d, kmer:%s, anchor: %s\n", i, lexichash.MustDecode(data[i], k), lexichash.MustDecode(anchor, 6))
 
+		// find the start position of kmer with the next existing anchor.
 		lastNext = uint64(len(index))
-		anchorNext = anchor + 1
+		anchorNext = anchor
 		j = -1
-		if anchorNext < lastNext {
-			for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
-				anchorNext++
-			}
+		for j < 0 && anchorNext+1 < lastNext {
+			anchorNext++
+			j = index[anchorNext]
+			// fmt.Printf("check: j: %d, anchor: %s\n", j, lexichash.MustDecode(anchorNext, 6))
 		}
+		// if j > 0 {
+		// 	fmt.Printf(" stop: j: %d, kmer:%s, anchor: %s\n", j, lexichash.MustDecode(data[j], k), lexichash.MustDecode(anchorNext, 6))
+		// }
+
+		// -----------------------------------------------------
+		// find the nearest kmer
+
 		if j > 0 && // use binary search between i and j
 			j-i > 2 { // more than one seeds for the anchor
 
@@ -221,7 +229,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 					break
 				}
 			}
-			// fmt.Printf("after: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+			// fmt.Printf("found: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
 		} // else: no next anchor available, reasons: 1) only 1 reference, 2) the anchor is TTTTT
 
 		// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
@@ -383,7 +391,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 				rightBound = kmer
 			}
 
-			// fmt.Printf("i: %d, k:%d, m:%d\n", iK, k, iQ+chunkIndex+1)
+			// fmt.Printf("k:%d, m:%d\n", k, m)
 			// fmt.Printf("kmer: %s\n", lexichash.MustDecode(kmer, k))
 			// fmt.Printf("left bound: %s\n", lexichash.MustDecode(leftBound, k))
 			// fmt.Printf("right bound: %s\n", lexichash.MustDecode(rightBound, k))
@@ -397,16 +405,24 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 				continue
 			}
 			// fmt.Printf("\nquery: i: %d, kmer:%s\n", i, lexichash.MustDecode(leftBound, k))
-			// fmt.Printf("before: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+			// fmt.Printf("begin: i: %d, kmer:%s, anchor: %s\n", i, lexichash.MustDecode(data[i], k), lexichash.MustDecode(anchor, 6))
 
+			// find the start position of kmer with the next existing anchor.
 			lastNext = uint64(len(index))
-			anchorNext = anchor + 1
+			anchorNext = anchor
 			j = -1
-			if anchorNext < lastNext {
-				for j = index[anchorNext]; anchorNext < lastNext && j < 0; {
-					anchorNext++
-				}
+			for j < 0 && anchorNext+1 < lastNext {
+				anchorNext++
+				j = index[anchorNext]
+				// fmt.Printf("check: j: %d, anchor: %s\n", j, lexichash.MustDecode(anchorNext, 6))
 			}
+			// if j > 0 {
+			// 	fmt.Printf(" stop: j: %d, kmer:%s, anchor: %s\n", j, lexichash.MustDecode(data[j], k), lexichash.MustDecode(anchorNext, 6))
+			// }
+
+			// -----------------------------------------------------
+			// find the nearest kmer
+
 			if j > 0 && // use binary search between i and j
 				j-i > 2 { // more than one seeds for the anchor
 
@@ -436,7 +452,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 						break
 					}
 				}
-				// fmt.Printf("after: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
+				// fmt.Printf("found: i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))
 			} // else: no next anchor available, reasons: 1) only 1 reference, 2) the anchor is TTTTT
 
 			// fmt.Printf("i: %d, kmer:%s\n", i, lexichash.MustDecode(data[i], k))

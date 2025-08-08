@@ -22,6 +22,7 @@
       and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
       There's no need to rebuild the index.
     - Check if the output file and the log file are the same.
+    - Reduce the time of seed matching when using `-w`.
 
 ### v0.7.0 - 2025-04-11
 
