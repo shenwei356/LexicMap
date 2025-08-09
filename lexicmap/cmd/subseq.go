@@ -35,6 +35,7 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
+	"github.com/twotwotwo/sorts/sortutil"
 )
 
 var subseqCmd = &cobra.Command{
@@ -73,6 +74,7 @@ Attention:
 		// ---------------------------------------------------------------
 
 		fileSearchResult := getFlagString(cmd, "search-result")
+		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
 		if fileSearchResult != "" {
 			outputLog := opt.Verbose || opt.Log2File
@@ -90,7 +92,11 @@ Attention:
 
 			buf := make([]byte, bufferSize)
 			ncols := 20
-			items := make([]string, ncols)
+			// items := make([]string, ncols)
+			var poolItems = &sync.Pool{New: func() interface{} {
+				items := make([]string, ncols)
+				return &items
+			}}
 
 			fh, err := xopen.Ropen(fileSearchResult)
 			checkError(err)
@@ -110,50 +116,51 @@ Attention:
 				checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
 			}
 
+			if maxOpenFiles < info.GenomeBatches {
+				log.Warningf("the value of --max-open-files (%d) should be larger than the number of genome batches (%d)", maxOpenFiles, info.GenomeBatches)
+			}
+
 			// genomes.map file for mapping index to genome id
-			m, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
+			refname2idx, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
 			if err != nil {
 				checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 			}
 
+			// --------------------------------------------------
 			// genome readers
-			if outputLog {
-				log.Infof("creating the genome reader pool from %d genome batches", info.GenomeBatches)
+			nRdr := maxOpenFiles / info.GenomeBatches // 1 is for the output file
+			if nRdr > opt.NumCPUs {
+				nRdr = opt.NumCPUs
 			}
-			readers := make(map[int]*genome.Reader, info.GenomeBatches)
+			if outputLog {
+				log.Infof("  creating reader pools for %d genome batches, each with %d readers...", info.GenomeBatches, nRdr)
+			}
+			readers := make([]chan *genome.Reader, info.GenomeBatches)
+			for i := 0; i < info.GenomeBatches; i++ {
+				readers[i] = make(chan *genome.Reader, nRdr)
+			}
+
 			var wg sync.WaitGroup
 			tokens := make(chan int, opt.NumCPUs)
-			type b2r struct {
-				batch int
-				rdr   *genome.Reader
-			}
-			ch := make(chan b2r, opt.NumCPUs)
-			done := make(chan int)
-			go func() {
-				for _b2r := range ch {
-					readers[_b2r.batch] = _b2r.rdr
-				}
-				done <- 1
-			}()
 			for i := 0; i < info.GenomeBatches; i++ {
-				tokens <- 1
-				wg.Add(1)
-				go func(i int) {
-					fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
-					rdr, err := genome.NewReader(fileGenomes)
-					if err != nil {
-						checkError(fmt.Errorf("failed to create genome reader: %s", err))
-					}
+				for j := 0; j < nRdr; j++ {
+					tokens <- 1
+					wg.Add(1)
+					go func(i int) {
+						fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
+						rdr, err := genome.NewReader(fileGenomes)
+						if err != nil {
+							checkError(fmt.Errorf("failed to create genome reader: %s", err))
+						}
 
-					ch <- b2r{batch: i, rdr: rdr}
+						readers[i] <- rdr
 
-					wg.Done()
-					<-tokens
-				}(i)
+						wg.Done()
+						<-tokens
+					}(i)
+				}
 			}
 			wg.Wait()
-			close(ch)
-			<-done
 
 			// --------------------------------------------------
 
@@ -175,26 +182,94 @@ Attention:
 			scanner := bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
 
-			var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
-			var pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore string
-			var sstart, send int
-
 			var line string
 
 			headerLine := true
-			var batchIDAndRefIDs *[]uint64
-			var ok bool
-			// var fileGenome string
-			var tSeq *genome.Genome
-			var genomeBatch, genomeIdx int
-			var rdr *genome.Reader
 
-			var __end int
-			fmt2 := " sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
-				"pident=%s gaps=%s qstart=%s qend=%s sstart=%s send=%s sstr=%s slen=%s evalue=%s bitscore=%s"
+			fmt2 := ">%s:%s-%s:%s sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
+				"pident=%s gaps=%s qstart=%s qend=%s sstart=%s send=%s sstr=%s slen=%s evalue=%s bitscore=%s\n"
 
-			n := 0
+			// output
+			type Subseq struct {
+				ID     uint64
+				Header string
+				Seq    *seq.Seq
+				Genome *genome.Genome
+			}
+			var poolSubseq = &sync.Pool{New: func() interface{} {
+				return &Subseq{}
+			}}
+			ch := make(chan *Subseq, opt.NumCPUs)
+			m := make(map[uint64]*Subseq, opt.NumCPUs) // the buffer to output sorte
+			done := make(chan int)
+			go func() {
+				var id, _id uint64
+				var ok bool
+				var _n int
+				for result := range ch {
+					_n++
+					if verbose && ((_n < 1024 && _n&127 == 0) || _n&1023 == 0) {
+						fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", _n)
+					}
 
+					_id = result.ID
+					if _id == id {
+						outfh.WriteString(result.Header)
+						outfh.Write(result.Seq.FormatSeq(lineWidth))
+						outfh.WriteByte('\n')
+						genome.RecycleGenome(result.Genome)
+						poolSubseq.Put(result)
+
+						id++
+						continue
+					}
+
+					m[_id] = result
+
+					if result, ok = m[id]; ok {
+						outfh.WriteString(result.Header)
+						outfh.Write(result.Seq.FormatSeq(lineWidth))
+						outfh.WriteByte('\n')
+						genome.RecycleGenome(result.Genome)
+						poolSubseq.Put(result)
+
+						delete(m, id)
+						id++
+					}
+				}
+				if len(m) > 0 {
+					ids := make([]uint64, len(m))
+					i := 0
+					for id = range m {
+						ids[i] = id
+						i++
+					}
+					sortutil.Uint64s(ids)
+					var result *Subseq
+					for _, id = range ids {
+						result = m[id]
+
+						outfh.WriteString(result.Header)
+						outfh.Write(result.Seq.FormatSeq(lineWidth))
+						outfh.WriteByte('\n')
+						genome.RecycleGenome(result.Genome)
+						poolSubseq.Put(result)
+					}
+				}
+
+				if verbose {
+					fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", _n)
+					fmt.Fprintln(os.Stderr)
+				}
+
+				done <- 1
+			}()
+
+			// output
+
+			token := make(chan int, opt.NumCPUs)
+
+			var n uint64
 			for scanner.Scan() {
 				line = strings.TrimRight(scanner.Text(), "\r\n")
 				if line == "" {
@@ -205,110 +280,127 @@ Attention:
 					continue
 				}
 
-				stringSplitNByByte(line, '\t', ncols, &items)
-				if len(items) < ncols {
-					checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", ncols, len(items)))
-				}
+				wg.Add(1)
+				token <- 1
+				go func(line string, n uint64) {
+					var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
+					var pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore string
+					var sstart, send int
+					var __end int
 
-				query = items[0]
-				_ = query
-				qlen = items[1]
-				_ = qlen
-				hits = items[2]
-				_ = hits
+					items := poolItems.Get().(*[]string)
 
-				sgenome = items[3]
-				sseqid = items[4]
-				qcovGnm = items[5]
-				cls = items[6]
-				hsp = items[7]
-				qcovHSP = items[8]
-				alenHSP = items[9]
-				pident = items[10]
-				gaps = items[11]
-				qstart = items[12]
-				qend = items[13]
-				_sstart = items[14]
-				_send = items[15]
-				sstr = items[16]
-				slen = items[17]
-				evalue = items[18]
-				bitscore = items[19]
-
-				if batchIDAndRefIDs, ok = m[sgenome]; !ok {
-					checkError(fmt.Errorf("reference name not found: %s", sgenome))
-				}
-
-				sstart, _ = strconv.Atoi(_sstart)
-				send, _ = strconv.Atoi(_send)
-
-				for _, batchIDAndRefID := range *batchIDAndRefIDs {
-					genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
-					genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
-
-					// fileGenome = filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileGenomes)
-					// rdr, err = genome.NewReader(fileGenome)
-					// if err != nil {
-					// 	checkError(fmt.Errorf("failed to read genome data file: %s", err))
-					// }
-					rdr = readers[genomeBatch]
-
-					tSeq, __end, err = rdr.SubSeq2(genomeIdx, []byte(sseqid), sstart-1, send-1)
-					__end++ // returned end is 0-based.
-
-					if __end != send {
-						checkError(fmt.Errorf("unequal end position: %d != %d", send, __end))
+					stringSplitNByByte(line, '\t', ncols, items)
+					if len(*items) < ncols {
+						checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", ncols, len(*items)))
 					}
 
-					if err == nil {
-						break
+					query = (*items)[0]
+					_ = query
+					qlen = (*items)[1]
+					_ = qlen
+					hits = (*items)[2]
+					_ = hits
+
+					sgenome = (*items)[3]
+					sseqid = (*items)[4]
+					qcovGnm = (*items)[5]
+					cls = (*items)[6]
+					hsp = (*items)[7]
+					qcovHSP = (*items)[8]
+					alenHSP = (*items)[9]
+					pident = (*items)[10]
+					gaps = (*items)[11]
+					qstart = (*items)[12]
+					qend = (*items)[13]
+					_sstart = (*items)[14]
+					_send = (*items)[15]
+					sstr = (*items)[16]
+					slen = (*items)[17]
+					evalue = (*items)[18]
+					bitscore = (*items)[19]
+
+					var batchIDAndRefIDs *[]uint64
+					var ok bool
+					// var fileGenome string
+					var tSeq *genome.Genome
+					var genomeBatch, genomeIdx int
+					var rdr *genome.Reader
+
+					if batchIDAndRefIDs, ok = refname2idx[sgenome]; !ok {
+						checkError(fmt.Errorf("reference name not found: %s", sgenome))
 					}
-					// the sequence might not be in this genome chunk
-				}
-				if err != nil {
-					checkError(fmt.Errorf("failed to read subsequence: %s:%s-%s:%s: %s", sseqid, _sstart, _send, sstr, err))
-				}
 
-				s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)
-				checkError(err)
+					sstart, _ = strconv.Atoi(_sstart)
+					send, _ = strconv.Atoi(_send)
 
-				if sstr == "-" {
-					s.RevComInplace()
-				}
+					for _, batchIDAndRefID := range *batchIDAndRefIDs {
+						genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
+						genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
 
-				fmt.Fprintf(outfh, ">%s:%s-%s:%s", sseqid, _sstart, _send, sstr)
-				fmt.Fprintf(outfh, fmt2,
-					sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
-					pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore,
-				)
-				fmt.Fprintln(outfh)
+						rdr = <-readers[genomeBatch]
 
-				outfh.Write(s.FormatSeq(lineWidth))
-				outfh.WriteByte('\n')
+						tSeq, __end, err = rdr.SubSeq2(genomeIdx, []byte(sseqid), sstart-1, send-1)
+						__end++ // returned end is 0-based.
 
-				genome.RecycleGenome(tSeq)
-				// checkError(rdr.Close())
+						if __end != send {
+							checkError(fmt.Errorf("unequal end position: %d != %d", send, __end))
+						}
+
+						readers[genomeBatch] <- rdr
+
+						if err == nil {
+							break
+						}
+						// the sequence might not be in this genome chunk
+					}
+					if err != nil {
+						checkError(fmt.Errorf("failed to read subsequence: %s:%s-%s:%s: %s", sseqid, _sstart, _send, sstr, err))
+					}
+
+					s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)
+					checkError(err)
+
+					if sstr == "-" {
+						s.RevComInplace()
+					}
+
+					header := fmt.Sprintf(fmt2, sseqid, _sstart, _send, sstr,
+						sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
+						pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore,
+					)
+					subseq := poolSubseq.Get().(*Subseq)
+					subseq.ID = n
+					subseq.Header = header
+					subseq.Seq = s
+					subseq.Genome = tSeq
+					ch <- subseq
+
+					poolItems.Put(items)
+
+					wg.Done()
+					<-token
+				}(line, n)
 
 				n++
-				if verbose && ((n < 1024 && n&127 == 0) || n&1023 == 0) {
-					fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", n)
-				}
 			}
-			if verbose {
-				fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", n)
-				fmt.Fprintln(os.Stderr)
-			}
+			wg.Wait()
+			close(ch)
+			<-done
 
 			if outputLog {
 				log.Infof("%d subsequences extracted", n)
 			}
 
-			for _, rdr := range readers {
+			for _, chRdr := range readers {
 				wg.Add(1)
-				go func(rdr *genome.Reader) {
-					checkError(rdr.Close())
+				go func(chRdr chan *genome.Reader) {
+					close(chRdr)
+					for rdr := range chRdr {
+						checkError(rdr.Close())
+					}
 					wg.Done()
-				}(rdr)
+				}(chRdr)
 			}
 			wg.Wait()
 
@@ -480,6 +572,8 @@ func init() {
 
 	subseqCmd.Flags().StringP("buffer-size", "b", "20M",
 		formatFlagUsage(`Size of buffer, supported unit: K, M, G. You need increase the value when "bufio.Scanner: token too long" error reported`))
+	subseqCmd.Flags().IntP("max-open-files", "", 1024,
+		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
 	subseqCmd.Flags().StringP("search-result", "f", "",
 		formatFlagUsage(`Use search result file from "lexicmap search" as input. It can be "-" to accept filtered result from stdin`))
