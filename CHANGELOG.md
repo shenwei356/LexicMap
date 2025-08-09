@@ -23,6 +23,8 @@
       There's no need to rebuild the index.
     - Check if the output file and the log file are the same.
     - Reduce the time of seed matching when using `-w`.
+- `lexicmap utils subseq`:
+    - **Accept the output file of `lexicmap search` as the input**.
 
 ### v0.7.0 - 2025-04-11
 
