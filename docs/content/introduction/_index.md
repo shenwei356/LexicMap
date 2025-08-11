@@ -153,15 +153,14 @@ CIGAR string, aligned query and subject sequences can be outputted as extra colu
 # Extracting similar sequences for a query gene.
 
 # search matches with query coverage >= 90%
-lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta -o results.tsv \
-    --min-qcov-per-hsp 90 --all
+lexicmap search -d demo.lmi/ bench/b.gene_E_faecalis_SecY.fasta -o results.tsv \
+    --min-qcov-per-hsp 90
 
 # extract matched sequences as FASTA format
-sed 1d results.tsv | awk -F'\t' '{print ">"$5":"$15"-"$16":"$17"\n"$23;}' \
-    | seqkit seq -g > results.fasta
+lexicmap utils subseq -d demo.lmi -f results.tsv -o results.tsv.aligned.fasta
 
-seqkit head -n 1 results.fasta | head -n 3
->NZ_JALSCK010000007.1:39224-40522:-
+seqkit head -n 1 results.tsv.aligned.fasta | head -n 3
+>NZ_KB944588.1:228637-229935:+ sgenome=GCF_000392875.1 sseqid=NZ_KB944588.1 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1299 pident=100.000 gaps=0 qstart=1 qend=1299 sstart=228637 send=229935 sstr=+ slen=274762 evalue=0.00e+00 bitscore=2343
 TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
 ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 ```

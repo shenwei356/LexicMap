@@ -42,7 +42,7 @@ Data:
     # run the genome_updater command again, with the flag -i
     
          
-Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.8.0.
 
     # Taxonomy taxdump files.
     mkdir taxdump

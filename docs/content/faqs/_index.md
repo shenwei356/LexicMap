@@ -80,6 +80,30 @@ and it would allow `4096 / (297+2) = 13.7` threads for merging, let's set `--see
 
 ## Can I extract the matched sequences?
 
+**Update: since v0.8.0, it's simpler with `lexicmap utils subseq`**.
+See [more examples](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
+
+```plain
+# Extracting similar sequences for a query gene.
+
+# search matches with query coverage >= 90%
+lexicmap search -d demo.lmi/ bench/b.gene_E_faecalis_SecY.fasta -o results.tsv \
+    --min-qcov-per-hsp 90
+
+# extract matched sequences as FASTA format
+lexicmap utils subseq -d demo.lmi -f results.tsv -o results.tsv.aligned.fasta
+
+seqkit head -n 1 results.tsv.aligned.fasta | head -n 3
+>NZ_KB944588.1:228637-229935:+ sgenome=GCF_000392875.1 sseqid=NZ_KB944588.1 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1299 pident=100.000 gaps=0 qstart=1 qend=1299 sstart=228637 send=229935 sstr=+ slen=274762 evalue=0.00e+00 bitscore=2343
+TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
+ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
+```
+
+
+<hr>
+
+**For v0.7.0 or older versions:**
+
 Yes, `lexicmap search` has a flag
 
 ```
@@ -122,7 +146,8 @@ see [examples](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/#examples).
 can extract subsequencess via genome ID, sequence ID and positions.
 So you can use these information from the search result and expand the region positions to extract flanking sequences.
 
-
+**Update: since v0.8.0, you can extract the extended aligned region with `lexicmap utils subseq`**.
+See [more examples](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
 
 ## Why isn't the pident 100% when aligning with a sequence from the reference genomes?
 

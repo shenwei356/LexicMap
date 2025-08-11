@@ -20,7 +20,7 @@ Available Commands:
   reindex-seeds   Recreate indexes of k-mer-value (seeds) data
   remerge         Rerun the merging step for an unfinished index
   seed-pos        Extract and plot seed positions via reference name(s)
-  subseq          Extract subsequence via reference name, sequence ID, position and strand
+  subseq          Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result
 
 Flags:
   -h, --help   help for utils

@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.7.1 - 2025-xx-xx
+### v0.8.0 - 2025-xx-xx
 
 - New commands:
     - **`lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression**.
@@ -8,7 +8,7 @@
       to extract the genome ID from the sequence file during indexing.
       This command help to fix it without rebuilding the index.
 - `lexicmap index`:
-    - Reduce memory usage for huge data, such as long-reads and contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
+    - Reduce memory usage for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, especially for batch searching with long queries**.
     - Slightly improve the search speed.
@@ -25,6 +25,7 @@
     - Reduce the time of seed matching when using `-w`.
 - `lexicmap utils subseq`:
     - **Accept the output file of `lexicmap search` as the input**.
+    - Support extending aligned regions with `-U/--upstream` and/or `-D/--downstream`.
 
 ### v0.7.0 - 2025-04-11
 

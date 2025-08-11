@@ -43,7 +43,7 @@ Data:
     # redownload them:
     # run the genome_updater command again, with the flag -i
     
-Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.8.0.
 
     # Download gtdb-taxdump files here: https://github.com/shenwei356/gtdb-taxdump
     wget https://github.com/shenwei356/gtdb-taxdump/releases/download/v0.6.0/gtdb-taxdump-R226.tar.gz
