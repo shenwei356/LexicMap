@@ -51,6 +51,8 @@ Input:
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
+  - If the search results are merged from multiple indexes, it would report error
+    "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
 Output:
   - FASTA format, with a sequence ID in the format of "seqid:begin-end:strand".
@@ -91,6 +93,8 @@ Attention:
 
 		if fileSearchResult != "" {
 			noHeader := getFlagBool(cmd, "no-header-row")
+
+			ignoreErr := getFlagBool(cmd, "ignore-err")
 
 			outputLog := opt.Verbose || opt.Log2File
 			verbose := opt.Verbose
@@ -213,6 +217,7 @@ Attention:
 			ch := make(chan *Subseq, opt.NumCPUs)
 			m := make(map[uint64]*Subseq, opt.NumCPUs) // the buffer to output sorte
 			done := make(chan int)
+			var nSuccess int
 			go func() {
 				var id, _id uint64
 				var ok bool
@@ -220,16 +225,19 @@ Attention:
 				for result := range ch {
 					_n++
 					if verbose && ((_n < 1024 && _n&127 == 0) || _n&1023 == 0) {
-						fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", _n)
+						fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
 					}
 
 					_id = result.ID
 					if _id == id {
-						outfh.WriteString(result.Header)
-						outfh.Write(result.Seq.FormatSeq(lineWidth))
-						outfh.WriteByte('\n')
-						genome.RecycleGenome(result.Genome)
-						poolSubseq.Put(result)
+						if result.Seq != nil {
+							nSuccess++
+							outfh.WriteString(result.Header)
+							outfh.Write(result.Seq.FormatSeq(lineWidth))
+							outfh.WriteByte('\n')
+							genome.RecycleGenome(result.Genome)
+							poolSubseq.Put(result)
+						}
 
 						id++
 						continue
@@ -238,11 +246,14 @@ Attention:
 					m[_id] = result
 
 					if result, ok = m[id]; ok {
-						outfh.WriteString(result.Header)
-						outfh.Write(result.Seq.FormatSeq(lineWidth))
-						outfh.WriteByte('\n')
-						genome.RecycleGenome(result.Genome)
-						poolSubseq.Put(result)
+						if result.Seq != nil {
+							nSuccess++
+							outfh.WriteString(result.Header)
+							outfh.Write(result.Seq.FormatSeq(lineWidth))
+							outfh.WriteByte('\n')
+							genome.RecycleGenome(result.Genome)
+							poolSubseq.Put(result)
+						}
 
 						delete(m, id)
 						id++
@@ -260,16 +271,19 @@ Attention:
 					for _, id = range ids {
 						result = m[id]
 
-						outfh.WriteString(result.Header)
-						outfh.Write(result.Seq.FormatSeq(lineWidth))
-						outfh.WriteByte('\n')
-						genome.RecycleGenome(result.Genome)
-						poolSubseq.Put(result)
+						if result.Seq != nil {
+							nSuccess++
+							outfh.WriteString(result.Header)
+							outfh.Write(result.Seq.FormatSeq(lineWidth))
+							outfh.WriteByte('\n')
+							genome.RecycleGenome(result.Genome)
+							poolSubseq.Put(result)
+						}
 					}
 				}
 
 				if verbose {
-					fmt.Fprintf(os.Stderr, "\r%d subsequences extracted", _n)
+					fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
 					fmt.Fprintln(os.Stderr)
 				}
 
@@ -310,6 +324,13 @@ Attention:
 						checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", ncols, len(*items)))
 					}
 
+					defer func() {
+						poolItems.Put(items)
+
+						wg.Done()
+						<-token
+					}()
+
 					query = (*items)[0]
 					_ = query
 					qlen = (*items)[1]
@@ -347,7 +368,17 @@ Attention:
 					var rdr *genome.Reader
 
 					if batchIDAndRefIDs, ok = refname2idx[sgenome]; !ok {
-						checkError(fmt.Errorf("reference name not found: %s", sgenome))
+						if ignoreErr {
+							subseq := poolSubseq.Get().(*Subseq)
+							subseq.ID = n
+							subseq.Header = ""
+							subseq.Seq = nil
+							subseq.Genome = nil
+							ch <- subseq
+							return
+						} else {
+							checkError(fmt.Errorf("reference name not found: %s. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sgenome))
+						}
 					}
 
 					sstart, _ = strconv.Atoi(_sstart)
@@ -385,7 +416,17 @@ Attention:
 						// the sequence might not be in this genome chunk
 					}
 					if err != nil {
-						checkError(fmt.Errorf("failed to read subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %s", sseqid, _sstart, _send, sstr, upstream, downstream, err))
+						if ignoreErr {
+							subseq := poolSubseq.Get().(*Subseq)
+							subseq.ID = n
+							subseq.Header = ""
+							subseq.Seq = nil
+							subseq.Genome = nil
+							ch <- subseq
+							return
+						} else {
+							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %s. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream, err))
+						}
 					}
 
 					eEnd = __end // update end
@@ -408,10 +449,6 @@ Attention:
 					subseq.Genome = tSeq
 					ch <- subseq
 
-					poolItems.Put(items)
-
-					wg.Done()
-					<-token
 				}(line, n)
 
 				n++
@@ -421,7 +458,7 @@ Attention:
 			<-done
 
 			if outputLog {
-				log.Infof("%d subsequences extracted", n)
+				log.Infof("%d subsequences extracted from %d records", nSuccess, n)
 			}
 			if n == 0 {
 				log.Warningf("does the input has header row? If not, please switch on -H/--no-header-row")
@@ -553,7 +590,7 @@ Attention:
 			// the sequence might not be in this genome chunk
 		}
 		if err != nil {
-			checkError(fmt.Errorf("failed to read subsequence: %s:%d-%d with upstream=%d downstream=%d: %s", refname, start, end, upstream, downstream, err))
+			checkError(fmt.Errorf("failed to extract subsequence: %s:%d-%d with upstream=%d downstream=%d: %s", refname, start, end, upstream, downstream, err))
 		}
 
 		eEnd = _end // update end
@@ -631,10 +668,13 @@ func init() {
 		formatFlagUsage(`The search result file has no header row, this happens when using tools like awk to filter the file.`))
 
 	subseqCmd.Flags().IntP("upstream", "U", 0,
-		formatFlagUsage(`Extract extra N bp on the upstream of the aligned/specified region`))
+		formatFlagUsage(`Extract extra N bp on the upstream of the aligned/specified region.`))
 
 	subseqCmd.Flags().IntP("downstream", "D", 0,
-		formatFlagUsage(`Extract extra N bp on the downstream of the aligned/specified region`))
+		formatFlagUsage(`Extract extra N bp on the downstream of the aligned/specified region.`))
+
+	subseqCmd.Flags().BoolP("ignore-err", "e", false,
+		formatFlagUsage(`Ignore errors such as 'reference name not found' or 'failed to extract subsequence'. Switch on this flag if search results are merged from multiple indexes.`))
 
 	subseqCmd.SetUsageTemplate(usageTemplate(""))
 }

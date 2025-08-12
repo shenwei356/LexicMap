@@ -17,6 +17,8 @@ Input:
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
+  - If the search results are merged from multiple indexes, it would report error
+    "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
 Output:
   - FASTA format, with a sequence ID in the format of "seqid:begin-end:strand".
@@ -36,8 +38,11 @@ Usage:
 Flags:
   -b, --buffer-size string     ► Size of buffer, supported unit: K, M, G. You need increase the value
                                when "bufio.Scanner: token too long" error reported (default "20M")
-  -D, --downstream int         ► Extract extra N bp on the downstream of the aligned/specified region
+  -D, --downstream int         ► Extract extra N bp on the downstream of the aligned/specified region.
   -h, --help                   help for subseq
+  -e, --ignore-err             ► Ignore errors such as 'reference name not found' or 'failed to
+                               extract subsequence'. Switch on this flag if search results are merged
+                               from multiple indexes.
   -d, --index string           ► Index directory created by "lexicmap index".
   -w, --line-width int         ► Line width of sequence (0 for no wrap). (default 60)
       --max-open-files int     ► Maximum opened files. It mainly affects candidate subsequence
@@ -54,7 +59,7 @@ Flags:
                                to accept filtered result from stdin
   -s, --seq-id string          ► Sequence ID. If the value is empty, the positions in the region are
                                treated as that in the concatenated sequence.
-  -U, --upstream int           ► Extract extra N bp on the upstream of the aligned/specified region
+  -U, --upstream int           ► Extract extra N bp on the upstream of the aligned/specified region.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -75,26 +80,26 @@ Global Flags:
         
         # extract
         $ lexicmap utils subseq -d demo.lmi/ -f t.txt -o t.txt.aligned.fasta
-        09:52:29.652 [INFO] loading index: demo.lmi/
-        09:52:29.653 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-        09:52:29.662 [INFO] extracting subsequences...
-        84 subsequences extracted
-        09:52:29.665 [INFO] 84 subsequences extracted
-        09:52:29.665 [INFO] 
-        09:52:29.665 [INFO] elapsed time: 12.580621ms
-        09:52:29.665 [INFO]
+        17:45:50.134 [INFO] loading index: demo.lmi/
+        17:45:50.135 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+        17:45:50.135 [INFO] extracting subsequences...
+        84 subsequences extracted from 84 records
+        17:45:50.139 [INFO] 84 subsequences extracted from 84 records
+        17:45:50.139 [INFO] 
+        17:45:50.139 [INFO] elapsed time: 13.923238ms
+        17:45:50.139 [INFO] 
         
         # extract with filtered search result
         $ csvtk filter2 -t -f '$qcovHSP > 90 && $pident > 90' t.txt \
             | lexicmap utils subseq -d demo.lmi/ -f - -o t.txt.aligned.fasta 
-        09:54:49.403 [INFO] loading index: demo.lmi/
-        09:54:49.403 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-        09:54:49.403 [INFO] extracting subsequences...
-        33 subsequences extracted
-        09:54:49.406 [INFO] 33 subsequences extracted
-        09:54:49.406 [INFO] 
-        09:54:49.406 [INFO] elapsed time: 6.883493ms
-        09:54:49.406 [INFO]
+        17:46:15.216 [INFO] loading index: demo.lmi/
+        17:46:15.216 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+        17:46:15.216 [INFO] extracting subsequences...
+        33 subsequences extracted from 33 records
+        17:46:15.219 [INFO] 33 subsequences extracted from 33 records
+        17:46:15.219 [INFO] 
+        17:46:15.219 [INFO] elapsed time: 21.785783ms
+        17:46:15.219 [INFO]
         
         # extend the region with -U/--upstream and/or -D/--downstream.
         $ csvtk filter2 -t -f '$qcovHSP > 90 && $pident > 90' t.txt \
