@@ -8,7 +8,8 @@
       to extract the genome ID from the sequence file during indexing.
       This command help to fix it without rebuilding the index.
 - `lexicmap index`:
-    - **Significantly reduce the memory usage** in the merge step (by up to 25%). Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
+    - **Significantly reduce the memory usage (by up to 25%)** in the merge step.
+      Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, especially for batch searching with long queries**.
     - Slightly improve the search speed.
@@ -25,6 +26,7 @@
     - Reduce the time of seed matching when using `-w`.
 - `lexicmap utils subseq`:
     - **Accept the output file of `lexicmap search` as the input**.
+      So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
     - Support extending aligned regions with `-U/--upstream` and/or `-D/--downstream`.
 
 ### v0.7.0 - 2025-04-11
