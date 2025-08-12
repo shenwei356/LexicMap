@@ -373,7 +373,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 
 	for _, data := range datas {
-		kv.PoolKmerData.Put(data)
+		kv.RecycleKmerData(data)
 	}
 
 	if nBatches == 1 {
@@ -535,9 +535,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 	// --------------------------------
 	// 2) collect k-mers data & write genomes to file
-	for _, data := range *datas { // reset all maps
-		clear(*data)
-	}
+	// unnecessary as they are cleared
+	// for _, data := range *datas { // reset all maps
+	// 	clear(*data)
+	// }
 
 	threadsFloat := float64(opt.NumCPUs) // just avoid repeated type conversion
 

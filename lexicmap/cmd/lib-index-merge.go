@@ -159,15 +159,13 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 						for kmer, values1 = range *m1 {
 							if values, ok = (*m)[kmer]; !ok {
-								tmp := make([]uint64, 0, len(*values1))
-								values = &tmp
-								(*m)[kmer] = values
-
-								// values = poolUint64s.Get().(*[]uint64)
-								// *values = (*values)[:0]
+								// tmp := make([]uint64, 0, len(*values1))
+								// values = &tmp
 								// (*m)[kmer] = values
+								(*m)[kmer] = values1 // directly move data from m1 to m, this saves a lot of memory
+							} else {
+								*values = append(*values, (*values1)...)
 							}
-							*values = append(*values, (*values1)...)
 						}
 						kv.RecycleKmerData(m1)
 					}
@@ -178,9 +176,6 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					}
 				}
 
-				// for _, values = range *m {
-				// 	poolUint64s.Put(values)
-				// }
 				kv.RecycleKmerData(m)
 
 				for _, rdr = range rdrs {

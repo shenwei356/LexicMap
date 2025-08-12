@@ -8,7 +8,7 @@
       to extract the genome ID from the sequence file during indexing.
       This command help to fix it without rebuilding the index.
 - `lexicmap index`:
-    - Reduce memory usage for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
+    - **Reduce memory usage** in the merge step. Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, especially for batch searching with long queries**.
     - Slightly improve the search speed.

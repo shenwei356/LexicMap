@@ -138,6 +138,7 @@ var PoolKmerData = &sync.Pool{New: func() interface{} {
 
 // RecycleKmerData recycles a k-mer data object.
 func RecycleKmerData(m *map[uint64]*[]uint64) {
+	clear(*m) // clear the map before recyle it
 	PoolKmerData.Put(m)
 }
 
@@ -170,7 +171,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	var n uint64
 
 	m := PoolKmerData.Get().(*map[uint64]*[]uint64)
-	clear(*m)
+	// clear(*m)  // unnecessary as it's cleared
 	var err error
 
 	// 8-byte the number of k-mers

@@ -141,6 +141,7 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 		if err != nil {
 			return 0, err
 		}
+		clear(*m) // clear it after dumping to files, but don't recycle it!
 	}
 	err = wtr.Close()
 	if err != nil {
