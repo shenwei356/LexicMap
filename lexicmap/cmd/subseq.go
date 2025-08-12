@@ -553,7 +553,7 @@ Attention:
 			// the sequence might not be in this genome chunk
 		}
 		if err != nil {
-			checkError(fmt.Errorf("failed to read subsequence: %s:%s-%s with upstream=%d downstream=%d: %s", refname, start, end, upstream, downstream, err))
+			checkError(fmt.Errorf("failed to read subsequence: %s:%d-%d with upstream=%d downstream=%d: %s", refname, start, end, upstream, downstream, err))
 		}
 
 		eEnd = _end // update end

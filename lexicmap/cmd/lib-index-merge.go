@@ -120,9 +120,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				var rdr *kv.Reader
 				var i int
-				var kmer uint64
-				var values, values1 *[]uint64
-				var ok bool
+				// var kmer uint64
+				// var values, values1 *[]uint64
+				// var ok bool
 
 				// read information from an existing index file
 				fileIdx := filepath.Join(pathB[0], DirSeeds, chunkFile(chunk)+kv.KVIndexFileExt)
@@ -151,23 +151,28 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					clear(*m)
 
 					for i, rdr = range rdrs {
-						m1, err := rdr.ReadDataOfAMaskAsMap()
+						// there's no need to read them in memory first
+						// m1, err := rdr.ReadDataOfAMaskAsMap()
+						// if err != nil {
+						// 	checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
+						// 		c+rdr.ChunkIndex, pathB[i], err))
+						// }
+
+						// for kmer, values1 = range *m1 {
+						// 	if values, ok = (*m)[kmer]; !ok {
+						// 		(*m)[kmer] = values1 // directly move data from m1 to m, this saves a lot of memory
+						// 	} else {
+						// 		*values = append(*values, (*values1)...)
+						// 	}
+						// }
+						// kv.RecycleKmerData(m1)
+
+						// online processing
+						err = rdr.ReadDataOfAMaskAndAppendToMap(m)
 						if err != nil {
 							checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
 								c+rdr.ChunkIndex, pathB[i], err))
 						}
-
-						for kmer, values1 = range *m1 {
-							if values, ok = (*m)[kmer]; !ok {
-								// tmp := make([]uint64, 0, len(*values1))
-								// values = &tmp
-								// (*m)[kmer] = values
-								(*m)[kmer] = values1 // directly move data from m1 to m, this saves a lot of memory
-							} else {
-								*values = append(*values, (*values1)...)
-							}
-						}
-						kv.RecycleKmerData(m1)
 					}
 
 					err = wtr.WriteDataOfAMask(*m)
