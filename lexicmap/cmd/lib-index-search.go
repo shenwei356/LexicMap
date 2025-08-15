@@ -1008,7 +1008,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 	// a map for collecting matches for each reference: IdIdx -> result
 	m := poolSearchResultsMap.Get().(*map[int]*SearchResult)
-	clear(*m) // requires go >= v1.21
 
 	inMemorySearch := idx.opt.InMemorySearch
 
@@ -1450,40 +1449,66 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	}()
 
 	minScore := idx.chainingOptions.MinScore
+
+	chaining := func(r *SearchResult) {
+		if len(*r.Subs) > 1 {
+			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+		}
+
+		chainer := idx.poolChainers.Get().(*Chainer)
+		r.Chains, r.Score = chainer.Chain(r.Subs)
+
+		if r.Score < minScore {
+			idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
+
+			idx.poolChainers.Put(chainer)
+			<-tokens
+			wg.Done()
+			return
+		}
+
+		ch1 <- r
+
+		idx.poolChainers.Put(chainer)
+		<-tokens
+		wg.Done()
+	}
+
 	for _, r := range *m {
 		tokens <- 1
 		wg.Add(1)
 
-		go func(r *SearchResult) {
-			if len(*r.Subs) > 1 {
-				ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
-			}
+		go chaining(r)
 
-			// -----------------------------------------------------
-			// chaining
+		// this needs more memory
+		// go func(r *SearchResult) {
+		// 	if len(*r.Subs) > 1 {
+		// 		ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+		// 	}
 
-			chainer := idx.poolChainers.Get().(*Chainer)
-			r.Chains, r.Score = chainer.Chain(r.Subs)
+		// 	chainer := idx.poolChainers.Get().(*Chainer)
+		// 	r.Chains, r.Score = chainer.Chain(r.Subs)
 
-			defer func() {
-				idx.poolChainers.Put(chainer)
-				<-tokens
-				wg.Done()
-			}()
+		// 	defer func() {
+		// 		idx.poolChainers.Put(chainer)
+		// 		<-tokens
+		// 		wg.Done()
+		// 	}()
 
-			if r.Score < minScore {
-				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
-				return
-			}
+		// 	if r.Score < minScore {
+		// 		idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
+		// 		return
+		// 	}
 
-			ch1 <- r
-		}(r)
+		// 	ch1 <- r
+		// }(r)
 	}
 
 	wg.Wait()
 	close(ch1)
 	<-done
 
+	clear(*m) // requires go >= v1.21
 	poolSearchResultsMap.Put(m)
 
 	// 3.2) only keep the top N targets
@@ -1503,7 +1528,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			r = (*rs)[i]
 
 			// do not forget to recycle the filtered result
-			idx.RecycleSearchResult(r)
+			idx.RecycleSearchResult(r) // recylcing too many substring pairs resulting in a high memory load.
 		}
 		*rs = (*rs)[:topN]
 	}
@@ -1587,753 +1612,789 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	}
 
 	fcpus := float64(idx.opt.NumCPUs)
-	for _, r := range *rs { // multiple references
-		tokens <- 1
-		wg.Add(1)
 
-		go func(r *SearchResult) { // for a reference genome
-			timeStart := time.Now()
-			defer func() {
-				<-tokens
-				if debug {
-					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
-				}
-				wg.Done()
-			}()
+	falin := func(r *SearchResult) { // for a reference genome
+		timeStart := time.Now()
+		defer func() {
+			<-tokens
+			if debug {
+				chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+			}
+			wg.Done()
+		}()
 
-			// -----------------------------------------------------
-			// alignment
+		// -----------------------------------------------------
+		// alignment
 
-			minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
-			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
-			minPIdent := idx.seqCompareOption.MinIdentity
-			maxEvalue := idx.opt.MaxEvalue
-			extLen := idx.opt.ExtendLength
-			extLen2 := idx.opt.ExtendLength2
-			contigInterval := idx.contigInterval
-			outSeq := idx.opt.OutputSeq
+		minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
+		minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+		minPIdent := idx.seqCompareOption.MinIdentity
+		maxEvalue := idx.opt.MaxEvalue
+		extLen := idx.opt.ExtendLength
+		extLen2 := idx.opt.ExtendLength2
+		contigInterval := idx.contigInterval
+		outSeq := idx.opt.OutputSeq
 
-			algn := wfa.New(wfa.DefaultPenalties, alignOption)
-			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
-			// algn.AdaptiveReduction(&wfa.AdaptiveReductionOption{
-			// 	MinWFLen:    10,
-			// 	MaxDistDiff: 50,
+		algn := wfa.New(wfa.DefaultPenalties, alignOption)
+		algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+		// algn.AdaptiveReduction(&wfa.AdaptiveReductionOption{
+		// 	MinWFLen:    10,
+		// 	MaxDistDiff: 50,
+		// })
+
+		// from blastn_values_2_3 in ncbi-blast-2.15.0+-src/c++/src/algo/blast/core/blast_stat.c
+		fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(idx.totalBases), 0.625, 0.41)
+
+		var _qseq, _tseq []byte
+		var cigar *wfa.AlignmentResult
+		// var op *wfa.CIGARRecord
+		var op uint64
+		var Q, A, T *[]byte
+
+		// -----------------------------------------------------
+
+		refBatch := r.GenomeBatch
+		refID := r.GenomeIndex
+
+		var rdr *genome.Reader
+		// sequence reader
+		if idx.hasGenomeRdrs {
+			rdr = <-idx.poolGenomeRdrs[refBatch]
+		} else {
+			idx.openFileTokens <- 1 // genome file
+			fileGenome := filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
+			rdr, err = genome.NewReader(fileGenome)
+			if err != nil {
+				checkError(fmt.Errorf("failed to read genome data file: %s", err))
+			}
+		}
+
+		var sub *SubstrPair
+		qlen := len(s)
+		var rc bool
+		var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
+		var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
+		var _begin, _end int
+
+		sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
+
+		// fragments of a HSP.
+		// Since HSP fragments in a HSP might come from different contigs.
+		// Multiple contigs are concatenated, remember?
+		// So we need to create seperate HPSs for these fragments.
+		var crChains2 *[]*Chain2Result
+
+		// for remove duplicated alignments
+		var duplicated bool
+		hashes := poolHashes.Get().(*map[uint64]interface{})
+		clear(*hashes)
+		var hash uint64
+
+		var tSeq *genome.Genome
+
+		// sort chains according to coordinates for faster file seeking
+		if len(*r.Chains) > 1 {
+			// sort.Slice(*r.Chains, func(i, j int) bool {
+			// 	return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
 			// })
+			slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
+				return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
+			})
+		}
 
-			// from blastn_values_2_3 in ncbi-blast-2.15.0+-src/c++/src/algo/blast/core/blast_stat.c
-			fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(idx.totalBases), 0.625, 0.41)
+		// check sequences from all chains
+		var nSeeds int
+		for i, chain := range *r.Chains { // for each lexichash chain
+			// ------------------------------------------------------------------------
+			// extract subsequence from the refseq for comparing
 
-			var _qseq, _tseq []byte
-			var cigar *wfa.AlignmentResult
-			// var op *wfa.CIGARRecord
-			var op uint64
-			var Q, A, T *[]byte
+			// fmt.Printf("\n----------------- [ lexichash chain %d ] --------------\n", i+1)
+			// for _i, _c := range *chain {
+			// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
+			// }
 
-			// -----------------------------------------------------
+			nSeeds = len(*chain)
 
-			refBatch := r.GenomeBatch
-			refID := r.GenomeIndex
+			// the first seed pair
+			sub = (*r.Subs)[(*chain)[0]]
+			// fmt.Printf("  first: %s\n", sub)
+			qb = int(sub.QBegin)
+			tb = int(sub.TBegin)
 
-			var rdr *genome.Reader
-			// sequence reader
-			if idx.hasGenomeRdrs {
-				rdr = <-idx.poolGenomeRdrs[refBatch]
+			// the last seed pair
+			sub = (*r.Subs)[(*chain)[nSeeds-1]]
+			// fmt.Printf("  last: %s\n", sub)
+			qe = int(sub.QBegin) + int(sub.Len) - 1
+			te = int(sub.TBegin) + int(sub.Len) - 1
+			// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
+
+			if nSeeds == 1 { // if there's only one seed, need to check the strand information
+				rc = sub.QRC != sub.TRC
+			} else { // check the strand according to coordinates of seeds
+				rc = tb > int(sub.TBegin)
+			}
+			// fmt.Printf("  rc: %v\n", rc)
+
+			// recycle chain ASAP
+			*chain = (*chain)[:0]
+			poolChain.Put(chain)
+			(*r.Chains)[i] = nil
+
+			// extend the locations in the reference
+			if rc { // reverse complement
+				// tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
+				tBegin = int(sub.TBegin) - extLen
+				if tBegin < 0 {
+					tBegin = 0
+				}
+				// tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
+				tEnd = tb + int(sub.Len) - 1 + extLen
 			} else {
-				idx.openFileTokens <- 1 // genome file
-				fileGenome := filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
-				rdr, err = genome.NewReader(fileGenome)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read genome data file: %s", err))
+				// tBegin = tb - min(qb, extLen)
+				tBegin = tb - extLen
+				if tBegin < 0 {
+					tBegin = 0
 				}
+				// tEnd = te + min(qlen-qe-1, extLen)
+				tEnd = te + extLen
 			}
 
-			var sub *SubstrPair
-			qlen := len(s)
-			var rc bool
-			var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
-			var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
-			var _begin, _end int
+			// extend the locations in the query
+			qBegin = qb - min(qb, extLen)
+			qEnd = qe + min(qlen-qe-1, extLen)
 
-			sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
-
-			// fragments of a HSP.
-			// Since HSP fragments in a HSP might come from different contigs.
-			// Multiple contigs are concatenated, remember?
-			// So we need to create seperate HPSs for these fragments.
-			var crChains2 *[]*Chain2Result
-
-			// for remove duplicated alignments
-			var duplicated bool
-			hashes := poolHashes.Get().(*map[uint64]interface{})
-			clear(*hashes)
-			var hash uint64
-
-			var tSeq *genome.Genome
-
-			// sort chains according to coordinates for faster file seeking
-			if len(*r.Chains) > 1 {
-				// sort.Slice(*r.Chains, func(i, j int) bool {
-				// 	return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
-				// })
-				slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
-					return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
-				})
+			// extract target sequence for comparison.
+			// Right now, we fetch seq from disk for each seq,
+			// In the future, we might buffer frequently accessed references for improving speed.
+			tSeq, err = rdr.SubSeq3(refID, tBegin, tEnd, tSeq)
+			if err != nil {
+				checkError(err)
+			}
+			// this happens when the matched sequene is the last one in the gneome
+			if len(tSeq.Seq) < tEnd-tBegin+1 {
+				tEnd -= tEnd - tBegin + 1 - len(tSeq.Seq)
 			}
 
-			// check sequences from all chains
-			var nSeeds int
-			for i, chain := range *r.Chains { // for each lexichash chain
-				// ------------------------------------------------------------------------
-				// extract subsequence from the refseq for comparing
+			if rc { // reverse complement
+				RC(tSeq.Seq)
+			}
 
-				// fmt.Printf("\n----------------- [ lexichash chain %d ] --------------\n", i+1)
-				// for _i, _c := range *chain {
-				// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
+			// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, genome:%s, seq:%s\n",
+			// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, r.ID, tSeq.ID)
+			// fmt.Printf("%s\n", tSeq.Seq)
+
+			// ------------------------------------------------------------------------
+			// comparing the two sequences with pseudo-alignment
+
+			// fmt.Printf("qBegin: %d, qEnd: %d, len(tseq): %d\n", qBegin, qEnd, len(tSeq.Seq))
+			cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
+			if err != nil {
+				checkError(err)
+			}
+			if cr == nil { // no matches in the pseudo alignment
+				continue
+			}
+
+			// if len(r.ID) == 0 { // record genome information, do it once
+			if r.GenomeSize == 0 {
+				// r.ID = append(r.ID, tSeq.ID...)
+				// if debug {
+				// 	log.Debugf("  checking genome: %s", r.ID)
 				// }
-
-				nSeeds = len(*chain)
-
-				// the first seed pair
-				sub = (*r.Subs)[(*chain)[0]]
-				// fmt.Printf("  first: %s\n", sub)
-				qb = int(sub.QBegin)
-				tb = int(sub.TBegin)
-
-				// the last seed pair
-				sub = (*r.Subs)[(*chain)[nSeeds-1]]
-				// fmt.Printf("  last: %s\n", sub)
-				qe = int(sub.QBegin) + int(sub.Len) - 1
-				te = int(sub.TBegin) + int(sub.Len) - 1
-				// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-
-				if nSeeds == 1 { // if there's only one seed, need to check the strand information
-					rc = sub.QRC != sub.TRC
-				} else { // check the strand according to coordinates of seeds
-					rc = tb > int(sub.TBegin)
-				}
-				// fmt.Printf("  rc: %v\n", rc)
-
-				// recycle chain ASAP
-				*chain = (*chain)[:0]
-				poolChain.Put(chain)
-				(*r.Chains)[i] = nil
-
-				// extend the locations in the reference
-				if rc { // reverse complement
-					// tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
-					tBegin = int(sub.TBegin) - extLen
-					if tBegin < 0 {
-						tBegin = 0
-					}
-					// tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
-					tEnd = tb + int(sub.Len) - 1 + extLen
-				} else {
-					// tBegin = tb - min(qb, extLen)
-					tBegin = tb - extLen
-					if tBegin < 0 {
-						tBegin = 0
-					}
-					// tEnd = te + min(qlen-qe-1, extLen)
-					tEnd = te + extLen
-				}
-
-				// extend the locations in the query
-				qBegin = qb - min(qb, extLen)
-				qEnd = qe + min(qlen-qe-1, extLen)
-
-				// extract target sequence for comparison.
-				// Right now, we fetch seq from disk for each seq,
-				// In the future, we might buffer frequently accessed references for improving speed.
-				tSeq, err = rdr.SubSeq3(refID, tBegin, tEnd, tSeq)
-				if err != nil {
-					checkError(err)
-				}
-				// this happens when the matched sequene is the last one in the gneome
-				if len(tSeq.Seq) < tEnd-tBegin+1 {
-					tEnd -= tEnd - tBegin + 1 - len(tSeq.Seq)
-				}
-
-				if rc { // reverse complement
-					RC(tSeq.Seq)
-				}
-
-				// fmt.Printf("---------\nchain:%d, query:%d-%d, subject:%d.%d:%d-%d(len:%d), rc:%v, genome:%s, seq:%s\n",
-				// 	i+1, qBegin+1, qEnd+1, refBatch, refID, tBegin+1, tEnd+1, tEnd-tBegin+1, rc, r.ID, tSeq.ID)
-				// fmt.Printf("%s\n", tSeq.Seq)
-
-				// ------------------------------------------------------------------------
-				// comparing the two sequences with pseudo-alignment
-
-				// fmt.Printf("qBegin: %d, qEnd: %d, len(tseq): %d\n", qBegin, qEnd, len(tSeq.Seq))
-				cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
-				if err != nil {
-					checkError(err)
-				}
-				if cr == nil { // no matches in the pseudo alignment
-					continue
-				}
-
-				// if len(r.ID) == 0 { // record genome information, do it once
-				if r.GenomeSize == 0 {
-					// r.ID = append(r.ID, tSeq.ID...)
-					// if debug {
-					// 	log.Debugf("  checking genome: %s", r.ID)
-					// }
-					r.GenomeSize = tSeq.GenomeSize
-				}
-
-				iSeqPre = -1 // the index of previous sequence in this HSP
-
-				crChains2 = poolChains2.Get().(*[]*Chain2Result)
-
-				for _i, c := range *cr.Chains { // for each pseudo alignment chain
-					qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
-					// fmt.Printf("\n--------------------------------------------\n")
-					// fmt.Printf("--- %s: lexichash chain: %d, pseudo alignment chain: %d ---\n", r.ID, i+1, _i+1)
-					// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
-
-					// ------------------------------------------------------------
-					// get the index of target seq according to the position
-
-					iSeq = 0
-					tPosOffsetBegin = 0 // start position of current sequence
-					tPosOffsetEnd = 0   // end pososition of current sequence
-					var j int
-					if tSeq.NumSeqs > 1 { // just for genomes with multiple contigs
-						iSeq = -1
-						// ===========aaaaaaa================================aaaaaaa=======
-						//                   | tPosOffsetBegin              | tPosOffsetEnd
-						//                     tb ---------------te (matched region, substring region)
-
-						// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
-						// fmt.Printf("  qb: %d, qe: %d\n", qb, qe)
-						// fmt.Printf("  tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
-
-						// minusing K is because the interval A's might be matched.
-						if rc {
-							_begin, _end = tEnd-te+K, tEnd-tb-K
-						} else {
-							_begin, _end = tBegin+tb+K, tBegin+te-K
-						}
-
-						if _begin >= _end { // sequences shorter than 2*k
-							// fmt.Printf("  _begin (%d) >= _end (%d)\n", _begin, _end)
-							if rc {
-								_begin, _end = tEnd-te, tEnd-tb
-							} else {
-								_begin, _end = tBegin+tb, tBegin+te
-							}
-						}
-
-						// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
-
-						for j, l = range tSeq.SeqSizes {
-							// end position of current contig
-							tPosOffsetEnd += l - 1 // length sum of 0..j
-
-							// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
-
-							// +K -K is because chained region might have little overlaps with contig intervals
-							if _begin+K >= tPosOffsetBegin && _end-K <= tPosOffsetEnd {
-								iSeq = j
-								// fmt.Printf("    iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
-								// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
-								break
-							} else if _end < tPosOffsetBegin { // no need to find
-								iSeq = -1
-								break
-							}
-
-							tPosOffsetEnd += contigInterval + 1
-							tPosOffsetBegin = tPosOffsetEnd // begin position of the next contig
-						}
-
-						// it will not happen now.
-						if iSeq < 0 { // this means the aligned sequence crosses two sequences.
-							// fmt.Printf("  invalid fragment: seqid: %s, aligned: %d, %d-%d, rc:%v, %d-%d\n",
-							// 	tSeq.ID, cr.AlignedBases, tBegin, tEnd, rc, _begin, _end)
-
-							poolChain2.Put(c)
-							(*cr.Chains)[_i] = nil
-
-							continue
-						}
-
-						if iSeqPre >= 0 && iSeq != iSeqPre { // two HSP fragments belong to different sequences ~~~~~
-							// fmt.Printf("  %d != %d\n", iSeq, iSeqPre)
-
-							iSeq0 := iSeq // used to restore the value later
-
-							iSeq = iSeqPre // do not want to change iSeq below to iSeqPre
-
-							// ------------------------------------------------------------
-							// convert the positions
-
-							// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-							c.QBegin = qb
-							c.QEnd = qe
-							// alignments might belong to different seqs, so we have to store it for later use
-							c.tPosOffsetBegin = tPosOffsetBegin
-							if rc {
-								c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
-								if c.TBegin < 0 { // position in the interval
-									c.QEnd += c.TBegin
-									c.AlignedBasesQ += c.TBegin
-									c.TBegin = 0
-								}
-								c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
-								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-									c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-									c.TEnd = tSeq.SeqSizes[iSeq] - 1
-								}
-							} else {
-								// fmt.Printf("tBegin: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d\n",
-								// 	tBegin, tPosOffsetBegin, tPosOffsetEnd)
-								// fmt.Printf("tb: %d, te: %d, tBegin+tb: %d, tBegin+te: %d\n", tb, te, tBegin+tb, tBegin+te)
-								c.TBegin = tBegin - tPosOffsetBegin + tb
-								if c.TBegin < 0 { // position in the interval
-									c.QBegin -= c.TBegin
-									c.AlignedBasesQ += c.TBegin
-									c.TBegin = 0
-								}
-								c.TEnd = tBegin - tPosOffsetBegin + te
-								// fmt.Printf("tmp: t: %d-%d, seqlen: %d \n", c.TBegin, c.TEnd, tSeq.SeqSizes[iSeq])
-								if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-									c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-									c.TEnd = tSeq.SeqSizes[iSeq] - 1
-								}
-							}
-							c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
-							// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, iSeq: %d, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq, *tSeq.SeqIDs[iSeq])
-
-							// ------------------------------------------------------------
-
-							// fmt.Printf("  add previous one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
-
-							if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
-								// only include valid chains
-								r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-								r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
-								// there's no need
-								// sort.Slice(*r2.Chains, func(i, j int) bool {
-								// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
-								// })
-
-								hasResult := false
-								// j := 0
-								var start, end int
-								var _s1, _e1, _s2, _e2 int // extend length
-								var similarityScore, maxSimilarityScore float64
-								var _extLen2 int
-								for i, c := range *r2.Chains {
-									if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
-										poolChain2.Put(c)
-										(*r2.Chains)[i] = nil
-										continue
-									}
-
-									if rc {
-										start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
-									} else {
-										start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
-
-									}
-									if start >= end {
-										// fmt.Println(string(*tSeq.SeqIDs[0]))
-										poolChain2.Put(c)
-										(*r2.Chains)[i] = nil
-										continue
-									}
-
-									// _qseq = s[c.QBegin : c.QEnd+1]
-									// _tseq = tSeq.Seq[start:end]
-									_extLen2 = extLen2 // 50
-									if c.AlignedBasesQ > 1000000 {
-										_extLen2 += 80
-									} else if c.AlignedBasesQ > 250000 {
-										_extLen2 += 40
-									} else if c.AlignedBasesQ > 50000 {
-										_extLen2 += 20
-									} else if c.AlignedBasesQ > 10000 {
-										_extLen2 += 10
-									}
-									_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
-									if err != nil {
-										checkError(fmt.Errorf("fail to extend aligned region"))
-									}
-
-									// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-									cigar, err = algn.Align(_qseq, _tseq)
-									if err != nil {
-										checkError(fmt.Errorf("fail to align sequence"))
-									}
-
-									// score and e-value
-									c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
-									if c.Evalue > maxEvalue {
-										poolChain2.Put(c)
-										(*r2.Chains)[i] = nil
-										continue
-									}
-
-									// update sequence regions
-									c.QBegin -= _s1
-									c.QEnd += _e1
-
-									c.QBegin = c.QBegin + cigar.QBegin - 1
-									c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
-									if rc {
-										c.TBegin -= _e2
-										c.TEnd += _s2
-
-										c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
-										c.TEnd = c.TEnd - cigar.TBegin - 1
-									} else {
-										c.TBegin -= _s2
-										c.TEnd += _e2
-
-										c.TBegin = c.TBegin + cigar.TBegin - 1
-										c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
-									}
-
-									c.AlignedBasesQ = c.QEnd - c.QBegin + 1
-									c.AlignedLength = int(cigar.AlignLen)
-									c.MatchedBases = int(cigar.Matches)
-									c.Gaps = int(cigar.Gaps)
-									c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
-									if c.AlignedFraction > 100 {
-										c.AlignedFraction = 100
-									}
-									c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
-
-									if !outSeq {
-										wfa.RecycleAlignmentResult(cigar)
-									}
-
-									if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
-										poolChain2.Put(c)
-										(*r2.Chains)[i] = nil
-										continue
-									}
-
-									if outSeq {
-										if c.CIGAR == nil {
-											c.CIGAR = make([]byte, 0, 128)
-											c.QSeq = make([]byte, 0, cigar.AlignLen)
-											c.TSeq = make([]byte, 0, cigar.AlignLen)
-											c.Alignment = make([]byte, 0, cigar.AlignLen)
-										} else {
-											c.CIGAR = c.CIGAR[:0]
-											c.QSeq = c.QSeq[:0]
-											c.TSeq = c.TSeq[:0]
-											c.Alignment = c.Alignment[:0]
-										}
-
-										for _, op = range cigar.Ops {
-											// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-											c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
-											// c.CIGAR = append(c.CIGAR, op.Op)
-											c.CIGAR = append(c.CIGAR, byte(op>>32))
-										}
-
-										Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
-
-										c.QSeq = append(c.QSeq, *Q...)
-										c.TSeq = append(c.TSeq, *T...)
-										c.Alignment = append(c.Alignment, *A...)
-
-										wfa.RecycleAlignmentText(Q, A, T)
-										wfa.RecycleAlignmentResult(cigar)
-									}
-
-									similarityScore = float64(c.BitScore) * c.PIdent
-									if similarityScore > maxSimilarityScore {
-										maxSimilarityScore = similarityScore
-									}
-									hasResult = true
-								}
-
-								if hasResult {
-									sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-									sd.RC = rc
-									// sd.Chain = (*r.Chains)[i]
-									sd.NSeeds = nSeeds
-									sd.Similarity = r2
-									// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
-									sd.SimilarityScore = maxSimilarityScore
-									sd.SeqID = sd.SeqID[:0]
-									// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
-									sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-									sd.SeqLen = tSeq.SeqSizes[iSeq]
-
-									*sds = append(*sds, sd)
-								} else {
-									RecycleSeqComparatorResult(r2)
-								}
-							}
-
-							// ----------
-
-							// create anther HSP
-							iSeqPre = -1
-							crChains2 = poolChains2.Get().(*[]*Chain2Result)
-
-							// ------------------------------------------------------------
-							// remove duplicated alignments
-
-							hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
-							if _, duplicated = (*hashes)[hash]; duplicated {
-								// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
-								poolChain2.Put(c)
-								(*cr.Chains)[_i] = nil
-							} else {
-								*crChains2 = append(*crChains2, c)
-								(*hashes)[hash] = struct{}{}
-							}
-
-							iSeq = iSeq0
-							continue
-						}
-					}
-					iSeqPre = iSeq
-
-					// ------------------------------------------------------------
-					// convert the positions
-
-					// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-					c.QBegin = qb
-					c.QEnd = qe
-					// alignments might belong to different seqs, so we have to store it for later use
-					c.tPosOffsetBegin = tPosOffsetBegin
+				r.GenomeSize = tSeq.GenomeSize
+			}
+
+			iSeqPre = -1 // the index of previous sequence in this HSP
+
+			crChains2 = poolChains2.Get().(*[]*Chain2Result)
+
+			for _i, c := range *cr.Chains { // for each pseudo alignment chain
+				qb, qe, tb, te = c.QBegin, c.QEnd, c.TBegin, c.TEnd
+				// fmt.Printf("\n--------------------------------------------\n")
+				// fmt.Printf("--- %s: lexichash chain: %d, pseudo alignment chain: %d ---\n", r.ID, i+1, _i+1)
+				// fmt.Printf("q: %d-%d, t: %d-%d\n", qb, qe, tb, te)
+
+				// ------------------------------------------------------------
+				// get the index of target seq according to the position
+
+				iSeq = 0
+				tPosOffsetBegin = 0 // start position of current sequence
+				tPosOffsetEnd = 0   // end pososition of current sequence
+				var j int
+				if tSeq.NumSeqs > 1 { // just for genomes with multiple contigs
+					iSeq = -1
+					// ===========aaaaaaa================================aaaaaaa=======
+					//                   | tPosOffsetBegin              | tPosOffsetEnd
+					//                     tb ---------------te (matched region, substring region)
+
+					// fmt.Printf("genome: %s, nSeqs: %d\n", tSeq.ID, tSeq.NumSeqs)
+					// fmt.Printf("  qb: %d, qe: %d\n", qb, qe)
+					// fmt.Printf("  tBegin: %d, tEnd: %d, tb: %d, te: %d, rc: %v\n", tBegin, tEnd, tb, te, rc)
+
+					// minusing K is because the interval A's might be matched.
 					if rc {
-						c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
-						// fmt.Printf("c.TBegin: %d\n", c.TBegin)
-						if c.TBegin < 0 { // position in the interval
-							c.QEnd += c.TBegin
-							c.AlignedBasesQ += c.TBegin
-							c.TBegin = 0
-						}
-						c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
-						// fmt.Printf("c.TEnd: %d\n", c.TEnd)
-						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-							c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-							c.TEnd = tSeq.SeqSizes[iSeq] - 1
-						}
+						_begin, _end = tEnd-te+K, tEnd-tb-K
 					} else {
-						c.TBegin = tBegin - tPosOffsetBegin + tb
-						if c.TBegin < 0 { // position in the interval
-							c.QBegin -= c.TBegin
-							c.AlignedBasesQ += c.TBegin
-							c.TBegin = 0
-						}
-						c.TEnd = tBegin - tPosOffsetBegin + te
-						if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-							c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-							c.TEnd = tSeq.SeqSizes[iSeq] - 1
+						_begin, _end = tBegin+tb+K, tBegin+te-K
+					}
+
+					if _begin >= _end { // sequences shorter than 2*k
+						// fmt.Printf("  _begin (%d) >= _end (%d)\n", _begin, _end)
+						if rc {
+							_begin, _end = tEnd-te, tEnd-tb
+						} else {
+							_begin, _end = tBegin+tb, tBegin+te
 						}
 					}
-					c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
-					// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, *tSeq.SeqIDs[iSeq])
 
-					// ------------------------------------------------------------
-					// remove duplicated alignments
+					// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
-					hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
-					if _, duplicated = (*hashes)[hash]; duplicated {
-						// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+					for j, l = range tSeq.SeqSizes {
+						// end position of current contig
+						tPosOffsetEnd += l - 1 // length sum of 0..j
+
+						// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
+
+						// +K -K is because chained region might have little overlaps with contig intervals
+						if _begin+K >= tPosOffsetBegin && _end-K <= tPosOffsetEnd {
+							iSeq = j
+							// fmt.Printf("    iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
+							// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
+							break
+						} else if _end < tPosOffsetBegin { // no need to find
+							iSeq = -1
+							break
+						}
+
+						tPosOffsetEnd += contigInterval + 1
+						tPosOffsetBegin = tPosOffsetEnd // begin position of the next contig
+					}
+
+					// it will not happen now.
+					if iSeq < 0 { // this means the aligned sequence crosses two sequences.
+						// fmt.Printf("  invalid fragment: seqid: %s, aligned: %d, %d-%d, rc:%v, %d-%d\n",
+						// 	tSeq.ID, cr.AlignedBases, tBegin, tEnd, rc, _begin, _end)
+
 						poolChain2.Put(c)
 						(*cr.Chains)[_i] = nil
-					} else {
-						*crChains2 = append(*crChains2, c)
-						(*hashes)[hash] = struct{}{}
+
+						continue
 					}
-				}
 
-				// fmt.Printf("  add current one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
+					if iSeqPre >= 0 && iSeq != iSeqPre { // two HSP fragments belong to different sequences ~~~~~
+						// fmt.Printf("  %d != %d\n", iSeq, iSeqPre)
 
-				if iSeq >= 0 {
-					if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
-						// only include valid chains
-						r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
-						r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
-						// there's no need
-						// sort.Slice(*r2.Chains, func(i, j int) bool {
-						// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
-						// })
+						iSeq0 := iSeq // used to restore the value later
 
-						hasResult := false
-						// j := 0
-						var start, end int
-						var _s1, _e1, _s2, _e2 int // extend length
-						var similarityScore, maxSimilarityScore float64
-						var _extLen2 int
-						for i, c := range *r2.Chains {
-							if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
-								poolChain2.Put(c)
-								(*r2.Chains)[i] = nil
-								continue
+						iSeq = iSeqPre // do not want to change iSeq below to iSeqPre
+
+						// ------------------------------------------------------------
+						// convert the positions
+
+						// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
+						c.QBegin = qb
+						c.QEnd = qe
+						// alignments might belong to different seqs, so we have to store it for later use
+						c.tPosOffsetBegin = tPosOffsetBegin
+						if rc {
+							c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+							if c.TBegin < 0 { // position in the interval
+								c.QEnd += c.TBegin
+								c.AlignedBasesQ += c.TBegin
+								c.TBegin = 0
 							}
-
-							// Attention, it's different from previous code
-							if rc {
-								start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
-							} else {
-								start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+							c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
+							if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+								c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+								c.TEnd = tSeq.SeqSizes[iSeq] - 1
 							}
-							if start >= end {
-								// fmt.Println(string(*tSeq.SeqIDs[0]))
-								poolChain2.Put(c)
-								(*r2.Chains)[i] = nil
-								continue
-							}
-
-							// _qseq = s[c.QBegin : c.QEnd+1]
-							// _tseq = tSeq.Seq[start:end]
-							_extLen2 = extLen2 // 50
-							if c.AlignedBasesQ > 1000000 {
-								_extLen2 += 80
-							} else if c.AlignedBasesQ > 250000 {
-								_extLen2 += 40
-							} else if c.AlignedBasesQ > 50000 {
-								_extLen2 += 20
-							} else if c.AlignedBasesQ > 10000 {
-								_extLen2 += 10
-							}
-							_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
-							if err != nil {
-								checkError(fmt.Errorf("fail to extend aligned region"))
-							}
-
-							// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-							cigar, err = algn.Align(_qseq, _tseq)
-							if err != nil {
-								checkError(fmt.Errorf("fail to align sequence"))
-							}
-
-							// score and e-value
-							c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
-							if c.Evalue > maxEvalue {
-								poolChain2.Put(c)
-								(*r2.Chains)[i] = nil
-								continue
-							}
-
-							// update sequence regions
-							c.QBegin -= _s1
-							c.QEnd += _e1
-
-							c.QBegin = c.QBegin + (cigar.QBegin - 1)
-							c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
-							if rc {
-								c.TBegin -= _e2
-								c.TEnd += _s2
-
-								c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
-								c.TEnd = c.TEnd - (cigar.TBegin - 1)
-							} else {
-								c.TBegin -= _s2
-								c.TEnd += _e2
-
-								c.TBegin = c.TBegin + (cigar.TBegin - 1)
-								c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
-							}
-
-							// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
-
-							c.AlignedBasesQ = c.QEnd - c.QBegin + 1
-							c.AlignedLength = int(cigar.AlignLen)
-							c.MatchedBases = int(cigar.Matches)
-							c.Gaps = int(cigar.Gaps)
-							c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
-							if c.AlignedFraction > 100 {
-								c.AlignedFraction = 100
-							}
-							c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
-
-							if !outSeq {
-								wfa.RecycleAlignmentResult(cigar)
-							}
-
-							if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
-								poolChain2.Put(c)
-								(*r2.Chains)[i] = nil
-								continue
-							}
-
-							if outSeq {
-								if c.CIGAR == nil {
-									c.CIGAR = make([]byte, 0, 128)
-									c.QSeq = make([]byte, 0, cigar.AlignLen)
-									c.TSeq = make([]byte, 0, cigar.AlignLen)
-									c.Alignment = make([]byte, 0, cigar.AlignLen)
-								} else {
-									c.CIGAR = c.CIGAR[:0]
-									c.QSeq = c.QSeq[:0]
-									c.TSeq = c.TSeq[:0]
-									c.Alignment = c.Alignment[:0]
-								}
-
-								for _, op = range cigar.Ops {
-									// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-									c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
-									// c.CIGAR = append(c.CIGAR, op.Op)
-									c.CIGAR = append(c.CIGAR, byte(op>>32))
-								}
-
-								Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
-
-								c.QSeq = append(c.QSeq, *Q...)
-								c.TSeq = append(c.TSeq, *T...)
-								c.Alignment = append(c.Alignment, *A...)
-
-								wfa.RecycleAlignmentText(Q, A, T)
-								wfa.RecycleAlignmentResult(cigar)
-							}
-
-							similarityScore = float64(c.BitScore) * c.PIdent
-							if similarityScore > maxSimilarityScore {
-								maxSimilarityScore = similarityScore
-							}
-							hasResult = true
-						}
-
-						if hasResult {
-							sd := poolSimilarityDetail.Get().(*SimilarityDetail)
-							sd.RC = rc
-							sd.NSeeds = nSeeds
-							sd.Similarity = r2
-							// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
-							sd.SimilarityScore = maxSimilarityScore
-							sd.SeqID = sd.SeqID[:0]
-							// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
-							sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
-							sd.SeqLen = tSeq.SeqSizes[iSeq]
-
-							*sds = append(*sds, sd)
 						} else {
-							RecycleSeqComparatorResult(r2)
+							// fmt.Printf("tBegin: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d\n",
+							// 	tBegin, tPosOffsetBegin, tPosOffsetEnd)
+							// fmt.Printf("tb: %d, te: %d, tBegin+tb: %d, tBegin+te: %d\n", tb, te, tBegin+tb, tBegin+te)
+							c.TBegin = tBegin - tPosOffsetBegin + tb
+							if c.TBegin < 0 { // position in the interval
+								c.QBegin -= c.TBegin
+								c.AlignedBasesQ += c.TBegin
+								c.TBegin = 0
+							}
+							c.TEnd = tBegin - tPosOffsetBegin + te
+							// fmt.Printf("tmp: t: %d-%d, seqlen: %d \n", c.TBegin, c.TEnd, tSeq.SeqSizes[iSeq])
+							if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+								c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+								c.TEnd = tSeq.SeqSizes[iSeq] - 1
+							}
 						}
+						c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
+						// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, iSeq: %d, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq, *tSeq.SeqIDs[iSeq])
+
+						// ------------------------------------------------------------
+
+						// fmt.Printf("  add previous one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
+
+						if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
+							// only include valid chains
+							r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+							r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
+							// there's no need
+							// sort.Slice(*r2.Chains, func(i, j int) bool {
+							// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+							// })
+
+							hasResult := false
+							// j := 0
+							var start, end int
+							var _s1, _e1, _s2, _e2 int // extend length
+							var similarityScore, maxSimilarityScore float64
+							var _extLen2 int
+							for i, c := range *r2.Chains {
+								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+									poolChain2.Put(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+
+								if rc {
+									start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
+								} else {
+									start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+
+								}
+								if start >= end {
+									// fmt.Println(string(*tSeq.SeqIDs[0]))
+									poolChain2.Put(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+
+								// _qseq = s[c.QBegin : c.QEnd+1]
+								// _tseq = tSeq.Seq[start:end]
+								_extLen2 = extLen2 // 50
+								if c.AlignedBasesQ > 1000000 {
+									_extLen2 += 80
+								} else if c.AlignedBasesQ > 250000 {
+									_extLen2 += 40
+								} else if c.AlignedBasesQ > 50000 {
+									_extLen2 += 20
+								} else if c.AlignedBasesQ > 10000 {
+									_extLen2 += 10
+								}
+								_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
+								if err != nil {
+									checkError(fmt.Errorf("fail to extend aligned region"))
+								}
+
+								// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
+								cigar, err = algn.Align(_qseq, _tseq)
+								if err != nil {
+									checkError(fmt.Errorf("fail to align sequence"))
+								}
+
+								// score and e-value
+								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+								if c.Evalue > maxEvalue {
+									poolChain2.Put(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+
+								// update sequence regions
+								c.QBegin -= _s1
+								c.QEnd += _e1
+
+								c.QBegin = c.QBegin + cigar.QBegin - 1
+								c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+								if rc {
+									c.TBegin -= _e2
+									c.TEnd += _s2
+
+									c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+									c.TEnd = c.TEnd - cigar.TBegin - 1
+								} else {
+									c.TBegin -= _s2
+									c.TEnd += _e2
+
+									c.TBegin = c.TBegin + cigar.TBegin - 1
+									c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+								}
+
+								c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+								c.AlignedLength = int(cigar.AlignLen)
+								c.MatchedBases = int(cigar.Matches)
+								c.Gaps = int(cigar.Gaps)
+								c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+								if c.AlignedFraction > 100 {
+									c.AlignedFraction = 100
+								}
+								c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+								if !outSeq {
+									wfa.RecycleAlignmentResult(cigar)
+								}
+
+								if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
+									poolChain2.Put(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+
+								if outSeq {
+									if c.CIGAR == nil {
+										c.CIGAR = make([]byte, 0, 128)
+										c.QSeq = make([]byte, 0, cigar.AlignLen)
+										c.TSeq = make([]byte, 0, cigar.AlignLen)
+										c.Alignment = make([]byte, 0, cigar.AlignLen)
+									} else {
+										c.CIGAR = c.CIGAR[:0]
+										c.QSeq = c.QSeq[:0]
+										c.TSeq = c.TSeq[:0]
+										c.Alignment = c.Alignment[:0]
+									}
+
+									for _, op = range cigar.Ops {
+										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+										// c.CIGAR = append(c.CIGAR, op.Op)
+										c.CIGAR = append(c.CIGAR, byte(op>>32))
+									}
+
+									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
+
+									c.QSeq = append(c.QSeq, *Q...)
+									c.TSeq = append(c.TSeq, *T...)
+									c.Alignment = append(c.Alignment, *A...)
+
+									wfa.RecycleAlignmentText(Q, A, T)
+									wfa.RecycleAlignmentResult(cigar)
+								}
+
+								similarityScore = float64(c.BitScore) * c.PIdent
+								if similarityScore > maxSimilarityScore {
+									maxSimilarityScore = similarityScore
+								}
+								hasResult = true
+							}
+
+							if hasResult {
+								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+								sd.RC = rc
+								// sd.Chain = (*r.Chains)[i]
+								sd.NSeeds = nSeeds
+								sd.Similarity = r2
+								// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+								sd.SimilarityScore = maxSimilarityScore
+								sd.SeqID = sd.SeqID[:0]
+								// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
+								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+								sd.SeqLen = tSeq.SeqSizes[iSeq]
+
+								*sds = append(*sds, sd)
+							} else {
+								RecycleSeqComparatorResult(r2)
+							}
+						}
+
+						// ----------
+
+						// create anther HSP
+						iSeqPre = -1
+						crChains2 = poolChains2.Get().(*[]*Chain2Result)
+
+						// ------------------------------------------------------------
+						// remove duplicated alignments
+
+						hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
+						if _, duplicated = (*hashes)[hash]; duplicated {
+							// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+							poolChain2.Put(c)
+							(*cr.Chains)[_i] = nil
+						} else {
+							*crChains2 = append(*crChains2, c)
+							(*hashes)[hash] = struct{}{}
+						}
+
+						iSeq = iSeq0
+						continue
 					}
 				}
+				iSeqPre = iSeq
 
-				*cr.Chains = (*cr.Chains)[:0]
-				poolChains2.Put(cr.Chains)
-				cr.Chains = nil
+				// ------------------------------------------------------------
+				// convert the positions
+
+				// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
+				c.QBegin = qb
+				c.QEnd = qe
+				// alignments might belong to different seqs, so we have to store it for later use
+				c.tPosOffsetBegin = tPosOffsetBegin
+				if rc {
+					c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
+					// fmt.Printf("c.TBegin: %d\n", c.TBegin)
+					if c.TBegin < 0 { // position in the interval
+						c.QEnd += c.TBegin
+						c.AlignedBasesQ += c.TBegin
+						c.TBegin = 0
+					}
+					c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
+					// fmt.Printf("c.TEnd: %d\n", c.TEnd)
+					if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+						c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+						c.TEnd = tSeq.SeqSizes[iSeq] - 1
+					}
+				} else {
+					c.TBegin = tBegin - tPosOffsetBegin + tb
+					if c.TBegin < 0 { // position in the interval
+						c.QBegin -= c.TBegin
+						c.AlignedBasesQ += c.TBegin
+						c.TBegin = 0
+					}
+					c.TEnd = tBegin - tPosOffsetBegin + te
+					if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
+						c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
+						c.TEnd = tSeq.SeqSizes[iSeq] - 1
+					}
+				}
+				c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
+				// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, *tSeq.SeqIDs[iSeq])
+
+				// ------------------------------------------------------------
+				// remove duplicated alignments
+
+				hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
+				if _, duplicated = (*hashes)[hash]; duplicated {
+					// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
+					poolChain2.Put(c)
+					(*cr.Chains)[_i] = nil
+				} else {
+					*crChains2 = append(*crChains2, c)
+					(*hashes)[hash] = struct{}{}
+				}
 			}
 
-			// recyle chains ASAP
-			RecycleChainingResult(r.Chains)
-			r.Chains = nil
+			// fmt.Printf("  add current one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
 
-			RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
-			r.Subs = nil
+			if iSeq >= 0 {
+				if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
+					// only include valid chains
+					r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
+					r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
+					// there's no need
+					// sort.Slice(*r2.Chains, func(i, j int) bool {
+					// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
+					// })
 
-			genome.RecycleGenome(tSeq)
+					hasResult := false
+					// j := 0
+					var start, end int
+					var _s1, _e1, _s2, _e2 int // extend length
+					var similarityScore, maxSimilarityScore float64
+					var _extLen2 int
+					for i, c := range *r2.Chains {
+						if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
+							poolChain2.Put(c)
+							(*r2.Chains)[i] = nil
+							continue
+						}
 
-			poolHashes.Put(hashes)
-			wfa.RecycleAligner(algn)
+						// Attention, it's different from previous code
+						if rc {
+							start, end = tEnd-c.TEnd-c.tPosOffsetBegin, tEnd-c.TBegin-c.tPosOffsetBegin+1
+						} else {
+							start, end = c.tPosOffsetBegin+c.TBegin-tBegin, c.tPosOffsetBegin+c.TEnd-tBegin+1
+						}
+						if start >= end {
+							// fmt.Println(string(*tSeq.SeqIDs[0]))
+							poolChain2.Put(c)
+							(*r2.Chains)[i] = nil
+							continue
+						}
 
-			if len(*sds) == 0 { // no valid alignments
+						// _qseq = s[c.QBegin : c.QEnd+1]
+						// _tseq = tSeq.Seq[start:end]
+						_extLen2 = extLen2 // 50
+						if c.AlignedBasesQ > 1000000 {
+							_extLen2 += 80
+						} else if c.AlignedBasesQ > 250000 {
+							_extLen2 += 40
+						} else if c.AlignedBasesQ > 50000 {
+							_extLen2 += 20
+						} else if c.AlignedBasesQ > 10000 {
+							_extLen2 += 10
+						}
+						_qseq, _tseq, _s1, _e1, _s2, _e2, err = extendMatch(s, tSeq.Seq, c.QBegin, c.QEnd+1, start, end, _extLen2, c.TBegin, c.MaxExtLen, rc)
+						if err != nil {
+							checkError(fmt.Errorf("fail to extend aligned region"))
+						}
+
+						// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
+						cigar, err = algn.Align(_qseq, _tseq)
+						if err != nil {
+							checkError(fmt.Errorf("fail to align sequence"))
+						}
+
+						// score and e-value
+						c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
+						if c.Evalue > maxEvalue {
+							poolChain2.Put(c)
+							(*r2.Chains)[i] = nil
+							continue
+						}
+
+						// update sequence regions
+						c.QBegin -= _s1
+						c.QEnd += _e1
+
+						c.QBegin = c.QBegin + (cigar.QBegin - 1)
+						c.QEnd = c.QEnd - (len(_qseq) - cigar.QEnd)
+						if rc {
+							c.TBegin -= _e2
+							c.TEnd += _s2
+
+							c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
+							c.TEnd = c.TEnd - (cigar.TBegin - 1)
+						} else {
+							c.TBegin -= _s2
+							c.TEnd += _e2
+
+							c.TBegin = c.TBegin + (cigar.TBegin - 1)
+							c.TEnd = c.TEnd - (len(_tseq) - cigar.TEnd)
+						}
+
+						// fmt.Println(c.QBegin, c.QEnd, c.TBegin, c.TEnd)
+
+						c.AlignedBasesQ = c.QEnd - c.QBegin + 1
+						c.AlignedLength = int(cigar.AlignLen)
+						c.MatchedBases = int(cigar.Matches)
+						c.Gaps = int(cigar.Gaps)
+						c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+						if c.AlignedFraction > 100 {
+							c.AlignedFraction = 100
+						}
+						c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+						if !outSeq {
+							wfa.RecycleAlignmentResult(cigar)
+						}
+
+						if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
+							poolChain2.Put(c)
+							(*r2.Chains)[i] = nil
+							continue
+						}
+
+						if outSeq {
+							if c.CIGAR == nil {
+								c.CIGAR = make([]byte, 0, 128)
+								c.QSeq = make([]byte, 0, cigar.AlignLen)
+								c.TSeq = make([]byte, 0, cigar.AlignLen)
+								c.Alignment = make([]byte, 0, cigar.AlignLen)
+							} else {
+								c.CIGAR = c.CIGAR[:0]
+								c.QSeq = c.QSeq[:0]
+								c.TSeq = c.TSeq[:0]
+								c.Alignment = c.Alignment[:0]
+							}
+
+							for _, op = range cigar.Ops {
+								// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
+								c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+								// c.CIGAR = append(c.CIGAR, op.Op)
+								c.CIGAR = append(c.CIGAR, byte(op>>32))
+							}
+
+							Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
+
+							c.QSeq = append(c.QSeq, *Q...)
+							c.TSeq = append(c.TSeq, *T...)
+							c.Alignment = append(c.Alignment, *A...)
+
+							wfa.RecycleAlignmentText(Q, A, T)
+							wfa.RecycleAlignmentResult(cigar)
+						}
+
+						similarityScore = float64(c.BitScore) * c.PIdent
+						if similarityScore > maxSimilarityScore {
+							maxSimilarityScore = similarityScore
+						}
+						hasResult = true
+					}
+
+					if hasResult {
+						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
+						sd.RC = rc
+						sd.NSeeds = nSeeds
+						sd.Similarity = r2
+						// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+						sd.SimilarityScore = maxSimilarityScore
+						sd.SeqID = sd.SeqID[:0]
+						// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
+						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+						sd.SeqLen = tSeq.SeqSizes[iSeq]
+
+						*sds = append(*sds, sd)
+					} else {
+						RecycleSeqComparatorResult(r2)
+					}
+				}
+			}
+
+			*cr.Chains = (*cr.Chains)[:0]
+			poolChains2.Put(cr.Chains)
+			cr.Chains = nil
+		}
+
+		// recyle chains ASAP
+		RecycleChainingResult(r.Chains)
+		r.Chains = nil
+
+		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		r.Subs = nil
+
+		genome.RecycleGenome(tSeq)
+
+		poolHashes.Put(hashes)
+		wfa.RecycleAligner(algn)
+
+		if len(*sds) == 0 { // no valid alignments
+			idx.RecycleSimilarityDetails(sds)
+			idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+
+			if idx.hasGenomeRdrs {
+				idx.poolGenomeRdrs[refBatch] <- rdr
+			} else {
+				err = rdr.Close()
+				if err != nil {
+					checkError(fmt.Errorf("failed to close genome data file: %s", err))
+				}
+				<-idx.openFileTokens
+			}
+
+			return
+		}
+
+		if !idx.hasGenomeChunks { // if hasGenomeChunks, do not filter results now
+			// compute aligned bases per genome
+			var alignedBasesGenome int
+			regions := poolRegions.Get().(*[]*[2]int)
+			*regions = (*regions)[:0]
+			for _, sd := range *sds {
+				for _, c := range *sd.Similarity.Chains {
+					if c != nil {
+						region := poolRegion.Get().(*[2]int)
+						region[0], region[1] = c.QBegin, c.QEnd
+						*regions = append(*regions, region)
+					}
+				}
+			}
+			alignedBasesGenome = coverageLen(regions)
+			recycleRegions(regions)
+
+			// filter by query coverage per genome
+			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
+			if r.AlignedFraction > 100 {
+				r.AlignedFraction = 100
+			}
+			if r.AlignedFraction < minQcovGnm { // no valid alignments
 				idx.RecycleSimilarityDetails(sds)
 				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
 
@@ -2346,73 +2407,40 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					}
 					<-idx.openFileTokens
 				}
-
 				return
 			}
+		}
 
-			if !idx.hasGenomeChunks { // if hasGenomeChunks, do not filter results now
-				// compute aligned bases per genome
-				var alignedBasesGenome int
-				regions := poolRegions.Get().(*[]*[2]int)
-				*regions = (*regions)[:0]
-				for _, sd := range *sds {
-					for _, c := range *sd.Similarity.Chains {
-						if c != nil {
-							region := poolRegion.Get().(*[2]int)
-							region[0], region[1] = c.QBegin, c.QEnd
-							*regions = append(*regions, region)
-						}
-					}
-				}
-				alignedBasesGenome = coverageLen(regions)
-				recycleRegions(regions)
+		// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
+		// r.AlignResults = ars
+		// sort.Slice(*sds, func(i, j int) bool {
+		// 	return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
+		// })
+		slices.SortFunc(*sds, func(a, b *SimilarityDetail) int {
+			return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
+		})
 
-				// filter by query coverage per genome
-				r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
-				if r.AlignedFraction > 100 {
-					r.AlignedFraction = 100
-				}
-				if r.AlignedFraction < minQcovGnm { // no valid alignments
-					idx.RecycleSimilarityDetails(sds)
-					idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+		r.SimilarityDetails = sds
 
-					if idx.hasGenomeRdrs {
-						idx.poolGenomeRdrs[refBatch] <- rdr
-					} else {
-						err = rdr.Close()
-						if err != nil {
-							checkError(fmt.Errorf("failed to close genome data file: %s", err))
-						}
-						<-idx.openFileTokens
-					}
-					return
-				}
+		// recycle genome reader
+		if idx.hasGenomeRdrs {
+			idx.poolGenomeRdrs[refBatch] <- rdr
+		} else {
+			err = rdr.Close()
+			if err != nil {
+				checkError(fmt.Errorf("failed to close genome data file: %s", err))
 			}
+			<-idx.openFileTokens
+		}
 
-			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
-			// r.AlignResults = ars
-			// sort.Slice(*sds, func(i, j int) bool {
-			// 	return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
-			// })
-			slices.SortFunc(*sds, func(a, b *SimilarityDetail) int {
-				return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
-			})
+		ch2 <- r
+	}
 
-			r.SimilarityDetails = sds
+	for _, r := range *rs { // multiple references
+		tokens <- 1
+		wg.Add(1)
 
-			// recycle genome reader
-			if idx.hasGenomeRdrs {
-				idx.poolGenomeRdrs[refBatch] <- rdr
-			} else {
-				err = rdr.Close()
-				if err != nil {
-					checkError(fmt.Errorf("failed to close genome data file: %s", err))
-				}
-				<-idx.openFileTokens
-			}
-
-			ch2 <- r
-		}(r)
+		go falin(r)
 	}
 
 	wg.Wait()

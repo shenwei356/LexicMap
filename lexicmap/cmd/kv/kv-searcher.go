@@ -110,7 +110,7 @@ func (r *SearchResult) Reset() {
 }
 
 var poolSearchResults = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SearchResult, 0, 4096)
+	tmp := make([]*SearchResult, 0, 65536)
 	return &tmp
 }}
 
