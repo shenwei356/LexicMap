@@ -48,7 +48,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - The number of matched genomes and sequences.
         - Similarities between query and target sequences.
         - The number of threads. It uses all CPUs by default (`-j/--threads`).
-        - The number of concurrent queries (`-J/--max-query-conc`, default 12).
+        - The number of concurrent queries (`-J/--max-query-conc`, default 8).
 - **Disk**
     - SSD disks are preferred to store the index size, while HDD disks are also fast enough.
     - No temporary files are generated during searching.
@@ -96,7 +96,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 |**`-w/--load-whole-seeds`**|                           |Load the whole seed data into memory for faster search     |Use this if the index is not big and many queries are needed to search.                                                                                                                                                                                                 |
 |**`-n/--top-n-genomes`**   |Default 0, 0 for all       |Keep top N genome matches for a query in the chaining phase|Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 100. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.|
 |**`-a/--all`**             |                           |Output more columns, e.g., matched sequences.              |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                                                                                                                                                          |
-|`-J/--max-query-conc`      |Default 12, 0 for all      |Maximum number of concurrent queries                       |Bigger values do not improve the batch searching speed and consume much memory.                                                                                                                                                                                         |
+|`-J/--max-query-conc`      |Default 8, 0 for all       |Maximum number of concurrent queries                       |Bigger values do not improve the batch searching speed and consume much memory.                                                                                                                                                                                         |
 |`--max-open-files`         |Default: 1024              |Maximum number of open files                               |It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger `ulimit -n` in shell if the value is > 1024.                                                 |
 
 {{< /tab>}}

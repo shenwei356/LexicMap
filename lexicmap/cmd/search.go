@@ -667,7 +667,7 @@ func init() {
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
 
-	mapCmd.Flags().IntP("max-query-conc", "J", 12,
+	mapCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
 
 	// mapCmd.Flags().IntP("max-seed-conc", "S", 8,

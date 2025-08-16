@@ -683,7 +683,7 @@ var poolSub = &sync.Pool{New: func() interface{} {
 }}
 
 var poolSubs = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SubstrPair, 0, 8)
+	tmp := make([]*SubstrPair, 0, 8) // can't be big
 	return &tmp
 }}
 
@@ -806,14 +806,14 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 
 // SearchResult stores a search result in a genome for the given query sequence.
 type SearchResult struct {
+	Subs *[]*SubstrPair // matched substring pairs (query,target)
+
 	BatchGenomeIndex uint64 // just for finding genome chunks of the same genome
 
 	GenomeBatch int
 	GenomeIndex int
 	// ID          []byte
 	GenomeSize int
-
-	Subs *[]*SubstrPair // matched substring pairs (query,target)
 
 	Score  float64 //  score for soring
 	Chains *[]*[]int32

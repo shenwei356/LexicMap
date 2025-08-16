@@ -94,7 +94,7 @@ Flags:
                                        bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
   -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
                                        improve the batch searching speed and consume much memory.
-                                       (default 12)
+                                       (default 8)
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")

@@ -24,6 +24,7 @@
       There's no need to rebuild the index.
     - Check if the output file and the log file are the same.
     - Reduce the time of seed matching when using `-w`.
+    - Change the default value of `--max-query-conc` from 12 to 8.
 - `lexicmap utils subseq`:
     - **Accept the output file of `lexicmap search` as the input**.
       So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
