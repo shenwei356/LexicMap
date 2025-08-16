@@ -21,6 +21,9 @@ Use cases:
 
     lexicmap utils edit-genome-ids -d t.lmi/ -p '^(\w{3}_\d{9}\.\d+).*' -r '$1'
 
+Tips:
+  - A backup file (genomes.map.bin.bak) will be created on the first run.
+
 Usage:
   lexicmap utils edit-genome-ids [flags] 
 

@@ -30,6 +30,7 @@ import (
 	"regexp"
 
 	"github.com/shenwei356/bio/seq"
+	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +51,9 @@ Use cases:
   accession via:
 
     lexicmap utils edit-genome-ids -d t.lmi/ -p '^(\w{3}_\d{9}\.\d+).*' -r '$1'
+
+Tips:
+  - A backup file (genomes.map.bin.bak) will be created on the first run.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -158,9 +162,33 @@ Use cases:
 		bw.Flush()
 		checkError(fhGI.Close())
 
-		err = os.Rename(fileGenomeIndex, fileGenomeIndex0)
+		backFile := fileGenomeIndex0 + ".bak"
+
+		var hasBackup bool
+		hasBackup, err = pathutil.Exists(backFile)
 		if err != nil {
-			checkError(fmt.Errorf("failed to update %s: %s", fileGenomeIndex0, err))
+			checkError(fmt.Errorf("failed to check backup file %s: %s", backFile, err))
+		}
+		if hasBackup {
+			log.Infof("found the backup of genome index mapping file: %s", backFile)
+		} else {
+			err = os.Rename(fileGenomeIndex0, backFile)
+			if err != nil {
+				checkError(fmt.Errorf("failed to create backup file %s: %s", backFile, err))
+			}
+			log.Infof("created a backup of genome index mapping file: %s", backFile)
+		}
+
+		if _n == 0 {
+			err = os.RemoveAll(fileGenomeIndex)
+			if err != nil {
+				checkError(fmt.Errorf("failed to delete tmp file %s: %s", fileGenomeIndex, err))
+			}
+		} else {
+			err = os.Rename(fileGenomeIndex, fileGenomeIndex0)
+			if err != nil {
+				checkError(fmt.Errorf("failed to update %s: %s", fileGenomeIndex0, err))
+			}
 		}
 
 		log.Infof("%d of %d genome IDs are changed", _n, N)
