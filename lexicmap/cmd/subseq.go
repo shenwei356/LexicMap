@@ -201,7 +201,7 @@ Attention:
 			scanner := bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
 
-			fmt2 := ">%s:%d-%d:%s sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
+			fmt2 := ">%s:%d-%d:%s query=%s sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
 				"pident=%s gaps=%s qstart=%s qend=%s sstart=%s send=%s sstr=%s slen=%s evalue=%s bitscore=%s\n"
 
 			// output
@@ -439,7 +439,7 @@ Attention:
 					}
 
 					header := fmt.Sprintf(fmt2, sseqid, eStart, eEnd, sstr,
-						sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
+						query, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
 						pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore,
 					)
 					subseq := poolSubseq.Get().(*Subseq)

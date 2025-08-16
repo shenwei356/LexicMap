@@ -149,6 +149,8 @@ ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858 
 
 CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
 
+Extracting matched sequences:
+
 ```plain
 # Extracting similar sequences for a query gene.
 
@@ -160,7 +162,7 @@ lexicmap search -d demo.lmi/ bench/b.gene_E_faecalis_SecY.fasta -o results.tsv \
 lexicmap utils subseq -d demo.lmi -f results.tsv -o results.tsv.aligned.fasta
 
 seqkit head -n 1 results.tsv.aligned.fasta | head -n 3
->NZ_KB944588.1:228637-229935:+ sgenome=GCF_000392875.1 sseqid=NZ_KB944588.1 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1299 pident=100.000 gaps=0 qstart=1 qend=1299 sstart=228637 send=229935 sstr=+ slen=274762 evalue=0.00e+00 bitscore=2343
+>NZ_KB944588.1:228637-229935:+ query=lcl|NZ_CP064374.1_cds_WP_002359350.1_906 sgenome=GCF_000392875.1 sseqid=NZ_KB944588.1 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1299 pident=100.000 gaps=0 qstart=1 qend=1299 sstart=228637 send=229935 sstr=+ slen=274762 evalue=0.00e+00 bitscore=2343
 TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
 ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 ```
@@ -168,7 +170,7 @@ ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 Export blast-style format:
 
 ```
-# here, we only align <=200 bp queries and show one low-similarity result.
+# here, we only align <=200 bp queries and show one medium-similarity result.
 
 $ seqkit seq -g -M 200 q.long-reads.fasta.gz \
     | lexicmap search -d demo.lmi/ -a \
