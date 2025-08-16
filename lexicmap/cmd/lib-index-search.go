@@ -1687,7 +1687,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// for remove duplicated alignments
 		var duplicated bool
 		hashes := poolHashes.Get().(*map[uint64]interface{})
-		clear(*hashes)
 		var hash uint64
 
 		var tSeq *genome.Genome
@@ -2352,6 +2351,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 		genome.RecycleGenome(tSeq)
 
+		clear(*hashes)
 		poolHashes.Put(hashes)
 		wfa.RecycleAligner(algn)
 
@@ -2520,6 +2520,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// recycle datastructure
 		clear(*gcPtr2List)
 		idx.poolGenomeChunksPointer2List.Put(gcPtr2List)
+		clear(*gcIdx2List)
 		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
 
 		if debug {

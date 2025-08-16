@@ -12,7 +12,7 @@
       Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, especially for batch searching with long queries**.
-    - Slightly improve the search speed.
+    - **Improve the search speed, mainly for batch searching**.
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,
       in a similar way with BLAST+ 2.15.0 or later versions.
