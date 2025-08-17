@@ -11,8 +11,8 @@
     - **Significantly reduce the memory usage (by up to 25%)** in the merge step.
       Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
-    - **Reduce memory usage, especially for batch searching with long queries**.
-    - **Improve the search speed, mainly for batch searching**.
+    - **Reduce memory usage, particularly for batch searching**.
+    - **Improve search speed, mainly for batch searching**.
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,
       in a similar way with BLAST+ 2.15.0 or later versions.
@@ -25,6 +25,7 @@
     - Check if the output file and the log file are the same.
     - Reduce the time of seed matching when using `-w`.
     - Change the default value of `--max-query-conc` from 12 to 8.
+    - New flag `--gc-interval` (default 64, 0 for disable) for forcing garbage collection every N queries. This decreases memory usage a lot.
 - `lexicmap utils subseq`:
     - **Accept the output file of `lexicmap search` as the input**.
       So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.

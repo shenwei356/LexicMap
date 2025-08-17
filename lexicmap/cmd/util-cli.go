@@ -321,3 +321,16 @@ func ParseByteSize(val string) (int64, error) {
 	}
 	return int64(size * float64(u)), nil
 }
+
+func roundup32(x uint32) uint32 {
+	if x == 0 {
+		return 1
+	}
+	x--
+	x |= x >> 1
+	x |= x >> 2
+	x |= x >> 4
+	x |= x >> 8
+	x |= x >> 16
+	return (x | x>>32) + 1
+}

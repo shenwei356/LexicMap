@@ -360,6 +360,17 @@ Result ordering:
 			maxQueryConcurrency = runtime.NumCPU()
 		}
 
+		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
+		gcInterval := uint64(_gcInterval)
+		if gcInterval > 0 {
+			gcInterval = uint64(roundup32(uint32(gcInterval)))
+			if gcInterval == 1 {
+				gcInterval = 2
+			}
+		}
+
+		gc := gcInterval > 0
+
 		// maxSeedingConcurrency := getFlagNonNegativeInt(cmd, "max-seed-conc")
 		// if maxSeedingConcurrency == 0 {
 		// 	maxSeedingConcurrency = runtime.NumCPU()
@@ -434,6 +445,9 @@ Result ordering:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
+			if gc {
+				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
+			}
 			if len(taxids)+len(negativeTaxids) > 0 {
 				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
 			}
@@ -465,10 +479,16 @@ Result ordering:
 		}
 		fmt.Fprintln(outfh)
 
+		gcIntervalMinus1 := gcInterval - 1
+
 		printResult := func(q *Query) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
 				poolQuery.Put(q)
+
+				if gc && total&gcIntervalMinus1 == 0 {
+					runtime.GC()
+				}
 				return
 			}
 
@@ -542,6 +562,10 @@ Result ordering:
 
 			poolQuery.Put(q)
 			outfh.Flush()
+
+			if gc && total&gcIntervalMinus1 == 0 {
+				runtime.GC()
+			}
 		}
 
 		// outputter
@@ -669,6 +693,9 @@ func init() {
 
 	mapCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
+
+	mapCmd.Flags().IntP("gc-interval", "", 64,
+		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
 
 	// mapCmd.Flags().IntP("max-seed-conc", "S", 8,
 	// 	formatFlagUsage(`Maximum number of concurrent seed file matching. Bigger values improve seed matching speed in SSD.`))
