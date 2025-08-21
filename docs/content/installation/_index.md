@@ -134,9 +134,9 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
 1. [Install go](https://go.dev/doc/install) (go 1.22 or later versions).
 
-        wget https://go.dev/dl/go1.24.1.linux-amd64.tar.gz
+        wget https://go.dev/dl/go1.25.0.linux-amd64.tar.gz
 
-        tar -zxf go1.24.1.linux-amd64.tar.gz -C $HOME/
+        tar -zxf go1.25.0.linux-amd64.tar.gz -C $HOME/
 
         # or
         #   echo "export PATH=$PATH:$HOME/go/bin" >> ~/.bashrc
@@ -147,7 +147,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         # ------------- the latest stable version -------------
 
-        go install -v github.com/shenwei356/LexicMap@latest
+        go install -v github.com/shenwei356/LexicMap/lexicmap@latest
 
         # The executable binary file is located in:
         #   ~/go/bin/lexicmap
@@ -156,9 +156,13 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
         cp ~/go/bin/lexicmap $HOME/bin/
 
 
-        # --------------- the development version --------------
+        # --------------- the latest stable/development version --------------
 
         git clone https://github.com/shenwei356/LexicMap
+        
+        # Optionally chose a version
+        # git check v0.8.0
+        
         cd LexicMap/lexicmap/
         go build
 

@@ -22,7 +22,8 @@ Terminology differences:
       E.g., GCF_000006945.2.fna.gz
         - A regular expression is also available to extract reference id from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
-        - Even if you forgot to use `-N/--ref-name-regexp`, [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) can fix this without re-building the index.
+        - Even if you forgot to use `-N/--ref-name-regexp`,
+          [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without re-building the index.
     - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
 2. Run:
     - From a directory with multiple genome files:
@@ -58,14 +59,15 @@ While if you save *a few* **small** (viral) **complete** genomes (one sequence p
     - **Genome ID**: **they must not contain tab ("\t") symbols, and should be distinct for accurate result interpretation**, which will be shown in the search result.
         - A regular expression is also available to extract reference id from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
-        - **If you forgot to use `-N/--ref-name-regexp`, [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) can fix this without re-building the index**.
+        - **If you forgot to use `-N/--ref-name-regexp`,
+        [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without re-building the index**.
 - **File extention**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
       The default value supports common sequence file extentions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
     - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
     - Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
-      (`seqkit seq -n ref.fa.gz | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add description in search result](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
+      (`cat files.txt | seqkit seq -n -X - | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add description in search result](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
     - **One or more sequences (contigs) in each file are allowed**.
         - Unwanted sequences can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
@@ -100,7 +102,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
     - More is better as LexicMap is a CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
-    - More RAM (> 200 GB) is preferred. The memory usage in index building is mainly related to:
+    - More RAM (> 200 GB for >2 million genomes) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
         - **The number of genomes**. Generally, more genomes consume more memory, but we can control the genome batch size.
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory occupation.
@@ -120,6 +122,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 ## Algorithm
 
 <img src="/LexicMap/indexing.svg" alt="" width="900"/>
+
+See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for details.
 
 {{< expand "Click to show details." "..." >}}
 
@@ -224,7 +228,7 @@ Also see the [usage](https://bioinf.shenwei.me/LexicMap/usage/#index) of `lexicm
 
 ### Notes for indexing with large datasets
 
-If you have hundreds of thousands of input genomes or more, it's **better to control the number of genome batches**, which can be calculated via
+<font color="#ff5733">If you have hundreds of thousands of input genomes or more, it's **better to control the number of genome batches**</font>, which can be calculated via
 
     $num_input_files / --batch-size
 
@@ -264,7 +268,7 @@ We use a small dataset for demonstration.
 
         lexicmap index -I refs/ -O demo.lmi
 
-    It would take about 6 seconds and 3 GB RAM in a 16-CPU PC.
+    It would take about 5 seconds and 1.5 GB RAM in a 16-CPU PC.
 
     Optionally, we can also use **a file list** as the input.
 
@@ -482,7 +486,7 @@ We provide several commands to explore the index data and extract indexed subseq
 1. `lexicmap utils seed-pos` can help to explore the seed positions,
     see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/).
     Before that, the flag `--save-seed-pos` needs to be added to `lexicmap index`.
-1. `lexicmap utils subseq` can extract subsequences via genome ID, sequence ID and positions,
+1. `lexicmap utils subseq` can extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result,
     see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
 
 ## Index format changelog

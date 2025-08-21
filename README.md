@@ -113,11 +113,14 @@ Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tuto
 ```plain
 # For short queries like genes or long reads, returning top N hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-hsp 70 --min-qcov-per-genome 70  --top-n-genomes 10000
+    --align-min-match-pident 80 --min-qcov-per-hsp 70 --min-qcov-per-genome 70 \
+    --top-n-genomes 10000
 
 # For longer queries like plasmids, returning all hits.
 lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-    --min-qcov-per-hsp 0  --min-qcov-per-genome 0   --top-n-genomes 0
+    --align-min-match-pident 70 --min-qcov-per-hsp 0  --min-qcov-per-genome 50 \
+    --align-min-match-len 1000 \
+    --top-n-genomes 0
 ```
 
 Sample output (queries are a few Nanopore Q20 reads). See [output format details](http://bioinf.shenwei.me/LexicMap/tutorials/search/#output-format).
@@ -167,7 +170,7 @@ TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
 ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
 ```
 
-Export blast-style format:
+Export Blast-style pairwise alignment format:
 
 ```
 # here, we only align <=200 bp queries and show one medium-similarity result.
@@ -230,23 +233,25 @@ Or install with conda or pixi:
 
 <img src="overview.svg" alt="LexicMap overview" width="800"/>
 
+See the [paper](#citation) for details.
+
 ## Citation
 
-Wei Shen, John A. Lees, Zamin Iqbal.
-(2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
-bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+> Wei Shen, John A. Lees, Zamin Iqbal.
+> (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
+> bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
 
 ## Limitations
 
-- The queries need to be longer than 100 bp, though some shorter one can also be aligned.
-- LexicMap is slow for >1Mb queries, and the alignment might be fragmented.
+- The queries need to be longer than 100 bp, though some shorter ones can also be aligned.
+- LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented.
 - LexicMap is slow for batch searching with more than hundreds of queries. However, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
 
 ## Terminology differences
 
 - In the LexicMap source code and command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
 - In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
-  Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
+  Because these masks, which consist of thousands of designed k-mers and they capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
 
 ## Support
 

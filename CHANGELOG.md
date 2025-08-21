@@ -11,7 +11,7 @@
     - **Significantly reduce the memory usage (by up to 25%)** in the merge step.
       Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
-    - **Reduce memory usage, particularly for batch searching**.
+    - **Reduce memory usage, particularly for batch searching (by up to 50%)**.
     - **Improve search speed, mainly for batch searching**.
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,

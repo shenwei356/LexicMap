@@ -16,12 +16,15 @@ weight: 10
     - For short queries like genes or long reads, returning top N hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-               --min-qcov-per-hsp 70 --min-qcov-per-genome 70 --top-n-genomes 10000
+              --align-min-match-pident 80 --min-qcov-per-hsp 70 --min-qcov-per-genome 70 \
+              --top-n-genomes 10000
 
     - For longer queries like plasmids, returning all hits.
 
           lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-              --min-qcov-per-hsp 0   --min-qcov-per-genome 0  --top-n-genomes 0
+              --align-min-match-pident 70 --min-qcov-per-hsp 0  --min-qcov-per-genome 50 \
+              --align-min-match-len 1000 \
+              --top-n-genomes 0
 
 ## Input
 
@@ -43,7 +46,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
     - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
 - **RAM**
-    - More RAM (> 16 GB) is preferred. The memory usage in searching is mainly related to:
+    - More RAM (>= 16 GB) is preferred. The memory usage in searching is mainly related to:
         - The number and length of query sequences.
         - The number of matched genomes and sequences.
         - Similarities between query and target sequences.
@@ -57,6 +60,8 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 ## Algorithm
 
 <img src="/LexicMap/searching.svg" alt="" width="900"/>
+
+See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for details.
 
 {{< expand "Click to show details." "..." >}}
 
@@ -166,8 +171,8 @@ Here are some tips to improve the search speed.
         chunks = 48
         ```
     - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
-    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 12), it will increase the memory.
-- **Loading the entire seed data into memoy** (If you have many queries and the index is not very big. It's unnecessary if the index is stored on SSD)
+    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 8), which might help. This will increase the memory.
+- **Loading the entire seed data into memoy** (*If you have many queries and the index is not very big*. It's unnecessary if the index is stored on SSD)
     - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
 
@@ -179,7 +184,7 @@ For long queries, such as plasmids, a few parameters can be adjusted for better 
       e.g., `-p 19 -P 21`. The search sensitivity will not be affected for long queries or high similarity subjects.
 - Bigger `-l/--align-min-match-len` (default 50), such as `1000`, because small matches are less informative.
 
-When searching with plasmids, it's recommended to use a strict criterion of `-Q/--min-qcov-per-genome` (`qcovGnm`, default 0), such as 90,
+When searching with plasmids, it's recommended to use a strict criterion of `-Q/--min-qcov-per-genome` (`qcovGnm`, default 0), such as 80,
 and further filter results with a loose criterion of `-q/--min-qcov-per-hsp` (`qcovHSP`, default 0) after searching, such as 50/60/70.
 The reasons are:
 
@@ -194,7 +199,7 @@ The reasons are:
 - For short queries like genes or long reads, returning top N hits.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-          --min-match-pident 70 \
+          --min-match-pident 80 \
           --min-qcov-per-hsp 70 \
           --min-qcov-per-genome 70 \
           --top-n-genomes 10000
@@ -204,7 +209,8 @@ The reasons are:
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
           --min-match-pident 70 \
           --min-qcov-per-hsp 0 \
-          --min-qcov-per-genome 0  \
+          --min-qcov-per-genome 50  \
+          --align-min-match-len 1000 \
           --top-n-genomes 0
 
 
