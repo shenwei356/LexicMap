@@ -29,23 +29,27 @@ import (
 )
 
 func TestKVData(t *testing.T) {
-	var lenPrefix uint8 = 2
-	var k uint8 = 5
-	var prefix uint64 = 5 << ((k - lenPrefix) << 1)
-	nMasks := 3
+	var lenPrefix uint8 = 2 // mask prefix
+	var k uint8 = 5         // kmer size
+	// fmt.Printf("k: %d, mask-prefix: %d\n", k, lenPrefix)
+	var prefix uint64 = 0b0111 << ((k - lenPrefix) << 1) // 0b0111 refers to CT
+	nMasks := 1 << lenPrefix
+	// fmt.Printf("nMasks: %d\n", nMasks)
 	// maxMismatch := -1
 
 	// generate data
 
 	data := make([]*map[uint64]*[]uint64, 0, 8)
 
-	var n uint64 = 1 << ((k - lenPrefix) << 1)
+	var n uint64 = 1 << ((k - lenPrefix) << 1) // the number of all possible k-mers with a certain prefix
+	// fmt.Printf("n: %d\n", n)
 	var i uint64
 
 	for j := 0; j < nMasks; j++ {
 		m := make(map[uint64]*[]uint64, n)
 		for i = 0; i < n; i++ {
 			m[prefix|i] = &[]uint64{i}
+			// fmt.Printf("j: %d, kmer: %s, value: %d\n", j, lexichash.MustDecode(prefix|i, k), i)
 		}
 		data = append(data, &m)
 	}
@@ -53,7 +57,7 @@ func TestKVData(t *testing.T) {
 	// write data
 
 	file := "t.kv"
-	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2, 512)
+	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2, 512, false)
 	if err != nil {
 		t.Errorf("%s", err)
 		return

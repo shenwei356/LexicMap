@@ -1834,7 +1834,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches)
+			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches, true)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}

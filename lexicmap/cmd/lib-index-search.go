@@ -991,7 +991,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	ttt := (uint64(1) << (k8 << 1)) - 1
 
 	for i, kmer := range *_kmers {
-		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+		if kmer == ccc || kmer == ggg || kmer == ttt ||
 			util.IsLowComplexityDust(kmer, k8) {
 			// if kmer != 0 {
 			// 	fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
@@ -999,7 +999,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 			(*_kmers)[i] = 0
 			// (*_locses)[i] = (*_locses)[i][:0]
-			continue
 		}
 	}
 
@@ -1040,14 +1039,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	doneR := make(chan int)
 	go func() {
 		var v *[]uint64
-		for _, v = range *_kmersR {
-			*v = (*v)[:0]
-		}
-
 		var vl *[]int
-		for _, vl = range *_locsesR {
-			*vl = (*vl)[:0]
-		}
 
 		var _kmer, _v, newMask, oldMask uint64
 		var existed bool
@@ -1361,7 +1353,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)
-					*srs2 = (*srs2)[:0]
+					*srs2 = (*srs2)[:0] // important
 				}
 				kv.RecycleSearchResults(srs2)
 			} else {
@@ -1379,7 +1371,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				if len(*srs2) > 0 {
 					*srs = append(*srs, (*srs2)...)
-					*srs2 = (*srs2)[:0]
+					*srs2 = (*srs2)[:0] // important
 				}
 				kv.RecycleSearchResults(srs2)
 			}
@@ -1402,6 +1394,15 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	close(ch)
 	<-done
 
+	var v *[]uint64
+	for _, v = range *_kmersR {
+		*v = (*v)[:0]
+	}
+
+	var vl *[]int
+	for _, vl = range *_locsesR {
+		*vl = (*vl)[:0]
+	}
 	idx.poolKmers.Put(_kmersR)
 	idx.poolLocses.Put(_locsesR)
 

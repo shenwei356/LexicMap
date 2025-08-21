@@ -118,7 +118,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
-func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int) (int, error) {
+func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
@@ -141,7 +141,9 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 		if err != nil {
 			return 0, err
 		}
-		clear(*m) // clear it after dumping to files, but don't recycle it!
+		if clearData {
+			clear(*m) // clear it after dumping to files, but don't recycle it!
+		}
 	}
 	err = wtr.Close()
 	if err != nil {

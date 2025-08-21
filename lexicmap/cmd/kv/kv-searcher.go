@@ -120,8 +120,11 @@ var poolSearchResult = &sync.Pool{New: func() interface{} {
 
 // RecycleSearchResults recycles search results objects.
 func RecycleSearchResults(sr *[]*SearchResult) {
-	for _, r := range *sr {
-		poolSearchResult.Put(r)
+	if len(*sr) > 0 {
+		for _, r := range *sr {
+			poolSearchResult.Put(r)
+		}
+		*sr = (*sr)[:0]
 	}
 	poolSearchResults.Put(sr)
 }
