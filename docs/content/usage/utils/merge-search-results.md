@@ -7,7 +7,7 @@ weight: 1
 
 ```plain
 $ lexicmap utils merge-search-results -h
-Merge a query's search results in multiple indexes
+Merge a query's search results from multiple indexes
 
 Attention:
   1. These search results should come from the same ONE query.

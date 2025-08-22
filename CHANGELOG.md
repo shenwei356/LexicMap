@@ -3,7 +3,7 @@
 ### v0.8.0 - 2025-xx-xx
 
 - New commands:
-    - **`lexicmap utils merge-search-results`: Merge a query's search results in multiple indexes**.
+    - **`lexicmap utils merge-search-results`: Merge a query's search results from multiple indexes**.
     - **`lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression**.
       It's helpful when users forgot to use the flag `-N/--ref-name-regexp`
       to extract the genome ID from the sequence file during indexing.

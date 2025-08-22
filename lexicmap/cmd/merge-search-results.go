@@ -36,8 +36,8 @@ import (
 
 var mergeCmd = &cobra.Command{
 	Use:   "merge-search-results",
-	Short: "Merge a query's search results in multiple indexes",
-	Long: `Merge a query's search results in multiple indexes
+	Short: "Merge a query's search results from multiple indexes",
+	Long: `Merge a query's search results from multiple indexes
 
 Attention:
   1. These search results should come from the same ONE query.

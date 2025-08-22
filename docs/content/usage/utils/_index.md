@@ -17,7 +17,7 @@ Available Commands:
   genomes              View genome IDs in the index
   kmers                View k-mers captured by the masks
   masks                View masks of the index or generate new masks randomly
-  merge-search-results Merge a query's search results in multiple indexes
+  merge-search-results Merge a query's search results from multiple indexes
   reindex-seeds        Recreate indexes of k-mer-value (seeds) data
   remerge              Rerun the merging step for an unfinished index
   seed-pos             Extract and plot seed positions via reference name(s)
