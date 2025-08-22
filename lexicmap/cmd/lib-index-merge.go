@@ -27,6 +27,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -336,6 +337,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		return nil
 	}
 
+	runtime.GC()
 	mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
 	return nil
 }

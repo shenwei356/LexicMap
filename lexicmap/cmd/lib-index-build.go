@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"sync"
 	"time"
@@ -360,6 +361,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 		if nBatches > 1 && hasSomeGenomes { // only merge indexes with valid genomes
 			tmpIndexes = append(tmpIndexes, outdirB)
+			runtime.GC()
 		}
 	}
 
@@ -379,6 +381,8 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	if nBatches == 1 {
 		return nil
 	}
+
+	runtime.GC()
 
 	// merge indexes
 	if opt.Verbose || opt.Log2File {

@@ -132,7 +132,7 @@ func NewReader(file string) (*Reader, error) {
 }
 
 var PoolKmerData = &sync.Pool{New: func() interface{} {
-	m := make(map[uint64]*[]uint64, 1024)
+	m := make(map[uint64]*[]uint64, 1024) // can't be too big
 	return &m
 }}
 
