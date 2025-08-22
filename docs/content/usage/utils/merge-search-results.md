@@ -18,7 +18,6 @@ Attention:
   4. Both the default 20- and 24-column formats are supported,
      and formats better be consistent across all input files.
      If not, the output format would be the one with a valid record.
-  5. The column "hits" in the output will be set to 0.
 
 Usage:
   lexicmap utils merge-search-results [flags] 
@@ -42,23 +41,50 @@ Global Flags:
 
 ## Examples
 
-All search results belong to one query.
+Building 3 indexes with demo data.
 
 ```text
-lexicmap util merge-search-results -o query.lexicmap.tsv.gz \
-    query.lexicmap@genbank.tsv.gz \
-    query.lexicmap@refseq.tsv.gz \
-    query.lexicmap@allthebacteria.tsv.gz
+lexicmap index -O demo_part1.lmi -X <(ls refs/*.fa.gz | awk 'NR<=5')
+lexicmap index -O demo_part2.lmi -X <(ls refs/*.fa.gz | awk 'NR>=6 && NR<=10')
+lexicmap index -O demo_part3.lmi -X <(ls refs/*.fa.gz | awk 'NR>10')
 ```
 
-Some files contain search results of multiple queries, then specify one query to merge.
+Searching a query in these 3 indexes.
 
 ```text
-lexicmap util merge-search-results -o query.lexicmap.tsv.gz \
-    query.lexicmap@genbank.tsv.gz \
-    query.lexicmap@refseq.tsv.gz \
-    query.lexicmap@allthebacteria.tsv.gz \
-    --query NC_000913.3:4166659-4168200
+query=bench/b.gene_E_coli_16S.fasta
+
+# in practice, one can search in multiple cluster nodes
+for index in demo_*.lmi; do
+    lexicmap search $query -d $index -o t.lexicmap@$index.tsv.gz --debug
+done
 ```
 
+Merge search results
 
+```text
+lexicmap utils merge-search-results -o t.lexicmap.tsv.gz t.lexicmap@*.tsv.gz
+
+22:41:03.963 [INFO] 15 genome hits merged from 3 files for query: NC_000913.3:4166659-4168200
+```
+
+If some files contain search results of multiple queries, then specify one query to merge.
+
+```text
+# search with multiple queries
+for index in demo_*.lmi; do
+    lexicmap search bench/*.fasta -d $index -o t.lexicmap2@$index.tsv.gz --debug
+done
+
+# this would failed
+lexicmap utils merge-search-results -o t.lexicmap2.tsv.gz t.lexicmap2@*.tsv.gz
+
+22:46:07.807 [ERRO] inconsistent queries: 'blaLAQ__NG_076677.1' in file 't.lexicmap2@demo_part2.lmi.tsv.gz' and 'blaSHV__NG_242606.1' in file 't.lexicmap2@demo_part1.lmi.tsv.gz. Please specify one query with flag -q/--query
+
+# specify one query
+
+lexicmap utils merge-search-results -o t.lexicmap2.tsv.gz t.lexicmap2@*.tsv.gz \
+    -q NC_000913.3:4166659-4168200
+    
+22:49:01.076 [INFO] 15 genome hits merged from 3 files for query: NC_000913.3:4166659-4168200
+```

@@ -48,7 +48,6 @@ Attention:
   4. Both the default 20- and 24-column formats are supported,
      and formats better be consistent across all input files.
      If not, the output format would be the one with a valid record.
-  5. The column "hits" in the output will be set to 0.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -139,10 +138,19 @@ Attention:
 		var qlen string
 		var moreColumns bool
 		var idx0 int
+		countTotalHits := true
+		var hits int
 
 		for {
 			if len(*(results.entries)) == 0 {
 				checkError(fillBuffer())
+				if countTotalHits {
+					countTotalHits = false
+
+					for _, r := range *results.entries {
+						hits += r.Hits
+					}
+				}
 			}
 			if len(*(results.entries)) == 0 {
 				break
@@ -180,10 +188,10 @@ Attention:
 			n++
 
 			for _, rSeq = range rGnm.Records {
-				fmt.Fprintf(outfh, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
+				fmt.Fprintf(outfh, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
 					query,
 					qlen,
-					"0",
+					hits,
 					rGnm.Sgenome,
 					rSeq.Sseqid,
 					rGnm.QcovGnm,
@@ -250,6 +258,7 @@ func init() {
 type SearchResultOfAGenome struct {
 	idx int // the index of reader, only for merge
 
+	Hits    int
 	Query   string
 	Qlen    string
 	Sgenome string
@@ -268,6 +277,7 @@ var poolSearchResultOfAGenome = &sync.Pool{New: func() interface{} {
 }}
 
 func RecycleSearchResultOfAGenome(r *SearchResultOfAGenome) {
+	r.Hits = 0
 	r.Sgenome = ""
 	r.QcovGnm = ""
 	r.Score = 0
@@ -354,11 +364,12 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 	go func() {
 		var line string
 		headerLine := true
-		var query, qlen, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
+		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
 		var pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
 		var extra string
 		var _pident float64
 		var _bitscore int
+		var _hits int
 
 		var sgenomePre string
 
@@ -390,7 +401,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 			}
 
 			qlen = items[1]
-			// hits = items[2]
+			hits = items[2]
 			sgenome = items[3]
 			sseqid = items[4]
 			qcovGnm = items[5]
@@ -420,6 +431,11 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 				checkError(fmt.Errorf("failed to parse bitsocre: %s", pident))
 			}
 
+			_hits, err = strconv.Atoi(hits)
+			if err != nil {
+				checkError(fmt.Errorf("failed to parse hits: %s", hits))
+			}
+
 			_pident, err = strconv.ParseFloat(pident, 64)
 			if err != nil {
 				checkError(fmt.Errorf("failed to parse pident: %s", pident))
@@ -434,6 +450,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 					rGnm = poolSearchResultOfAGenome.Get().(*SearchResultOfAGenome)
 				}
 
+				rGnm.Hits = _hits
 				rGnm.Query = query
 				rGnm.Qlen = qlen
 				rGnm.Sgenome = sgenome

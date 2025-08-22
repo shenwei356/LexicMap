@@ -32,7 +32,7 @@ demo/seed_distance.tsv
 demo/seed_distance
 demo/seed_distance-no-df
 demo/seed-pos.tsv.gz
-demo/t.txt*
+demo/t.*
 demo/kmers.tsv*
 demo/results.tsv*
 
