@@ -46,7 +46,9 @@ var mapCmd = &cobra.Command{
 
 Attention:
   1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
-  2. For multiple queries, the order of queries in output might be different from the input.
+  2. One or more input files are accepted, via positional parameters
+     and/or a file list via the flag -X/--infile-list.
+  3. For multiple queries, the order of queries in output might be different from the input.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format

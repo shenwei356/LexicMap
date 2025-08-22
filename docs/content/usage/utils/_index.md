@@ -12,15 +12,16 @@ Usage:
   lexicmap utils [command]
 
 Available Commands:
-  2blast          Convert the default search output to blast-style format
-  edit-genome-ids Edit genome IDs in the index via a regular expression
-  genomes         View genome IDs in the index
-  kmers           View k-mers captured by the masks
-  masks           View masks of the index or generate new masks randomly
-  reindex-seeds   Recreate indexes of k-mer-value (seeds) data
-  remerge         Rerun the merging step for an unfinished index
-  seed-pos        Extract and plot seed positions via reference name(s)
-  subseq          Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result
+  2blast               Convert the default search output to blast-style format
+  edit-genome-ids      Edit genome IDs in the index via a regular expression
+  genomes              View genome IDs in the index
+  kmers                View k-mers captured by the masks
+  masks                View masks of the index or generate new masks randomly
+  merge-search-results Merge a query's search results in multiple indexes
+  reindex-seeds        Recreate indexes of k-mer-value (seeds) data
+  remerge              Rerun the merging step for an unfinished index
+  seed-pos             Extract and plot seed positions via reference name(s)
+  subseq               Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result
 
 Flags:
   -h, --help   help for utils

@@ -319,11 +319,24 @@ The reasons are:
     Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
     ```
 
+- Merge a query's search results in multiple indexes with `lexicmap utils merge-search-results`
+  ([usage](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/)).
+  
+    ```text
+    lexicmap util merge-search-results -o query.lexicmap.tsv.gz \
+        query.lexicmap@genbank.tsv.gz \
+        query.lexicmap@refseq.tsv.gz \
+        query.lexicmap@allthebacteria.tsv.gz
+    ```
 
 ## Output
 
-The default format is tab-delimited (see details below).
-Blast-style pair-wise alignment format can be achieved by searching with `-a/--all` and converting with [lexicmap utils 2blast](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/).
+Two output formats are supported:
+
+- The default format is tab-delimited (see details below),
+and a query's search results in multiple indexes can be merged with `lexicmap utils merge-search-results`
+  ([usage](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/)).
+- Blast-style pair-wise alignment format can be achieved by searching with `-a/--all` and converting with [lexicmap utils 2blast](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/).
 
 ### Alignment result relationship
 

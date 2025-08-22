@@ -453,6 +453,10 @@ Attention:
 
 				n++
 			}
+			if err = scanner.Err(); err != nil {
+				checkError(fmt.Errorf("failed to scan file %s: %s", fileSearchResult, err))
+			}
+
 			wg.Wait()
 			close(ch)
 			<-done
