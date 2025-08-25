@@ -218,6 +218,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	// r := poolBufReader.Get().(*bufio.Reader)
 	r := scr.r
 
+	suffix2 = (k - p) << 1
+	mask = (1 << suffix2) - 1 // 1111
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
 			continue
@@ -233,8 +235,6 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		}
 
 		if prefixSearch {
-			suffix2 = (k - p) << 1
-			mask = (1 << suffix2) - 1                  // 1111
 			leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
 			rightBound = kmer>>suffix2<<suffix2 | mask // kmer with last 4bits being 1
 		} else {
@@ -650,6 +650,8 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	// r := bufio.NewReader(nil)
 	r := scr.r
 
+	suffix2 = (k - p) << 1
+	mask = (1 << suffix2) - 1 // 1111
 	for iQ, index := range scr.Indexes {
 		if len(index) == 0 { // this hapens when no captured k-mer for a mask
 			continue
@@ -666,8 +668,6 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 			}
 
 			if prefixSearch {
-				suffix2 = (k - p) << 1
-				mask = (1 << suffix2) - 1                  // 1111
 				leftBound = kmer & (math.MaxUint64 - mask) // kmer & 1111110000
 				rightBound = kmer>>suffix2<<suffix2 | mask // kmer with last 4bits being 1
 			} else {
