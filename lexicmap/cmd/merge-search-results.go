@@ -84,7 +84,7 @@ Attention:
 
 		if len(files) == 1 {
 			if opt.Verbose {
-				log.Infof("only one input file '%s' is given, just copy data", files[0])
+				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
 			}
 			fh, err := xopen.Ropen(files[0])
 			checkError(err)
