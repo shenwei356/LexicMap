@@ -407,10 +407,7 @@ func NewReader(file string) (*Reader, error) {
 	}
 
 	// read metadata
-	n, err = io.ReadFull(bfh, buf[:8])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(bfh, buf[:8])
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -421,10 +418,7 @@ func NewReader(file string) (*Reader, error) {
 	}
 
 	// batch number and the number seqs
-	n, err = io.ReadFull(bfh, buf[:8])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(bfh, buf[:8])
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -437,10 +431,7 @@ func NewReader(file string) (*Reader, error) {
 	var i2 int
 	for i := 0; i < int(r.nSeqs); i++ {
 		// offset in the data file and bases
-		n, err = io.ReadFull(bfh, buf[:12])
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(bfh, buf[:12])
 		if n < 12 {
 			return nil, ErrBrokenFile
 		}
@@ -514,7 +505,6 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	// nBases := int(be.Uint32(buf[8:12])) // for check end
 
 	var n int
-	var err error
 	i2 := idx << 1
 	offset := int64(r.Index[i2])
 
@@ -529,10 +519,7 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	br.Reset(r.fhData)
 
 	// ID length
-	n, err = io.ReadFull(br, buf[:2])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:2])
 	if n < 2 {
 		return nil, ErrBrokenFile
 	}
@@ -540,10 +527,7 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	offset += 2
 
 	// ID
-	n, err = io.ReadFull(br, buf[:idLen])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:idLen])
 	if n < int(idLen) {
 		return nil, ErrBrokenFile
 	}
@@ -552,10 +536,7 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
-	n, err = io.ReadFull(br, buf[:12])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:12])
 	if n < 12 {
 		return nil, ErrBrokenFile
 	}
@@ -570,10 +551,7 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	var j, nappend int
 	var idLen2 int
 	for i := 0; i < g.NumSeqs; i++ {
-		n, err = io.ReadFull(br, buf[:6])
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, buf[:6])
 		if n < 6 {
 			return nil, ErrBrokenFile
 		}
@@ -598,10 +576,7 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 				*id = append(*id, 0)
 			}
 		}
-		n, err = io.ReadFull(br, *id)
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, *id)
 		if n < idLen2 {
 			return nil, ErrBrokenFile
 		}
@@ -623,7 +598,6 @@ func (r *Reader) TotalBases() (int64, error) {
 
 	ngenomes := len(r.Index) >> 1
 	var n int
-	var err error
 	var offset int64
 
 	for idx := 0; idx < ngenomes; idx++ {
@@ -634,10 +608,7 @@ func (r *Reader) TotalBases() (int64, error) {
 		br.Reset(r.fhData)
 
 		// ID length
-		n, err = io.ReadFull(br, buf[:2])
-		if err != nil {
-			return 0, err
-		}
+		n, _ = io.ReadFull(br, buf[:2])
 		if n < 2 {
 			return 0, ErrBrokenFile
 		}
@@ -646,10 +617,7 @@ func (r *Reader) TotalBases() (int64, error) {
 		offset += 2 + int64(idLen)
 
 		// genome size
-		n, err = io.ReadFull(br, buf[:4])
-		if err != nil {
-			return 0, err
-		}
+		n, _ = io.ReadFull(br, buf[:4])
 		if n < 4 {
 			return 0, ErrBrokenFile
 		}
@@ -714,10 +682,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	br.Reset(r.fhData)
 
 	// ID length
-	n, err = io.ReadFull(br, buf[:2])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:2])
 	if n < 2 {
 		return nil, ErrBrokenFile
 	}
@@ -725,10 +690,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	offset += 2
 
 	// ID
-	n, err = io.ReadFull(br, buf[:idLen])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:idLen])
 	if n < int(idLen) {
 		return nil, ErrBrokenFile
 	}
@@ -737,10 +699,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
-	n, err = io.ReadFull(br, buf[:12])
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(br, buf[:12])
 	if n < 12 {
 		return nil, ErrBrokenFile
 	}
@@ -755,10 +714,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	var j, nappend int
 	var idLen2 int
 	for i := 0; i < g.NumSeqs; i++ {
-		n, err = io.ReadFull(br, buf[:6])
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, buf[:6])
 		if n < 6 {
 			return nil, ErrBrokenFile
 		}
@@ -783,10 +739,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 				*id = append(*id, 0)
 			}
 		}
-		n, err = io.ReadFull(br, *id)
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, *id)
 		if n < idLen2 {
 			return nil, ErrBrokenFile
 		}
@@ -818,11 +771,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 		}
 		buf = r.buf
 	}
-	n, err = io.ReadFull(br, buf)
-	if err != nil {
-		return nil, err
-	}
-
+	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		return nil, ErrBrokenFile
 	}
@@ -945,10 +894,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 		br.Reset(r.fhData)
 
 		// ID length
-		n, err = io.ReadFull(br, buf[:2])
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, buf[:2])
 		if n < 2 {
 			return nil, ErrBrokenFile
 		}
@@ -956,22 +902,18 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 		offset += 2
 
 		// ID
-		n, err = io.ReadFull(br, buf[:idLen])
-		if err != nil {
-			return nil, err
-		}
-		if n < int(idLen) {
-			return nil, ErrBrokenFile
-		}
-		g.ID = g.ID[:0]
-		g.ID = append(g.ID, buf[:idLen]...)
+		br.Discard(int(idLen)) // ID is not used since v0.8.0
+		// n, _ = io.ReadFull(br, buf[:idLen])
+		// if n < int(idLen) {
+		// 	return nil, ErrBrokenFile
+		// }
+		// g.ID = g.ID[:0]
+		// g.ID = append(g.ID, buf[:idLen]...)
+
 		offset += int64(idLen)
 
 		// genome size, Len of concatenated seqs, NumSeqs
-		n, err = io.ReadFull(br, buf[:12])
-		if err != nil {
-			return nil, err
-		}
+		n, _ = io.ReadFull(br, buf[:12])
 		if n < 12 {
 			return nil, ErrBrokenFile
 		}
@@ -986,10 +928,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 		var j, nappend int
 		var idLen2 int
 		for i := 0; i < g.NumSeqs; i++ {
-			n, err = io.ReadFull(br, buf[:6])
-			if err != nil {
-				return nil, err
-			}
+			n, _ = io.ReadFull(br, buf[:6])
 			if n < 6 {
 				return nil, ErrBrokenFile
 			}
@@ -1014,10 +953,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 					*id = append(*id, 0)
 				}
 			}
-			n, err = io.ReadFull(br, *id)
-			if err != nil {
-				return nil, err
-			}
+			n, _ = io.ReadFull(br, *id)
 			if n < idLen2 {
 				return nil, ErrBrokenFile
 			}
@@ -1057,11 +993,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 		}
 		buf = r.buf
 	}
-	n, err = io.ReadFull(br, buf)
-	if err != nil {
-		return nil, err
-	}
-
+	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		return nil, ErrBrokenFile
 	}
@@ -1202,10 +1134,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	br.Reset(r.fhData)
 
 	// ID length
-	n, err = io.ReadFull(br, buf[:2])
-	if err != nil {
-		return nil, -1, err
-	}
+	n, _ = io.ReadFull(br, buf[:2])
 	if n < 2 {
 		return nil, -1, ErrBrokenFile
 	}
@@ -1213,10 +1142,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	offset += 2
 
 	// ID
-	n, err = io.ReadFull(br, buf[:idLen])
-	if err != nil {
-		return nil, -1, err
-	}
+	n, _ = io.ReadFull(br, buf[:idLen])
 	if n < int(idLen) {
 		return nil, -1, ErrBrokenFile
 	}
@@ -1225,10 +1151,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
-	n, err = io.ReadFull(br, buf[:12])
-	if err != nil {
-		return nil, -1, err
-	}
+	n, _ = io.ReadFull(br, buf[:12])
 	if n < 12 {
 		return nil, -1, ErrBrokenFile
 	}
@@ -1256,10 +1179,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	var endS int
 
 	for i := 0; i < g.NumSeqs; i++ {
-		n, err = io.ReadFull(br, buf[:6])
-		if err != nil {
-			return nil, -1, err
-		}
+		n, _ = io.ReadFull(br, buf[:6])
 		if n < 6 {
 			return nil, -1, ErrBrokenFile
 		}
@@ -1286,10 +1206,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 				*id = append(*id, 0)
 			}
 		}
-		n, err = io.ReadFull(br, *id)
-		if err != nil {
-			return nil, -1, err
-		}
+		n, _ = io.ReadFull(br, *id)
 		if n < idLen2 {
 			return nil, -1, ErrBrokenFile
 		}
@@ -1349,11 +1266,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 		}
 		buf = r.buf
 	}
-	n, err = io.ReadFull(br, buf)
-	if err != nil {
-		return nil, -1, err
-	}
-
+	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		return nil, -1, ErrBrokenFile
 	}
