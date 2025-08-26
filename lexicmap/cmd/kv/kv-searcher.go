@@ -178,7 +178,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var _offset uint64 // offset of kmer
 	var ctrlByte byte
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
+	// var nDecoded int
 	var v1, v2 uint64
 	// var v uint64
 	var kmer1, kmer2 uint64
@@ -325,18 +326,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 			// read encoded bytes
-			nReaded, err = io.ReadFull(r, buf[:nBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf[:nBytes])
 			if nReaded < nBytes {
 				return nil, ErrBrokenFile
 			}
 
-			v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-			if nDecoded == 0 {
-				return nil, ErrBrokenFile
-			}
+			v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
+			// if nDecoded == 0 {
+			// 	return nil, ErrBrokenFile
+			// }
 
 			if first {
 				first = false
@@ -386,18 +384,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 			// read encoded bytes
-			nReaded, err = io.ReadFull(r, buf[:nBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf[:nBytes])
 			if nReaded < nBytes {
 				return nil, ErrBrokenFile
 			}
 
-			lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-			if nDecoded == 0 {
-				return nil, ErrBrokenFile
-			}
+			lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
+			// if nDecoded == 0 {
+			// 	return nil, ErrBrokenFile
+			// }
 
 			// ------------------ values -------------------
 
@@ -408,10 +403,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			if saveKmer {
 				// check the reverse flag of the first seed data
 				if checkFlag {
-					nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
-					if err != nil {
-						return nil, err
-					}
+					nReaded, _ = io.ReadFull(r, buf2048[:nSeedPosBytes])
 					if nReaded < int(nSeedPosBytes) {
 						return nil, ErrBrokenFile
 					}
@@ -445,10 +437,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				if saveKmer {
 					for lenVal >= seedPosBatchSize {
-						nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 						if nReaded < int(batchSizeBytes) {
 							return nil, ErrBrokenFile
 						}
@@ -462,10 +451,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if lenVal > 0 {
 						n = lenVal * uint64(nSeedPosBytes)
 
-						nReaded, err = io.ReadFull(r, buf2048[:n])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:n])
 						if nReaded < int(n) {
 							return nil, ErrBrokenFile
 						}
@@ -510,10 +496,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			if saveKmer {
 				// check the reverse flag of the first seed data
 				if checkFlag {
-					nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
-					if err != nil {
-						return nil, err
-					}
+					nReaded, _ = io.ReadFull(r, buf2048[:nSeedPosBytes])
 					if nReaded < int(nSeedPosBytes) {
 						return nil, ErrBrokenFile
 					}
@@ -547,10 +530,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				if saveKmer {
 					for lenVal >= seedPosBatchSize {
-						nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 						if nReaded < int(batchSizeBytes) {
 							return nil, ErrBrokenFile
 						}
@@ -564,10 +544,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if lenVal > 0 {
 						n = lenVal * uint64(nSeedPosBytes)
 
-						nReaded, err = io.ReadFull(r, buf2048[:n])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:n])
 						if nReaded < int(n) {
 							return nil, ErrBrokenFile
 						}
@@ -639,7 +616,8 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var _offset uint64 // offset of kmer
 	var ctrlByte byte
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
+	// var nDecoded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -784,18 +762,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 				// read encoded bytes
-				nReaded, err = io.ReadFull(r, buf[:nBytes])
-				if err != nil {
-					return nil, err
-				}
+				nReaded, _ = io.ReadFull(r, buf[:nBytes])
 				if nReaded < nBytes {
 					return nil, ErrBrokenFile
 				}
 
-				v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-				if nDecoded == 0 {
-					return nil, ErrBrokenFile
-				}
+				v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
+				// if nDecoded == 0 {
+				// 	return nil, ErrBrokenFile
+				// }
 
 				if first {
 					first = false
@@ -837,18 +812,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 				// read encoded bytes
-				nReaded, err = io.ReadFull(r, buf[:nBytes])
-				if err != nil {
-					return nil, err
-				}
+				nReaded, _ = io.ReadFull(r, buf[:nBytes])
 				if nReaded < nBytes {
 					return nil, ErrBrokenFile
 				}
 
-				lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-				if nDecoded == 0 {
-					return nil, ErrBrokenFile
-				}
+				lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
+				// if nDecoded == 0 {
+				// 	return nil, ErrBrokenFile
+				// }
 
 				// ------------------ values -------------------
 
@@ -870,10 +842,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				if saveKmer {
 					// check the reverse flag of the first seed data
 					if checkFlag {
-						nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:nSeedPosBytes])
 						if nReaded < int(nSeedPosBytes) {
 							return nil, ErrBrokenFile
 						}
@@ -909,10 +878,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 					if saveKmer {
 						for lenVal >= seedPosBatchSize {
-							nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-							if err != nil {
-								return nil, err
-							}
+							nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 							if nReaded < int(batchSizeBytes) {
 								return nil, ErrBrokenFile
 							}
@@ -926,10 +892,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if lenVal > 0 {
 							n = lenVal * uint64(nSeedPosBytes)
 
-							nReaded, err = io.ReadFull(r, buf2048[:n])
-							if err != nil {
-								return nil, err
-							}
+							nReaded, _ = io.ReadFull(r, buf2048[:n])
 							if nReaded < int(n) {
 								return nil, ErrBrokenFile
 							}
@@ -974,10 +937,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				if saveKmer {
 					// check the reverse flag of the first seed data
 					if checkFlag {
-						nReaded, err = io.ReadFull(r, buf2048[:nSeedPosBytes])
-						if err != nil {
-							return nil, err
-						}
+						nReaded, _ = io.ReadFull(r, buf2048[:nSeedPosBytes])
 						if nReaded < int(nSeedPosBytes) {
 							return nil, ErrBrokenFile
 						}
@@ -1013,10 +973,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 					if saveKmer {
 						for lenVal >= seedPosBatchSize {
-							nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-							if err != nil {
-								return nil, err
-							}
+							nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 							if nReaded < int(batchSizeBytes) {
 								return nil, ErrBrokenFile
 							}
@@ -1030,10 +987,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						if lenVal > 0 {
 							n = lenVal * uint64(nSeedPosBytes)
 
-							nReaded, err = io.ReadFull(r, buf2048[:n])
-							if err != nil {
-								return nil, err
-							}
+							nReaded, _ = io.ReadFull(r, buf2048[:n])
 							if nReaded < int(n) {
 								return nil, ErrBrokenFile
 							}

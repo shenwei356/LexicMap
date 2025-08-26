@@ -160,7 +160,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	var hasKmer2 bool  // check if there's a kmer2
 	var _offset uint64 // offset of kmer
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -175,10 +175,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	var err error
 
 	// 8-byte the number of k-mers
-	nReaded, err = io.ReadFull(r, buf8)
-	if err != nil {
-		return nil, err
-	}
+	nReaded, _ = io.ReadFull(r, buf8)
 	if nReaded < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -213,18 +210,12 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, ErrBrokenFile
 		}
 
-		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, ErrBrokenFile
-		}
+		v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		kmer1 = v1 + _offset
 		kmer2 = kmer1 + v2
@@ -245,18 +236,12 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, ErrBrokenFile
 		}
 
-		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, ErrBrokenFile
-		}
+		lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		// ------------------ values -------------------
 
@@ -281,10 +266,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 
 		lenVal = lenVal1
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, ErrBrokenFile
 			}
@@ -300,10 +282,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, ErrBrokenFile
 			}
@@ -340,10 +319,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 
 		lenVal = lenVal2
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, ErrBrokenFile
 			}
@@ -359,10 +335,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, ErrBrokenFile
 			}
@@ -399,7 +372,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 	var hasKmer2 bool  // check if there's a kmer2
 	var _offset uint64 // offset of kmer
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -412,10 +385,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 	var err error
 
 	// 8-byte the number of k-mers
-	nReaded, err = io.ReadFull(r, buf8)
-	if err != nil {
-		return err
-	}
+	nReaded, _ = io.ReadFull(r, buf8)
 	if nReaded < 8 {
 		return ErrBrokenFile
 	}
@@ -451,18 +421,12 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return ErrBrokenFile
 		}
 
-		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return ErrBrokenFile
-		}
+		v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		kmer1 = v1 + _offset
 		kmer2 = kmer1 + v2
@@ -483,18 +447,12 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return ErrBrokenFile
 		}
 
-		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return ErrBrokenFile
-		}
+		lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		// ------------------ values -------------------
 
@@ -506,10 +464,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 
 		lenVal = lenVal1
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return ErrBrokenFile
 			}
@@ -525,10 +480,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return ErrBrokenFile
 			}
@@ -552,10 +504,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 
 		lenVal = lenVal2
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return ErrBrokenFile
 			}
@@ -571,10 +520,7 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return ErrBrokenFile
 			}
@@ -611,7 +557,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	var hasKmer2 bool  // check if there's a kmer2
 	var _offset uint64 // offset of kmer
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
 	var v1, v2 uint64
 	var kmer, kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -622,10 +568,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	var err error
 
 	// 8-byte the number of k-mers
-	nReaded, err = io.ReadFull(r, buf8)
-	if err != nil {
-		return nil, err
-	}
+	nReaded, _ = io.ReadFull(r, buf8)
 	if nReaded < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -666,18 +609,12 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, ErrBrokenFile
 		}
 
-		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, ErrBrokenFile
-		}
+		v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		kmer1 = v1 + _offset
 		kmer2 = kmer1 + v2
@@ -698,18 +635,12 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, ErrBrokenFile
 		}
 
-		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, ErrBrokenFile
-		}
+		lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		// ------------------ values -------------------
 
@@ -731,10 +662,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		lenVal = lenVal1
 		kmer = kmer1
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, ErrBrokenFile
 			}
@@ -751,10 +679,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, ErrBrokenFile
 			}
@@ -789,10 +714,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		lenVal = lenVal2
 		kmer = kmer2
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, ErrBrokenFile
 			}
@@ -809,10 +731,7 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, ErrBrokenFile
 			}
@@ -860,7 +779,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 	var hasKmer2 bool  // check if there's a kmer2
 	var _offset uint64 // offset of kmer
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
 	var v1, v2 uint64
 	var kmer, kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -871,10 +790,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 	var err error
 
 	// 8-byte the number of k-mers
-	nReaded, err = io.ReadFull(r, buf8)
-	if err != nil {
-		return nil, nil, 0, 0, err
-	}
+	nReaded, _ = io.ReadFull(r, buf8)
 	if nReaded < 8 {
 		return nil, nil, 0, 0, ErrBrokenFile
 	}
@@ -925,18 +841,12 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, nil, 0, 0, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
-		v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, nil, 0, 0, ErrBrokenFile
-		}
+		v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		kmer1 = v1 + _offset
 		kmer2 = kmer1 + v2
@@ -970,18 +880,12 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r, buf[:nBytes])
-		if err != nil {
-			return nil, nil, 0, 0, err
-		}
+		nReaded, _ = io.ReadFull(r, buf[:nBytes])
 		if nReaded < nBytes {
 			return nil, nil, 0, 0, ErrBrokenFile
 		}
 
-		lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-		if nDecoded == 0 {
-			return nil, nil, 0, 0, ErrBrokenFile
-		}
+		lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
 		// ------------------ values -------------------
 
@@ -1004,10 +908,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		lenVal = lenVal1
 		kmer = kmer1
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
@@ -1025,10 +926,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
@@ -1074,10 +972,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		lenVal = lenVal2
 		kmer = kmer2
 		for lenVal >= seedPosBatchSize {
-			nReaded, err = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
 			if nReaded < int(batchSizeBytes) {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
@@ -1095,10 +990,7 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 		if lenVal > 0 {
 			n = lenVal * uint64(nSeedPosBytes)
 
-			nReaded, err = io.ReadFull(r, buf2048[:n])
-			if err != nil {
-				return nil, nil, 0, 0, err
-			}
+			nReaded, _ = io.ReadFull(r, buf2048[:n])
 			if nReaded < int(n) {
 				return nil, nil, 0, 0, ErrBrokenFile
 			}
