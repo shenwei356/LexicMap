@@ -68,9 +68,9 @@ Freqency of prefixes.
 
 ```
 $ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p '^(.{7})' \
-  | csvtk freq -Ht -f 3 -nr \
-  | head -n 10
+    | csvtk mutate -Ht -f 2 -p '^(.{7})' \
+    | csvtk freq -Ht -f 3 -nr \
+    | head -n 10
 AAAAAAT 2
 AAAAACC 2
 AAAAACT 2
@@ -83,9 +83,9 @@ AAAACGA 2
 AAAACTA 2
 
 $ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p '^(.{7})' \
-  | csvtk freq -Ht -f 3 -n \
-  | head -n 10
+    | csvtk mutate -Ht -f 2 -p '^(.{7})' \
+    | csvtk freq -Ht -f 3 -n \
+    | head -n 10
 AAAAAAA 1
 AAAAAAC 1
 AAAAAAG 1
@@ -103,9 +103,9 @@ In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.
 
 ```
 $ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p '^(.{7})' \
-  | csvtk freq -Ht -f 3 -n \
-  | csvtk freq -Ht -f 2 -k
+    | csvtk mutate -Ht -f 2 -p '^(.{7})' \
+    | csvtk freq -Ht -f 3 -n \
+    | csvtk freq -Ht -f 2 -k
 1       12768
 2       3616
 ```

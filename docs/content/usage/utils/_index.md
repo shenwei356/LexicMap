@@ -40,6 +40,7 @@ Global Flags:
 Subcommands:
 
 - [2blast](2blast/)
+- [merge-search-results](merge-search-results/)
 - [masks](masks/)
 - [kmers](kmers/)
 - [genomes](genomes/)

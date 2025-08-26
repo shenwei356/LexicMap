@@ -154,7 +154,7 @@ Global Flags:
             | csvtk del-header -t \
             | seqkit tab2fx \
             | seqkit locate --only-positive-strand --non-greedy --pattern CTGTGG \
-            | csvtk pretty
+            | csvtk pretty -t
 
         seqID         patternName   pattern   strand   start   end   matched
         -----------   -----------   -------   ------   -----   ---   -------
@@ -174,7 +174,7 @@ Global Flags:
     
     A similar case in another genome.
     
-       $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
+       $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_003697165.2 -v -D 100 \
             | csvtk pretty -t -W 40
        ref               seqid           pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
        ---------------   -------------   -------   -------   ------   --------   -------   ----------------------------------------

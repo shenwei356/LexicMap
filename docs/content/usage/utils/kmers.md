@@ -152,9 +152,9 @@ Global Flags:
 1. Lengths of shared prefixes between probes and captured k-mers.
 
         zcat kmers.tsv.gz \
-          | csvtk grep -t -f reversed -p  no \
-          | csvtk plot hist -t -f prefix -o prefix.hist.png \
-              --xlab "length of common prefixes between captured k-mers and masks"
+            | csvtk grep -t -f reversed -p  no \
+            | csvtk plot hist -t -f prefix -o prefix.hist.png \
+                --xlab "length of common prefixes between captured k-mers and masks"
 
 
     <img src="/LexicMap/prefix.hist.png" alt="" width="400"/>
