@@ -1001,7 +1001,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				ggg := util.Ns(0b10, k8)
 				ttt := (uint64(1) << (k << 1)) - 1
 				for i, kmer := range *_kmers {
-					if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+					if kmer == ccc || kmer == ggg || kmer == ttt ||
 						util.IsLowComplexityDust(kmer, k8) {
 						// fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
 						(*_kmers)[i] = 0
