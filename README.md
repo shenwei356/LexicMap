@@ -14,13 +14,11 @@ For the latest features and improvements, please download the [pre-release binar
 Preprint:
 
 > Wei Shen, John A. Lees, Zamin Iqbal.
-> (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
-> bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+> (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap.
+> Nature Biotechnology. [https://doi.org/10.1038/s41587-025-02812-8](https://doi.org/10.1038/s41587-025-02812-8)
 
 ## Table of contents
 
-- [ LexicMap: efficient sequence alignment against millions of prokaryotic genomes​](#-lexicmap-efficient-sequence-alignment-against-millions-of-prokaryotic-genomes)
-- [Table of contents](#table-of-contents)
 - [Features](#features)
 - [Introduction](#introduction)
 - [Quick start](#quick-start)
@@ -238,8 +236,8 @@ See the [paper](#citation) for details.
 ## Citation
 
 > Wei Shen, John A. Lees, Zamin Iqbal.
-> (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
-> bioRxiv. [https://doi.org/10.1101/2024.08.30.610459](https://doi.org/10.1101/2024.08.30.610459)
+> (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap.
+> Nature Biotechnology. [https://doi.org/10.1038/s41587-025-02812-8](https://doi.org/10.1038/s41587-025-02812-8)
 
 ## Limitations
 

@@ -1,6 +1,8 @@
 # Changelog
 
-### v0.8.0 - 2025-xx-xx
+### v0.8.0 - 2025-09-xx
+
+No changes to the index format (see [Index format changelog](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog)).
 
 - New commands:
     - **`lexicmap utils merge-search-results`: Merge a query's search results from multiple indexes**.

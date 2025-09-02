@@ -13,6 +13,42 @@ weight: 30
 - Please run `lexicmap autocompletion` to update shell autocompletion script !!!
 {{< /hint >}}
 
+## v0.8.0 - 2025-09-xx
+
+No changes to the index format (see [Index format changelog](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog)).
+
+- New commands:
+    - **`lexicmap utils merge-search-results`: Merge a query's search results from multiple indexes**.
+    - **`lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression**.
+      It's helpful when users forgot to use the flag `-N/--ref-name-regexp`
+      to extract the genome ID from the sequence file during indexing.
+      This command help to fix it without rebuilding the index.
+- `lexicmap index`:
+    - **Significantly reduce the memory usage (by up to 25%)** in the merge step.
+      Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
+- `lexicmap search`:
+    - **Reduce memory usage, particularly for batch searching (by up to 50%)**.
+    - **Improve search speed, mainly for batch searching**.
+    - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
+      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
+      in a similar way with BLAST+ 2.15.0 or later versions.
+      Negative values are allowed as a black list.
+      For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with `-t 543,-561`.
+      Users only need to provide NCBI-format taxdump files (`-T/--taxdump`, can also create from
+      any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
+      and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
+      There's no need to rebuild the index.
+    - Check if the output file and the log file are the same.
+    - Reduce the time of seed matching when using `-w`.
+    - Change the default value of `--max-query-conc` from 12 to 8.
+    - New flag `--gc-interval` (default 64, 0 for disable) for forcing garbage collection every N queries. This decreases memory usage a lot.
+- `lexicmap utils subseq`:
+    - **Accept the output file of `lexicmap search` as the input**.
+      So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
+    - Support extending aligned regions with `-U/--upstream` and/or `-D/--downstream`.
+
+## Previous versions
+
 ### v0.7.0 - 2025-04-11
 
 [v0.7.0](https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0) - 2025-04-10 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.7.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.7.0)
@@ -25,8 +61,6 @@ Please rebuild the index, as some seeds in the genome end regions were missed du
     - **Improve seed chaining** -- more accurate for complex anchors.
     - **Improve pseudoalignment in repetitive regions**.
     - Change the default value of `--seed-max-gap` from 200 to 50.
-
-## Previous versions
 
 ### v0.6.1 - 2025-03-31
 
