@@ -37,6 +37,7 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
+	github.com/edsrzf/mmap-go v1.2.0 // indirect
 	github.com/elliotwutingfeng/asciiset v0.0.0-20230602022725-51bbb787efab // indirect
 	github.com/go-fonts/liberation v0.3.1 // indirect
 	github.com/go-latex/latex v0.0.0-20230307184459-12ec69307ad9 // indirect

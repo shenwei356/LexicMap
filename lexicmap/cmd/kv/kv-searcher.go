@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/edsrzf/mmap-go"
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	// "github.com/shenwei356/lexichash"
@@ -50,9 +51,22 @@ type Searcher struct {
 	// A list of k-mer and offset pairs are intermittently saved in a []uint64
 	Indexes   [][]uint64
 	getAnchor func(uint64) uint64
+	minPrefix uint8
+
+	// loading indexes with mmap
+	saveAllPermutationsOfMarkerKmers bool
+
+	fhi           *os.File
+	MMap          mmap.MMap
+	Indexes2      []byte
+	offset0       int
+	partitionSize int
+
+	// ------------
 
 	maxKmer uint64
 	buf     []byte
+
 	// buf8    []uint8
 	buf2048 []uint8 // for parsing seed data
 
@@ -63,7 +77,8 @@ type Searcher struct {
 
 // NewSearcher creates a new Searcher for the given kv-data file.
 func NewSearcher(file string) (*Searcher, error) {
-	k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
+	k, chunkIndex, nMasks, indexes, maskPrefix, anchorPrefix, config1, err, saveAllPermutationsOfMarkerKmers, fhi, _mmap, offset0 :=
+		ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data index file")
 	}
@@ -76,10 +91,19 @@ func NewSearcher(file string) (*Searcher, error) {
 	scr := &Searcher{
 		K:          k,
 		ChunkIndex: chunkIndex,
-		ChunkSize:  len(indexes),
+		ChunkSize:  nMasks,
 		Indexes:    indexes,
 		getAnchor:  AnchorExtracter(k, maskPrefix, anchorPrefix),
+		minPrefix:  maskPrefix + anchorPrefix,
 		fh:         fh,
+
+		saveAllPermutationsOfMarkerKmers: saveAllPermutationsOfMarkerKmers,
+
+		fhi:           fhi,
+		MMap:          _mmap,
+		Indexes2:      []byte(_mmap),
+		offset0:       offset0,
+		partitionSize: 8 + (int(math.Pow(4, float64(anchorPrefix)))+1)<<4,
 
 		maxKmer: 1<<(k<<1) - 1,
 		buf:     make([]byte, 64),
@@ -90,6 +114,7 @@ func NewSearcher(file string) (*Searcher, error) {
 
 		Use3BytesForSeedPos: config1&MaskUse3BytesForSeedPos > 0,
 	}
+	// fmt.Println(scr.saveAllPermutationsOfMarkerKmers, scr.ChunkSize, scr.offset0, scr.partitionSize)
 	return scr, nil
 }
 
@@ -138,8 +163,11 @@ const seedPosBatchSize = 256
 // Please remember to recycle the results object with RecycleSearchResults().
 func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
 	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
-	if len(kmers) != len(scr.Indexes) {
+	if len(kmers) != scr.ChunkSize {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
+	}
+	if p < scr.minPrefix {
+		return nil, fmt.Errorf("the min prefix (%d) can't be smaller than %d. If you do want to use it, please run 'lexicmap utils reindex-seeds' with a smaller --partitions", p, scr.minPrefix)
 	}
 	// if kmer > scr.maxKmer {
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
@@ -220,11 +248,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 	suffix2 = (k - p) << 1
 	mask = (1 << suffix2) - 1 // 1111
-	for iQ, index := range scr.Indexes {
-		if len(index) == 0 { // this hapens when no captured k-mer for a mask
-			continue
-		}
 
+	saveAllPermutationsOfMarkerKmers := scr.saveAllPermutationsOfMarkerKmers
+	var index []uint64
+	for iQ := 0; iQ < scr.ChunkSize; iQ++ {
 		// scope to search
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
@@ -232,6 +259,15 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 		if kmer == 0 {
 			continue
+		}
+
+		// fmt.Printf("-------------- seed chunk: %d, i: %d\n", scr.ChunkIndex, iQ)
+
+		if !saveAllPermutationsOfMarkerKmers {
+			if len(scr.Indexes[iQ]) == 0 { // this hapens when no captured k-mer for a mask
+				continue
+			}
+			index = scr.Indexes[iQ]
 		}
 
 		if prefixSearch {
@@ -242,60 +278,24 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			rightBound = kmer
 		}
 
-		// if iQ+chunkIndex == 19333 {
-		// 	fmt.Printf("k:%d, p:%d\n", k, p)
-		// 	fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
-		// 	fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
-		// 	fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
-		// }
+		// fmt.Printf("k:%d, p:%d\n", k, p)
+		// fmt.Printf("%s\n", lexichash.MustDecode(kmer, k))
+		// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
+		// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
 
-		// -----------------------------------------------------
-		// // find the nearest anchor
+		if !saveAllPermutationsOfMarkerKmers {
+			i = int(getAnchor(leftBound)<<1) + 2
+			offset = scr.Indexes[iQ][i+1]
+		} else {
+			i = scr.offset0 + iQ*scr.partitionSize + 8 + int(getAnchor(leftBound)+1)<<4
+			offset = be.Uint64(scr.Indexes2[i+8 : i+16])
+		}
 
-		// if len(index) == 2 {
-		// 	i = 0
-		// 	offset = index[1]
-		// } else {
-		// 	last = len(index) - 2
-		// 	// fmt.Printf("len: %d, last: %d\n", len(index), last)
-		// 	begin, end = 0, last
-		// 	for {
-		// 		middle = begin + (end-begin)>>1
-		// 		if middle&1 > 0 {
-		// 			middle--
-		// 		}
-		// 		if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-		// 			i = begin
-		// 			break
-		// 		}
-		// 		// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-		// 		// 	index[middle], lexichash.MustDecode(index[middle], k))
-		// 		if leftBound <= index[middle] { // when they are equal, we still need to check
-		// 			// fmt.Printf(" left\n")
-		// 			end = middle // new end
-		// 		} else {
-		// 			// fmt.Printf(" right\n")
-		// 			begin = middle // new start
-		// 		}
-		// 		if begin+2 == end { // next to each other
-		// 			i = begin
-		// 			break
-		// 		}
-		// 	}
-		// 	offset = index[i+1]
-		// }
-
-		i = int(getAnchor(leftBound)<<1) + 2
-		offset = index[i+1]
 		is2ndKmer = offset&1 == 1
 		offset >>= 1
 		if offset == 0 {
 			continue
 		}
-
-		// if iQ+chunkIndex == 19333 {
-		// 	fmt.Printf("i: %d, kmer:%s, offset: %d\n", i, lexichash.MustDecode(index[i], k), offset)
-		// }
 
 		// -----------------------------------------------------
 		// check one by one
@@ -339,12 +339,28 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 			if first {
 				first = false
 
-				if !is2ndKmer {
-					kmer1 = index[i] // from the index
-					kmer2 = kmer1 + v2
+				if !saveAllPermutationsOfMarkerKmers {
+					if !is2ndKmer {
+						kmer1 = index[i] // from the index
+						kmer2 = kmer1 + v2
+					} else {
+						kmer1 = 0
+						kmer2 = index[i] // from the index
+					}
 				} else {
-					kmer1 = 0
-					kmer2 = index[i] // from the index
+					if !is2ndKmer {
+						kmer1 = be.Uint64(scr.Indexes2[i : i+8]) // from the index
+						if kmer1 == 0 {                          // not found
+							break
+						}
+						kmer2 = kmer1 + v2
+					} else {
+						kmer1 = 0
+						kmer2 = be.Uint64(scr.Indexes2[i : i+8]) // from the index
+						if kmer2 == 0 {                          // not found
+							break
+						}
+					}
 				}
 			} else {
 				kmer1 = v1 + _offset
@@ -576,9 +592,13 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 // Search2 is very similar to Search, only the data structure of input kmers is different.
 func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
 	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
-	if len(kmers) != len(scr.Indexes) {
+	if len(kmers) != scr.ChunkSize {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
 	}
+	if p < scr.minPrefix {
+		return nil, fmt.Errorf("the min prefix (%d) can't be smaller than %d. If you do want to use it, please run 'lexicmap utils reindex-seeds' with a smaller --partitions", p, scr.minPrefix)
+	}
+
 	// if kmer > scr.maxKmer {
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	// }
@@ -658,9 +678,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 	suffix2 = (k - p) << 1
 	mask = (1 << suffix2) - 1 // 1111
-	for iQ, index := range scr.Indexes {
-		if len(index) == 0 { // this hapens when no captured k-mer for a mask
-			continue
+
+	saveAllPermutationsOfMarkerKmers := scr.saveAllPermutationsOfMarkerKmers
+	var index []uint64
+	for iQ := 0; iQ < scr.ChunkSize; iQ++ {
+		if !saveAllPermutationsOfMarkerKmers {
+			if len(scr.Indexes[iQ]) == 0 { // this hapens when no captured k-mer for a mask
+				continue
+			}
+			index = scr.Indexes[iQ]
 		}
 
 		// scope to search
@@ -686,44 +712,14 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 			// fmt.Printf("%s\n", lexichash.MustDecode(leftBound, k))
 			// fmt.Printf("%s\n", lexichash.MustDecode(rightBound, k))
 
-			// -----------------------------------------------------
-			// // find the nearest anchor
+			if !scr.saveAllPermutationsOfMarkerKmers {
+				i = int(getAnchor(leftBound)<<1) + 2
+				offset = index[i+1]
+			} else {
+				i = scr.offset0 + iQ*scr.partitionSize + 8 + int(getAnchor(leftBound)+1)<<4
+				offset = be.Uint64(scr.Indexes2[i+8 : i+16])
+			}
 
-			// if len(index) == 2 {
-			// 	i = 0
-			// 	offset = index[1]
-			// } else {
-			// 	last = len(index) - 2
-			// 	// fmt.Printf("len: %d, last: %d\n", len(index), last)
-			// 	begin, end = 0, last
-			// 	for {
-			// 		middle = begin + (end-begin)>>1
-			// 		if middle&1 > 0 {
-			// 			middle--
-			// 		}
-			// 		if middle == begin { // when there are only two indexes, middle = 1 and then middle = 0
-			// 			i = begin
-			// 			break
-			// 		}
-			// 		// fmt.Printf("[%d, %d] %d: %d %s\n", begin, end, middle,
-			// 		// 	index[middle], lexichash.MustDecode(index[middle], k))
-			// 		if leftBound <= index[middle] { // when they are equal, we still need to check
-			// 			// fmt.Printf(" left\n")
-			// 			end = middle // new end
-			// 		} else {
-			// 			// fmt.Printf(" right\n")
-			// 			begin = middle // new start
-			// 		}
-			// 		if begin+2 == end { // next to each other
-			// 			i = begin
-			// 			break
-			// 		}
-			// 	}
-			// 	offset = index[i+1]
-			// }
-
-			i = int(getAnchor(leftBound)<<1) + 2
-			offset = index[i+1]
 			is2ndKmer = offset&1 == 1
 			offset >>= 1
 			if offset == 0 {
@@ -775,12 +771,28 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 				if first {
 					first = false
 
-					if !is2ndKmer {
-						kmer1 = index[i] // from the index
-						kmer2 = kmer1 + v2
+					if !saveAllPermutationsOfMarkerKmers {
+						if !is2ndKmer {
+							kmer1 = index[i] // from the index
+							kmer2 = kmer1 + v2
+						} else {
+							kmer1 = 0
+							kmer2 = index[i] // from the index
+						}
 					} else {
-						kmer1 = 0
-						kmer2 = index[i] // from the index
+						if !is2ndKmer {
+							kmer1 = be.Uint64(scr.Indexes2[i : i+8]) // from the index
+							if kmer1 == 0 {                          // not found
+								break
+							}
+							kmer2 = kmer1 + v2
+						} else {
+							kmer1 = 0
+							kmer2 = be.Uint64(scr.Indexes2[i : i+8]) // from the index
+							if kmer2 == 0 {                          // not found
+								break
+							}
+						}
 					}
 				} else {
 					kmer1 = v1 + _offset
@@ -1018,6 +1030,18 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 // Close closes the searcher.
 func (scr *Searcher) Close() error {
+	if scr.saveAllPermutationsOfMarkerKmers {
+		err := scr.MMap.Unmap()
+		if err != nil {
+			return err
+		}
+
+		err = scr.fhi.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return scr.fh.Close()
 }
 

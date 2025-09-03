@@ -23,6 +23,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -223,10 +224,12 @@ Attention:
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+			k, _, _, indexes, _, anchorPrefix, config1, err, saveAllPermutationsOfMarkerKmers, fhi, _mmap, offset0 :=
+				kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
 			}
+			partitionSize := 8 + (int(math.Pow(4, float64(anchorPrefix)))+1)<<4
 
 			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0
 
@@ -237,7 +240,7 @@ Attention:
 				fUint64 = kv.Uint64ThreeBytes
 			}
 
-			if len(indexes[iMask]) == 0 { // no k-mers
+			if !saveAllPermutationsOfMarkerKmers && len(indexes[iMask]) == 0 { // no k-mers
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(startTime)))
 				}
@@ -250,7 +253,23 @@ Attention:
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
-			_, err = r.Seek(int64(indexes[iMask][1])>>1, 0)
+			var kmerFirst, offsetFirst uint64
+			if !saveAllPermutationsOfMarkerKmers {
+				kmerFirst = indexes[iMask][0]
+				offsetFirst = indexes[iMask][1] >> 1
+			} else {
+				i := offset0 + iMask*partitionSize
+				numAnchors := be.Uint64(_mmap[i : i+8])
+				if numAnchors == 0 {
+					continue
+				}
+
+				i += 8
+				kmerFirst = be.Uint64(_mmap[i : i+8])
+				offsetFirst = be.Uint64(_mmap[i+8:i+16]) >> 1
+			}
+
+			_, err = r.Seek(int64(offsetFirst), 0)
 			if err != nil {
 				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))
 			}
@@ -289,7 +308,7 @@ Attention:
 				}
 
 				if first {
-					kmer1 = indexes[iMask][0] // from the index
+					kmer1 = kmerFirst // from the index
 					first = false
 				} else {
 					kmer1 = v1 + _offset
@@ -382,6 +401,14 @@ Attention:
 			}
 
 			r.Close()
+
+			if saveAllPermutationsOfMarkerKmers {
+				err := _mmap.Unmap()
+				checkError(err)
+
+				err = fhi.Close()
+				checkError(err)
+			}
 
 			if showProgressBar {
 				chDuration <- time.Duration(float64(time.Since(startTime)))

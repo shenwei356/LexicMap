@@ -33,7 +33,12 @@ No changes to the index format (see [Index format changelog](https://bioinf.shen
     - **Accept the output file of `lexicmap search` as the input**.
       So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
     - Support extending aligned regions with `-U/--upstream` and/or `-D/--downstream`.
-
+- `lexicmap utils reindex-seeds`:
+    - (Experimental feature) Add a new flag `--plain-format` to save indexes of seed data in plain format,
+      so marker/anchor k-mers and their offsets in the seed file can be accessed with mmap.
+      This reduces the startup time (1-6 seconds) and seed matching time. 
+      However, this feature only benefits searching a small number of queries against big databases.
+    
 ### v0.7.0 - 2025-04-11
 
 Please rebuild the index, as some seeds in the genome end regions were missed during computation.

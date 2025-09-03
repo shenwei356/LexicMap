@@ -39,6 +39,22 @@ var reindexSeedsCmd = &cobra.Command{
 	Short: "Recreate indexes of k-mer-value (seeds) data",
 	Long: `Recreate indexes of k-mer-value (seeds) data
 
+Experimental feature:
+
+  The flag --plain-format can save indexes of seed data in plain format,
+  so marker/anchor k-mers and their offsets in the seed file can be accessed with mmap.
+  This reduces the startup time (1-6 seconds).
+  
+  This flag is usually used along with a bigger value of --partition, such as 65536 (4^8),
+  to reduce the seed matching time, by omitting the reading of some unwanted seed data.
+  However, larger values of --partition would result in bigger .idx files. 
+  E.g., the default 4096 requires < 1 GB, while 655536 needs 20 GB.
+
+  Attention:
+    This feature only benefits searching a small number of queries against big databases.
+  For a lot of queries, the speed would be slower, and the memory would be too high,
+  as more and more seed index data will be mapped into memory.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -53,10 +69,16 @@ var reindexSeedsCmd = &cobra.Command{
 
 		partitions := getFlagPositiveInt(cmd, "partitions")
 
+		plainFormat := getFlagBool(cmd, "plain-format")
+
 		// ---------------------------------------------------------------
 
 		if opt.Verbose {
-			log.Infof("recreating seed indexes with %d partitions for: %s", partitions, dbDir)
+			if !plainFormat {
+				log.Infof("recreating seed indexes with %d partitions for: %s", partitions, dbDir)
+			} else {
+				log.Infof("recreating plain seed indexes with %d partitions for: %s", partitions, dbDir)
+			}
 		}
 
 		// info file for the number of genome batches
@@ -119,7 +141,7 @@ var reindexSeedsCmd = &cobra.Command{
 
 			go func(file string) {
 				timeStart := time.Now()
-				err := kv.CreateKVIndex(file, partitions)
+				err := kv.CreateKVIndex(file, partitions, plainFormat) //
 				checkError(err)
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / threadsFloat)
@@ -156,7 +178,10 @@ func init() {
 	reindexSeedsCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 	reindexSeedsCmd.Flags().IntP("partitions", "", 4096,
-		formatFlagUsage(`Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
+		formatFlagUsage(`Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4`))
+
+	reindexSeedsCmd.Flags().BoolP("plain-format", "", false,
+		formatFlagUsage(`Save indexes of seed data in plain format for faster quering with mmap, at the cost of bigger index size.`))
 
 	reindexSeedsCmd.SetUsageTemplate(usageTemplate(""))
 }

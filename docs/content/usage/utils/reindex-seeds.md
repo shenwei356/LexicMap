@@ -9,14 +9,32 @@ weight: 50
 $ lexicmap utils reindex-seeds -h
 Recreate indexes of k-mer-value (seeds) data
 
+Experimental feature:
+
+  The flag --plain-format can save indexes of seed data in plain format,
+  so marker/anchor k-mers and their offsets in the seed file can be accessed with mmap.
+  This reduces the startup time (1-6 seconds).
+  
+  This flag is usually used along with a bigger value of --partition, such as 65536 (4^8),
+  to reduce the seed matching time, by omitting the reading of some unwanted seed data.
+  However, larger values of --partition would result in bigger .idx files. 
+  E.g., the default 4096 requires < 1 GB, while 655536 needs 20 GB.
+
+  Attention:
+    This feature only benefits searching a small number of queries against big databases.
+  For a lot of queries, the speed would be slower, and the memory would be too high,
+  as more and more seed index data will be mapped into memory.
+
 Usage:
-  lexicmap utils reindex-seeds [flags]
+  lexicmap utils reindex-seeds [flags] 
 
 Flags:
   -h, --help             help for reindex-seeds
   -d, --index string     ► Index directory created by "lexicmap index".
       --partitions int   ► Number of partitions for re-indexing seeds (k-mer-value data) files. The
-                         value needs to be the power of 4. (default 4096)
+                         value needs to be the power of 4 (default 4096)
+      --plain-format     ► Save indexes of seed data in plain format for faster quering with mmap, at
+                         the cost of bigger index size.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

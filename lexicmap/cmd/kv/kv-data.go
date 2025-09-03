@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/edsrzf/mmap-go"
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/twotwotwo/sorts/sortutil"
@@ -202,6 +203,7 @@ func (wtr *Writer) Close() (err error) {
 }
 
 const MaskUse3BytesForSeedPos uint8 = 1
+const MaskSaveAllPermutationsOfMarkerKmers uint8 = 0b10
 
 // NewWriter returns a new writer
 func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool) (*Writer, error) {
@@ -606,10 +608,10 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 //
 // A list of k-mer and offset pairs are intermittently saved in a []uint64.
 // e.g., [k1, o1, k2, o2].
-func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
+func ReadKVIndex(file string) (uint8, int, int, [][]uint64, uint8, uint8, uint8, error, bool, *os.File, mmap.MMap, int) {
 	fh, err := os.Open(file)
 	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+		return 0, -1, 0, nil, 0, 0, 0, err, false, nil, nil, 0
 	}
 	r := bufio.NewReaderSize(fh, 16<<10)
 	// r := poolBufReader.Get().(*bufio.Reader)
@@ -626,14 +628,17 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 
 	var n int
 
+	var offset0 int
+
 	// check the magic number
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+		return 0, -1, 0, nil, 0, 0, 0, err, false, nil, nil, offset0
 	}
 	if n < 8 {
-		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
+		return 0, -1, 0, nil, 0, 0, 0, ErrBrokenFile, false, nil, nil, offset0
 	}
+	offset0 += 8
 	same := true
 	for i := 0; i < 8; i++ {
 		if MagicIdx[i] != buf[i] {
@@ -642,40 +647,61 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		}
 	}
 	if !same {
-		return 0, -1, nil, 0, 0, 0, ErrInvalidFileFormat
+		return 0, -1, 0, nil, 0, 0, 0, ErrInvalidFileFormat, false, nil, nil, offset0
 	}
+
 	// read version information
 	n, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+		return 0, -1, 0, nil, 0, 0, 0, err, false, nil, nil, offset0
 	}
 	if n < 8 {
-		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
+		return 0, -1, 0, nil, 0, 0, 0, ErrBrokenFile, false, nil, nil, offset0
 	}
+	offset0 += 8
 	// check compatibility
 	if MainVersion != buf[0] {
-		return 0, -1, nil, 0, 0, 0, ErrVersionMismatch
+		return 0, -1, 0, nil, 0, 0, 0, ErrVersionMismatch, false, nil, nil, offset0
 	}
 	k := buf[2] // k-mer size
 	maskPrefix := buf[3]
 	anchorPrefix := buf[4]
 	config1 := buf[5]
 
+	var saveAllPermutationsOfMarkerKmers bool
+	if config1&MaskSaveAllPermutationsOfMarkerKmers > 0 {
+		saveAllPermutationsOfMarkerKmers = true
+	}
+
 	// index of the first mask in current chunk.
 	var iFirstMask int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+		return 0, -1, 0, nil, 0, 0, 0, err, saveAllPermutationsOfMarkerKmers, nil, nil, offset0
 	}
+	offset0 += 8
 	iFirstMask = int(be.Uint64(buf))
 
 	// mask chunk size
 	var nMasks int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+		return 0, -1, 0, nil, 0, 0, 0, err, saveAllPermutationsOfMarkerKmers, nil, nil, offset0
 	}
+	offset0 += 8
 	nMasks = int(be.Uint64(buf))
+
+	// -------------------------------------------------------------
+
+	var _mmap mmap.MMap
+	if saveAllPermutationsOfMarkerKmers {
+		fh.Seek(0, 0)
+		_mmap, err = mmap.Map(fh, mmap.RDONLY, 0)
+
+		return k, iFirstMask, nMasks, nil, maskPrefix, anchorPrefix, config1, err, saveAllPermutationsOfMarkerKmers, fh, _mmap, offset0
+	}
+
+	// -------------------------------------------------------------
 
 	// the number of anchors
 	var nAnchors int
@@ -694,7 +720,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 	for i := 0; i < nMasks; i++ {
 		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return 0, -1, nil, 0, 0, 0, err
+			return 0, -1, nMasks, nil, 0, 0, 0, err, saveAllPermutationsOfMarkerKmers, nil, nil, offset0
 		}
 		nAnchors = int(be.Uint64(buf))
 
@@ -708,7 +734,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		for j = 0; j < nAnchors; j++ {
 			_, err = io.ReadFull(r, buf16)
 			if err != nil {
-				return 0, -1, nil, 0, 0, 0, err
+				return 0, -1, nMasks, nil, 0, 0, 0, err, saveAllPermutationsOfMarkerKmers, nil, nil, offset0
 			}
 			kmer = be.Uint64(buf16[:8])
 
@@ -732,7 +758,9 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		data[i] = index
 	}
 
-	return k, iFirstMask, data, maskPrefix, anchorPrefix, config1, nil
+	fh.Close()
+
+	return k, iFirstMask, nMasks, data, maskPrefix, anchorPrefix, config1, nil, saveAllPermutationsOfMarkerKmers, nil, nil, offset0
 }
 
 // ReadKVIndexInfo read the information.
@@ -813,7 +841,7 @@ var poolUint64s = &sync.Pool{New: func() interface{} {
 }}
 
 // CreateKVIndex recreates kv index file for the kv-data file.
-func CreateKVIndex(file string, nAnchors int) error {
+func CreateKVIndex(file string, nAnchors int, saveAllPermutationsOfMarkerKmers bool) error {
 	fh, err := os.Open(file)
 	if err != nil {
 		return errors.Wrapf(err, "reading kv-data file")
@@ -921,6 +949,11 @@ func CreateKVIndex(file string, nAnchors int) error {
 		return err
 	}
 
+	// add a new flag to config1 to indicate that all permutation of marker-kmers are saved, not just non-zero ones.
+	if saveAllPermutationsOfMarkerKmers {
+		config1 |= MaskSaveAllPermutationsOfMarkerKmers
+	}
+
 	// 8-byte meta info
 	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, uint8(anchorPrefix), config1})
 	if err != nil {
@@ -942,7 +975,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 	var hasKmer2 bool  // check if there's a kmer2
 	var _offset uint64 // offset of kmer
 	var nBytes int
-	var nReaded, nDecoded int
+	var nReaded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
@@ -971,7 +1004,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 		nKmers = int(be.Uint64(buf8))
 		offset += 8
 
-		if nKmers == 0 { // this hapens when no captured k-mer for a mask
+		if !saveAllPermutationsOfMarkerKmers && nKmers == 0 { // this hapens when no captured k-mer for a mask
 			// 8-byte the number of anchors
 			err = binary.Write(wi, be, uint64(0))
 			if err != nil {
@@ -986,197 +1019,173 @@ func CreateKVIndex(file string, nAnchors int) error {
 		p2o[1] = uint64(offset) << 1 // offset of the first k-mer
 
 		// fmt.Printf("nKmers: %d, nAnchors: %d, offset: %d\n", nKmers, _nAnchors, offset)
-		for {
-			// ------------------------------------------------------------------------
+		if nKmers > 0 {
+			for {
+				// ------------------------------------------------------------------------
 
-			// read the control byte
-			_, err = io.ReadFull(r, buf[:1])
-			if err != nil {
-				return err
-			}
-			ctrlByte = buf[0]
+				// read the control byte
+				_, err = io.ReadFull(r, buf[:1])
+				if err != nil {
+					return err
+				}
+				ctrlByte = buf[0]
 
-			lastPair = ctrlByte&128 > 0 // 1<<7
-			hasKmer2 = ctrlByte&64 == 0 // 1<<6
+				lastPair = ctrlByte&128 > 0 // 1<<7
+				hasKmer2 = ctrlByte&64 == 0 // 1<<6
 
-			ctrlByte &= 63
+				ctrlByte &= 63
 
-			// parse the control byte
-			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+				// parse the control byte
+				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
-			// read encoded bytes
-			nReaded, err = io.ReadFull(r, buf[:nBytes])
-			if err != nil {
-				return err
-			}
-			if nReaded < nBytes {
-				return ErrBrokenFile
-			}
+				// read encoded bytes
+				nReaded, _ = io.ReadFull(r, buf[:nBytes])
+				if nReaded < nBytes {
+					return ErrBrokenFile
+				}
 
-			v1, v2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-			if nDecoded == 0 {
-				return ErrBrokenFile
-			}
+				v1, v2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
-			kmer1 = v1 + _offset
-			kmer2 = kmer1 + v2
-			_offset = kmer2
+				kmer1 = v1 + _offset
+				kmer2 = kmer1 + v2
+				_offset = kmer2
 
-			// ------------------------------------------------------------------------
-			// index anchor
+				// ------------------------------------------------------------------------
+				// index anchor
 
-			// key 1
-			prefix = getAnchor(kmer1)
-			if first || prefix != prefixPre { // the first new prefix
-				first = false
+				// key 1
+				prefix = getAnchor(kmer1)
+				if first || prefix != prefixPre { // the first new prefix
+					first = false
 
-				_j = int(prefix<<1) + 2
-				p2o[_j], p2o[_j+1] = kmer1, uint64(offset)<<1
+					_j = int(prefix<<1) + 2
+					p2o[_j], p2o[_j+1] = kmer1, uint64(offset)<<1
 
-				prefixPre = prefix
-			}
+					prefixPre = prefix
+				}
 
-			offset1 = uint64(offset) << 1 // for kmer2, just for keeping compatibility
+				offset1 = uint64(offset) << 1 // for kmer2, just for keeping compatibility
 
-			// ------------------ lengths of values -------------------
+				// ------------------ lengths of values -------------------
 
-			offset += 1 + nBytes
+				offset += 1 + nBytes
 
-			// read the control byte
-			_, err = io.ReadFull(r, buf[:1])
-			if err != nil {
-				return err
-			}
-			ctrlByte = buf[0]
+				// read the control byte
+				_, err = io.ReadFull(r, buf[:1])
+				if err != nil {
+					return err
+				}
+				ctrlByte = buf[0]
 
-			// parse the control byte
-			nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
+				// parse the control byte
+				nBytes = util.CtrlByte2ByteLengthsUint64(ctrlByte)
 
-			// read encoded bytes
-			nReaded, err = io.ReadFull(r, buf[:nBytes])
-			if err != nil {
-				return err
-			}
-			if nReaded < nBytes {
-				return ErrBrokenFile
-			}
+				// read encoded bytes
+				nReaded, _ = io.ReadFull(r, buf[:nBytes])
+				if nReaded < nBytes {
+					return ErrBrokenFile
+				}
 
-			offset += 1 + nBytes
+				offset += 1 + nBytes
 
-			lenVal1, lenVal2, nDecoded = util.Uint64s(ctrlByte, buf[:nBytes])
-			if nDecoded == 0 {
-				return ErrBrokenFile
-			}
+				lenVal1, lenVal2, _ = util.Uint64s(ctrlByte, buf[:nBytes])
 
-			// ------------------ values -------------------
+				// ------------------ values -------------------
 
-			// for j = 0; j < lenVal1; j++ {
-			// 	nReaded, err = io.ReadFull(r, buf8)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	if nReaded < 8 {
-			// 		return ErrBrokenFile
-			// 	}
-			// }
-			lenVal = lenVal1
-			for lenVal > 256 {
+				// for j = 0; j < lenVal1; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return ErrBrokenFile
+				// 	}
+				// }
+				lenVal = lenVal1
 				if !use3BytesForSeedPos {
 					n = 2048
 				} else {
 					n = 1792
 				}
+				for lenVal > 256 {
+					nReaded, _ = io.ReadFull(r, buf2048[:n])
+					if nReaded < n {
+						return ErrBrokenFile
+					}
 
-				nReaded, err = io.ReadFull(r, buf2048[:n])
-				if err != nil {
-					return err
+					lenVal -= 256
+					offset += n
 				}
-				if nReaded < n {
-					return ErrBrokenFile
-				}
+				if lenVal > 0 {
+					if !use3BytesForSeedPos {
+						n = int(lenVal << 3)
+					} else {
+						n = int(lenVal * 7)
+					}
 
-				lenVal -= 256
-				offset += n
-			}
-			if lenVal > 0 {
-				if !use3BytesForSeedPos {
-					n = int(lenVal << 3)
-				} else {
-					n = int(lenVal * 7)
-				}
+					nReaded, _ = io.ReadFull(r, buf2048[:n])
+					if nReaded < n {
+						return ErrBrokenFile
+					}
 
-				nReaded, err = io.ReadFull(r, buf2048[:n])
-				if err != nil {
-					return err
-				}
-				if nReaded < n {
-					return ErrBrokenFile
+					offset += n
 				}
 
-				offset += n
-			}
+				if lastPair && !hasKmer2 {
+					break
+				}
 
-			if lastPair && !hasKmer2 {
-				break
-			}
+				// key 2
+				prefix = getAnchor(kmer2)
+				if prefix != prefixPre { // the first new prefix
+					_j = int(prefix<<1) + 2
+					p2o[_j], p2o[_j+1] = kmer2, offset1|1
 
-			// key 2
-			prefix = getAnchor(kmer2)
-			if prefix != prefixPre { // the first new prefix
-				_j = int(prefix<<1) + 2
-				p2o[_j], p2o[_j+1] = kmer2, offset1|1
+					prefixPre = prefix
+				}
 
-				prefixPre = prefix
-			}
-
-			// for j = 0; j < lenVal2; j++ {
-			// 	nReaded, err = io.ReadFull(r, buf8)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	if nReaded < 8 {
-			// 		return ErrBrokenFile
-			// 	}
-			// }
-			lenVal = lenVal2
-			for lenVal > 256 {
+				// for j = 0; j < lenVal2; j++ {
+				// 	nReaded, err = io.ReadFull(r, buf8)
+				// 	if err != nil {
+				// 		return err
+				// 	}
+				// 	if nReaded < 8 {
+				// 		return ErrBrokenFile
+				// 	}
+				// }
+				lenVal = lenVal2
 				if !use3BytesForSeedPos {
 					n = 2048
 				} else {
 					n = 1792
 				}
+				for lenVal > 256 {
+					nReaded, _ = io.ReadFull(r, buf2048[:n])
+					if nReaded < n {
+						return ErrBrokenFile
+					}
 
-				nReaded, err = io.ReadFull(r, buf2048[:n])
-				if err != nil {
-					return err
+					lenVal -= 256
+					offset += n
 				}
-				if nReaded < n {
-					return ErrBrokenFile
-				}
+				if lenVal > 0 {
+					if !use3BytesForSeedPos {
+						n = int(lenVal << 3)
+					} else {
+						n = int(lenVal * 7)
+					}
 
-				lenVal -= 256
-				offset += n
-			}
-			if lenVal > 0 {
-				if !use3BytesForSeedPos {
-					n = int(lenVal << 3)
-				} else {
-					n = int(lenVal * 7)
-				}
+					nReaded, _ = io.ReadFull(r, buf2048[:n])
+					if nReaded < n {
+						return ErrBrokenFile
+					}
 
-				nReaded, err = io.ReadFull(r, buf2048[:n])
-				if err != nil {
-					return err
-				}
-				if nReaded < n {
-					return ErrBrokenFile
+					offset += n
 				}
 
-				offset += n
-			}
-
-			if lastPair {
-				break
+				if lastPair {
+					break
+				}
 			}
 		}
 
@@ -1187,10 +1196,12 @@ func CreateKVIndex(file string, nAnchors int) error {
 		var nAnchors uint64
 		var offset2 uint64
 		e := len(p2o) >> 1
-		for i := 0; i < e; i++ {
-			offset2 = p2o[i<<1+1]
-			if offset2 > 0 {
-				nAnchors++
+		if nKmers > 0 {
+			for i := 0; i < e; i++ {
+				offset2 = p2o[i<<1+1]
+				if offset2 > 0 {
+					nAnchors++
+				}
 			}
 		}
 		// 8-byte the number of anchors
@@ -1202,15 +1213,29 @@ func CreateKVIndex(file string, nAnchors int) error {
 		p2o[0] = nAnchors // might be useful
 
 		// k-mer and offset
-		for i := 0; i < e; i++ {
-			_j = i << 1
-			kmer, offset2 = p2o[_j], p2o[_j+1]
-			if offset2 > 0 {
+		if saveAllPermutationsOfMarkerKmers {
+			for i := 0; i < e; i++ {
+				_j = i << 1
+				kmer, offset2 = p2o[_j], p2o[_j+1]
+
 				be.PutUint64(buf[:8], kmer)      // k-mer
 				be.PutUint64(buf[8:16], offset2) // offset
 				_, err = wi.Write(buf[:16])
 				if err != nil {
 					return err
+				}
+			}
+		} else {
+			for i := 0; i < e; i++ {
+				_j = i << 1
+				kmer, offset2 = p2o[_j], p2o[_j+1]
+				if offset2 > 0 {
+					be.PutUint64(buf[:8], kmer)      // k-mer
+					be.PutUint64(buf[8:16], offset2) // offset
+					_, err = wi.Write(buf[:16])
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
