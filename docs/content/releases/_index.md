@@ -13,7 +13,7 @@ weight: 30
 - Please run `lexicmap autocompletion` to update shell autocompletion script !!!
 {{< /hint >}}
 
-## v0.8.0 - 2025-09-xx
+## v0.8.0 - 2025-09-10
 
 No changes to the index format (see [Index format changelog](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog)).
 

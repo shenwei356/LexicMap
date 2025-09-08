@@ -1,4 +1,4 @@
-## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="30"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
+## <a href="https://bioinf.shenwei.me/LexicMap"><img src="logo.svg" width="36"/></a> LexicMap: efficient sequence alignment against millions of prokaryotic genomes​
 
 [![Latest Version](https://img.shields.io/github/release/shenwei356/LexicMap.svg?style=flat?maxAge=86400)](https://github.com/shenwei356/LexicMap/releases)
 [![Anaconda Cloud](https://anaconda.org/bioconda/lexicmap/badges/version.svg)](https://anaconda.org/bioconda/lexicmap)
@@ -11,7 +11,7 @@ Documents: https://bioinf.shenwei.me/LexicMap
 
 For the latest features and improvements, please download the [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10).
 
-Preprint:
+Please cite:
 
 > Wei Shen, John A. Lees, Zamin Iqbal.
 > (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap.
@@ -35,19 +35,19 @@ Preprint:
 ## Features
 
 1. **The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2**. It
-    - performs **base-level alignment**, with `qcovGnm`, `qcovHSP`, `pident`, `evalue` and `bitscore` returned,
+    - **performs base-level alignment**, with `qcovGnm`, `qcovHSP`, `pident`, `evalue` and `bitscore` returned,
       both in TSV and pairwise alignment format ([output format](https://bioinf.shenwei.me/LexicMap/tutorials/search/#output)).
         - provides a genome-wide query coverage metric (`qcovGnm`), 
           which enables accurate interpretation of search results - particularly for [circular queries (such as plasmid, virus, and mtDNA)](https://bioinf.shenwei.me/LexicMap/tutorials/search/#searching-with-plasmids-or-other-longer-queries)
            against both complete and fragmented assemblies.
-    - returns all possible matches, including multiple copies of a gene in a genome.
+    - **returns all possible matches**, including multiple copies of a gene in a genome.
 1. **The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes**.
 1. LexicMap is **easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
    we provide [binary files](https://github.com/shenwei356/LexicMap/releases/)** with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
 2. LexicMap is **easy to use** (see [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/), [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/), and [FAQs](https://bioinf.shenwei.me/LexicMap/faqs/)).
     - [Database building](https://bioinf.shenwei.me/LexicMap/tutorials/index/) requires only a simple command, accepting input from files, a file list, or even a directory.
     - [Sequence searching](https://bioinf.shenwei.me/LexicMap/tutorials/search/) supports limiting search by TaxId(s), provides a progress bar.
-    - [Several utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available to resume unfinished indexing, and explore the index data, extract indexed subsequences.
+    - [Several utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available to resume unfinished indexing, explore the index data, merge search results, extract matched subsequences and more.
 
 ## Introduction
 
@@ -74,7 +74,7 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million prokaryotic assemblies** respectively).
 1. When searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
     
-    **With LexicMap v0.7.0** (48 CPUs),
+    **With LexicMap v0.7.0** (48 CPUs, indexes and queries queries in HDDs),
 
     |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM     |
     |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|-------:|
@@ -88,8 +88,8 @@ However, given the increasing rate at which genomes are sequenced, **existing to
     1. Only the best alignment of a genome is used to evaluate alignment similarity:
         - high-similarity: (a) qcov >= 90% (genes) or 70% (plasmids), (b) pident>=90%.
         - medium-similarity: (a) not belong to high-similarity, (b) qcov >= 50% (genes) or 30% (plasmids), (c) pident>=80%.
-        - low-similarity: left.
-    1. The search time varies in different computing environments and mainly depends on the I/O speed.
+        - low-similarity: the remaining.
+    1. The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.
 
 
 More documents: https://bioinf.shenwei.me/LexicMap.
