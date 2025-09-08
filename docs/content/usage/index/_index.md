@@ -114,7 +114,7 @@ Important parameters:
                             ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
 
 Usage:
-  lexicmap index [flags] [-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>
+  lexicmap index [flags] [-k <k>] [-m <masks>] {-I <seqs dir> | [-S] -X <file list>} -O <index.lmi>
 
 Flags:
   -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
