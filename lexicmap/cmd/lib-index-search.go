@@ -1334,7 +1334,6 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		wg.Add(1)
 		// tokensS <- 1
 		go func(iS, beginM, endM int) {
-			idx.searcherTokens[iS] <- 1 // get the access to the searcher
 			var srs *[]*kv.SearchResult
 			var srs2 *[]*kv.SearchResult
 			var err error
@@ -1357,6 +1356,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				kv.RecycleSearchResults(srs2)
 			} else {
+				idx.searcherTokens[iS] <- 1 // get the access to the searcher
+
 				// prefix search
 				// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 				srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
@@ -1385,7 +1386,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				ch <- srs // send result
 			}
 
-			<-idx.searcherTokens[iS] // return the access
+			if !inMemorySearch {
+				<-idx.searcherTokens[iS] // return the access
+			}
+
 			wg.Done()
 			// <-tokensS
 		}(iS, beginM, endM)
