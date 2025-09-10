@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.3">
+<meta name="generator" content="Hugo 0.148.2">
 
 
   <meta name="description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 40000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). (default 15) -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
@@ -1175,6 +1175,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/merge-search-results/"
+                    class="gdoc-nav__entry"
+                  >
+                    merge-search-results
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry is-active"
                   >
@@ -1435,6 +1479,50 @@
                     class="gdoc-nav__entry"
                   >
                     remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/edit-genome-ids/"
+                    class="gdoc-nav__entry"
+                  >
+                    edit-genome-ids
                   </a>
                 </span>
               
@@ -1818,9 +1906,9 @@
 </span></span><span class="line"><span class="cl">12345   GCTGCACACGCAAAGACTCACGTCTTCAACG
 </span></span></code></pre></div><p>Freqency of prefixes.</p>
 <pre tabindex="0"><code>$ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
-  | csvtk freq -Ht -f 3 -nr \
-  | head -n 10
+    | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
+    | csvtk freq -Ht -f 3 -nr \
+    | head -n 10
 AAAAAAT 2
 AAAAACC 2
 AAAAACT 2
@@ -1833,9 +1921,9 @@ AAAACGA 2
 AAAACTA 2
 
 $ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
-  | csvtk freq -Ht -f 3 -n \
-  | head -n 10
+    | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
+    | csvtk freq -Ht -f 3 -n \
+    | head -n 10
 AAAAAAA 1
 AAAAAAC 1
 AAAAAAG 1
@@ -1849,9 +1937,9 @@ AAAAATG 1
 </code></pre><p>Frequency of frequencies. i.e., for 20,000 masks, 4<sup><em>7</em></sup> = 16384.
 In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.</p>
 <pre tabindex="0"><code>$ lexicmap utils masks --quiet -d demo.lmi/ \
-  | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
-  | csvtk freq -Ht -f 3 -n \
-  | csvtk freq -Ht -f 2 -k
+    | csvtk mutate -Ht -f 2 -p &#39;^(.{7})&#39; \
+    | csvtk freq -Ht -f 3 -n \
+    | csvtk freq -Ht -f 2 -k
 1       12768
 2       3616
 </code></pre>
@@ -2507,6 +2595,39 @@ In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.</p>
         
 
         
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
           
           
         
@@ -2589,6 +2710,39 @@ In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.</p>
         
         
       
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -2840,11 +2994,11 @@ In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.</p>
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/utils/2blast/"
-      title="2blast"
+      href="/LexicMap/usage/utils/merge-search-results/"
+      title="merge-search-results"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      2blast
+      merge-search-results
     </a>
   
 </span>

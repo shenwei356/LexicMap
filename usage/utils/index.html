@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.3">
+<meta name="generator" content="Hugo 0.148.2">
 
 
-  <meta name="description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
+  <meta name="description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format edit-genome-ids Edit genome IDs in the index via a regular expression genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly merge-search-results Merge a query&#39;s search results from multiple indexes reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
 
     <title>utils | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="utils"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
+  <meta property="og:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format edit-genome-ids Edit genome IDs in the index via a regular expression genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly merge-search-results Merge a query&#39;s search results from multiple indexes reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="utils" />
-  <meta name="twitter:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
+  <meta name="twitter:description" content="$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format edit-genome-ids Edit genome IDs in the index via a regular expression genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly merge-search-results Merge a query&#39;s search results from multiple indexes reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:" />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "utils",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/",
       "headline": "utils",
-      "description": "$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via reference name, sequence ID, position and strand Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:",
-      "wordCount" : "163",
+      "description": "$ lexicmap utils Some utilities Usage: lexicmap utils [command] Available Commands: 2blast Convert the default search output to blast-style format edit-genome-ids Edit genome IDs in the index via a regular expression genomes View genome IDs in the index kmers View k-mers captured by the masks masks View masks of the index or generate new masks randomly merge-search-results Merge a query\u0027s search results from multiple indexes reindex-seeds Recreate indexes of k-mer-value (seeds) data remerge Rerun the merging step for an unfinished index seed-pos Extract and plot seed positions via reference name(s) subseq Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result Flags: -h, --help help for utils Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Subcommands:",
+      "wordCount" : "190",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1175,6 +1175,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/merge-search-results/"
+                    class="gdoc-nav__entry"
+                  >
+                    merge-search-results
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1435,6 +1479,50 @@
                     class="gdoc-nav__entry"
                   >
                     remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/edit-genome-ids/"
+                    class="gdoc-nav__entry"
+                  >
+                    edit-genome-ids
                   </a>
                 </span>
               
@@ -1752,14 +1840,16 @@
 </span></span><span class="line"><span class="cl">  lexicmap utils [command]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Available Commands:
-</span></span><span class="line"><span class="cl">  2blast        Convert the default search output to blast-style format
-</span></span><span class="line"><span class="cl">  genomes       View genome IDs in the index
-</span></span><span class="line"><span class="cl">  kmers         View k-mers captured by the masks
-</span></span><span class="line"><span class="cl">  masks         View masks of the index or generate new masks randomly
-</span></span><span class="line"><span class="cl">  reindex-seeds Recreate indexes of k-mer-value (seeds) data
-</span></span><span class="line"><span class="cl">  remerge       Rerun the merging step for an unfinished index
-</span></span><span class="line"><span class="cl">  seed-pos      Extract and plot seed positions via reference name(s)
-</span></span><span class="line"><span class="cl">  subseq        Extract subsequence via reference name, sequence ID, position and strand
+</span></span><span class="line"><span class="cl">  2blast               Convert the default search output to blast-style format
+</span></span><span class="line"><span class="cl">  edit-genome-ids      Edit genome IDs in the index via a regular expression
+</span></span><span class="line"><span class="cl">  genomes              View genome IDs in the index
+</span></span><span class="line"><span class="cl">  kmers                View k-mers captured by the masks
+</span></span><span class="line"><span class="cl">  masks                View masks of the index or generate new masks randomly
+</span></span><span class="line"><span class="cl">  merge-search-results Merge a query&#39;s search results from multiple indexes
+</span></span><span class="line"><span class="cl">  reindex-seeds        Recreate indexes of k-mer-value (seeds) data
+</span></span><span class="line"><span class="cl">  remerge              Rerun the merging step for an unfinished index
+</span></span><span class="line"><span class="cl">  seed-pos             Extract and plot seed positions via reference name(s)
+</span></span><span class="line"><span class="cl">  subseq               Extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">  -h, --help   help for utils
@@ -1778,6 +1868,10 @@
   class="gdoc-markdown__link"
   href="2blast/"
 >2blast</a></li>
+<li><a
+  class="gdoc-markdown__link"
+  href="merge-search-results/"
+>merge-search-results</a></li>
 <li><a
   class="gdoc-markdown__link"
   href="masks/"
@@ -1806,6 +1900,10 @@
   class="gdoc-markdown__link"
   href="remerge/"
 >remerge</a></li>
+<li><a
+  class="gdoc-markdown__link"
+  href="edit-genome-ids/"
+>edit-genome-ids</a></li>
 </ul>
 
   </article>
@@ -2542,6 +2640,72 @@
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       

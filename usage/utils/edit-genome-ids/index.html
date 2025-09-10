@@ -12,12 +12,9 @@
 <meta name="generator" content="Hugo 0.148.2">
 
 
-  <meta name="description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &quot;*.gff.gz&quot; \ | rush --eta \ &#39;zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don&rsquo;t have enough memory, please decrease the value of -b." />
+  <meta name="description" content=" Usage Edit genome IDs in the index via a regular expression Use cases: In the &#39;lexicmap index&#39; command, users might forget to use the flag -N/--ref-name-regexp to extract the genome ID from the sequence file. A genome file from NCBI looks like: GCF_009818595.1_ASM981859v1_genomic.fna.gz In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic, which is too long. So we can use this command to extract the assembly accession via: lexicmap utils edit-genome-ids -d t.lmi/ -p &#39;^(\w{3}_\d{9}\.\d&#43;).*&#39; -r &#39;$1&#39; Tips: - A backup file (genomes.map.bin.bak) will be created on the first run. Usage: lexicmap utils edit-genome-ids [flags] Flags: -h, --help help for edit-genome-ids -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -p, --pattern string ► Search regular expression&#34;. -r, --replacement string ► Replacement. Supporting capture variables. e.g. $1 represents the text of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double quotes or use the \ escape character. Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Suppose that we have one genome." />
 
-    <title>Indexing UHGG | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>edit-genome-ids | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -38,42 +35,36 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     
   <meta
     property="og:title"
-    content="Indexing UHGG"
+    content="edit-genome-ids"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
+  <meta property="og:description" content=" Usage Edit genome IDs in the index via a regular expression Use cases: In the &#39;lexicmap index&#39; command, users might forget to use the flag -N/--ref-name-regexp to extract the genome ID from the sequence file. A genome file from NCBI looks like: GCF_009818595.1_ASM981859v1_genomic.fna.gz In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic, which is too long. So we can use this command to extract the assembly accession via: lexicmap utils edit-genome-ids -d t.lmi/ -p &#39;^(\w{3}_\d{9}\.\d&#43;).*&#39; -r &#39;$1&#39; Tips: - A backup file (genomes.map.bin.bak) will be created on the first run. Usage: lexicmap utils edit-genome-ids [flags] Flags: -h, --help help for edit-genome-ids -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -p, --pattern string ► Search regular expression&#34;. -r, --replacement string ► Replacement. Supporting capture variables. e.g. $1 represents the text of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double quotes or use the \ escape character. Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Suppose that we have one genome." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" />
+<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/" />
 
-<meta property="article:section" content="Tutorials" />
+<meta property="article:section" content="Usage" />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Indexing UHGG" />
-  <meta name="twitter:description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
+<meta name="twitter:title" content="edit-genome-ids" />
+  <meta name="twitter:description" content=" Usage Edit genome IDs in the index via a regular expression Use cases: In the &#39;lexicmap index&#39; command, users might forget to use the flag -N/--ref-name-regexp to extract the genome ID from the sequence file. A genome file from NCBI looks like: GCF_009818595.1_ASM981859v1_genomic.fna.gz In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic, which is too long. So we can use this command to extract the assembly accession via: lexicmap utils edit-genome-ids -d t.lmi/ -p &#39;^(\w{3}_\d{9}\.\d&#43;).*&#39; -r &#39;$1&#39; Tips: - A backup file (genomes.map.bin.bak) will be created on the first run. Usage: lexicmap utils edit-genome-ids [flags] Flags: -h, --help help for edit-genome-ids -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -p, --pattern string ► Search regular expression&#34;. -r, --replacement string ► Replacement. Supporting capture variables. e.g. $1 represents the text of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double quotes or use the \ escape character. Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Suppose that we have one genome." />
 
 
   <script type="application/ld+json">
   {
       "@context": "http://schema.org",
       "@type": "TechArticle",
-      "articleSection": "Tutorials",
-      "name": "Indexing UHGG",
-      "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/",
-      "headline": "Indexing UHGG",
-      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files\/ -name \u0022*.gff.gz\u0022 \\ | rush --eta \\ \u0027zcat {} | perl -ne \u0022print if \\$s; \\$s=true if \/^##FASTA\/\u0022 | seqkit seq -w 0 -o {\/}\/{%:}.fna.gz\u0027 \\ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b.",
-      "wordCount" : "213",
+      "articleSection": "Usage",
+      "name": "edit-genome-ids",
+      "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/",
+      "headline": "edit-genome-ids",
+      "description": " Usage Edit genome IDs in the index via a regular expression Use cases: In the \u0027lexicmap index\u0027 command, users might forget to use the flag -N\/--ref-name-regexp to extract the genome ID from the sequence file. A genome file from NCBI looks like: GCF_009818595.1_ASM981859v1_genomic.fna.gz In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic, which is too long. So we can use this command to extract the assembly accession via: lexicmap utils edit-genome-ids -d t.lmi\/ -p \u0027^(\\w{3}_\\d{9}\\.\\d\u002b).*\u0027 -r \u0027$1\u0027 Tips: - A backup file (genomes.map.bin.bak) will be created on the first run. Usage: lexicmap utils edit-genome-ids [flags] Flags: -h, --help help for edit-genome-ids -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -p, --pattern string ► Search regular expression\u0022. -r, --replacement string ► Replacement. Supporting capture variables. e.g. $1 represents the text of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double quotes or use the \\ escape character. Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Suppose that we have one genome.",
+      "wordCount" : "602",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
           "@type": "WebPage",
-          "@id": "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/"
+          "@id": "https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/"
       },
       "copyrightHolder" : "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
       "copyrightYear" : "0001",
@@ -157,7 +148,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
   href="/LexicMap/custom.css"
   media="all"
 />
-  <link href="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" rel="canonical" type="text/html" />
+  <link href="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/" rel="canonical" type="text/html" />
 
 <!-- Made with Geekdoc theme https://github.com/thegeeklab/hugo-geekdoc -->
 
@@ -619,7 +610,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
               type="checkbox"
               
                 class="gdoc-nav__toggle" id="navtree-5198871c"
-                checked
+                
               
             />
             <label
@@ -854,7 +845,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
                 <span class="flex">
                   <a
                     href="/LexicMap/tutorials/misc/index-uhgg/"
-                    class="gdoc-nav__entry is-active"
+                    class="gdoc-nav__entry"
                   >
                     Indexing UHGG
                   </a>
@@ -1075,7 +1066,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
               type="checkbox"
               
                 class="gdoc-nav__toggle" id="navtree-bc817233"
-                
+                checked
               
             />
             <label
@@ -1529,7 +1520,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
                 <span class="flex">
                   <a
                     href="/LexicMap/usage/utils/edit-genome-ids/"
-                    class="gdoc-nav__entry"
+                    class="gdoc-nav__entry is-active"
                   >
                     edit-genome-ids
                   </a>
@@ -1828,7 +1819,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/misc/' href='/LexicMap/tutorials/misc/'><span itemprop='name'>More</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Indexing UHGG</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>edit-genome-ids</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1849,76 +1840,113 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>Indexing UHGG</h1>
+    <h1>edit-genome-ids</h1>
     
-    <p>Info:</p>
-<ul>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://www.ebi.ac.uk/metagenomics/genome-catalogues/human-gut-v2-0-2"
->Unified Human Gastrointestinal Genome (UHGG) v2.0.2</a></li>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://www.nature.com/articles/s41587-020-0603-3"
->A unified catalog of 204,938 reference genomes from the human gut microbiome</a></li>
-<li>Number of Genomes: 289,232</li>
-</ul>
-<p>Tools:</p>
-<ul>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/seqkit"
->https://github.com/shenwei356/seqkit</a>, for checking sequence files</li>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/rush"
->https://github.com/shenwei356/rush</a>, for running jobs</li>
-</ul>
-<p>Data:</p>
-<pre><code># meta data
-wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv
-
-# gff url
-sed 1d genomes-all_metadata.tsv | cut -f 20  | sed 's/v2.0/v2.0.2/' | sed -E 's/^ftp/https/' &gt; url.txt
-
-# download gff files
-mkdir -p files; cd files
-
-time cat ../url.txt \
-    | rush --eta -v 'dir={///%}/{//%}' \
-        'mkdir -p {dir}; curl -s -o {dir}/{%} {}' \
-        -c -C download.rush -j 12
-cd ..
-
-# extract sequences from gff files
-find files/ -name &quot;*.gff.gz&quot; \
-    | rush --eta \
-        'zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz' \
-        -c -C extract.rush
+    <div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="usage"
+    >
+        Usage
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/#usage" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Usage" aria-label="Anchor to: Usage" href="#usage">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">Edit genome IDs in the index via a regular expression
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Use cases:
+</span></span><span class="line"><span class="cl">  In the &#39;lexicmap index&#39; command, users might forget to use the flag
+</span></span><span class="line"><span class="cl">  -N/--ref-name-regexp to extract the genome ID from the sequence file.
+</span></span><span class="line"><span class="cl">  A genome file from NCBI looks like:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    GCF_009818595.1_ASM981859v1_genomic.fna.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic,
+</span></span><span class="line"><span class="cl">  which is too long. So we can use this command to extract the assembly
+</span></span><span class="line"><span class="cl">  accession via:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    lexicmap utils edit-genome-ids -d t.lmi/ -p &#39;^(\w{3}_\d{9}\.\d+).*&#39; -r &#39;$1&#39;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Tips:
+</span></span><span class="line"><span class="cl">  - A backup file (genomes.map.bin.bak) will be created on the first run.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Usage:
+</span></span><span class="line"><span class="cl">  lexicmap utils edit-genome-ids [flags] 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -h, --help                 help for edit-genome-ids
+</span></span><span class="line"><span class="cl">  -d, --index string         ► Index directory created by &#34;lexicmap index&#34;.
+</span></span><span class="line"><span class="cl">  -p, --pattern string       ► Search regular expression&#34;.
+</span></span><span class="line"><span class="cl">  -r, --replacement string   ► Replacement. Supporting capture variables.  e.g. $1 represents the text
+</span></span><span class="line"><span class="cl">                             of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double
+</span></span><span class="line"><span class="cl">                             quotes or use the \ escape character.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
+</span></span><span class="line"><span class="cl">      --log string           ► Log file.
+</span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
+</span></span><span class="line"><span class="cl">                             with --log.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">                             (default 16)
+</span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="examples"
+    >
+        Examples
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/#examples" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Examples" aria-label="Anchor to: Examples" href="#examples">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>Suppose that we have one genome.</p>
+<pre><code>$ ls GCF_009818595.1_ASM981859v1_genomic.fna.gz 
+GCF_009818595.1_ASM981859v1_genomic.fna.gz
 </code></pre>
-<p>Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB.
-If you don&rsquo;t have enough memory, please decrease the value of <code>-b</code>.</p>
-<pre><code>lexicmap index \
-    -I files/ \
-    -O uhgg.lmi --log uhgg.lmi.log \
-    -b 5000
+<p>During the indexing, one might use the default parameters and <strong>forgot to set <code>-N/--ref-name-regexp</code> to extract the genome ID from the sequence file</strong>.</p>
+<pre><code>$ lexicmap index GCF_009818595.1_ASM981859v1_genomic.fna.gz -O t.lmi
 </code></pre>
-<p>File sizes:</p>
-<pre><code>$ du -sh files/ uhgg.lmi
-658G    files/
-509G    uhgg.lmi
+<p>So the genome ids in the index are something like this.</p>
+<pre><code>$ lexicmap utils genomes -d t.lmi/ | csvtk pretty -Ht
+ref                                   chunked
+GCF_009818595.1_ASM981859v1_genomic 
+</code></pre>
+<p>Well, those IDs will be in the search result, which are too long and not convenient for downstream analyis.</p>
+<pre><code>$ lexicmap search -d t.lmi/ b.gene_E_coli_16S.fasta --quiet \
+    | csvtk cut -t -f 1-11 \
+    | csvtk pretty -t
+  
+query                         qlen   hits   sgenome                               sseqid          qcovGnm   cls   hsp   qcovHSP   alenHSP   pident
+---------------------------   ----   ----   -----------------------------------   -------------   -------   ---   ---   -------   -------   ------
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    1     1     99.676    1562      77.337
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    2     2     99.676    1562      77.209
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    3     3     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    4     4     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    5     5     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    6     6     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    7     7     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1_ASM981859v1_genomic   NZ_OX216966.1   99.676    8     8     99.676    1562      77.081
+</code></pre>
+<p>Luckily, we can use this command to fix this.</p>
+<pre><code>$ lexicmap utils edit-genome-ids -d t.lmi/ -p '^(\w{3}_\d{9}\.\d+).*' -r '$1'
+15:51:29.584 [INFO] 1 of 1 genome IDs are changed
+</code></pre>
+<p>Check again:</p>
+<pre><code>$ lexicmap utils genomes -d t.lmi/ | csvtk pretty -Ht
+ref               chunked
+GCF_009818595.1        
 
-$ du -sh files/ uhgg.lmi --apparent-size
-425G    files/
-426G    uhgg.lmi
-
-$ dirsize uhgg.lmi
-uhgg.lmi: 425.15 GiB (456,497,171,291)
-243.47 GiB      seeds
-181.67 GiB      genomes
-  6.34 MiB      genomes.map.bin
-312.53 KiB      masks.bin
-     330 B      info.toml
+$ lexicmap search -d t.lmi/ b.gene_E_coli_16S.fasta --quiet \
+    | csvtk cut -t -f 1-11 \
+    | csvtk pretty -t
+query                         qlen   hits   sgenome           sseqid          qcovGnm   cls   hsp   qcovHSP   alenHSP   pident
+---------------------------   ----   ----   ---------------   -------------   -------   ---   ---   -------   -------   ------
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    1     1     99.676    1562      77.337
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    2     2     99.676    1562      77.209
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    3     3     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    4     4     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    5     5     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    6     6     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    7     7     99.676    1562      77.145
+NC_000913.3:4166659-4168200   1542   1      GCF_009818595.1   NZ_OX216966.1   99.676    8     8     99.676    1562      77.081
 </code></pre>
 
   </article>
@@ -2328,9 +2356,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
 
         
-          
-          
-        
 
         
           
@@ -2374,8 +2399,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
 
         
-          
-        
 
         
 
@@ -2388,6 +2411,476 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+          
+          
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+
+        
+      
+    
+
   
     
 
@@ -2413,473 +2906,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
             
             
           
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-          
-  
-  
-
-  
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-
-        
-      
-    
-
-  
-
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
         
 
         
@@ -2974,11 +3000,11 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/tutorials/misc/index-globdb/"
-      title="Indexing GlobDB"
+      href="/LexicMap/usage/utils/remerge/"
+      title="remerge"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      Indexing GlobDB
+      remerge
     </a>
   
 </span>
@@ -2986,10 +3012,10 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/lexicmap/"
-      title="lexicmap"
+      href="/LexicMap/faqs/"
+      title="FAQs"
     >
-      lexicmap
+      FAQs
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

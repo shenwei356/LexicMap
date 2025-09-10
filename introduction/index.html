@@ -9,14 +9,14 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.3">
+<meta name="generator" content="Hugo 0.148.2">
 
 
-  <meta name="description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;100 bp) against up to millions of prokaryotic genomes.
+  <meta name="description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;150 bp) against up to millions of prokaryotic genomes.
+Source code: https://github.com/shenwei356/LexicMap
 For the latest features and improvements, please download the pre-release binaries.
-Preprint:
-Wei Shen and Zamin Iqbal. (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes. bioRxiv. https://doi.org/10.1101/2024.08.30.610459
-Table of contents Features Introduction Quick start Performance Installation Algorithm overview Citation Limitations Terminology differences Support License Related projects Features The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2. It performs base-level alignment, with qcovGnm, qcovHSP, pident, evalue and bitscore returned, both in TSV and pairwise alignment format (output format). provides a genome-wide query coverage metric (qcovGnm), which enables accurate interpretation of search results - particularly for circular queries (such as plasmid, virus, and mtDNA) against both complete and fragmented assemblies. returns all possible matches, including multiple copies of a gene in a genome. The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs). LexicMap is easy to use (see tutorials, usages, and FAQs). Database building requires only a simple command, accepting input from files, a file list, or even a directory. Sequence searching supports limiting search by TaxId(s), provides a progress bar. Several utility commands are available to resume unfinished indexing, and explore the index data, extract indexed subsequences. Introduction Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale." />
+Please cite:
+Wei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https://doi.org/10.1038/s41587-025-02812-8" />
 
     <title>Introduction | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -42,11 +42,11 @@ Table of contents Features Introduction Quick start Performance Installation Alg
     content="Introduction"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;100 bp) against up to millions of prokaryotic genomes.
+  <meta property="og:description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;150 bp) against up to millions of prokaryotic genomes.
+Source code: https://github.com/shenwei356/LexicMap
 For the latest features and improvements, please download the pre-release binaries.
-Preprint:
-Wei Shen and Zamin Iqbal. (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes. bioRxiv. https://doi.org/10.1101/2024.08.30.610459
-Table of contents Features Introduction Quick start Performance Installation Algorithm overview Citation Limitations Terminology differences Support License Related projects Features The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2. It performs base-level alignment, with qcovGnm, qcovHSP, pident, evalue and bitscore returned, both in TSV and pairwise alignment format (output format). provides a genome-wide query coverage metric (qcovGnm), which enables accurate interpretation of search results - particularly for circular queries (such as plasmid, virus, and mtDNA) against both complete and fragmented assemblies. returns all possible matches, including multiple copies of a gene in a genome. The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs). LexicMap is easy to use (see tutorials, usages, and FAQs). Database building requires only a simple command, accepting input from files, a file list, or even a directory. Sequence searching supports limiting search by TaxId(s), provides a progress bar. Several utility commands are available to resume unfinished indexing, and explore the index data, extract indexed subsequences. Introduction Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale." />
+Please cite:
+Wei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https://doi.org/10.1038/s41587-025-02812-8" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/introduction/" />
 
@@ -55,11 +55,11 @@ Table of contents Features Introduction Quick start Performance Installation Alg
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Introduction" />
-  <meta name="twitter:description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;100 bp) against up to millions of prokaryotic genomes.
+  <meta name="twitter:description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;150 bp) against up to millions of prokaryotic genomes.
+Source code: https://github.com/shenwei356/LexicMap
 For the latest features and improvements, please download the pre-release binaries.
-Preprint:
-Wei Shen and Zamin Iqbal. (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes. bioRxiv. https://doi.org/10.1101/2024.08.30.610459
-Table of contents Features Introduction Quick start Performance Installation Algorithm overview Citation Limitations Terminology differences Support License Related projects Features The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2. It performs base-level alignment, with qcovGnm, qcovHSP, pident, evalue and bitscore returned, both in TSV and pairwise alignment format (output format). provides a genome-wide query coverage metric (qcovGnm), which enables accurate interpretation of search results - particularly for circular queries (such as plasmid, virus, and mtDNA) against both complete and fragmented assemblies. returns all possible matches, including multiple copies of a gene in a genome. The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs). LexicMap is easy to use (see tutorials, usages, and FAQs). Database building requires only a simple command, accepting input from files, a file list, or even a directory. Sequence searching supports limiting search by TaxId(s), provides a progress bar. Several utility commands are available to resume unfinished indexing, and explore the index data, extract indexed subsequences. Introduction Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale." />
+Please cite:
+Wei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https://doi.org/10.1038/s41587-025-02812-8" />
 
 
   <script type="application/ld+json">
@@ -70,8 +70,8 @@ Table of contents Features Introduction Quick start Performance Installation Alg
       "name": "Introduction",
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
-      "description": " LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (\u003e100 bp) against up to millions of prokaryotic genomes.\nFor the latest features and improvements, please download the pre-release binaries.\nPreprint:\nWei Shen and Zamin Iqbal. (2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes. bioRxiv. https:\/\/doi.org\/10.1101\/2024.08.30.610459\nTable of contents Features Introduction Quick start Performance Installation Algorithm overview Citation Limitations Terminology differences Support License Related projects Features The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2. It performs base-level alignment, with qcovGnm, qcovHSP, pident, evalue and bitscore returned, both in TSV and pairwise alignment format (output format). provides a genome-wide query coverage metric (qcovGnm), which enables accurate interpretation of search results - particularly for circular queries (such as plasmid, virus, and mtDNA) against both complete and fragmented assemblies. returns all possible matches, including multiple copies of a gene in a genome. The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes. LexicMap is easy to install, we provide binary files with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs). LexicMap is easy to use (see tutorials, usages, and FAQs). Database building requires only a simple command, accepting input from files, a file list, or even a directory. Sequence searching supports limiting search by TaxId(s), provides a progress bar. Several utility commands are available to resume unfinished indexing, and explore the index data, extract indexed subsequences. Introduction Motivation: Alignment against a database of genomes is a fundamental operation in bioinformatics, popularised by BLAST. However, given the increasing rate at which genomes are sequenced, existing tools struggle to scale.",
-      "wordCount" : "1634",
+      "description": " LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (\u003e150 bp) against up to millions of prokaryotic genomes.\nSource code: https:\/\/github.com\/shenwei356\/LexicMap\nFor the latest features and improvements, please download the pre-release binaries.\nPlease cite:\nWei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https:\/\/doi.org\/10.1038\/s41587-025-02812-8",
+      "wordCount" : "1695",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1187,6 +1187,50 @@ Table of contents Features Introduction Quick start Performance Installation Alg
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/merge-search-results/"
+                    class="gdoc-nav__entry"
+                  >
+                    merge-search-results
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1447,6 +1491,50 @@ Table of contents Features Introduction Quick start Performance Installation Alg
                     class="gdoc-nav__entry"
                   >
                     remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/edit-genome-ids/"
+                    class="gdoc-nav__entry"
+                  >
+                    edit-genome-ids
                   </a>
                 </span>
               
@@ -1781,19 +1869,23 @@ Table of contents Features Introduction Quick start Performance Installation Alg
   alt="license"
   
 /></a></p>
-<p>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying <strong>gene, plasmid, viral, or long-read sequences (&gt;100 bp)</strong> against up to <strong>millions of prokaryotic genomes</strong>.</p>
+<p>LexicMap is a <strong>nucleotide sequence alignment</strong> tool for efficiently querying <strong>gene, plasmid, viral, or long-read sequences (&gt;150 bp)</strong> against up to <strong>millions of prokaryotic genomes</strong>.</p>
+<p>Source code: <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap"
+>https://github.com/shenwei356/LexicMap</a></p>
 <p>For the latest features and improvements, please download the <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/LexicMap/issues/10"
 >pre-release binaries</a>.</p>
-<p>Preprint:</p>
+<p>Please cite:</p>
 <blockquote>
-<p>Wei Shen and Zamin Iqbal.
-(2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
-bioRxiv. <a
+<p>Wei Shen, John A. Lees, Zamin Iqbal.
+(2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap.
+Nature Biotechnology. <a
   class="gdoc-markdown__link"
-  href="https://doi.org/10.1101/2024.08.30.610459"
->https://doi.org/10.1101/2024.08.30.610459</a></p></blockquote>
+  href="https://doi.org/10.1038/s41587-025-02812-8"
+>https://doi.org/10.1038/s41587-025-02812-8</a></p></blockquote>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="table-of-contents"
     >
@@ -1865,7 +1957,7 @@ bioRxiv. <a
 <ol>
 <li><strong>The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2</strong>. It
 <ul>
-<li>performs <strong>base-level alignment</strong>, with <code>qcovGnm</code>, <code>qcovHSP</code>, <code>pident</code>, <code>evalue</code> and <code>bitscore</code> returned,
+<li><strong>performs base-level alignment</strong>, with <code>qcovGnm</code>, <code>qcovHSP</code>, <code>pident</code>, <code>evalue</code> and <code>bitscore</code> returned,
 both in TSV and pairwise alignment format (<a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#output"
@@ -1879,7 +1971,7 @@ which enables accurate interpretation of search results - particularly for <a
 against both complete and fragmented assemblies.</li>
 </ul>
 </li>
-<li>returns all possible matches, including multiple copies of a gene in a genome.</li>
+<li><strong>returns all possible matches</strong>, including multiple copies of a gene in a genome.</li>
 </ul>
 </li>
 <li><strong>The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes</strong>.</li>
@@ -1913,7 +2005,7 @@ we provide <a
 <li><a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/"
->Several utility commands</a> are available to resume unfinished indexing, and explore the index data, extract indexed subsequences.</li>
+>Several utility commands</a> are available to resume unfinished indexing, explore the index data, merge search results, extract matched subsequences and more.</li>
 </ul>
 </li>
 </ol>
@@ -1981,7 +2073,7 @@ without the vital positional information for downstream analysis.</li>
   class="gdoc-markdown__link"
   href="#performance"
 >performance</a>).</p>
-<p><strong>With LexicMap v0.7.0</strong> (48 CPUs),</p>
+<p><strong>With LexicMap v0.7.0</strong> (48 CPUs, indexes and queries queries in HDDs),</p>
 <div class="table-wrap"> <table>
   <thead>
       <tr>
@@ -2040,10 +2132,10 @@ without the vital positional information for downstream analysis.</li>
 <ul>
 <li>high-similarity: (a) qcov &gt;= 90% (genes) or 70% (plasmids), (b) pident&gt;=90%.</li>
 <li>medium-similarity: (a) not belong to high-similarity, (b) qcov &gt;= 50% (genes) or 30% (plasmids), (c) pident&gt;=80%.</li>
-<li>low-similarity: left.</li>
+<li>low-similarity: the remaining.</li>
 </ul>
 </li>
-<li>The search time varies in different computing environments and mainly depends on the I/O speed.</li>
+<li>The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.</li>
 </ol>
 </li>
 </ol>
@@ -2071,11 +2163,14 @@ without the vital positional information for downstream analysis.</li>
 >searching</a>).</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl"># For short queries like genes or long reads, returning top N hits.
 </span></span><span class="line"><span class="cl">lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-</span></span><span class="line"><span class="cl">    --min-qcov-per-hsp 70 --min-qcov-per-genome 70  --top-n-genomes 10000
+</span></span><span class="line"><span class="cl">    --align-min-match-pident 80 --min-qcov-per-hsp 70 --min-qcov-per-genome 70 \
+</span></span><span class="line"><span class="cl">    --top-n-genomes 10000
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"># For longer queries like plasmids, returning all hits.
 </span></span><span class="line"><span class="cl">lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
-</span></span><span class="line"><span class="cl">    --min-qcov-per-hsp 0  --min-qcov-per-genome 0   --top-n-genomes 0
+</span></span><span class="line"><span class="cl">    --align-min-match-pident 70 --min-qcov-per-hsp 0  --min-qcov-per-genome 50 \
+</span></span><span class="line"><span class="cl">    --align-min-match-len 1000 \
+</span></span><span class="line"><span class="cl">    --top-n-genomes 0
 </span></span></code></pre></div><p>Sample output (queries are a few Nanopore Q20 reads). See <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/tutorials/search/#output-format"
@@ -2103,22 +2198,22 @@ without the vital positional information for downstream analysis.</li>
 </span></span><span class="line"><span class="cl">ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858    3     3     5.150     130       80.769   12     2233     2361   930381    930499    -      1887974   6.61e-43    185     
 </span></span><span class="line"><span class="cl">ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858    4     4     3.713     93        93.548   0      2257     2349   1104581   1104673   -      1887974   5.09e-30    141
 </span></span></code></pre></div><p>CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag <code>-a/--all</code>.</p>
+<p>Extracting matched sequences:</p>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl"># Extracting similar sequences for a query gene.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"># search matches with query coverage &gt;= 90%
-</span></span><span class="line"><span class="cl">lexicmap search -d gtdb_complete.lmi/ b.gene_E_faecalis_SecY.fasta -o results.tsv \
-</span></span><span class="line"><span class="cl">    --min-qcov-per-hsp 90 --all
+</span></span><span class="line"><span class="cl">lexicmap search -d demo.lmi/ bench/b.gene_E_faecalis_SecY.fasta -o results.tsv \
+</span></span><span class="line"><span class="cl">    --min-qcov-per-hsp 90
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"># extract matched sequences as FASTA format
-</span></span><span class="line"><span class="cl">sed 1d results.tsv | awk -F&#39;\t&#39; &#39;{print &#34;&gt;&#34;$5&#34;:&#34;$15&#34;-&#34;$16&#34;:&#34;$17&#34;\n&#34;$23;}&#39; \
-</span></span><span class="line"><span class="cl">    | seqkit seq -g &gt; results.fasta
+</span></span><span class="line"><span class="cl">lexicmap utils subseq -d demo.lmi -f results.tsv -o results.tsv.aligned.fasta
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">seqkit head -n 1 results.fasta | head -n 3
-</span></span><span class="line"><span class="cl">&gt;NZ_JALSCK010000007.1:39224-40522:-
+</span></span><span class="line"><span class="cl">seqkit head -n 1 results.tsv.aligned.fasta | head -n 3
+</span></span><span class="line"><span class="cl">&gt;NZ_KB944588.1:228637-229935:+ query=lcl|NZ_CP064374.1_cds_WP_002359350.1_906 sgenome=GCF_000392875.1 sseqid=NZ_KB944588.1 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1299 pident=100.000 gaps=0 qstart=1 qend=1299 sstart=228637 send=229935 sstr=+ slen=274762 evalue=0.00e+00 bitscore=2343
 </span></span><span class="line"><span class="cl">TTGTTCAAGCTATTAAAGAACGCCTTTAAAGTCAAAGACATTAGATCAAAAATCTTATTT
 </span></span><span class="line"><span class="cl">ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
-</span></span></code></pre></div><p>Export blast-style format:</p>
-<pre tabindex="0"><code># here, we only align &lt;=200 bp queries and show one low-similarity result.
+</span></span></code></pre></div><p>Export Blast-style pairwise alignment format:</p>
+<pre tabindex="0"><code># here, we only align &lt;=200 bp queries and show one medium-similarity result.
 
 $ seqkit seq -g -M 200 q.long-reads.fasta.gz \
     | lexicmap search -d demo.lmi/ -a \
@@ -2211,6 +2306,10 @@ in <a
     </a>
 </div>
 <img src="/LexicMap/overview.svg" alt="LexicMap overview" width="800"/>
+<p>See the <a
+  class="gdoc-markdown__link"
+  href="#citation"
+>paper</a> for details.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="citation"
     >
@@ -2220,12 +2319,13 @@ in <a
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>Wei Shen and Zamin Iqbal.
-(2024) LexicMap: efficient sequence alignment against millions of prokaryotic genomes.
-bioRxiv. <a
+<blockquote>
+<p>Wei Shen, John A. Lees, Zamin Iqbal.
+(2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap.
+Nature Biotechnology. <a
   class="gdoc-markdown__link"
-  href="https://doi.org/10.1101/2024.08.30.610459"
->https://doi.org/10.1101/2024.08.30.610459</a></p>
+  href="https://doi.org/10.1038/s41587-025-02812-8"
+>https://doi.org/10.1038/s41587-025-02812-8</a></p></blockquote>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="limitations"
     >
@@ -2236,8 +2336,8 @@ bioRxiv. <a
     </a>
 </div>
 <ul>
-<li>The queries need to be longer than 100 bp, though some shorter one can also be aligned.</li>
-<li>LexicMap is slow for &gt;1Mb queries, and the alignment might be fragmented.</li>
+<li>The queries need to be longer than 100 bp, though some shorter ones can also be aligned.</li>
+<li>LexicMap is slow for ultra-long (&gt;1Mb) queries, and the alignment might be fragmented.</li>
 <li>LexicMap is slow for batch searching with more than hundreds of queries. However, there are <a
   class="gdoc-markdown__link"
   href="http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed"
@@ -2255,7 +2355,7 @@ bioRxiv. <a
 <ul>
 <li>In the LexicMap source code and command line options, the term <strong>&ldquo;mask&rdquo;</strong> is used, following the terminology in the LexicHash paper.</li>
 <li>In the LexicMap manuscript, however, we use <strong>&ldquo;probe&rdquo;</strong> as it is easier to understand.
-Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.</li>
+Because these masks, which consist of thousands of designed k-mers and they capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="support"
@@ -3038,6 +3138,72 @@ propose new functions or ask for help.</p>
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       

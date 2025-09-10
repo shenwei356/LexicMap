@@ -12,12 +12,9 @@
 <meta name="generator" content="Hugo 0.148.2">
 
 
-  <meta name="description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &quot;*.gff.gz&quot; \ | rush --eta \ &#39;zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don&rsquo;t have enough memory, please decrease the value of -b." />
+  <meta name="description" content=" Usage $ lexicmap utils merge-search-results -h Merge a query&#39;s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and/or a file list via the flag -X/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data." />
 
-    <title>Indexing UHGG | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>merge-search-results | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -38,42 +35,36 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     
   <meta
     property="og:title"
-    content="Indexing UHGG"
+    content="merge-search-results"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
+  <meta property="og:description" content=" Usage $ lexicmap utils merge-search-results -h Merge a query&#39;s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and/or a file list via the flag -X/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" />
+<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/" />
 
-<meta property="article:section" content="Tutorials" />
+<meta property="article:section" content="Usage" />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="Indexing UHGG" />
-  <meta name="twitter:description" content="Info:
-Unified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:
-https://github.com/shenwei356/seqkit, for checking sequence files https://github.com/shenwei356/rush, for running jobs Data:
-# meta data wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed &#39;s/v2.0/v2.0.2/&#39; | sed -E &#39;s/^ftp/https/&#39; &gt; url.txt # download gff files mkdir -p files; cd files time cat ../url.txt \ | rush --eta -v &#39;dir={///%}/{//%}&#39; \ &#39;mkdir -p {dir}; curl -s -o {dir}/{%} {}&#39; \ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files/ -name &#34;*.gff.gz&#34; \ | rush --eta \ &#39;zcat {} | perl -ne &#34;print if \$s; \$s=true if /^##FASTA/&#34; | seqkit seq -w 0 -o {/}/{%:}.fna.gz&#39; \ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b." />
+<meta name="twitter:title" content="merge-search-results" />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils merge-search-results -h Merge a query&#39;s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and/or a file list via the flag -X/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data." />
 
 
   <script type="application/ld+json">
   {
       "@context": "http://schema.org",
       "@type": "TechArticle",
-      "articleSection": "Tutorials",
-      "name": "Indexing UHGG",
-      "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/",
-      "headline": "Indexing UHGG",
-      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files\/ -name \u0022*.gff.gz\u0022 \\ | rush --eta \\ \u0027zcat {} | perl -ne \u0022print if \\$s; \\$s=true if \/^##FASTA\/\u0022 | seqkit seq -w 0 -o {\/}\/{%:}.fna.gz\u0027 \\ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b.",
-      "wordCount" : "213",
+      "articleSection": "Usage",
+      "name": "merge-search-results",
+      "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/",
+      "headline": "merge-search-results",
+      "description": " Usage $ lexicmap utils merge-search-results -h Merge a query\u0027s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q\/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and\/or a file list via the flag -X\/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data.",
+      "wordCount" : "406",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
           "@type": "WebPage",
-          "@id": "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/"
+          "@id": "https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/"
       },
       "copyrightHolder" : "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
       "copyrightYear" : "0001",
@@ -157,7 +148,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
   href="/LexicMap/custom.css"
   media="all"
 />
-  <link href="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/" rel="canonical" type="text/html" />
+  <link href="https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/" rel="canonical" type="text/html" />
 
 <!-- Made with Geekdoc theme https://github.com/thegeeklab/hugo-geekdoc -->
 
@@ -619,7 +610,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
               type="checkbox"
               
                 class="gdoc-nav__toggle" id="navtree-5198871c"
-                checked
+                
               
             />
             <label
@@ -854,7 +845,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
                 <span class="flex">
                   <a
                     href="/LexicMap/tutorials/misc/index-uhgg/"
-                    class="gdoc-nav__entry is-active"
+                    class="gdoc-nav__entry"
                   >
                     Indexing UHGG
                   </a>
@@ -1075,7 +1066,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
               type="checkbox"
               
                 class="gdoc-nav__toggle" id="navtree-bc817233"
-                
+                checked
               
             />
             <label
@@ -1185,7 +1176,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
                 <span class="flex">
                   <a
                     href="/LexicMap/usage/utils/merge-search-results/"
-                    class="gdoc-nav__entry"
+                    class="gdoc-nav__entry is-active"
                   >
                     merge-search-results
                   </a>
@@ -1828,7 +1819,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/' href='/LexicMap/tutorials/'><span itemprop='name'>Tutorials</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/tutorials/misc/' href='/LexicMap/tutorials/misc/'><span itemprop='name'>More</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>Indexing UHGG</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>merge-search-results</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1849,78 +1840,90 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>Indexing UHGG</h1>
+    <h1>merge-search-results</h1>
     
-    <p>Info:</p>
-<ul>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://www.ebi.ac.uk/metagenomics/genome-catalogues/human-gut-v2-0-2"
->Unified Human Gastrointestinal Genome (UHGG) v2.0.2</a></li>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://www.nature.com/articles/s41587-020-0603-3"
->A unified catalog of 204,938 reference genomes from the human gut microbiome</a></li>
-<li>Number of Genomes: 289,232</li>
-</ul>
-<p>Tools:</p>
-<ul>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/seqkit"
->https://github.com/shenwei356/seqkit</a>, for checking sequence files</li>
-<li><a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/rush"
->https://github.com/shenwei356/rush</a>, for running jobs</li>
-</ul>
-<p>Data:</p>
-<pre><code># meta data
-wget https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut/v2.0.2/genomes-all_metadata.tsv
-
-# gff url
-sed 1d genomes-all_metadata.tsv | cut -f 20  | sed 's/v2.0/v2.0.2/' | sed -E 's/^ftp/https/' &gt; url.txt
-
-# download gff files
-mkdir -p files; cd files
-
-time cat ../url.txt \
-    | rush --eta -v 'dir={///%}/{//%}' \
-        'mkdir -p {dir}; curl -s -o {dir}/{%} {}' \
-        -c -C download.rush -j 12
-cd ..
-
-# extract sequences from gff files
-find files/ -name &quot;*.gff.gz&quot; \
-    | rush --eta \
-        'zcat {} | perl -ne &quot;print if \$s; \$s=true if /^##FASTA/&quot; | seqkit seq -w 0 -o {/}/{%:}.fna.gz' \
-        -c -C extract.rush
-</code></pre>
-<p>Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB.
-If you don&rsquo;t have enough memory, please decrease the value of <code>-b</code>.</p>
-<pre><code>lexicmap index \
-    -I files/ \
-    -O uhgg.lmi --log uhgg.lmi.log \
-    -b 5000
-</code></pre>
-<p>File sizes:</p>
-<pre><code>$ du -sh files/ uhgg.lmi
-658G    files/
-509G    uhgg.lmi
-
-$ du -sh files/ uhgg.lmi --apparent-size
-425G    files/
-426G    uhgg.lmi
-
-$ dirsize uhgg.lmi
-uhgg.lmi: 425.15 GiB (456,497,171,291)
-243.47 GiB      seeds
-181.67 GiB      genomes
-  6.34 MiB      genomes.map.bin
-312.53 KiB      masks.bin
-     330 B      info.toml
-</code></pre>
-
+    <div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="usage"
+    >
+        Usage
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/#usage" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Usage" aria-label="Anchor to: Usage" href="#usage">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils merge-search-results -h
+</span></span><span class="line"><span class="cl">Merge a query&#39;s search results from multiple indexes
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Attention:
+</span></span><span class="line"><span class="cl">  1. These search results should come from the same ONE query.
+</span></span><span class="line"><span class="cl">     If not, please specify one query with the flag -q/--query
+</span></span><span class="line"><span class="cl">  2. We assume that genome IDs are distinct across all indexes.
+</span></span><span class="line"><span class="cl">  3. One or more input files are accepted, via positional parameters
+</span></span><span class="line"><span class="cl">     and/or a file list via the flag -X/--infile-list.
+</span></span><span class="line"><span class="cl">  4. Both the default 20- and 24-column formats are supported,
+</span></span><span class="line"><span class="cl">     and formats better be consistent across all input files.
+</span></span><span class="line"><span class="cl">     If not, the output format would be the one with a valid record.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Usage:
+</span></span><span class="line"><span class="cl">  lexicmap utils merge-search-results [flags] 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
+</span></span><span class="line"><span class="cl">                             when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;)
+</span></span><span class="line"><span class="cl">  -h, --help                 help for merge-search-results
+</span></span><span class="line"><span class="cl">  -o, --out-file string      ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">  -q, --query string         ► Query ID to merge
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
+</span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
+</span></span><span class="line"><span class="cl">      --log string           ► Log file.
+</span></span><span class="line"><span class="cl">      --quiet                ► Do not print any verbose information. But you can write them to a file
+</span></span><span class="line"><span class="cl">                             with --log.
+</span></span><span class="line"><span class="cl">  -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
+</span></span><span class="line"><span class="cl">                             (default 16)
+</span></span></code></pre></div><div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="examples"
+    >
+        Examples
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/#examples" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Examples" aria-label="Anchor to: Examples" href="#examples">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>Building 3 indexes with demo data.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap index -O demo_part1.lmi -X &lt;(ls refs/*.fa.gz | awk &#39;NR&lt;=5&#39;)
+</span></span><span class="line"><span class="cl">lexicmap index -O demo_part2.lmi -X &lt;(ls refs/*.fa.gz | awk &#39;NR&gt;=6 &amp;&amp; NR&lt;=10&#39;)
+</span></span><span class="line"><span class="cl">lexicmap index -O demo_part3.lmi -X &lt;(ls refs/*.fa.gz | awk &#39;NR&gt;10&#39;)
+</span></span></code></pre></div><p>Searching a query in these 3 indexes.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">query=bench/b.gene_E_coli_16S.fasta
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># in practice, one can search in multiple cluster nodes
+</span></span><span class="line"><span class="cl">for index in demo_*.lmi; do
+</span></span><span class="line"><span class="cl">    lexicmap search $query -d $index -o t.lexicmap@$index.tsv.gz --debug
+</span></span><span class="line"><span class="cl">done
+</span></span></code></pre></div><p>Merge search results</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">lexicmap utils merge-search-results -o t.lexicmap.tsv.gz t.lexicmap@*.tsv.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">22:41:03.963 [INFO] 15 genome hits merged from 3 files for query: NC_000913.3:4166659-4168200
+</span></span></code></pre></div><p>If some files contain search results of multiple queries, then specify one query to merge.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl"># search with multiple queries
+</span></span><span class="line"><span class="cl">for index in demo_*.lmi; do
+</span></span><span class="line"><span class="cl">    lexicmap search bench/*.fasta -d $index -o t.lexicmap2@$index.tsv.gz --debug
+</span></span><span class="line"><span class="cl">done
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># this would failed
+</span></span><span class="line"><span class="cl">lexicmap utils merge-search-results -o t.lexicmap2.tsv.gz t.lexicmap2@*.tsv.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">22:46:07.807 [ERRO] inconsistent queries: &#39;blaLAQ__NG_076677.1&#39; in file &#39;t.lexicmap2@demo_part2.lmi.tsv.gz&#39; and &#39;blaSHV__NG_242606.1&#39; in file &#39;t.lexicmap2@demo_part1.lmi.tsv.gz. Please specify one query with flag -q/--query
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"># specify one query
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">lexicmap utils merge-search-results -o t.lexicmap2.tsv.gz t.lexicmap2@*.tsv.gz \
+</span></span><span class="line"><span class="cl">    -q NC_000913.3:4166659-4168200
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">22:49:01.076 [INFO] 15 genome hits merged from 3 files for query: NC_000913.3:4166659-4168200
+</span></span></code></pre></div>
   </article>
 
 
@@ -2328,9 +2331,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
 
         
-          
-          
-        
 
         
           
@@ -2374,8 +2374,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
 
         
-          
-        
 
         
 
@@ -2388,6 +2386,209 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
 
   
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+          
+          
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
   
     
 
@@ -2413,206 +2614,6 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
             
             
           
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-          
-  
-  
-
-  
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
         
 
         
@@ -2974,11 +2975,11 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/tutorials/misc/index-globdb/"
-      title="Indexing GlobDB"
+      href="/LexicMap/usage/utils/2blast/"
+      title="2blast"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      Indexing GlobDB
+      2blast
     </a>
   
 </span>
@@ -2986,10 +2987,10 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/lexicmap/"
-      title="lexicmap"
+      href="/LexicMap/usage/utils/masks/"
+      title="masks"
     >
-      lexicmap
+      masks
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

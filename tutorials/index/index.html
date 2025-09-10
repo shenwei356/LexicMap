@@ -9,11 +9,11 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.3">
+<meta name="generator" content="Hugo 0.148.2">
 
 
   <meta name="description" content=" Note Terminology differences:
-On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
+On this page and in the LexicMap command line options, the term &ldquo;mask&rdquo; is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use &ldquo;probe&rdquo; as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz. Even if you forgot to use -N/--ref-name-regexp, lexicmap utils edit-genome-ids (available since v0.8.0) can fix this without re-building the index. While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
 
     <title>Step 1. Building a database | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -40,7 +40,7 @@ On this page and in the LexicMap command line options, the term &ldquo;mask&rdqu
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content=" Note Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz. Even if you forgot to use -N/--ref-name-regexp, lexicmap utils edit-genome-ids (available since v0.8.0) can fix this without re-building the index. While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/index/" />
 
@@ -50,7 +50,7 @@ On this page and in the LexicMap command line options, the term “mask” is us
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Step 1. Building a database" />
   <meta name="twitter:description" content=" Note Terminology differences:
-On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
+On this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp &#39;^(\w{3}_\d{9}\.\d&#43;)&#39; extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz. Even if you forgot to use -N/--ref-name-regexp, lexicmap utils edit-genome-ids (available since v0.8.0) can fix this without re-building the index. While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:" />
 
 
   <script type="application/ld+json">
@@ -61,8 +61,8 @@ On this page and in the LexicMap command line options, the term “mask” is us
       "name": "Step 1. Building a database",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/index/",
       "headline": "Step 1. Building a database",
-      "description": " Note Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp \u0027^(\\w{3}_\\d{9}\\.\\d\u002b)\u0027 extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:",
-      "wordCount" : "3561",
+      "description": " Note Terminology differences:\nOn this page and in the LexicMap command line options, the term “mask” is used, following the terminology in the LexicHash paper. In the LexicMap manuscript, however, we use “probe” as it is easier to understand. Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology. Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Notes for indexing with large datasets Steps Output File structure Index size Explore the index Index format changelog TL;DR Prepare input files: Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names. E.g., GCF_000006945.2.fna.gz A regular expression is also available to extract reference id from the file name. E.g., --ref-name-regexp \u0027^(\\w{3}_\\d{9}\\.\\d\u002b)\u0027 extracts GCF_000006945.2 from GenBank assembly file GCF_000006945.2_ASM694v2_genomic.fna.gz. Even if you forgot to use -N\/--ref-name-regexp, lexicmap utils edit-genome-ids (available since v0.8.0) can fix this without re-building the index. While if you save a few small (viral) complete genomes (one sequence per genome) in each file, it’s feasible as sequence IDs in search result can help to distinguish target genomes. Run: From a directory with multiple genome files:",
+      "wordCount" : "3619",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1178,6 +1178,50 @@ On this page and in the LexicMap command line options, the term “mask” is us
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/merge-search-results/"
+                    class="gdoc-nav__entry"
+                  >
+                    merge-search-results
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1438,6 +1482,50 @@ On this page and in the LexicMap command line options, the term “mask” is us
                     class="gdoc-nav__entry"
                   >
                     remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/edit-genome-ids/"
+                    class="gdoc-nav__entry"
+                  >
+                    edit-genome-ids
                   </a>
                 </span>
               
@@ -1811,7 +1899,12 @@ Because these masks, which consist of thousands of k-mers and capture k-mers fro
 E.g., GCF_000006945.2.fna.gz
 <ul>
 <li>A regular expression is also available to extract reference id from the file name.
-E.g., <code>--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'</code> extracts <code>GCF_000006945.2</code> from GenBank assembly file <code>GCF_000006945.2_ASM694v2_genomic.fna.gz</code></li>
+E.g., <code>--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'</code> extracts <code>GCF_000006945.2</code> from GenBank assembly file <code>GCF_000006945.2_ASM694v2_genomic.fna.gz</code>.</li>
+<li>Even if you forgot to use <code>-N/--ref-name-regexp</code>,
+<a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/"
+>lexicmap utils edit-genome-ids</a> (available since v0.8.0) can fix this without re-building the index.</li>
 </ul>
 </li>
 <li>While if you save <em>a few</em> <strong>small</strong> (viral) <strong>complete</strong> genomes (one sequence per genome) in each file, it&rsquo;s feasible as sequence IDs in search result can help to distinguish target genomes.</li>
@@ -1866,7 +1959,12 @@ While if you save <em>a few</em> <strong>small</strong> (viral) <strong>complete
 <li><strong>Genome ID</strong>: <strong>they must not contain tab (&quot;\t&quot;) symbols, and should be distinct for accurate result interpretation</strong>, which will be shown in the search result.
 <ul>
 <li>A regular expression is also available to extract reference id from the file name.
-E.g., <code>--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'</code> extracts <code>GCF_000006945.2</code> from GenBank assembly file <code>GCF_000006945.2_ASM694v2_genomic.fna.gz</code></li>
+E.g., <code>--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'</code> extracts <code>GCF_000006945.2</code> from GenBank assembly file <code>GCF_000006945.2_ASM694v2_genomic.fna.gz</code>.</li>
+<li><strong>If you forgot to use <code>-N/--ref-name-regexp</code>,
+<a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/"
+>lexicmap utils edit-genome-ids</a> (available since v0.8.0) can fix this without re-building the index</strong>.</li>
 </ul>
 </li>
 </ul>
@@ -1878,7 +1976,7 @@ The default value supports common sequence file extentions, e.g., <code>.fa</cod
 <li><strong>Only DNA or RNA sequences are supported</strong>.</li>
 <li><strong>Sequence IDs</strong> should be distinct for accurate result interpretation, which will be shown in the search result.</li>
 <li>Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
-(<code>seqkit seq -n ref.fa.gz | sed -E 's/\s+/\t/' &gt; id2desc.tsv</code>) and use it to <a
+(<code>cat files.txt | seqkit seq -n -X - | sed -E 's/\s+/\t/' &gt; id2desc.tsv</code>) and use it to <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results"
 >add description in search result</a>.</li>
@@ -1949,7 +2047,7 @@ Because, by default, LexicMap checks the existence of all input files, which wou
 </li>
 <li><strong>RAM</strong>
 <ul>
-<li>More RAM (&gt; 200 GB) is preferred. The memory usage in index building is mainly related to:
+<li>More RAM (&gt; 200 GB for &gt;2 million genomes) is preferred. The memory usage in index building is mainly related to:
 <ul>
 <li><strong>The number of masks</strong> (<code>-m/--masks</code>, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.</li>
 <li><strong>The number of genomes</strong>. Generally, more genomes consume more memory, but we can control the genome batch size.</li>
@@ -1993,6 +2091,10 @@ decrease the indexing memory occupation and decrease the index size. While the a
     </a>
 </div>
 <img src="/LexicMap/indexing.svg" alt="" width="900"/>
+<p>See the <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/introduction/#citation"
+>paper</a> for details.</p>
 
 <div class="gdoc-expand">
   <label class="gdoc-expand__head flex justify-between" for="06fbcb4d-3">
@@ -2269,7 +2371,7 @@ alignment speed is almost not affected.</p>
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<p>If you have hundreds of thousands of input genomes or more, it&rsquo;s <strong>better to control the number of genome batches</strong>, which can be calculated via</p>
+<p><font color="#ff5733">If you have hundreds of thousands of input genomes or more, it&rsquo;s <strong>better to control the number of genome batches</strong></font>, which can be calculated via</p>
 <pre><code>$num_input_files / --batch-size
 </code></pre>
 <p>E.g, for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
@@ -2319,7 +2421,7 @@ of <code>--max-open-files</code> is not big enough.</li>
 <p>Building an index with genomes from <strong>a directory</strong>.</p>
 <pre><code> lexicmap index -I refs/ -O demo.lmi
 </code></pre>
-<p>It would take about 6 seconds and 3 GB RAM in a 16-CPU PC.</p>
+<p>It would take about 5 seconds and 1.5 GB RAM in a 16-CPU PC.</p>
 <p>Optionally, we can also use <strong>a file list</strong> as the input.</p>
 <pre><code> $ head -n 3 files.txt
  refs/GCF_000006945.2.fa.gz
@@ -2628,7 +2730,7 @@ see the <a
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/"
 >usage and example</a>.
 Before that, the flag <code>--save-seed-pos</code> needs to be added to <code>lexicmap index</code>.</li>
-<li><code>lexicmap utils subseq</code> can extract subsequences via genome ID, sequence ID and positions,
+<li><code>lexicmap utils subseq</code> can extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result,
 see the <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/"
@@ -3446,6 +3548,72 @@ LexicMap search and other utility commands check compatibility via the main vers
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       

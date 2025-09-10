@@ -2,6 +2,8 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-gtdb/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</loc>
@@ -47,6 +49,8 @@
     <loc>https://bioinf.shenwei.me/LexicMap/faqs/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/notes/</loc>
   </url><url>

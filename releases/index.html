@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.147.3">
+<meta name="generator" content="Hugo 0.148.2">
 
 
-  <meta name="description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
+  <meta name="description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.8.0 - 2025-09-10 No changes to the index format (see Index format changelog)." />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
+  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.8.0 - 2025-09-10 No changes to the index format (see Index format changelog)." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 " />
+  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.8.0 - 2025-09-10 No changes to the index format (see Index format changelog)." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": " Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.7.0 - 2025-04-11 v0.7.0 - 2025-04-10 ",
-      "wordCount" : "1319",
+      "description": " Latest version Note Please run lexicmap version to check update !!! Please run lexicmap autocompletion to update shell autocompletion script !!! v0.8.0 - 2025-09-10 No changes to the index format (see Index format changelog).",
+      "wordCount" : "1620",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1175,6 +1175,50 @@
               
                 <span class="flex">
                   <a
+                    href="/LexicMap/usage/utils/merge-search-results/"
+                    class="gdoc-nav__entry"
+                  >
+                    merge-search-results
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
                     href="/LexicMap/usage/utils/masks/"
                     class="gdoc-nav__entry"
                   >
@@ -1435,6 +1479,50 @@
                     class="gdoc-nav__entry"
                   >
                     remerge
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/edit-genome-ids/"
+                    class="gdoc-nav__entry"
+                  >
+                    edit-genome-ids
                   </a>
                 </span>
               
@@ -1760,6 +1848,77 @@
 </blockquote>
 
 <div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="v080---2025-09-10"
+    >
+        v0.8.0 - 2025-09-10
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v080---2025-09-10" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.8.0 - 2025-09-10" aria-label="Anchor to: v0.8.0 - 2025-09-10" href="#v080---2025-09-10">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p>No changes to the index format (see <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog"
+>Index format changelog</a>).</p>
+<ul>
+<li>New commands:
+<ul>
+<li><strong><code>lexicmap utils merge-search-results</code>: Merge a query&rsquo;s search results from multiple indexes</strong>.</li>
+<li><strong><code>lexicmap utils edit-genome-ids</code>: Edit genome IDs in the index via a regular expression</strong>.
+It&rsquo;s helpful when users forgot to use the flag <code>-N/--ref-name-regexp</code>
+to extract the genome ID from the sequence file during indexing.
+This command help to fix it without rebuilding the index.</li>
+</ul>
+</li>
+<li><code>lexicmap index</code>:
+<ul>
+<li><strong>Significantly reduce the memory usage (by up to 25%)</strong> in the merge step.
+Also reduce some for huge data, such as long-reads or contigs in the <a
+  class="gdoc-markdown__link"
+  href="https://github.com/IndexThePlanet/Logan"
+>Logan project</a>.</li>
+</ul>
+</li>
+<li><code>lexicmap search</code>:
+<ul>
+<li><strong>Reduce memory usage, particularly for batch searching (by up to 50%)</strong>.</li>
+<li><strong>Improve search speed, mainly for batch searching</strong>.</li>
+<li><strong>Support limiting search by TaxId(s)</strong> via <code>-t/--taxids</code> or <code>--taxid-file</code>.
+Only genomes with descendant TaxIds of the specific ones or themselves are searched,
+in a similar way with BLAST+ 2.15.0 or later versions.
+Negative values are allowed as a black list.
+For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with <code>-t 543,-561</code>.
+Users only need to provide NCBI-format taxdump files (<code>-T/--taxdump</code>, can also create from
+any taxonomy data with <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump"
+>TaxonKit</a>)
+and a genome-ID-to-TaxId mapping file (<code>-G/--genome2taxid</code>).
+There&rsquo;s no need to rebuild the index.</li>
+<li>Check if the output file and the log file are the same.</li>
+<li>Reduce the time of seed matching when using <code>-w</code>.</li>
+<li>Change the default value of <code>--max-query-conc</code> from 12 to 8.</li>
+<li>New flag <code>--gc-interval</code> (default 64, 0 for disable) for forcing garbage collection every N queries. This decreases memory usage a lot.</li>
+</ul>
+</li>
+<li><code>lexicmap utils subseq</code>:
+<ul>
+<li><strong>Accept the output file of <code>lexicmap search</code> as the input</strong>.
+So one can extract matched sequences (including flanking regions) from the index, after alignment with <code>lexicmap search</code> with or without using the flag <code>-a/--all</code>.</li>
+<li>Support extending aligned regions with <code>-U/--upstream</code> and/or <code>-D/--downstream</code>.</li>
+</ul>
+</li>
+</ul>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="previous-versions"
+    >
+        Previous versions
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v070---2025-04-11"
     >
         v0.7.0 - 2025-04-11
@@ -1794,15 +1953,6 @@
 </ul>
 </li>
 </ul>
-<div class="flex align-center gdoc-page__anchorwrap">
-    <h2 id="previous-versions"
-    >
-        Previous versions
-    </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
-        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
-    </a>
-</div>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v061---2025-03-31"
     >
@@ -2915,6 +3065,72 @@ in batch searching.</li>
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
