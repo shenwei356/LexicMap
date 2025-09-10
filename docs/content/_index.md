@@ -56,6 +56,9 @@ Step 2: searching
 
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
+[10 utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available
+to explore the index data, merge search results, extract matched subsequences and more.
+
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
 {{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}
@@ -64,7 +67,7 @@ Step 2: searching
 
 ### Accurate and efficient alignment
 
-Using LexicMap to align in the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
+Using LexicMap v0.7.0 to align against the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
 
 |Query            |Genome hits|Time   |RAM(GB)|
 |:----------------|----------:|------:|------:|

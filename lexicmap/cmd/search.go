@@ -1,4 +1,4 @@
-// Copyright © 2023-2024 Wei Shen <shenwei356@gmail.com>
+// Copyright © 2023-2025 Wei Shen <shenwei356@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -757,7 +757,7 @@ func init() {
 	mapCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
 
-	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta.gz ...] [-o query.tsv.gz]"))
+	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]"))
 
 	// filter by taxids
 

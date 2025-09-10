@@ -1,4 +1,4 @@
-// Copyright © 2023-2024 Wei Shen <shenwei356@gmail.com>
+// Copyright © 2023-2025 Wei Shen <shenwei356@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -615,7 +615,7 @@ func init() {
 	indexCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information.`))
 
-	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] { -I <seqs dir> | -X <file list>} -O <out dir>"))
+	indexCmd.SetUsageTemplate(usageTemplate("[-k <k>] [-m <masks>] {-I <seqs dir> | [-S] -X <file list>} -O <index.lmi>"))
 }
 
 var defaultChunks int

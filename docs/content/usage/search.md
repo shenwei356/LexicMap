@@ -70,7 +70,7 @@ Result ordering:
   3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
 
 Usage:
-  lexicmap search [flags] -d <index path> [query.fasta.gz ...] [-o query.tsv.gz]
+  lexicmap search [flags] -d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]
 
 Flags:
       --align-band int                 ► Band size in backtracking the score matrix (pseudo alignment

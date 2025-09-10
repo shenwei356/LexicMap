@@ -107,11 +107,13 @@ Global Flags:
         
     Sequence header
     
-        $ seqkit head -n 1 t.txt.aligned.fasta | seqkit seq -n
-        NZ_CP033092.2:458559-460100:+ query=NC_000913.3:4166659-4168200 sgenome=GCF_003697165.2 sseqid=NZ_CP033092.2 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1542 pident=99.805 gaps=0 qstart=1 qend=1542 sstart=458559 send=460100 sstr=+ slen=4903501 evalue=0.00e+00 bitscore=2767
-        
-        $ seqkit head -n 1 t.txt.aligned.extended.fasta | seqkit seq -n
-        NZ_CP033092.2:457559-461100:+ query=NC_000913.3:4166659-4168200 sgenome=GCF_003697165.2 sseqid=NZ_CP033092.2 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1542 pident=99.805 gaps=0 qstart=1 qend=1542 sstart=458559 send=460100 sstr=+ slen=4903501 evalue=0.00e+00 bitscore=2767
+    ```text
+    $ seqkit head -n 1 t.txt.aligned.fasta | seqkit seq -n
+    NZ_CP033092.2:458559-460100:+ query=NC_000913.3:4166659-4168200 sgenome=GCF_003697165.2 sseqid=NZ_CP033092.2 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1542 pident=99.805 gaps=0 qstart=1 qend=1542 sstart=458559 send=460100 sstr=+ slen=4903501 evalue=0.00e+00 bitscore=2767
+    
+    $ seqkit head -n 1 t.txt.aligned.extended.fasta | seqkit seq -n
+    NZ_CP033092.2:457559-461100:+ query=NC_000913.3:4166659-4168200 sgenome=GCF_003697165.2 sseqid=NZ_CP033092.2 qcovGnm=100.000 cls=1 hsp=1 qcovHSP=100.000 alenHSP=1542 pident=99.805 gaps=0 qstart=1 qend=1542 sstart=458559 send=460100 sstr=+ slen=4903501 evalue=0.00e+00 bitscore=2767
+    ```
 
 
 1. Extracting subsequence with genome ID, sequence ID, position range and strand information.
