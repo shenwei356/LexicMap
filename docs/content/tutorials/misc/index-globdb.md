@@ -22,7 +22,7 @@ Data:
     # file list
     find globdb_r220_genome_fasta/ -name "*.fa.gz" > files.txt
     
-Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.8.0.
 
     wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv
     
