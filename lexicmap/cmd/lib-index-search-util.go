@@ -33,6 +33,7 @@ import (
 // extendMatch an alignment region using a chaining algorithm.
 func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int, tBegin, maxExtLen int, rc bool) ([]byte, []byte, int, int, int, int, error) {
 	var m uint8 = 2
+	_start1, _end1, _start2, _end2 := start1, end1, start2, end2
 
 	// fmt.Println("before:", start1, end1, start2, end2)
 
@@ -81,6 +82,13 @@ func extendMatch(seq1, seq2 []byte, start1, end1, start2, end2 int, extLen int, 
 			poolRevBytes.Put(_seq1)
 			poolRevBytes.Put(_seq2)
 		}
+	}
+
+	if start1 < 0 || start2 < 0 { // just in case
+		start1, start2 = _start1, _start2
+	}
+	if end1 > len(seq1) || end2 > len(seq2) {
+		end1, end2 = _end1, _end2
 	}
 
 	// fmt.Println("after:", start1, end1, start2, end2)
@@ -242,6 +250,9 @@ func trimOps(ops []uint64) []uint64 {
 			break
 		}
 	}
+	if start < 0 { // no matches, it's weird, but it does happen, to be further checked
+		return nil
+	}
 	return ops[start : end+1]
 }
 
@@ -252,6 +263,9 @@ func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda,
 
 	return func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
 		ops := trimOps(cigar.Ops)
+		if ops == nil {
+			return 0, 0, math.MaxFloat64
+		}
 		var score, n int
 		for _, op := range ops {
 			n = int(op & 4294967295)

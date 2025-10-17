@@ -186,7 +186,9 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
          61.02 KiB      genomes.chunks.bin
              619 B      info.toml
         
-   It took 47h40m and 145GB RAM with 48 CPUs for 2.44m ATB genomes.
+   It took 47h40m and 145GB RAM with 48 CPUs for 2.44m ATB genomes, with LexicMap v0.7.0 on EBI Codon cluster.
+   
+   It took 66h18m and 125GB RAM with 48 CPUs for 2.44m ATB genomes, with LexicMap v0.8.0 on my server.
    
 1. (Optional) Prepare Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
 
