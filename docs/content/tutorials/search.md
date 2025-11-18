@@ -192,6 +192,8 @@ The reasons are:
   The different starting positions in query and subject sequences would result in two alignment segments (small `qcovHSP`).
 - Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
   Therefore, a plasmid might be aligned to multiple contigs with small `qcovHSP`.
+  
+If you have tens (or more) of plasmids to search, the memory usage would be 100 or 200 GB, as there would be a large number of possible short matches between the query and EACH candidate genome. In this case, it's better to decrease the number of concurrent queries (`-J/--max-query-conc`, default 8). You can also use a smaller value for GC interval (`--gc-interval`, default 64), which forces garbage collection every N queries. See [more factors affecting the memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
     
 ## Steps
 

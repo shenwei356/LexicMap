@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.8.1 - 2025-xx-xx
+
+- `lexicmap search`:
+    - Fix a runtime panic. [#23](https://github.com/shenwei356/LexicMap/issues/23).
+
 ### v0.8.0 - 2025-09-10
 
 No changes to the index format (see [Index format changelog](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog)).
