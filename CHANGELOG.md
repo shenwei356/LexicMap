@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.8.1 - 2025-xx-xx
+### v0.8.1 - 2025-12-19
 
 - `lexicmap search`:
     - Fix a runtime panic. [#23](https://github.com/shenwei356/LexicMap/issues/23).

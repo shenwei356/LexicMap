@@ -13,7 +13,14 @@ weight: 30
 - Please run `lexicmap autocompletion` to update shell autocompletion script !!!
 {{< /hint >}}
 
-## v0.8.0 - 2025-09-10
+### v0.8.1 - 2025-12-19
+
+- `lexicmap search`:
+    - Fix a runtime panic. [#23](https://github.com/shenwei356/LexicMap/issues/23).
+
+## Previous versions
+
+### v0.8.0 - 2025-09-10
 
 No changes to the index format (see [Index format changelog](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog)).
 
@@ -46,8 +53,6 @@ No changes to the index format (see [Index format changelog](https://bioinf.shen
     - **Accept the output file of `lexicmap search` as the input**.
       So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
     - Support extending aligned regions with `-U/--upstream` and/or `-D/--downstream`.
-
-## Previous versions
 
 ### v0.7.0 - 2025-04-11
 
