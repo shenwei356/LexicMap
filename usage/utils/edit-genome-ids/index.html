@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.148.2">
+<meta name="generator" content="Hugo 0.152.2">
 
 
   <meta name="description" content=" Usage Edit genome IDs in the index via a regular expression Use cases: In the &#39;lexicmap index&#39; command, users might forget to use the flag -N/--ref-name-regexp to extract the genome ID from the sequence file. A genome file from NCBI looks like: GCF_009818595.1_ASM981859v1_genomic.fna.gz In this case, the genome ID would be GCF_009818595.1_ASM981859v1_genomic, which is too long. So we can use this command to extract the assembly accession via: lexicmap utils edit-genome-ids -d t.lmi/ -p &#39;^(\w{3}_\d{9}\.\d&#43;).*&#39; -r &#39;$1&#39; Tips: - A backup file (genomes.map.bin.bak) will be created on the first run. Usage: lexicmap utils edit-genome-ids [flags] Flags: -h, --help help for edit-genome-ids -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -p, --pattern string ► Search regular expression&#34;. -r, --replacement string ► Replacement. Supporting capture variables. e.g. $1 represents the text of the first submatch. ATTENTION: for *nix OS, use SINGLE quote NOT double quotes or use the \ escape character. Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Suppose that we have one genome." />

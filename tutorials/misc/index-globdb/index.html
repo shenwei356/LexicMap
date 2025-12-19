@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.148.2">
+<meta name="generator" content="Hugo 0.152.2">
 
 
   <meta name="description" content="Info:
 GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.7.1.
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
 wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
 
     <title>Indexing GlobDB | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
@@ -43,7 +43,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content="Info:
 GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.7.1.
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
 wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/" />
@@ -55,7 +55,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
 <meta name="twitter:title" content="Indexing GlobDB" />
   <meta name="twitter:description" content="Info:
 GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.7.1.
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
 wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
 
 
@@ -67,7 +67,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
       "name": "Indexing GlobDB",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/",
       "headline": "Indexing GlobDB",
-      "description": "Info:\nGlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.7.1.\nwget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https:\/\/bioinf.shenwei.me\/taxonkit\/usage\/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump\/taxid.map Indexing with LexicMap",
+      "description": "Info:\nGlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.\nwget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https:\/\/bioinf.shenwei.me\/taxonkit\/usage\/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump\/taxid.map Indexing with LexicMap",
       "wordCount" : "111",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -1873,7 +1873,7 @@ tar -zxf globdb_r220_genome_fasta.tar.gz
 # file list
 find globdb_r220_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt
 </code></pre>
-<p>Taxonomy data to limit TaxId in <code>lexicmap search</code> since LexicMap v0.7.1.</p>
+<p>Taxonomy data to limit TaxId in <code>lexicmap search</code> since LexicMap v0.8.0.</p>
 <pre><code>wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv
 
 # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump    

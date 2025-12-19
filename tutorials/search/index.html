@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.148.2">
+<meta name="generator" content="Hugo 0.152.2">
 
 
   <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
       "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.",
-      "wordCount" : "4445",
+      "wordCount" : "4524",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2342,6 +2342,10 @@ The different starting positions in query and subject sequences would result in 
 <li>Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
 Therefore, a plasmid might be aligned to multiple contigs with small <code>qcovHSP</code>.</li>
 </ul>
+<p>If you have tens (or more) of plasmids to search, the memory usage would be 100 or 200 GB, as there would be a large number of possible short matches between the query and EACH candidate genome. In this case, it&rsquo;s better to decrease the number of concurrent queries (<code>-J/--max-query-conc</code>, default 8). You can also use a smaller value for GC interval (<code>--gc-interval</code>, default 64), which forces garbage collection every N queries. See <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements"
+>more factors affecting the memory usage</a>.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="steps"
     >
@@ -2527,7 +2531,8 @@ and a query&rsquo;s search results in multiple indexes can be merged with <code>
 <a
   class="gdoc-markdown__link"
   href="https://www.ncbi.nlm.nih.gov/books/NBK62051/"
->https://www.ncbi.nlm.nih.gov/books/NBK62051/</a></p></blockquote>
+>https://www.ncbi.nlm.nih.gov/books/NBK62051/</a></p>
+</blockquote>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="output-format"
     >

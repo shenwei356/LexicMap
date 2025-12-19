@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.148.2">
+<meta name="generator" content="Hugo 0.152.2">
 
 
   <meta name="description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How&rsquo;s the hardware requirement? How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
@@ -1924,7 +1924,8 @@ a lot (&gt;200 batches) of batches (<code>$inpu_files / --batch-size</code>) and
 of <code>--max-open-files</code> is not big enough.</li>
 <li>The Slurm/PBS job time limit is almost reached and the merging step won&rsquo;t be finished before that.</li>
 <li>Disk quota is reached in the merging step.</li>
-</ul></blockquote>
+</ul>
+</blockquote>
 <p>So you can stop the indexing command by press <code>Ctrl</code> + <code>C</code> (<strong>make sure it is in the merging step</strong>, see example below), and run <code>lexicmap utils remerge -d index.lmi</code>,
 where <code>index.lmi</code> is the output index directory in <code>lexicmap index</code>.</p>
 <p>Optionally, you might set bigger values of
