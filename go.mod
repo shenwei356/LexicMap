@@ -43,7 +43,7 @@ require (
 	github.com/go-pdf/fpdf v0.8.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -52,7 +52,7 @@ require (
 	github.com/shenwei356/breader v0.3.2 // indirect
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/ulikunitz/xz v0.5.14 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/text v0.16.0 // indirect

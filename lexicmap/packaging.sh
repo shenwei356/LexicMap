@@ -7,8 +7,9 @@ if [ $# -gt 0 ]; then
 fi
 
 export GOEXPERIMENT=greenteagc # for go1.25
-CGO_ENABLED=0 gox -os="windows darwin linux freebsd" -arch="amd64 arm64" -tags netgo -ldflags "-w -s $commit" -asmflags '-trimpath' \
-    -output "lexicmap_{{.OS}}_{{.Arch}}"
+CGO_ENABLED=0 gox -os="windows darwin linux freebsd" -arch="amd64 arm64" \
+    -output "lexicmap_{{.OS}}_{{.Arch}}" \
+    -tags netgo -ldflags "-extldflags '-static' -w -s $commit" -asmflags '-trimpath'
 
 dir=binaries
 mkdir -p $dir;
