@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.8.2 - 2026-xx-xx
+
+- `lexicmap search`:
+    - Fix the computation of bitscore.
+
 ### v0.8.1 - 2025-12-19
 
 - `lexicmap search`:
