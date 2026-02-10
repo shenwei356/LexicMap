@@ -129,6 +129,7 @@ Input:
 			checkError(err)
 
 			headerLine = true
+			preQuery = "shenwei356"
 
 			scanner = bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
@@ -147,6 +148,7 @@ Input:
 					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", ncols, len(items)))
 				}
 
+				align = items[23] // let the compiler to reduce boundary checking
 				query = items[0]
 				qlen = items[1]
 				hits = items[2]
@@ -170,7 +172,7 @@ Input:
 				cigar = items[20]
 				qseq = items[21]
 				sseq = items[22]
-				align = items[23]
+				// align = items[23]
 
 				_qstart, _ = strconv.Atoi(qstart)
 				_qend, _ = strconv.Atoi(qend)

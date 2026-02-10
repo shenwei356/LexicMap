@@ -1,6 +1,6 @@
 module github.com/shenwei356/LexicMap
 
-go 1.24
+go 1.25.5
 
 // replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
 // replace github.com/shenwei356/wfa => /home/shenwei/go/src/github.com/shenwei356/wfa/
@@ -20,7 +20,7 @@ require (
 	github.com/shenwei356/lexichash v0.5.0
 	github.com/shenwei356/util v0.5.4
 	github.com/shenwei356/wfa v0.4.1
-	github.com/shenwei356/xopen v0.3.2
+	github.com/shenwei356/xopen v0.4.0
 	github.com/spf13/cobra v1.8.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.7.2
@@ -43,9 +43,10 @@ require (
 	github.com/go-pdf/fpdf v0.8.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

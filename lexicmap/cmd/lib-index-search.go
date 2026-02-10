@@ -1951,6 +1951,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							var _s1, _e1, _s2, _e2 int // extend length
 							var similarityScore, maxSimilarityScore float64
 							var _extLen2 int
+							var _op byte
 							for i, c := range *r2.Chains {
 								if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 									poolChain2.Put(c)
@@ -2059,7 +2060,15 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
 										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
 										// c.CIGAR = append(c.CIGAR, op.Op)
-										c.CIGAR = append(c.CIGAR, byte(op>>32))
+										// exchange D and I, cause these in WFA and SAM are inverse
+										_op = byte(op >> 32)
+										switch _op {
+										case 'D':
+											_op = 'I'
+										case 'I':
+											_op = 'D'
+										}
+										c.CIGAR = append(c.CIGAR, _op)
 									}
 
 									Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
@@ -2193,6 +2202,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					var _s1, _e1, _s2, _e2 int // extend length
 					var similarityScore, maxSimilarityScore float64
 					var _extLen2 int
+					var _op byte
 					for i, c := range *r2.Chains {
 						if c.QBegin >= c.QEnd+1 { // rare case when the contig interval is two small
 							poolChain2.Put(c)
@@ -2303,7 +2313,15 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
 								c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
 								// c.CIGAR = append(c.CIGAR, op.Op)
-								c.CIGAR = append(c.CIGAR, byte(op>>32))
+								// exchange D and I, cause these in WFA and SAM are inverse
+								_op = byte(op >> 32)
+								switch _op {
+								case 'D':
+									_op = 'I'
+								case 'I':
+									_op = 'D'
+								}
+								c.CIGAR = append(c.CIGAR, _op)
 							}
 
 							Q, A, T = cigar.AlignmentText(&_qseq, &_tseq, true)
