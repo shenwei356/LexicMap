@@ -39,12 +39,18 @@ var toSamCmd = &cobra.Command{
 	Long: `Convert the default search output to SAM format
 
 Input:
-   - Output of 'lexicmap search' with the flag -a/--all.
+   - Output file of 'lexicmap search' with the flag -a/--all.
    - Do not support STDIN.
+
+Output:
+   - Clipped regions in SEQ are represented as N's,
+     as the input contains only the aligned portion of the sequences.
+   - Different from SAM files produced by Minimap2,
+     'X' (mismatch) in CIGAR is not converted to 'M' (match).
+   - NM (Edit distance ) and AS (alignment score) fields are produced.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		opt := getOptions(cmd)
 
 		outFile := getFlagString(cmd, "out-file")
@@ -62,6 +68,15 @@ Input:
 		concatSgenomeAndSseqid := getFlagBool(cmd, "concat-sgenome-sseqid")
 		separater := getFlagString(cmd, "separater")
 
+		timeStart0 := time.Now()
+		defer func() {
+			if opt.Verbose {
+				log.Info()
+				log.Infof("elapsed time: %s", time.Since(timeStart0))
+				log.Info()
+			}
+		}()
+
 		// ---------------------------------------------------------------
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
@@ -75,6 +90,11 @@ Input:
 		}()
 
 		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+		for _, file := range files {
+			if file == "-" {
+				checkError(fmt.Errorf("stdin not supported, as the input needs to be read twice"))
+			}
+		}
 
 		buf := make([]byte, bufferSize)
 		var fh *xopen.Reader
@@ -84,8 +104,9 @@ Input:
 		ncols := 24
 		items := make([]string, ncols)
 
-		var query, qlen, sgenome, sseqid, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, bitscore string
+		var query, sgenome, sseqid, qcovHSP, alenHSP, pident, gaps, sstart, send, sstr, slen, bitscore string
 		var cigar, qseq string
+		var qlen, qstart, qend string
 
 		var headerLine bool
 		var preQuery string
@@ -103,9 +124,6 @@ Input:
 		refs := make([]string, 0, 2048)
 		m := make(map[string]struct{}, 1024)
 		for _, file := range files {
-			if file == "-" {
-				checkError(fmt.Errorf("stdin not supported"))
-			}
 			fh, err = xopen.Ropen(file)
 			checkError(err)
 
@@ -160,7 +178,7 @@ Input:
 		clear(m)
 		refs = refs[:0]
 		if opt.Verbose {
-			log.Infof("elapsed time: %s", time.Since(timeStart))
+			log.Infof("  elapsed time: %s", time.Since(timeStart))
 		}
 
 		// ---------------------------------------------------------------
@@ -175,13 +193,14 @@ Input:
 		lnK := math.Log(0.41)
 		// bitScore := (lambda*float64(_score) - lnK) / math.Ln2
 
-		var _bitscore, _alenHSP, algnScore, _gaps, _qlen, _qstart, _qend int
+		var _bitscore, _alenHSP, algnScore, _gaps int
 		var _qcovHSP, _pident float64
 		var flag uint32
 		aligns := make([]*SearchResultOfASequence2, 0, 1024)
 		var a, b *SearchResultOfASequence2
 		var i, maxScore, maxI int
 		var mapq float64
+		var _qlen, _qstart, _qend int
 		var clip5, clip3 string
 		for _, file := range files {
 			fh, err = xopen.Ropen(file)
@@ -209,7 +228,7 @@ Input:
 					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", ncols, len(items)))
 				}
 
-				cigar = items[20] // let the compiler to reduce boundary checking
+				qseq = items[21] // let the compiler to reduce boundary checking
 				query = items[0]
 				qlen = items[1]
 				sgenome = items[3]
@@ -225,19 +244,19 @@ Input:
 				sstr = items[16]
 				slen = items[17]
 				bitscore = items[19]
-				qseq = items[21]
+				cigar = items[20]
 
-				_qlen, _ = strconv.Atoi(qlen)
 				_qcovHSP, _ = strconv.ParseFloat(qcovHSP, 64)
 				_alenHSP, _ = strconv.Atoi(alenHSP)
 				_pident, _ = strconv.ParseFloat(pident, 64)
 				_gaps, _ = strconv.Atoi(gaps)
-				_qstart, _ = strconv.Atoi(qstart)
-				_qend, _ = strconv.Atoi(qend)
 				_sstart, _ = strconv.Atoi(sstart)
 				_send, _ = strconv.Atoi(send)
 				_bitscore, _ = strconv.Atoi(bitscore)
 				algnScore = int((float64(_bitscore)*math.Ln2 + lnK) / lambda)
+				_qlen, _ = strconv.Atoi(qlen)
+				_qstart, _ = strconv.Atoi(qstart)
+				_qend, _ = strconv.Atoi(qend)
 
 				flag = 0
 				if sstr == "-" {
@@ -245,6 +264,8 @@ Input:
 				}
 
 				r := poolSearchResultOfASequence2.Get().(*SearchResultOfASequence2)
+
+				// data for later use
 				r.sgenome = sgenome
 				r.score = algnScore
 				r.qcovHSP = _qcovHSP
@@ -252,6 +273,7 @@ Input:
 				r.gaps = float64(_gaps)
 				r.alenHSP = float64(_alenHSP)
 
+				// sam data
 				r.FLAG = flag
 				if concatSgenomeAndSseqid {
 					r.RNAME = sgenome + separater + sseqid
@@ -267,13 +289,17 @@ Input:
 					clip3 = fmt.Sprintf("%dS", _qlen-_qend)
 				}
 				if clip5 != "" || clip3 != "" {
-					// cigar = clip5 + cigar + clip3
+					cigar = clip5 + cigar + clip3
 				}
-				r.CIGAR = cigar // todo: append S
+				r.CIGAR = cigar
 				r.RNEXT = "*"
 				r.PNEXT = "0"
 				r.TLEN = _send - _sstart + 1
-				r.SEQ = strings.ReplaceAll(qseq, "-", "")
+				if preQuery != query {
+					r.SEQ = strings.Repeat("N", _qstart-1) + strings.ReplaceAll(qseq, "-", "") + strings.Repeat("N", _qlen-_qend)
+				} else {
+					r.SEQ = "*"
+				}
 				r.QUAL = "*"
 				r.NM = int(float64(_alenHSP) * (1 - _pident/100))
 				r.AS = algnScore
@@ -286,10 +312,8 @@ Input:
 						b = aligns[1]
 						maxScore, maxI = b.score, 1
 						b.FLAG |= 0x100 // secondary alignment
-						b.SEQ = "*"
 						for i, b = range aligns[2:] {
 							b.FLAG |= 0x100 // secondary alignment
-							b.SEQ = "*"
 							if b.score > maxScore {
 								maxScore, maxI = b.score, i
 							}
@@ -326,10 +350,8 @@ Input:
 					b = aligns[1]
 					maxScore, maxI = b.score, 1
 					b.FLAG |= 0x100 // secondary alignment
-					b.SEQ = "*"
 					for i, b = range aligns[2:] {
 						b.FLAG |= 0x100 // secondary alignment
-						b.SEQ = "*"
 						if b.score > maxScore {
 							maxScore, maxI = b.score, i
 						}
@@ -354,6 +376,10 @@ Input:
 
 			checkError(scanner.Err())
 			checkError(fh.Close())
+		}
+
+		if opt.Verbose {
+			log.Infof("  elapsed time: %s", time.Since(timeStart))
 		}
 	},
 }

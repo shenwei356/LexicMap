@@ -206,6 +206,7 @@ Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTCTATGTTACT  186
 Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
 ```
 
+Export SAM format, see [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/).
 
 Learn more: [demo](https://github.com/shenwei356/LexicMap/tree/main/demo),
 [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/),

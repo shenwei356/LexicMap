@@ -13,6 +13,7 @@ Usage:
 
 Available Commands:
   2blast               Convert the default search output to blast-style format
+  2sam                 Convert the default search output to SAM format
   edit-genome-ids      Edit genome IDs in the index via a regular expression
   genomes              View genome IDs in the index
   kmers                View k-mers captured by the masks
@@ -40,6 +41,7 @@ Global Flags:
 Subcommands:
 
 - [2blast](2blast/)
+- [2sam](2sam/)
 - [merge-search-results](merge-search-results/)
 - [masks](masks/)
 - [kmers](kmers/)
