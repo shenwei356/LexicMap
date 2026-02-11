@@ -18,7 +18,7 @@ Output:
      as the input contains only the aligned portion of the sequences.
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
-   - NM (Edit distance ) and AS (alignment score) fields are produced.
+   - NM (edit distance) and AS (alignment score) fields are produced.
 
 Usage:
   lexicmap utils 2sam [flags] 

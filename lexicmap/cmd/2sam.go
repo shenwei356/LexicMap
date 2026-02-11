@@ -1,4 +1,4 @@
-// Copyright © 2023-2025 Wei Shen <shenwei356@gmail.com>
+// Copyright © 2023-2026 Wei Shen <shenwei356@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ Output:
      as the input contains only the aligned portion of the sequences.
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
-   - NM (Edit distance ) and AS (alignment score) fields are produced.
+   - NM (edit distance) and AS (alignment score) fields are produced.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
