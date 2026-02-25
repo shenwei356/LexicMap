@@ -194,6 +194,7 @@ Result ordering:
 		// 	checkError(fmt.Errorf("the value of flag --align-ext-len should be >= 1000"))
 		// }
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
+		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
@@ -399,6 +400,7 @@ Result ordering:
 			MinSinglePrefix: uint8(minSinglePrefix),
 			// MinMatchedBases: uint8(minMatches),
 			TopN:           topn,
+			TopNChains:     topNChains,
 			InMemorySearch: inMemorySearch,
 
 			MaxGap:      float64(maxGap),
@@ -722,7 +724,10 @@ func init() {
 		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
-		formatFlagUsage(`Keep top N genome matches for a query (0 for all) in chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 100. (default 0)`))
+		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 100. (default 0)`))
+
+	mapCmd.Flags().IntP("top-n-chains", "N", 0,
+		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. (default 0)`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))

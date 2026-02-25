@@ -33,6 +33,7 @@ type ChainingOptions struct {
 	MinLen      uint8
 	MinScore    float64
 	MaxDistance float64
+	TopChains   int // only keep the top N chains
 }
 
 // DefaultChainingOptions is the defalt vaule of ChainingOption.
@@ -40,6 +41,7 @@ var DefaultChainingOptions = ChainingOptions{
 	MaxGap:      5000,
 	MinScore:    40,
 	MaxDistance: 10000,
+	TopChains:   -1,
 }
 
 // Chainer is an object for chaining the lexichash substrings between query and reference sequences.
@@ -53,6 +55,8 @@ type Chainer struct {
 	visited       []bool
 
 	score2idx [][2]float64
+
+	topChains int
 }
 
 // NewChainer creates a new chainer.
@@ -67,6 +71,8 @@ func NewChainer(options *ChainingOptions) *Chainer {
 		visited:       make([]bool, 0, 10240),
 
 		score2idx: make([][2]float64, 0, 10240),
+
+		topChains: options.TopChains,
 	}
 	return c
 }
@@ -153,7 +159,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 
 	// compute scores
 	var length int32 // substr/anchor length
-	var s, m, w, d, g float64
+	var s, m, w, g float64
+	// var d float64
 	var dir, mdir float64
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
@@ -183,16 +190,20 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 
 			// fmt.Printf("  j:%d, b: %s\n", j, b)
 			if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
+				// fmt.Printf("   skip\n")
 				continue
 			}
 
 			if a.QBegin-b.QBegin > maxDistanceInt32 {
+				// fmt.Printf("   distant in target too long: %fd > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
 				break
 			}
 
-			d = distance(a, b)
-			if d > maxDistance {
-				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
+			// d = distance(a, b)
+			// if d > maxDistance {
+			// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
+			if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
+				// fmt.Printf("   distant in target too long: %d > %d\n", a.TBegin-b.TBegin, maxDistanceInt32)
 				continue // must not be break
 			}
 
@@ -279,7 +290,13 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	var maxScore float64
 	first := true // best chain
 	var changeDirection bool
+	var nChecked int
 	for {
+		nChecked++
+		if ce.topChains > 0 && nChecked > ce.topChains {
+			break
+		}
+
 		// find the next highest score
 
 		// M = 0

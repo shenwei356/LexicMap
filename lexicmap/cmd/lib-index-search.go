@@ -67,7 +67,8 @@ type IndexSearchingOptions struct {
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
 	// MinMatchedBases uint8 // the total matched bases
-	TopN int // keep the topN scores, e.g, 10
+	TopN       int // keep the topN scores, e.g, 10
+	TopNChains int // keep the top N chains
 
 	// seeds chaining
 	MaxGap      float64 // e.g., 5000
@@ -586,6 +587,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		MinScore: seedWeight(float64(opt.MinSinglePrefix)),
 		// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
 		MaxDistance: opt.MaxDistance,
+		TopChains:   opt.TopNChains,
 	}
 	idx.chainingOptions = co
 	idx.poolChainers = &sync.Pool{New: func() interface{} {
