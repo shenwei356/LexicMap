@@ -218,6 +218,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 				return 0
 			})
 
+			// fmt.Printf(" j range: %d - %d\n", minJ, rightBound)
 			for j = rightBound; j >= minJ; j-- {
 				b = (*subs)[j]
 
@@ -248,7 +249,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 					d = -d
 				}
 				if uint32(d)-1 >= maxDistanceUint32 { // including d == 0
-					// fmt.Printf("   distant in target too long: %d > %d\n", a.TBegin-b.TBegin, maxDistanceInt32)
+					// fmt.Printf("   distant in target too long: %d > %d\n", d, maxDistanceInt32)
 					continue // must not be break
 				}
 
@@ -276,7 +277,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 					w = seedWeight(float64(length))
 				}
 
-				// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
+				// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g) // an early version
 
 				dir = direction(a, b)
 

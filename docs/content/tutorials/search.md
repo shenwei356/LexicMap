@@ -113,13 +113,13 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 
 {{< tab "Chaining" >}}
 
-|Flag                              |Value       |Function                                                                                        |Comment                                                       |
-|:---------------------------------|:-----------|:-----------------------------------------------------------------------------------------------|:-------------------------------------------------------------|
-|**`-p, --seed-min-prefix`**       |Default 15  |Minimum (prefix) length of matched seeds (anchors).                                             |Smaller values produce more results at the cost of slow speed.|
-|**`-P, --seed-min-single-prefix`**|Default 17  |Minimum (prefix) length of matched seeds (anchors) if there's only one pair of seeds matched.   |Smaller values produce more results at the cost of slow speed.|
-|`--seed-max-dist`                 |Default 1000|Max distance between seeds in seed chaining. It should be <= contig interval length in database.|                                                              |
-|`--seed-max-gap`                  |Default 50  |Max gap in seed chaining.                                                                       |                                                              |
-|**`--top-n-chains`**              |Default 0   |Keep the top N chains in a genome for the query (0 for all) in the chaining phase               |Set a non-zero value if you only need the most similar matches|
+|Flag                              |Value       |Function                                                                                        |Comment                                                                                                                                                                                |
+|:---------------------------------|:-----------|:-----------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-p, --seed-min-prefix`**       |Default 15  |Minimum (prefix) length of matched seeds (anchors).                                             |Smaller values produce more results at the cost of slow speed.                                                                                                                         |
+|**`-P, --seed-min-single-prefix`**|Default 17  |Minimum (prefix) length of matched seeds (anchors) if there's only one pair of seeds matched.   |Smaller values produce more results at the cost of slow speed.                                                                                                                         |
+|`--seed-max-dist`                 |Default 1000|Max distance between seeds in seed chaining. It should be <= contig interval length in database.|                                                                                                                                                                                       |
+|`--seed-max-gap`                  |Default 50  |Max gap in seed chaining.                                                                       |                                                                                                                                                                                       |
+|**`--top-n-chains`**              |Default 0   |Keep the top N chains in a genome for the query (0 for all) in the chaining phase               |Set a non-zero value if you only need the most similar matches. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 10.|
 
 {{< /tab>}}
 

@@ -727,7 +727,7 @@ func init() {
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 100. (default 0)`))
 
 	mapCmd.Flags().IntP("top-n-chains", "N", 0,
-		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. (default 0)`))
+		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 10. (default 0)`))
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
