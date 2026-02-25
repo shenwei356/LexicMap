@@ -49,6 +49,7 @@ type Chainer struct {
 	options *ChainingOptions
 
 	// scores        []float64 // actually, it's not necessary
+	prevQIdx      []int
 	maxscores     []float64
 	maxscoresIdxs []int
 	directions    []float64
@@ -65,6 +66,7 @@ func NewChainer(options *ChainingOptions) *Chainer {
 		options: options,
 
 		// scores:        make([]float64, 0, 128),
+		prevQIdx:      make([]int, 0, 10240),
 		maxscores:     make([]float64, 0, 10240),
 		maxscoresIdxs: make([]int, 0, 10240),
 		directions:    make([]float64, 0, 10240),
@@ -161,12 +163,26 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	var length int32 // substr/anchor length
 	var s, m, w, g float64
 	// var d float64
+	var d int32
 	var dir, mdir float64
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
 	maxDistanceInt32 := int32(maxDistance)
+	maxDistanceUint32 := uint32(maxDistance)
 
+	// store i of 'a' with a different QBegin
+	prevQIdx := ce.prevQIdx[:0]
+	lastDiffGroup := -1
+	for i = 0; i < n; i++ {
+		if i > 0 && (*subs)[i].QBegin != (*subs)[i-1].QBegin {
+			lastDiffGroup = i - 1
+		}
+		prevQIdx = append(prevQIdx, lastDiffGroup)
+	}
+
+	var minJ, rightBound int
+	var targetQ int32
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
 
@@ -179,79 +195,109 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 		m, mj, mdir = seedWeight(float64(a.Len)), i, 0
 
 		// for j = 0; j < i; j++ { // try all previous seeds, no bound
-		j = i
-		for {
-			j--
-			if j < 0 {
-				break
-			}
+		//
+		// j = i
+		// for {
+		// 	j--
+		// 	if j < 0 {
+		// 		break
+		// 	}
+		//
+		rightBound = prevQIdx[i]
+		if rightBound >= 0 {
+			targetQ = a.QBegin - maxDistanceInt32
 
-			b = (*subs)[j]
+			// leftBound of j
+			minJ, _ = slices.BinarySearchFunc((*subs)[:rightBound+1], targetQ, func(e *SubstrPair, t int32) int {
+				if e.QBegin < t {
+					return -1
+				}
+				if e.QBegin > t {
+					return 1
+				}
+				return 0
+			})
 
-			// fmt.Printf("  j:%d, b: %s\n", j, b)
-			if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
-				// fmt.Printf("   skip\n")
-				continue
-			}
+			for j = rightBound; j >= minJ; j-- {
+				b = (*subs)[j]
 
-			if a.QBegin-b.QBegin > maxDistanceInt32 {
-				// fmt.Printf("   distant in target too long: %fd > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
-				break
-			}
+				// fmt.Printf("  j:%d, b: %s\n", j, b)
 
-			// d = distance(a, b)
-			// if d > maxDistance {
-			// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
-			if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
-				// fmt.Printf("   distant in target too long: %d > %d\n", a.TBegin-b.TBegin, maxDistanceInt32)
-				continue // must not be break
-			}
-
-			g = gap(a, b)
-			if g > maxGap {
-				// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
-				continue // must not be break
-			}
-
-			// effective seed length
-			if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
-				// b -----
-				// a       ------
-				length = int32(a.Len)
-				w = seedWeight(float64(length))
-			} else if g == 0 { // merge them into a longer anchor
-				// b -----
-				// a    ------
-				length = a.QBegin + int32(a.Len) - int32(b.QBegin)
-				w = -seedWeight(float64(b.Len)) + seedWeight(float64(length))
-			} else {
-				// b -----
-				// a    ------
-				length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
-				w = seedWeight(float64(length))
-			}
-
-			// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
-
-			dir = direction(a, b)
-
-			if (*directions)[j] == 0 || (*directions)[j] == dir {
-				s = (*maxscores)[j] + w - gapScore(g)
-			} else {
-				// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+				// avoided by using prevQIdx
+				//
+				// if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
+				// 	// fmt.Printf("   skip\n")
 				// 	continue
+				// }
 
-				// the previous chain might be wrong in repetitive region.
-				s = seedWeight(float64(b.Len)) + w - gapScore(g)
-			}
+				// avoided by using minJ
+				//
+				// if a.QBegin-b.QBegin > maxDistanceInt32 {
+				// 	fmt.Printf("   distant in target too long: %d > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
+				// 	break
+				// }
 
-			// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
+				// d = distance(a, b)
+				// if d > maxDistance {
+				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
+				//
+				// if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
+				d = a.TBegin - b.TBegin
+				// if d > maxDistanceInt32 || d < -maxDistanceInt32 || d == 0 {
+				if d < 0 {
+					d = -d
+				}
+				if uint32(d)-1 >= maxDistanceUint32 { // including d == 0
+					// fmt.Printf("   distant in target too long: %d > %d\n", a.TBegin-b.TBegin, maxDistanceInt32)
+					continue // must not be break
+				}
 
-			if s >= minScore && s > m { //
-				// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
-				m = s
-				mj = j
-				mdir = dir
+				g = gap(a, b)
+				if g > maxGap {
+					// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
+					continue // must not be break
+				}
+
+				// effective seed length
+				if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+					// b -----
+					// a       ------
+					length = int32(a.Len)
+					w = seedWeight(float64(length))
+				} else if g == 0 { // merge them into a longer anchor
+					// b -----
+					// a    ------
+					length = a.QBegin + int32(a.Len) - int32(b.QBegin)
+					w = -seedWeight(float64(b.Len)) + seedWeight(float64(length))
+				} else {
+					// b -----
+					// a    ------
+					length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
+					w = seedWeight(float64(length))
+				}
+
+				// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g)
+
+				dir = direction(a, b)
+
+				if (*directions)[j] == 0 || (*directions)[j] == dir {
+					s = (*maxscores)[j] + w - gapScore(g)
+				} else {
+					// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+					// 	continue
+
+					// the previous chain might be wrong in repetitive region.
+					s = seedWeight(float64(b.Len)) + w - gapScore(g)
+				}
+
+				// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
+
+				if s >= minScore && s > m { //
+					// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
+					m = s
+					mj = j
+					mdir = dir
+				}
 			}
 		}
 		*maxscores = append(*maxscores, m) // save the max score
