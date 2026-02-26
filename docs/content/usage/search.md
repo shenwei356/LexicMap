@@ -109,12 +109,12 @@ Flags:
                                        there's only one pair of seeds matched. (default 17)
   -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
                                        in the chaining phase. Value 1 is not recommended as the best
-                                       chaining result does not always bring the best alignment, so it
+                                       chaining result does not always bring the best alignment, so it's
                                        better be >= 10. (default 0)
   -n, --top-n-genomes int              ► Keep the top N genome matches for a query (0 for all) in the
                                        chaining phase. Value 1 is not recommended as the best chaining
-                                       result does not always bring the best alignment, so it better be
-                                       >= 100. (default 0)
+                                       result does not always bring the best alignment, so it's better
+                                       be >= 100. (default 0)
 
 
 Global Flags:

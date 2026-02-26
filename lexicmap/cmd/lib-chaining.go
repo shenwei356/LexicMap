@@ -49,7 +49,7 @@ type Chainer struct {
 	options *ChainingOptions
 
 	// scores        []float64 // actually, it's not necessary
-	prevQIdx      []int
+	prevQIdx      []int32
 	maxscores     []float64
 	maxscoresIdxs []int
 	directions    []float64
@@ -66,7 +66,7 @@ func NewChainer(options *ChainingOptions) *Chainer {
 		options: options,
 
 		// scores:        make([]float64, 0, 128),
-		prevQIdx:      make([]int, 0, 10240),
+		prevQIdx:      make([]int32, 0, 10240),
 		maxscores:     make([]float64, 0, 10240),
 		maxscoresIdxs: make([]int, 0, 10240),
 		directions:    make([]float64, 0, 10240),
@@ -173,18 +173,21 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 
 	// store i of 'a' with a different QBegin
 	prevQIdx := ce.prevQIdx[:0]
-	lastDiffGroup := -1
+	var lastDiffGroup int32 = -1
 	for i = 0; i < n; i++ {
 		if i > 0 && (*subs)[i].QBegin != (*subs)[i-1].QBegin {
-			lastDiffGroup = i - 1
+			lastDiffGroup = int32(i) - 1
 		}
 		prevQIdx = append(prevQIdx, lastDiffGroup)
 	}
 
 	var minJ, rightBound int
 	var targetQ int32
+	var aQBegin, aTBegin int32
+	var aLen int32
 	for i = 1; i < n; i++ {
 		a = (*subs)[i]
+		aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
 
 		// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
 
@@ -203,7 +206,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 		// 		break
 		// 	}
 		//
-		rightBound = prevQIdx[i]
+		rightBound = int(prevQIdx[i])
 		if rightBound >= 0 {
 			targetQ = a.QBegin - maxDistanceInt32
 
@@ -243,7 +246,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
 				//
 				// if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
-				d = a.TBegin - b.TBegin
+				// d = a.TBegin - b.TBegin
+				d = aTBegin - b.TBegin
 				// if d > maxDistanceInt32 || d < -maxDistanceInt32 || d == 0 {
 				if d < 0 {
 					d = -d
@@ -260,20 +264,24 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 				}
 
 				// effective seed length
-				if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+				// if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+				if aQBegin > b.QBegin+int32(b.Len) { // no overlap
 					// b -----
 					// a       ------
-					length = int32(a.Len)
+					// length = int32(a.Len)
+					length = aLen
 					w = seedWeight(float64(length))
 				} else if g == 0 { // merge them into a longer anchor
 					// b -----
 					// a    ------
-					length = a.QBegin + int32(a.Len) - int32(b.QBegin)
+					// length = a.QBegin + int32(a.Len) - int32(b.QBegin)
+					length = aQBegin + aLen - int32(b.QBegin)
 					w = -seedWeight(float64(b.Len)) + seedWeight(float64(length))
 				} else {
 					// b -----
 					// a    ------
-					length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
+					// length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
+					length = aQBegin + aLen - (b.QBegin + int32(b.Len))
 					w = seedWeight(float64(length))
 				}
 
