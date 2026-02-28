@@ -158,8 +158,10 @@ Here are some tips to improve the search speed.
       e.g., `-p 17 -P 19`,
       increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
       Don't worry if you only search highly similar matches or long queries.
-    - Setting `-n/--top-n-genomes` to keep top N genome matches for a query (0 for all) in chaining phase. 
+    - Setting `-n/--top-n-genomes` to keep the top N genome matches for a query (0 for all) in chaining phase. 
       For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
+    - Setting `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
+      if you only need the most similar matches.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
      including `-q/--min-qcov-per-hsp`, `-Q/--min-qcov-per-genome`, and `-i/--align-min-match-pident`,
      do not significantly accelerate the search speed. Hence, you can search with default
