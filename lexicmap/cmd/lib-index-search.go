@@ -399,12 +399,13 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			for _, idxs := range idx.genomeChunks {
 				li := make([]int, 0, len(idxs))
 				for _, idx := range idxs {
-					data[idx] = &li
+					data[idx] = &li // idx -> the same empty list
 				}
 			}
 			return &data
 		}}
 
+		// pointer -> list
 		idx.poolGenomeChunksPointer2List = &sync.Pool{New: func() interface{} {
 			data := make(map[uintptr]*[]int, 1024)
 			return &data
@@ -2511,7 +2512,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				continue
 			}
 
-			*li = append(*li, i)
+			*li = append(*li, i) // is is just the index in *rs2
 
 			ptr = uintptr(unsafe.Pointer(li))
 			if _, ok = (*gcPtr2List)[ptr]; !ok {
@@ -2534,7 +2535,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// only need to update SimilarityDetails, AlignedFraction
 				*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
 
-				poolSearchResult.Put(r)
+				*r.SimilarityDetails = (*r.SimilarityDetails)[:0]
+				idx.RecycleSearchResult(r)
 				(*rs2)[j] = nil
 			}
 
@@ -2545,7 +2547,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// recycle datastructure
 		clear(*gcPtr2List)
 		idx.poolGenomeChunksPointer2List.Put(gcPtr2List)
-		clear(*gcIdx2List)
+		// clear(*gcIdx2List) # must not do this !!!
 		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
 
 		if debug {
