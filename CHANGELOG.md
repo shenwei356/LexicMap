@@ -11,6 +11,8 @@
     - Improved seed chaining speed for large genomes.
     - Fixed the computation of bitscore. Previous values were slightly underestimated.
     - **Fixed CIGAR to follow the SAM spec**. Previously, 'D' and 'I' were inverted.
+- `lexicmap utils subseq`:
+    - Fix a concurrency bug when using search result as the input.
 
 ### v0.8.1 - 2025-12-19
 

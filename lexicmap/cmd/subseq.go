@@ -331,8 +331,9 @@ Attention:
 						<-token
 					}()
 
+					bitscore = (*items)[19]
+
 					query = (*items)[0]
-					_ = query
 					qlen = (*items)[1]
 					_ = qlen
 					hits = (*items)[2]
@@ -354,7 +355,6 @@ Attention:
 					sstr = (*items)[16]
 					slen = (*items)[17]
 					evalue = (*items)[18]
-					bitscore = (*items)[19]
 
 					if i := strings.IndexByte(bitscore, '\t'); i > 0 { // the search result has >=20 columns
 						bitscore = bitscore[:i]
@@ -395,13 +395,17 @@ Attention:
 						eStart = 1
 					}
 
-					for _, batchIDAndRefID := range *batchIDAndRefIDs {
+					var batchIDAndRefID uint64
+					found := false
+					_sseqid := []byte(sseqid)
+					var err error
+					for _, batchIDAndRefID = range *batchIDAndRefIDs {
 						genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
 						genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
 
 						rdr = <-readers[genomeBatch]
 
-						tSeq, __end, err = rdr.SubSeq2(genomeIdx, []byte(sseqid), eStart-1, eEnd-1)
+						tSeq, __end, err = rdr.SubSeq2(genomeIdx, _sseqid, eStart-1, eEnd-1)
 						__end++ // returned end is 0-based.
 
 						// if __end != send {
@@ -410,12 +414,13 @@ Attention:
 
 						readers[genomeBatch] <- rdr
 
-						if err == nil {
+						if err == nil && tSeq != nil {
+							found = true
 							break
 						}
 						// the sequence might not be in this genome chunk
 					}
-					if err != nil {
+					if !found {
 						if ignoreErr {
 							subseq := poolSubseq.Get().(*Subseq)
 							subseq.ID = n
@@ -425,7 +430,7 @@ Attention:
 							ch <- subseq
 							return
 						} else {
-							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %s. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream, err))
+							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream))
 						}
 					}
 
@@ -571,6 +576,8 @@ Attention:
 			eStart = 1
 		}
 
+		found := false
+		_seqid := []byte(seqid)
 		for _, batchIDAndRefID := range *batchIDAndRefIDs {
 			genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
 			genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
@@ -584,16 +591,18 @@ Attention:
 			if concatenatedPositions {
 				tSeq, err = rdr.SubSeq(genomeIdx, eStart-1, eEnd-1)
 			} else {
-				tSeq, _end, err = rdr.SubSeq2(genomeIdx, []byte(seqid), eStart-1, eEnd-1)
+				tSeq, _end, err = rdr.SubSeq2(genomeIdx, _seqid, eStart-1, eEnd-1)
 				_end++ // returned end is 0-based.
 			}
-			if err == nil {
+
+			if err == nil && tSeq != nil {
+				found = true
 				break
 				// checkError(fmt.Errorf("failed to read subsequence: %s", err))
 			}
 			// the sequence might not be in this genome chunk
 		}
-		if err != nil {
+		if !found {
 			checkError(fmt.Errorf("failed to extract subsequence: %s:%d-%d with upstream=%d downstream=%d: %s", refname, start, end, upstream, downstream, err))
 		}
 
