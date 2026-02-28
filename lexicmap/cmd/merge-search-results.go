@@ -391,7 +391,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 			}
 			stringSplitNByByte(line, '\t', ncols, &items)
 			if len(items) < ncols {
-				checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", ncols, len(items)))
+				checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", len(items), ncols))
 			}
 
 			query = items[0]

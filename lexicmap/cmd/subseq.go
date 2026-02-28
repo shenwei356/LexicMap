@@ -321,7 +321,7 @@ Attention:
 
 					stringSplitNByByte(line, '\t', ncols, items)
 					if len(*items) < ncols {
-						checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", ncols, len(*items)))
+						checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", len(*items), ncols))
 					}
 
 					defer func() {

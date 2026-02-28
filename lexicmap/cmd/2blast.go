@@ -145,7 +145,7 @@ Input:
 
 				stringSplitNByByte(line, '\t', ncols, &items)
 				if len(items) < ncols {
-					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", ncols, len(items)))
+					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", len(items), ncols))
 				}
 
 				align = items[23] // let the compiler to reduce boundary checking
