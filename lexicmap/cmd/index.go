@@ -311,10 +311,11 @@ Important parameters:
 			BigGenomeFile: fileBigGenomes,
 
 			// LexicHash
-			MaskFile: maskFile,
-			K:        k,
-			Masks:    nMasks,
-			RandSeed: int64(seed),
+			MaskFile:    maskFile,
+			K:           k,
+			Masks:       nMasks,
+			RandSeed:    int64(seed),
+			SoftMasking: getFlagBool(cmd, "soft-masking"),
 
 			// randomly generating
 			// Prefix: minPrefix,
@@ -563,6 +564,9 @@ func init() {
 	indexCmd.Flags().StringP("mask-file", "M", "",
 		formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed etc.`))
 	// formatFlagUsage(`File of custom masks. This flag oversides -k/--kmer, -m/--masks, -s/--rand-seed, -p/--seed-min-prefix, etc.`))
+
+	indexCmd.Flags().BoolP("soft-masking", "", false,
+		formatFlagUsage(`Support soft-masked genomes. Lowercase bases in soft-masked low-complexity regions will be treated as A's, and won't be seeded.`))
 
 	// ------  generate masks randomly
 

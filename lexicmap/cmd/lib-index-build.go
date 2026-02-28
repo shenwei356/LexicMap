@@ -118,9 +118,10 @@ type IndexBuildingOptions struct {
 	// LexicHash
 	MaskFile string // file of custom masks
 
-	K        int   // k-mer size
-	Masks    int   // number of masks
-	RandSeed int64 // random seed
+	K           int   // k-mer size
+	Masks       int   // number of masks
+	RandSeed    int64 // random seed
+	SoftMasking bool  // support soft masking
 
 	// generate mask randomly
 	// Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
@@ -235,6 +236,9 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		if err != nil {
 			return err
 		}
+	}
+	if opt.SoftMasking {
+		lh.SupportSoftMasking()
 	}
 
 	// ----------------------------------

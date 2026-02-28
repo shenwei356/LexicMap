@@ -172,6 +172,8 @@ Flags:
   -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
                                   contents in FASTA/Q header/name, case ignored.
   -S, --skip-file-check           ► Skip input file checking when given files or a file list.
+      --soft-masking              ► Support soft-masked genomes. Lowercase bases in soft-masked
+                                  low-complexity regions will be treated as A's, and won't be seeded.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
