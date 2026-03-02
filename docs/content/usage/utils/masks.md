@@ -14,12 +14,12 @@ Flags:
   -h, --help              help for masks
   -d, --index string      ► Index directory created by "lexicmap index".
   -k, --kmer int          ► Maximum k-mer size. K needs to be <= 32. (default 31)
-  -m, --masks int         ► Number of masks. (default 40000)
+  -m, --masks int         ► Number of masks. (default 20000)
   -o, --out-file string   ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                           (default "-")
-  -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no
-                          checking). (default 15)
+  -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no checking).
   -s, --seed int          ► The seed for generating random masks. (default 1)
+
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

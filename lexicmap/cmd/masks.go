@@ -157,13 +157,13 @@ func init() {
 	masksCmd.Flags().IntP("kmer", "k", 31,
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
-	masksCmd.Flags().IntP("masks", "m", 40000,
+	masksCmd.Flags().IntP("masks", "m", 20000,
 		formatFlagUsage(`Number of masks.`))
 
 	masksCmd.Flags().IntP("seed", "s", 1,
 		formatFlagUsage(`The seed for generating random masks.`))
 
-	masksCmd.Flags().IntP("prefix", "p", 15,
+	masksCmd.Flags().IntP("prefix", "p", 0,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
 	masksCmd.SetUsageTemplate(usageTemplate("{ -d <index path> | [-k <k>] [-n <masks>] [-s <seed>] } [-o out.tsv.gz]"))

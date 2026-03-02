@@ -20,6 +20,8 @@
     - Fixed a concurrency bug when using search result as the input.
 - `lexicmap utils genomes`:
     - Added a new flag `-e/--extra` to show more information.
+- `lexicmap utils masks`:
+    - Changed the default values of `-m/--masks` and `-p/--prefxi` to match these in `lexicmap index`.
 
 ### v0.8.1 - 2025-12-19
 
