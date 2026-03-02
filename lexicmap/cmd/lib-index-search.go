@@ -583,11 +583,11 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// other resources
 	co := &ChainingOptions{
-		MaxGap:   opt.MaxGap,
+		MaxGap:   float32(opt.MaxGap),
 		MinLen:   opt.MinSinglePrefix,
-		MinScore: seedWeight(float64(opt.MinSinglePrefix)),
+		MinScore: seedWeight(float32(opt.MinSinglePrefix)),
 		// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
-		MaxDistance: opt.MaxDistance,
+		MaxDistance: float32(opt.MaxDistance),
 		TopChains:   opt.TopNChains,
 	}
 	idx.chainingOptions = co
@@ -692,6 +692,9 @@ var poolSubs = &sync.Pool{New: func() interface{} {
 
 // RecycleSubstrPairs recycles a list of SubstrPairs
 func RecycleSubstrPairs(poolSub *sync.Pool, poolSubs *sync.Pool, subs *[]*SubstrPair) {
+	if len(*subs) > 4096 { // two many elements
+		return
+	}
 	for _, sub := range *subs {
 		poolSub.Put(sub)
 	}
@@ -818,7 +821,7 @@ type SearchResult struct {
 	// ID          []byte
 	GenomeSize int
 
-	Score  float64 //  score for soring
+	Score  float32 //  score for soring
 	Chains *[]*[]int32
 
 	// more about the alignment detail
@@ -970,8 +973,13 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	debug := idx.opt.Debug
 
 	if debug {
-		log.Debugf("%s (%s bp): start to search", query.seqID, humanize.Comma(int64(len(query.seq))))
+		startTime0 := time.Now()
 		startTime = time.Now()
+		log.Debugf("%s (%s bp): start to search", query.seqID, humanize.Comma(int64(len(query.seq))))
+		defer func() {
+			log.Debugf("%s (%s bp): finished searching in %.3f seconds",
+				query.seqID, humanize.Comma(int64(len(query.seq))), time.Since(startTime0).Seconds())
+		}()
 	}
 
 	s := query.seq
@@ -1463,6 +1471,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
 		}
 
+		// if len(*r.Subs) > 50000 {
+		// 	fmt.Printf("genome with %d pairs of anchors, genome batch: %d, genome index: %d\n",
+		// 		len(*r.Subs), r.GenomeBatch, r.GenomeIndex)
+		// }
+
 		chainer := idx.poolChainers.Get().(*Chainer)
 		r.Chains, r.Score = chainer.Chain(r.Subs)
 
@@ -1528,7 +1541,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// 	return (*rs)[i].Score > (*rs)[j].Score
 		// })
 		slices.SortFunc(*rs, func(a, b *SearchResult) int {
-			return cmp.Compare[float64](b.Score, a.Score)
+			return cmp.Compare(b.Score, a.Score)
 		})
 
 		var r *SearchResult

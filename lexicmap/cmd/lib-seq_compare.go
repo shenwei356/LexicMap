@@ -537,7 +537,7 @@ func (cpr *SeqComparator) RecycleIndex() {
 //	727: 789-819 (-) vs 789-819 (-), len:31
 //	728: 790-820 (-) vs 790-820 (-), len:31
 //	729: 804-821 (-) vs 821-838 (-), len:18 <--- gap=17, overlap=17 (17/18)
-func TrimSubStrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int, minDist float64) {
+func TrimSubStrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int, minDist float32) {
 	if len(*subs) < 2 {
 		return
 	}

@@ -21,18 +21,19 @@
 package cmd
 
 import (
-	"cmp"
 	"math"
 	"slices"
 	"sync"
+
+	"github.com/twotwotwo/sorts/sortutil"
 )
 
 // ChainingOptions contains all options in chaining.
 type ChainingOptions struct {
-	MaxGap      float64
+	MaxGap      float32
 	MinLen      uint8
-	MinScore    float64
-	MaxDistance float64
+	MinScore    float32
+	MaxDistance float32
 	TopChains   int // only keep the top N chains
 }
 
@@ -49,13 +50,15 @@ type Chainer struct {
 	options *ChainingOptions
 
 	// scores        []float64 // actually, it's not necessary
-	prevQIdx      []int32
-	maxscores     []float64
-	maxscoresIdxs []int
-	directions    []float64
+	prevQIdx []int32
+	// maxscores     []float32
+	// maxscoresIdxs []int32
+	maxscoresIdxs []uint64
+	directions    []int8
 	visited       []bool
 
-	score2idx [][2]float64
+	// score2idx [][2]float32
+	score2idx []uint64
 
 	topChains int
 }
@@ -66,13 +69,15 @@ func NewChainer(options *ChainingOptions) *Chainer {
 		options: options,
 
 		// scores:        make([]float64, 0, 128),
-		prevQIdx:      make([]int32, 0, 10240),
-		maxscores:     make([]float64, 0, 10240),
-		maxscoresIdxs: make([]int, 0, 10240),
-		directions:    make([]float64, 0, 10240),
+		prevQIdx: make([]int32, 0, 10240),
+		// maxscores:     make([]float32, 0, 10240),
+		// maxscoresIdxs: make([]int32, 0, 10240),
+		maxscoresIdxs: make([]uint64, 0, 10240),
+		directions:    make([]int8, 0, 10240),
 		visited:       make([]bool, 0, 10240),
 
-		score2idx: make([][2]float64, 0, 10240),
+		// score2idx: make([][2]float32, 0, 10240),
+		score2idx: make([]uint64, 0, 10240),
 
 		topChains: options.TopChains,
 	}
@@ -105,13 +110,13 @@ var poolChain = &sync.Pool{New: func() interface{} {
 
 // Chain finds the possible seed paths.
 // Please remember to call RecycleChainingResult after using the results.
-func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
+func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
 		paths := poolChains.Get().(*[]*[]int32)
 
-		w := seedWeight(float64((*subs)[0].Len))
+		w := seedWeight(float32((*subs)[0].Len))
 		if w >= ce.options.MinScore {
 			path := poolChain.Get().(*[]int32)
 
@@ -127,6 +132,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	minScore := ce.options.MinScore
 
 	var i, j, mj int
+	var s float32
 
 	// a list for storing triangular score matrix, the size is n*(n+1)>>1
 	// scores := ce.scores[:0]
@@ -135,15 +141,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	// 	scores = append(scores, 0)
 	// }
 	// the maximum score for each seed, the size is n
-	maxscores := &ce.maxscores
-	*maxscores = (*maxscores)[:0]
+	// maxscores := ce.maxscores[:0]
 	// index of previous seed, the size is n
-	maxscoresIdxs := &ce.maxscoresIdxs
-	*maxscoresIdxs = (*maxscoresIdxs)[:0]
-	directions := &ce.directions
-	*directions = (*directions)[:0]
-	score2idx := ce.score2idx
-	score2idx = score2idx[:0]
+	maxscoresIdxs := ce.maxscoresIdxs[:0]
+	directions := ce.directions[:0]
+	score2idx := ce.score2idx[:0]
 	// for i = 0; i < n; i++ {
 	// 	maxscores = append(maxscores, 0)
 	// 	maxscoresIdxs = append(maxscoresIdxs, 0)
@@ -154,17 +156,20 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	// 	k = j0 + i
 	// 	//scores[k] = seedWeight(float64(b.Len))
 	// }
-	*maxscores = append(*maxscores, seedWeight(float64((*subs)[0].Len)))
-	*maxscoresIdxs = append(*maxscoresIdxs, 0)
-	*directions = append(*directions, 0)
-	score2idx = append(score2idx, [2]float64{(*maxscores)[0], 0})
+	// maxscores = append(maxscores, seedWeight(float32((*subs)[0].Len)))
+	// maxscoresIdxs = append(maxscoresIdxs, 0)
+	s = seedWeight(float32((*subs)[0].Len))
+	maxscoresIdxs = append(maxscoresIdxs, uint64(math.Float32bits(s))<<32)
+	directions = append(directions, 0)
+	// score2idx = append(score2idx, [2]float32{(maxscores)[0], 0})
+	score2idx = append(score2idx, packF32AndU32(s, 0))
 
 	// compute scores
 	var length int32 // substr/anchor length
-	var s, m, w, g float64
+	var m, w, g float32
 	// var d float64
 	var d int32
-	var dir, mdir float64
+	var dir, mdir int8
 	var a, b *SubstrPair
 	maxGap := ce.options.MaxGap
 	maxDistance := ce.options.MaxDistance
@@ -195,7 +200,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 		// m = scores[k]
 		// w = seedWeight(float64(a.Len))
 		// m, mj, mdir = w, i, 0
-		m, mj, mdir = seedWeight(float64(a.Len)), i, 0
+		m, mj, mdir = seedWeight(float32(aLen)), i, 0
 
 		// for j = 0; j < i; j++ { // try all previous seeds, no bound
 		//
@@ -221,7 +226,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 				return 0
 			})
 
-			// fmt.Printf(" j range: %d - %d\n", minJ, rightBound)
+			// fmt.Printf(" j range: %d - %d = %d\n", minJ, rightBound, rightBound-minJ+1)
 			for j = rightBound; j >= minJ; j-- {
 				b = (*subs)[j]
 
@@ -270,33 +275,34 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 					// a       ------
 					// length = int32(a.Len)
 					length = aLen
-					w = seedWeight(float64(length))
+					w = seedWeight(float32(length))
 				} else if g == 0 { // merge them into a longer anchor
 					// b -----
 					// a    ------
 					// length = a.QBegin + int32(a.Len) - int32(b.QBegin)
 					length = aQBegin + aLen - int32(b.QBegin)
-					w = -seedWeight(float64(b.Len)) + seedWeight(float64(length))
+					w = -seedWeight(float32(b.Len)) + seedWeight(float32(length))
 				} else {
 					// b -----
 					// a    ------
 					// length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
 					length = aQBegin + aLen - (b.QBegin + int32(b.Len))
-					w = seedWeight(float64(length))
+					w = seedWeight(float32(length))
 				}
 
 				// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g) // an early version
 
 				dir = direction(a, b)
 
-				if (*directions)[j] == 0 || (*directions)[j] == dir {
-					s = (*maxscores)[j] + w - gapScore(g)
+				if directions[j] == 0 || directions[j] == dir {
+					// s = maxscores[j] + w - gapScore(g)
+					s = math.Float32frombits(uint32(maxscoresIdxs[j]>>32)) + w - gapScore(g)
 				} else {
 					// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
 					// 	continue
 
 					// the previous chain might be wrong in repetitive region.
-					s = seedWeight(float64(b.Len)) + w - gapScore(g)
+					s = seedWeight(float32(b.Len)) + w - gapScore(g)
 				}
 
 				// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
@@ -309,10 +315,12 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 				}
 			}
 		}
-		*maxscores = append(*maxscores, m) // save the max score
-		*maxscoresIdxs = append(*maxscoresIdxs, mj)
-		*directions = append(*directions, mdir)
-		score2idx = append(score2idx, [2]float64{m, float64(i)})
+		// maxscores = append(maxscores, m) // save the max score
+		// maxscoresIdxs = append(maxscoresIdxs, int32(mj))
+		maxscoresIdxs = append(maxscoresIdxs, uint64(math.Float32bits(m))<<32|uint64(mj))
+		directions = append(directions, mdir)
+		// score2idx = append(score2idx, [2]float32{m, float32(i)})
+		score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
 	}
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
@@ -328,21 +336,24 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	}
 	paths := poolChains.Get().(*[]*[]int32)
 
-	var M float64
-	var Mi int
+	var M float32
+	// var Mi int
+	var Mi uint32
 
 	// memory inefficient
 	// sort.Slice(score2idx, func(i, j int) bool {
 	// 	return score2idx[i][0] > score2idx[j][0]
 	// })
-	slices.SortFunc(score2idx, func(a, b [2]float64) int {
-		return cmp.Compare[float64](b[0], a[0])
-	})
+	// slices.SortFunc(score2idx, func(a, b [2]float32) int {
+	// 	return cmp.Compare[float32](b[0], a[0])
+	// })
+	sortutil.Uint64s(score2idx)
 
 	var iMaxScore int
+	iMaxScore = n - 1 // when sorting by sortutil.Uint64s(score2idx)
 
 	// for computing the score for sorting
-	var maxScore float64
+	var maxScore float32
 	first := true // best chain
 	var changeDirection bool
 	var nChecked int
@@ -365,17 +376,26 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 		// }
 
 		M = 0
-		for iMaxScore < n {
-			M = 0
-			Mi = int(score2idx[iMaxScore][1])
-			if !(*visited)[Mi] {
-				M = score2idx[iMaxScore][0]
+		// for iMaxScore < n {
+		// 	M = 0
+		// 	Mi = int(score2idx[iMaxScore][1])
+		// 	if !(*visited)[Mi] {
+		// 		M = score2idx[iMaxScore][0]
 
-				iMaxScore++
+		// 		iMaxScore++
+		// 		break
+		// 	}
+
+		// 	iMaxScore++
+		// }
+		for iMaxScore >= 0 {
+			M, Mi = unpack2F32AndU32(score2idx[iMaxScore])
+			if !(*visited)[Mi] {
+				iMaxScore--
 				break
 			}
 
-			iMaxScore++
+			iMaxScore--
 		}
 
 		if M < minScore { // no valid anchors
@@ -386,16 +406,18 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
-		i = Mi
+		// i = Mi
+		i = int(Mi)
 		if first {
 			maxScore = M
 			first = false
 		}
 
 		for {
-			j = (*maxscoresIdxs)[i] // previous anchor
+			// j = int(maxscoresIdxs[i]) // previous anchor
+			j = int(maxscoresIdxs[i] & 4294967295) // previous anchor
 
-			changeDirection = (i != j && (*directions)[j] != 0 && (*directions)[i] != (*directions)[j])
+			changeDirection = (i != j && directions[j] != 0 && directions[i] != directions[j])
 
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
 			if (*visited)[j] && !changeDirection { // current anchor is abandoned
@@ -450,19 +472,19 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float64) {
 	return paths, maxScore
 }
 
-func seedWeight(l float64) float64 {
+func seedWeight(l float32) float32 {
 	return 0.1 * l * l
 }
 
-func distance(a, b *SubstrPair) float64 {
-	return math.Max(math.Abs(float64(a.QBegin-b.QBegin)), math.Abs(float64(a.TBegin-b.TBegin)))
+func distance(a, b *SubstrPair) float32 {
+	return float32(math.Max(math.Abs(float64(a.QBegin-b.QBegin)), math.Abs(float64(a.TBegin-b.TBegin))))
 }
 
-func distanceScore(d float64) float64 {
+func distanceScore(d float32) float32 {
 	return 0.01 * d
 }
 
-func direction(a, b *SubstrPair) float64 {
+func direction(a, b *SubstrPair) int8 {
 	if a.TBegin >= b.TBegin {
 		return 1
 	}
@@ -470,18 +492,18 @@ func direction(a, b *SubstrPair) float64 {
 }
 
 // different in plus:plus and plus:minus match
-func gap(a, b *SubstrPair) float64 {
+func gap(a, b *SubstrPair) float32 {
 	if a.TBegin >= b.TBegin {
-		return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin)))
+		return float32(math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin))))
 	}
-	return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin+int32(a.Len)-b.TBegin-int32(b.Len))))
+	return float32(math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin+int32(a.Len)-b.TBegin-int32(b.Len)))))
 }
 
-func gapScore(gap float64) float64 {
+func gapScore(gap float32) float32 {
 	if gap == 0 {
 		return 0
 	}
-	return 0.1*gap + 0.5*math.Log2(gap)
+	return 0.1*gap + 0.5*float32(math.Log2(float64(gap)))
 }
 
 func reverseInts(s []int) {
@@ -494,4 +516,15 @@ func reverseInt32s(s []int32) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
+}
+
+func packF32AndU32(f float32, other uint32) uint64 {
+	fbits := math.Float32bits(f)
+	return uint64(fbits)<<32 | uint64(other)
+}
+
+func unpack2F32AndU32(v uint64) (float32, uint32) {
+	fbits := uint32(v >> 32)
+	other := uint32(v)
+	return math.Float32frombits(fbits), other
 }

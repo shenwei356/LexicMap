@@ -51,6 +51,8 @@ var genomesCmd = &cobra.Command{
 
 		outFile := getFlagString(cmd, "out-file")
 
+		extra := getFlagBool(cmd, "extra")
+
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
@@ -87,9 +89,15 @@ var genomesCmd = &cobra.Command{
 		buf := make([]byte, 8)
 		var n, lenID int
 		var batchIDAndRefID uint64
+		var genomeBatch, genomeIdx int
+		var chunked string
 		var ok bool
 
-		outfh.WriteString("ref\tchunked\n")
+		if extra {
+			outfh.WriteString("ref\tchunked\tgenome_batch\tgenome_index\n")
+		} else {
+			outfh.WriteString("ref\tchunked\n")
+		}
 		for {
 			n, err = io.ReadFull(r, buf[:2])
 			if err != nil {
@@ -121,17 +129,21 @@ var genomesCmd = &cobra.Command{
 			}
 
 			batchIDAndRefID = be.Uint64(buf)
+			genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
+			genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
 
+			chunked = ""
 			if hasGenomeChunks {
 				if _, ok = genomeChunks[batchIDAndRefID]; ok {
-					fmt.Fprintf(outfh, "%s\t%s\n", id, "yes")
-				} else {
-					fmt.Fprintf(outfh, "%s\t\n", id)
+					chunked = "yes"
 				}
-			} else {
-				fmt.Fprintf(outfh, "%s\t\n", id)
 			}
 
+			if extra {
+				fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\n", id, chunked, genomeBatch, genomeIdx)
+			} else {
+				fmt.Fprintf(outfh, "%s\t%s\n", id, chunked)
+			}
 		}
 	},
 }
@@ -144,6 +156,9 @@ func init() {
 
 	genomesCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports the ".gz" suffix ("-" for stdout).`))
+
+	genomesCmd.Flags().BoolP("extra", "e", false,
+		formatFlagUsage(`Show extra columns, such as where the genome is stored (genome_batch, genome_index)`))
 
 	genomesCmd.SetUsageTemplate(usageTemplate(""))
 }

@@ -12,12 +12,14 @@
 - `lexicmap search`:
     - **New flag `-N/--top-n-chains` for keeping the top N chains in a genome for the query** (0 for all) in the chaining phase.
       It reduces search time when one needs only the most similar matches in a genome.
-    - **Improved seed chaining speed for large genomes**.
+    - **Improved seed chaining speed and memory for large genomes**.
     - Fixed the computation of bitscore. Previous values were slightly underestimated.
     - **Fixed CIGAR to follow the SAM spec**. Previously, 'D' and 'I' were inverted.
     - Fixed merging search results from genome chunks. Some were not merged.
 - `lexicmap utils subseq`:
     - Fixed a concurrency bug when using search result as the input.
+- `lexicmap utils genomes`:
+    - Added a new flag `-e/--extra` to show more information.
 
 ### v0.8.1 - 2025-12-19
 

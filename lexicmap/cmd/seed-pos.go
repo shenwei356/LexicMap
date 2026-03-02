@@ -690,8 +690,8 @@ Figures:
 					ref2locs.Ref = refname
 					ref2locs.StartTime = time.Now()
 
-					genomeBatch := int(batchIDAndRefID >> 17)
-					genomeIdx := int(batchIDAndRefID & 131071)
+					genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+					genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
 
 					// seed positions ------------------------------------------------------------
 
