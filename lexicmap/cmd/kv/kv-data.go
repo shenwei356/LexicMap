@@ -29,11 +29,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
-	"github.com/twotwotwo/sorts/sortutil"
 )
 
 // Magic number for checking file format
@@ -373,7 +373,8 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	for key = range m {
 		*keys = append(*keys, key)
 	}
-	sortutil.Uint64s(*keys)
+	// sortutil.Uint64s(*keys)
+	slices.Sort(*keys)
 
 	// for decide should we set flag for the last control byte of the last k-mer
 	even = len(*keys)&1 == 0 // the number of kmers is even

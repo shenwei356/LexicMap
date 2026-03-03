@@ -38,7 +38,6 @@ import (
 	"github.com/shenwei356/util/pathutil"
 	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
-	"github.com/twotwotwo/sorts"
 )
 
 var mapInitSize = 1 << 20 // 1M
@@ -64,7 +63,7 @@ func getOptions(cmd *cobra.Command) *Options {
 		threads = runtime.NumCPU()
 	}
 
-	sorts.MaxProcs = threads
+	// sorts.MaxProcs = threads
 	runtime.GOMAXPROCS(threads)
 
 	logfile := getFlagString(cmd, "log")

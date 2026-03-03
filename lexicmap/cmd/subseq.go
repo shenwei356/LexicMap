@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,7 +36,6 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
-	"github.com/twotwotwo/sorts/sortutil"
 )
 
 var subseqCmd = &cobra.Command{
@@ -266,7 +266,8 @@ Attention:
 						ids[i] = id
 						i++
 					}
-					sortutil.Uint64s(ids)
+					// sortutil.Uint64s(ids)
+					slices.Sort(ids)
 					var result *Subseq
 					for _, id = range ids {
 						result = m[id]

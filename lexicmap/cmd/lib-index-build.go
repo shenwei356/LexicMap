@@ -44,7 +44,6 @@ import (
 	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/lexichash/iterator"
-	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
@@ -1037,7 +1036,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						*locs = append(*locs, uint32(loc&4294967295)) // only posision | strand flag
 					}
 				}
-				sortutil.Uint32s(*locs)
+				// sortutil.Uint32s(*locs)
+				slices.Sort(*locs)
 
 				if refseq.ExtraKmers == nil { // extra k-mers
 					tmp := make([]*[]uint64, opt.Masks)
@@ -1380,7 +1380,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						for _, loc = range *extraLocs {
 							*locs = append(*locs, uint32(loc&4294967295))
 						}
-						sortutil.Uint32s(*locs)
+						// sortutil.Uint32s(*locs)
+						slices.Sort(*locs)
 					}
 
 					// add an extra flag so we can skip these seed pairs accrossing interval regions.

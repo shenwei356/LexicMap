@@ -20,7 +20,7 @@
 
 package util
 
-import "github.com/twotwotwo/sorts/sortutil"
+import "slices"
 
 // https://gist.github.com/badboy/6267743 .
 // version with mask: https://gist.github.com/lh3/974ced188be2f90422cc .
@@ -41,7 +41,8 @@ func UniqUint64s(list *[]uint64) {
 		return
 	}
 
-	sortutil.Uint64s(*list)
+	// sortutil.Uint64s(*list)
+	slices.Sort(*list)
 
 	var i, j int
 	var p, v uint64

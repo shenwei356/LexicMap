@@ -1551,13 +1551,17 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			return cmp.Compare(b.Score, a.Score)
 		})
 
-		var r *SearchResult
-		for i := topN; i < len(*rs); i++ {
-			r = (*rs)[i]
+		// Since recycling too many substring pairs results in a high memory load,
+		// We just throw them away, and let GC handle them.
+		// It turns out faster and uses less memory.
+		//
+		// var r *SearchResult
+		// for i := topN; i < len(*rs); i++ {
+		// 	r = (*rs)[i]
 
-			// do not forget to recycle the filtered result
-			idx.RecycleSearchResult(r) // recylcing too many substring pairs resulting in a high memory load.
-		}
+		// 	// do not forget to recycle the filtered result
+		// 	idx.RecycleSearchResult(r) // recylcing too many substring pairs resulting in a high memory load.
+		// }
 		*rs = (*rs)[:topN]
 	}
 

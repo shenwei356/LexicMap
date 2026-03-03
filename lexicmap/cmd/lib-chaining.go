@@ -25,8 +25,7 @@ import (
 	"slices"
 	"sync"
 
-	itree "github.com/rdleal/intervalst/interval"
-	"github.com/twotwotwo/sorts/sortutil"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
 )
 
 // ChainingOptions contains all options in chaining.
@@ -179,7 +178,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 
 	var aQBegin, aTBegin, aLen int32
 
-	if n < 128 { // if there are not too many anchors, use original method, with the time complexity of O(n2).
+	if false { // if there are not too many anchors, use original method, with the time complexity of O(n2).
 		// store i of 'a' with a different QBegin
 		prevQIdx := ce.prevQIdx[:0]
 		var lastDiffGroup int32 = -1
@@ -328,7 +327,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 		}
 	} else { // but for a large number of anchors, we use a intervel tree to reduce comparison
 		// an interval tree for fast filtering by TBegin
-		_itree := itree.NewMultiValueSearchTreeWithOptions[int32, int32](cmpFn2, itree.TreeWithIntervalPoint()) // some anchors have the same TBegin
+		// _itree := itree.NewMultiValueSearchTreeWithOptions[int32, int32](cmpFn2, itree.TreeWithIntervalPoint()) // some anchors have the same TBegin
+		ri := rangeindex.NewRangeIndex()
 
 		// prevQIdx := ce.prevQIdx[:0]
 		// var lastDiffGroup int32 = -1
@@ -339,12 +339,15 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 			// prevQIdx = append(prevQIdx, lastDiffGroup)
 
 			a = (*subs)[i]
-			_itree.Insert(a.TBegin, a.TBegin+int32(a.Len)-1, int32(i))
+			// _itree.Insert(a.TBegin, a.TBegin+int32(a.Len)-1, int32(i))
+			ri.Add(uint32(a.TBegin), uint32(i))
 		}
 
+		var _js []uint64
 		var js []int32
-		var ok bool
+		// var ok bool
 		var _j int
+		var _v uint64
 		// var rightBound int
 
 		for i = 1; i < n; i++ {
@@ -358,8 +361,18 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 			// rightBound = int(prevQIdx[i])
 
 			// fmt.Printf("  search region [%d, %d]\n", a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32)
-			if js, ok = _itree.AllIntersections(a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32-1); ok {
-				sortutil.Int32s(js)
+
+			// if js, ok = _itree.AllIntersections(a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32-1); ok {
+			// 	sortutil.Int32s(js)
+			_js = ri.Query(uint32(a.TBegin-maxDistanceInt32), uint32(a.TBegin+int32(a.Len)-1+maxDistanceInt32-1))
+			if len(_js) > 0 {
+				js = ce.prevQIdx[:0]
+				for _, _v = range _js {
+					js = append(js, int32(_v&4294967295))
+				}
+				// sortutil.Int32s(js)
+				slices.Sort(js)
+
 				// fmt.Printf(" j range: %d - %d = %d, %v\n", js[0], js[len(js)-1], len(js), js)
 				for _j = len(js) - 1; _j >= 0; _j-- {
 					j = int(js[_j])
@@ -439,6 +452,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 			directions = append(directions, mdir)
 			score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
 		}
+
+		ri.Release() // do not forget this
 	}
 
 	// print the score matrix
@@ -466,7 +481,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 	// slices.SortFunc(score2idx, func(a, b [2]float32) int {
 	// 	return cmp.Compare[float32](b[0], a[0])
 	// })
-	sortutil.Uint64s(score2idx)
+	// sortutil.Uint64s(score2idx) // consume extra space
+	slices.Sort(score2idx)
 
 	var iMaxScore int
 	iMaxScore = n - 1 // when sorting by sortutil.Uint64s(score2idx)
