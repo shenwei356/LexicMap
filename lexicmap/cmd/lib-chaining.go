@@ -25,6 +25,7 @@ import (
 	"slices"
 	"sync"
 
+	itree "github.com/rdleal/intervalst/interval"
 	"github.com/twotwotwo/sorts/sortutil"
 )
 
@@ -176,152 +177,270 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 	maxDistanceInt32 := int32(maxDistance)
 	maxDistanceUint32 := uint32(maxDistance)
 
-	// store i of 'a' with a different QBegin
-	prevQIdx := ce.prevQIdx[:0]
-	var lastDiffGroup int32 = -1
-	for i = 0; i < n; i++ {
-		if i > 0 && (*subs)[i].QBegin != (*subs)[i-1].QBegin {
-			lastDiffGroup = int32(i) - 1
+	var aQBegin, aTBegin, aLen int32
+
+	if n < 128 { // if there are not too many anchors, use original method, with the time complexity of O(n2).
+		// store i of 'a' with a different QBegin
+		prevQIdx := ce.prevQIdx[:0]
+		var lastDiffGroup int32 = -1
+		for i = 0; i < n; i++ {
+			if i > 0 && (*subs)[i].QBegin != (*subs)[i-1].QBegin {
+				lastDiffGroup = int32(i) - 1
+			}
+			prevQIdx = append(prevQIdx, lastDiffGroup)
 		}
-		prevQIdx = append(prevQIdx, lastDiffGroup)
-	}
 
-	var minJ, rightBound int
-	var targetQ int32
-	var aQBegin, aTBegin int32
-	var aLen int32
-	for i = 1; i < n; i++ {
-		a = (*subs)[i]
-		aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
+		var minJ, rightBound int
+		var targetQ int32
+		for i = 1; i < n; i++ {
+			a = (*subs)[i]
+			aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
 
-		// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
+			// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
 
-		// just initialize the max score, which comes from the current seed
-		// m = scores[k]
-		// w = seedWeight(float64(a.Len))
-		// m, mj, mdir = w, i, 0
-		m, mj, mdir = seedWeight(float32(aLen)), i, 0
+			// just initialize the max score, which comes from the current seed
+			// m = scores[k]
+			// w = seedWeight(float64(a.Len))
+			// m, mj, mdir = w, i, 0
+			m, mj, mdir = seedWeight(float32(aLen)), i, 0
 
-		// for j = 0; j < i; j++ { // try all previous seeds, no bound
-		//
-		// j = i
-		// for {
-		// 	j--
-		// 	if j < 0 {
-		// 		break
-		// 	}
-		//
-		rightBound = int(prevQIdx[i])
-		if rightBound >= 0 {
-			targetQ = a.QBegin - maxDistanceInt32
+			// for j = 0; j < i; j++ { // try all previous seeds, no bound
+			//
+			// j = i
+			// for {
+			// 	j--
+			// 	if j < 0 {
+			// 		break
+			// 	}
+			//
+			rightBound = int(prevQIdx[i])
+			if rightBound >= 0 {
+				targetQ = a.QBegin - maxDistanceInt32
 
-			// leftBound of j
-			minJ, _ = slices.BinarySearchFunc((*subs)[:rightBound+1], targetQ, func(e *SubstrPair, t int32) int {
-				if e.QBegin < t {
-					return -1
-				}
-				if e.QBegin > t {
-					return 1
-				}
-				return 0
-			})
+				// leftBound of j
+				minJ, _ = slices.BinarySearchFunc((*subs)[:rightBound+1], targetQ, func(e *SubstrPair, t int32) int {
+					if e.QBegin < t {
+						return -1
+					}
+					if e.QBegin > t {
+						return 1
+					}
+					return 0
+				})
 
-			// fmt.Printf(" j range: %d - %d = %d\n", minJ, rightBound, rightBound-minJ+1)
-			for j = rightBound; j >= minJ; j-- {
-				b = (*subs)[j]
+				// fmt.Printf(" j range: %d - %d = %d\n", minJ, rightBound, rightBound-minJ+1)
+				for j = rightBound; j >= minJ; j-- {
+					b = (*subs)[j]
 
-				// fmt.Printf("  j:%d, b: %s\n", j, b)
+					// fmt.Printf("  j:%d, b: %s\n", j, b)
 
-				// avoided by using prevQIdx
-				//
-				// if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
-				// 	// fmt.Printf("   skip\n")
-				// 	continue
-				// }
-
-				// avoided by using minJ
-				//
-				// if a.QBegin-b.QBegin > maxDistanceInt32 {
-				// 	fmt.Printf("   distant in target too long: %d > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
-				// 	break
-				// }
-
-				// d = distance(a, b)
-				// if d > maxDistance {
-				// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
-				//
-				// if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
-				// d = a.TBegin - b.TBegin
-				d = aTBegin - b.TBegin
-				// if d > maxDistanceInt32 || d < -maxDistanceInt32 || d == 0 {
-				if d < 0 {
-					d = -d
-				}
-				if uint32(d)-1 >= maxDistanceUint32 { // including d == 0
-					// fmt.Printf("   distant in target too long: %d > %d\n", d, maxDistanceInt32)
-					continue // must not be break
-				}
-
-				g = gap(a, b)
-				if g > maxGap {
-					// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
-					continue // must not be break
-				}
-
-				// effective seed length
-				// if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
-				if aQBegin > b.QBegin+int32(b.Len) { // no overlap
-					// b -----
-					// a       ------
-					// length = int32(a.Len)
-					length = aLen
-					w = seedWeight(float32(length))
-				} else if g == 0 { // merge them into a longer anchor
-					// b -----
-					// a    ------
-					// length = a.QBegin + int32(a.Len) - int32(b.QBegin)
-					length = aQBegin + aLen - int32(b.QBegin)
-					w = -seedWeight(float32(b.Len)) + seedWeight(float32(length))
-				} else {
-					// b -----
-					// a    ------
-					// length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
-					length = aQBegin + aLen - (b.QBegin + int32(b.Len))
-					w = seedWeight(float32(length))
-				}
-
-				// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g) // an early version
-
-				dir = direction(a, b)
-
-				if directions[j] == 0 || directions[j] == dir {
-					// s = maxscores[j] + w - gapScore(g)
-					s = math.Float32frombits(uint32(maxscoresIdxs[j]>>32)) + w - gapScore(g)
-				} else {
-					// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+					// avoided by using prevQIdx
+					//
+					// if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
+					// 	// fmt.Printf("   skip\n")
 					// 	continue
+					// }
 
-					// the previous chain might be wrong in repetitive region.
-					s = seedWeight(float32(b.Len)) + w - gapScore(g)
-				}
+					// avoided by using minJ
+					//
+					// if a.QBegin-b.QBegin > maxDistanceInt32 {
+					// 	fmt.Printf("   distant in target too long: %d > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
+					// 	break
+					// }
 
-				// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
+					// d = distance(a, b)
+					// if d > maxDistance {
+					// fmt.Printf("   distant too long: %f > %f\n", d, maxDistance)
+					//
+					// if a.TBegin-b.TBegin > maxDistanceInt32 || b.TBegin-a.TBegin > maxDistanceInt32 {
+					// d = a.TBegin - b.TBegin
+					d = aTBegin - b.TBegin
+					// if d > maxDistanceInt32 || d < -maxDistanceInt32 || d == 0 {
+					if d < 0 {
+						d = -d
+					}
+					if uint32(d)-1 > maxDistanceUint32 { // including d == 0
+						// fmt.Printf("   distant in target too long: %d > %d\n", d, maxDistanceInt32)
+						continue // must not be break
+					}
 
-				if s >= minScore && s > m { //
-					// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
-					m = s
-					mj = j
-					mdir = dir
+					g = gap(a, b)
+					if g > maxGap {
+						// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
+						continue // must not be break
+					}
+
+					// fmt.Printf("  j:%d, b: %s\n", j, b)
+
+					// effective seed length
+					// if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+					if aQBegin > b.QBegin+int32(b.Len) { // no overlap
+						// b -----
+						// a       ------
+						// length = int32(a.Len)
+						length = aLen
+						w = seedWeight(float32(length))
+					} else if g == 0 { // merge them into a longer anchor
+						// b -----
+						// a    ------
+						// length = a.QBegin + int32(a.Len) - int32(b.QBegin)
+						length = aQBegin + aLen - int32(b.QBegin)
+						w = -seedWeight(float32(b.Len)) + seedWeight(float32(length))
+					} else {
+						// b -----
+						// a    ------
+						// length = a.QBegin + int32(a.Len) - (b.QBegin + int32(b.Len))
+						length = aQBegin + aLen - (b.QBegin + int32(b.Len))
+						w = seedWeight(float32(length))
+					}
+
+					// s = (*maxscores)[j] + seedWeight(float64(b.Len)) - distanceScore(d) - gapScore(g) // an early version
+
+					dir = direction(a, b)
+
+					if directions[j] == 0 || directions[j] == dir {
+						// s = maxscores[j] + w - gapScore(g)
+						s = math.Float32frombits(uint32(maxscoresIdxs[j]>>32)) + w - gapScore(g)
+					} else {
+						// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+						// 	continue
+
+						// the previous chain might be wrong in repetitive region.
+						s = seedWeight(float32(b.Len)) + w - gapScore(g)
+					}
+
+					// fmt.Printf("    max: %d-%f-%d, s:%f-%d\n", mj, m, mdir, s, dir)
+
+					if s >= minScore && s > m { //
+						// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
+						m = s
+						mj = j
+						mdir = dir
+					}
 				}
 			}
+			// maxscores = append(maxscores, m) // save the max score
+			// maxscoresIdxs = append(maxscoresIdxs, int32(mj))
+			maxscoresIdxs = append(maxscoresIdxs, uint64(math.Float32bits(m))<<32|uint64(mj))
+			directions = append(directions, mdir)
+			// score2idx = append(score2idx, [2]float32{m, float32(i)})
+			score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
 		}
-		// maxscores = append(maxscores, m) // save the max score
-		// maxscoresIdxs = append(maxscoresIdxs, int32(mj))
-		maxscoresIdxs = append(maxscoresIdxs, uint64(math.Float32bits(m))<<32|uint64(mj))
-		directions = append(directions, mdir)
-		// score2idx = append(score2idx, [2]float32{m, float32(i)})
-		score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
+	} else { // but for a large number of anchors, we use a intervel tree to reduce comparison
+		// an interval tree for fast filtering by TBegin
+		_itree := itree.NewMultiValueSearchTreeWithOptions[int32, int32](cmpFn2, itree.TreeWithIntervalPoint()) // some anchors have the same TBegin
+
+		// prevQIdx := ce.prevQIdx[:0]
+		// var lastDiffGroup int32 = -1
+		for i = 0; i < n; i++ {
+			// if i > 0 && (*subs)[i].QBegin != (*subs)[i-1].QBegin {
+			// 	lastDiffGroup = int32(i) - 1
+			// }
+			// prevQIdx = append(prevQIdx, lastDiffGroup)
+
+			a = (*subs)[i]
+			_itree.Insert(a.TBegin, a.TBegin+int32(a.Len)-1, int32(i))
+		}
+
+		var js []int32
+		var ok bool
+		var _j int
+		// var rightBound int
+
+		for i = 1; i < n; i++ {
+			a = (*subs)[i]
+			aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
+
+			// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
+
+			m, mj, mdir = seedWeight(float32(aLen)), i, 0
+
+			// rightBound = int(prevQIdx[i])
+
+			// fmt.Printf("  search region [%d, %d]\n", a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32)
+			if js, ok = _itree.AllIntersections(a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32-1); ok {
+				sortutil.Int32s(js)
+				// fmt.Printf(" j range: %d - %d = %d, %v\n", js[0], js[len(js)-1], len(js), js)
+				for _j = len(js) - 1; _j >= 0; _j-- {
+					j = int(js[_j])
+					if j >= i { // skip itself and later anchors
+						continue
+					}
+
+					// unnecessary
+					// if rightBound >= 0 && j > rightBound {
+					// 	continue
+					// }
+
+					b = (*subs)[j]
+
+					// fmt.Printf("  j:%d, b: %s\n", j, b)
+
+					if a.QBegin == b.QBegin || a.TBegin == b.TBegin {
+						continue
+					}
+
+					if a.QBegin-b.QBegin > maxDistanceInt32 {
+						// fmt.Printf("   distant in target too long: %d > %d\n", a.QBegin-b.QBegin, maxDistanceInt32)
+						break
+					}
+
+					g = gap(a, b)
+					if g > maxGap {
+						// fmt.Printf("   gap too big: %f > %f\n", g, maxGap)
+						continue // must not be break
+					}
+
+					// fmt.Printf("  j:%d, b: %s\n", j, b)
+
+					// effective seed length
+					// if a.QBegin > b.QBegin+int32(b.Len) { // no overlap
+					if aQBegin > b.QBegin+int32(b.Len) { // no overlap
+						// b -----
+						// a       ------
+						length = aLen
+						w = seedWeight(float32(length))
+					} else if g == 0 { // merge them into a longer anchor
+						// b -----
+						// a    ------
+						length = aQBegin + aLen - int32(b.QBegin)
+						w = -seedWeight(float32(b.Len)) + seedWeight(float32(length))
+					} else {
+						// b -----
+						// a    ------
+						length = aQBegin + aLen - (b.QBegin + int32(b.Len))
+						w = seedWeight(float32(length))
+					}
+
+					dir = direction(a, b)
+
+					if directions[j] == 0 || directions[j] == dir {
+						s = math.Float32frombits(uint32(maxscoresIdxs[j]>>32)) + w - gapScore(g)
+					} else {
+						// fmt.Printf("   different directions: pre: %f, dir: %f\n", (*directions)[j], dir)
+						// 	continue
+
+						// the previous chain might be wrong in repetitive region.
+						s = seedWeight(float32(b.Len)) + w - gapScore(g)
+					}
+
+					// fmt.Printf("    max: %d-%f-%f, s:%f-%f\n", mj, m, mdir, s, dir)
+
+					if s >= minScore && s > m { //
+						// fmt.Printf("   update score: %d-%f-%f -> %d-%f-%f\n", mj, m, mdir, j, s, dir)
+						m = s
+						mj = j
+						mdir = dir
+					}
+				}
+			}
+
+			maxscoresIdxs = append(maxscoresIdxs, uint64(math.Float32bits(m))<<32|uint64(mj))
+			directions = append(directions, mdir)
+			score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
+		}
 	}
+
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")
 	// for i = 0; i < n; i++ {
@@ -528,3 +647,5 @@ func unpack2F32AndU32(v uint64) (float32, uint32) {
 	other := uint32(v)
 	return math.Float32frombits(fbits), other
 }
+
+var cmpFn2 = func(x, y int32) int { return int(x - y) }

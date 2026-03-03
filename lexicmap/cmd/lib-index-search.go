@@ -1471,9 +1471,16 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
 		}
 
+		// only for dev.
+		//
 		// if len(*r.Subs) > 50000 {
 		// 	fmt.Printf("genome with %d pairs of anchors, genome batch: %d, genome index: %d\n",
 		// 		len(*r.Subs), r.GenomeBatch, r.GenomeIndex)
+		// }
+		// if r.BatchGenomeIndex != 267370 {
+		// 	<-tokens
+		// 	wg.Done()
+		// 	return
 		// }
 
 		chainer := idx.poolChainers.Get().(*Chainer)
