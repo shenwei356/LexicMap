@@ -345,6 +345,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 
 		var _js []uint64
 		var js []int32
+		var start uint32
 		// var ok bool
 		var _j int
 		var _v uint64
@@ -364,7 +365,13 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 
 			// if js, ok = _itree.AllIntersections(a.TBegin-maxDistanceInt32, a.TBegin+int32(a.Len)-1+maxDistanceInt32-1); ok {
 			// 	sortutil.Int32s(js)
-			_js = ri.Query(uint32(a.TBegin-maxDistanceInt32), uint32(a.TBegin+int32(a.Len)-1+maxDistanceInt32-1))
+
+			if a.TBegin < maxDistanceInt32 { // attention!
+				start = 0
+			} else {
+				start = uint32(a.TBegin - maxDistanceInt32)
+			}
+			_js = ri.Query(start, uint32(a.TBegin+maxDistanceInt32))
 			if len(_js) > 0 {
 				js = ce.prevQIdx[:0]
 				for _, _v = range _js {
