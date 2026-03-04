@@ -13,12 +13,11 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pkg/errors v0.9.1
-	github.com/pkg/profile v1.7.0
 	github.com/rdleal/intervalst v1.5.0
 	github.com/shenwei356/bio v0.13.8
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
 	github.com/shenwei356/kmers v0.1.0
-	github.com/shenwei356/lexichash v0.5.1
+	github.com/shenwei356/lexichash v0.5.2
 	github.com/shenwei356/util v0.5.4
 	github.com/shenwei356/wfa v0.4.1
 	github.com/shenwei356/xopen v0.4.0
@@ -38,12 +37,10 @@ require (
 	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/elliotwutingfeng/asciiset v0.0.0-20230602022725-51bbb787efab // indirect
-	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/go-fonts/liberation v0.3.1 // indirect
 	github.com/go-latex/latex v0.0.0-20230307184459-12ec69307ad9 // indirect
 	github.com/go-pdf/fpdf v0.8.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
-	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect

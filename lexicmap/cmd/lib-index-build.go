@@ -994,8 +994,8 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// }
 				// _kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, _skipRegions)
 				_kmers, locses, err = lh.MaskKnownDistinctPrefixes(refseq.Seq, _skipRegions, true)
-				if err != nil {
-					panic(err)
+				if err != nil { // E.g., some sequences contain invalid sequences.
+					checkError(fmt.Errorf("failed to compute LexicHash for %s: %s", refseq.ID, err))
 				}
 
 				// remove low-complexity k-mers

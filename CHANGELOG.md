@@ -9,6 +9,7 @@
     - **Added a new flag `--soft-masking` to support soft-masked genomes (usually eukaryotic genomes)**. 
       Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded,
       while they will be saved for base-level alignment.
+    - Added sequence validity checking. [#30](https://github.com/shenwei356/LexicMap/issues/30)
 - `lexicmap search`:
     - **New flag `-N/--top-n-chains` for keeping the top N chains in a genome for the query** (0 for all) in the chaining phase.
       It reduces search time when one needs only the most similar matches in a genome.
