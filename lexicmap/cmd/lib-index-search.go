@@ -1479,11 +1479,12 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// 	fmt.Printf("genome with %d pairs of anchors, genome batch: %d, genome index: %d\n",
 		// 		len(*r.Subs), r.GenomeBatch, r.GenomeIndex)
 		// }
-		// if r.BatchGenomeIndex != 267370 {
+		// if r.BatchGenomeIndex != 267333 {
 		// 	<-tokens
 		// 	wg.Done()
 		// 	return
 		// }
+		// fmt.Println(len(*r.Subs), string(query.seqID), r.GenomeBatch, r.GenomeIndex)
 
 		chainer := idx.poolChainers.Get().(*Chainer)
 		r.Chains, r.Score = chainer.Chain(r.Subs)

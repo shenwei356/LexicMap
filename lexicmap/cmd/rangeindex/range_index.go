@@ -33,10 +33,12 @@ type RangeIndex struct {
 	sorted bool
 }
 
+const initialSize = 4096
+
 var rangeIndexPool = sync.Pool{
 	New: func() any {
 		return &RangeIndex{
-			data:   make([]uint64, 0, 4096),
+			data:   make([]uint64, 0, initialSize),
 			sorted: true,
 		}
 	},
@@ -56,7 +58,7 @@ func (ri *RangeIndex) Release() {
 	const maxCap = 1 << 20 // 1M entries safety limit
 
 	if cap(ri.data) > maxCap {
-		ri.data = make([]uint64, 0, 4096)
+		ri.data = make([]uint64, 0, initialSize)
 	}
 	rangeIndexPool.Put(ri)
 }
