@@ -356,6 +356,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 
 	// substring pairs/seeds/anchors
 	subs := poolSubsLong.Get().(*[]*SubstrPair)
+	// objects in poolSubsLong is big, so we should reuse them.
 	defer RecycleSubstrPairs(poolSub2, poolSubsLong, subs)
 
 	ccc := cpr.ccc

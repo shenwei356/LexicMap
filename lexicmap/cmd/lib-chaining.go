@@ -63,25 +63,34 @@ type Chainer struct {
 	topChains int
 }
 
+const chainerInitSize = 4096
+
 // NewChainer creates a new chainer.
 func NewChainer(options *ChainingOptions) *Chainer {
 	c := &Chainer{
 		options: options,
 
 		// scores:        make([]float64, 0, 128),
-		prevQIdx: make([]int32, 0, 10240),
-		// maxscores:     make([]float32, 0, 10240),
-		// maxscoresIdxs: make([]int32, 0, 10240),
-		maxscoresIdxs: make([]uint64, 0, 10240),
-		directions:    make([]int8, 0, 10240),
-		visited:       make([]bool, 0, 10240),
+		prevQIdx: make([]int32, 0, chainerInitSize),
+		// maxscores:     make([]float32, 0, chainerInitSize),
+		// maxscoresIdxs: make([]int32, 0, chainerInitSize),
+		maxscoresIdxs: make([]uint64, 0, chainerInitSize),
+		directions:    make([]int8, 0, chainerInitSize),
+		visited:       make([]bool, 0, chainerInitSize),
 
-		// score2idx: make([][2]float32, 0, 10240),
-		score2idx: make([]uint64, 0, 10240),
+		// score2idx: make([][2]float32, 0, chainerInitSize),
+		score2idx: make([]uint64, 0, chainerInitSize),
 
 		topChains: options.TopChains,
 	}
 	return c
+}
+
+func RecycleChainer(poolChainers *sync.Pool, chainer *Chainer) {
+	if len(chainer.visited) > chainerInitSize {
+		return
+	}
+	poolChainers.Put(chainer)
 }
 
 // RecycleChainingResult reycles the chaining results.

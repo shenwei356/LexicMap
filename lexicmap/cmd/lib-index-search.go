@@ -690,11 +690,10 @@ var poolSubs = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
+const thresholdNSubs = 1024
+
 // RecycleSubstrPairs recycles a list of SubstrPairs
 func RecycleSubstrPairs(poolSub *sync.Pool, poolSubs *sync.Pool, subs *[]*SubstrPair) {
-	if len(*subs) > 4096 { // two many elements
-		return
-	}
 	for _, sub := range *subs {
 		poolSub.Put(sub)
 	}
@@ -918,7 +917,10 @@ func (r *SearchResult) Reset() {
 // RecycleSearchResults recycles a search result object
 func (idx *Index) RecycleSearchResult(r *SearchResult) {
 	if r.Subs != nil {
-		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		// too many elements, don't put it back to the object pool, to avoid memory bloat
+		if len(*r.Subs) <= thresholdNSubs {
+			RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		}
 		r.Subs = nil
 	}
 
@@ -1487,9 +1489,11 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		r.Chains, r.Score = chainer.Chain(r.Subs)
 
 		if r.Score < minScore {
-			idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
+			// many search results failed here, recylcing too many substring pairs resulting in a high memory load.
+			idx.RecycleSearchResult(r) // do not forget to recycle unused objects.
 
-			idx.poolChainers.Put(chainer)
+			// idx.poolChainers.Put(chainer)
+			RecycleChainer(idx.poolChainers, chainer)
 			<-tokens
 			wg.Done()
 			return
@@ -1497,7 +1501,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 		ch1 <- r
 
-		idx.poolChainers.Put(chainer)
+		// idx.poolChainers.Put(chainer)
+		RecycleChainer(idx.poolChainers, chainer)
 		<-tokens
 		wg.Done()
 	}
@@ -2396,7 +2401,10 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		RecycleChainingResult(r.Chains)
 		r.Chains = nil
 
-		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		// too many elements, don't put it back to the object pool, to avoid memory bloat
+		if len(*r.Subs) <= thresholdNSubs {
+			RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		}
 		r.Subs = nil
 
 		genome.RecycleGenome(tSeq)

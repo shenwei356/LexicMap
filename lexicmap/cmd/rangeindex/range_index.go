@@ -69,6 +69,7 @@ func (ri *RangeIndex) Add(loc, value uint32) {
 }
 
 // Query returns all entries whose loc is within the given range.
+// Attention: the length of result might be 0.
 // Note that: each returned slice element contain both location and value.
 // You can get the location by v >> 32, and value v & 4294967295
 func (ri *RangeIndex) Query(left, right uint32) []uint64 {
@@ -117,6 +118,7 @@ func (ri *RangeIndex) Query(left, right uint32) []uint64 {
 	return ri.data[start:end]
 }
 
+// Unpack extracts location and its value from one element of query result.
 func Unpack(v uint64) (uint32, uint32) {
 	return uint32(v >> 32), uint32(v & 4294967295)
 }
