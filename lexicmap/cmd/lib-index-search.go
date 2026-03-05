@@ -711,18 +711,6 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 
 	// sort substrings/seeds in ascending order based on the starting position
 	// and in descending order based on the ending position.
-	// sort.Slice(*subs, func(i, j int) bool {
-	// 	a := (*subs)[i]
-	// 	b := (*subs)[j]
-	// 	if a.QBegin == b.QBegin {
-	// 		// return a.QBegin+int32(a.Len) >= b.QBegin+int32(b.Len)
-	// 		if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
-	// 			return a.TBegin <= b.TBegin
-	// 		}
-	// 		return a.QBegin+int32(a.Len) > b.QBegin+int32(b.Len)
-	// 	}
-	// 	return a.QBegin < b.QBegin
-	// })
 	slices.SortFunc(*subs, func(a, b *SubstrPair) int {
 		if a.QBegin == b.QBegin {
 			if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
@@ -734,28 +722,45 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	})
 
 	var p *SubstrPair
-	var upbound, vQEnd, vTEnd int32
+	var upbound, vQEnd, vTBegin, vTEnd int32
 	var j int
 	markers := poolBoolList.Get().(*[]bool)
 	*markers = (*markers)[:0]
 	for range *subs {
+		// mark if current anchor is equal to or nested in any previous anchor
 		*markers = append(*markers, false)
 	}
+
+	//         vQBegin    vQend
+	// --------===========------ v
+	// ------==============----- p  previous anchor
+	//       p.QBegin     p.QEnd
+
 	for i, v := range (*subs)[1:] {
-		vQEnd = int32(v.QBegin) + int32(v.Len)
-		upbound = int32(vQEnd) - int32(k)
-		vTEnd = int32(v.TBegin) + int32(v.Len)
-		j = i
+		// fmt.Printf("anchor:%d/%d, a: %s\n", i+1, len(*subs), v)
+
+		vQEnd = v.QBegin + int32(v.Len)
+		upbound = vQEnd - int32(k)
+		vTBegin = v.TBegin
+		vTEnd = v.TBegin + int32(v.Len)
+
+		j = i        // not i - 1, because: range (*subs)[1:]
 		for j >= 0 { // have to check previous N seeds
 			p = (*subs)[j]
 			if p.QBegin < upbound { // no need to check
+				//          vQBegin    vQend
+				// ---------===========----- v
+				//     ================ k
+				//     upbound
+				// ------==============----- p  previous anchor
+				//       p.QBegin     p.Qend
 				break
 			}
 
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
-				v.TBegin >= p.TBegin && vTEnd <= p.TBegin+int32(p.Len) {
-				(*markers)[i+1] = true // because of: range (*subs)[1:]
+				vTBegin >= p.TBegin && vTEnd <= p.TBegin+int32(p.Len) {
+				(*markers)[i+1] = true // because: range (*subs)[1:]
 				break
 			}
 
@@ -1469,22 +1474,21 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 	minScore := idx.chainingOptions.MinScore
 
 	chaining := func(r *SearchResult) {
-		if len(*r.Subs) > 1 {
-			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
-		}
-
 		// only for dev.
 		//
 		// if len(*r.Subs) > 50000 {
 		// 	fmt.Printf("genome with %d pairs of anchors, genome batch: %d, genome index: %d\n",
 		// 		len(*r.Subs), r.GenomeBatch, r.GenomeIndex)
 		// }
-		// if r.BatchGenomeIndex != 267333 {
+		// if r.BatchGenomeIndex != 166 {
 		// 	<-tokens
 		// 	wg.Done()
 		// 	return
 		// }
-		// fmt.Println(len(*r.Subs), string(query.seqID), r.GenomeBatch, r.GenomeIndex)
+
+		if len(*r.Subs) > 1 {
+			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+		}
 
 		chainer := idx.poolChainers.Get().(*Chainer)
 		r.Chains, r.Score = chainer.Chain(r.Subs)

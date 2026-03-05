@@ -316,6 +316,7 @@ Important parameters:
 			Masks:       nMasks,
 			RandSeed:    int64(seed),
 			SoftMasking: getFlagBool(cmd, "soft-masking"),
+			MaxKmerFreq: getFlagNonNegativeInt(cmd, "max-kmer-freq"),
 
 			// randomly generating
 			// Prefix: minPrefix,
@@ -567,6 +568,9 @@ func init() {
 
 	indexCmd.Flags().BoolP("soft-masking", "", false,
 		formatFlagUsage(`Support soft-masked genomes. Lowercase bases in soft-masked low-complexity regions will be treated as A's, and won't be seeded.`))
+
+	indexCmd.Flags().IntP("max-kmer-freq", "", 0,
+		formatFlagUsage(`If a mask captures the same k-mer at more than N positions of a genome, only the first N positions will be retained. This option may reduce search sensitivity, but it's useful when simply checking whether a query matches any position in a genome that contains many tandem repeat sequences. (0 for no filtering)`))
 
 	// ------  generate masks randomly
 

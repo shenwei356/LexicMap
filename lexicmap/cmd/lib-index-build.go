@@ -121,6 +121,7 @@ type IndexBuildingOptions struct {
 	Masks       int   // number of masks
 	RandSeed    int64 // random seed
 	SoftMasking bool  // support soft masking
+	MaxKmerFreq int   // only keep the leading N positions per kmer per mask
 
 	// generate mask randomly
 	// Prefix int // length of prefix for checking low-complexity and choosing k-mers to fill deserts
@@ -681,9 +682,16 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 					var data *map[uint64]*[]uint64
 
+					var kmerCnt *map[uint64]int
+					maxKmerFreq := opt.MaxKmerFreq
+					filterKmers := maxKmerFreq > 0
+					if filterKmers {
+						kmerCnt = poolKmerCounter.Get().(*map[uint64]int)
+					}
+
 					// normal k-mers
 					for i := begin; i < end; i++ {
-						data = (*datas)[i] // the map to save into
+						data = (*datas)[i] // the map (kmer -> location) to save into
 
 						if len((*loces)[i]) > 0 { // locations from from MaskKnownPrefixes might be empty.
 							kmer = (*_kmers)[i] // captured k-mer by the mask
@@ -720,9 +728,24 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						if knl == nil {
 							continue
 						}
+
+						// fmt.Printf("\n", )
+
+						if filterKmers {
+							clear(*kmerCnt)
+						}
+
 						_end = len(*knl) - 2
 						for _j = 0; _j <= _end; _j += 2 {
 							kmer = (*knl)[_j]
+
+							if filterKmers {
+								(*kmerCnt)[kmer]++
+								if (*kmerCnt)[kmer] > maxKmerFreq {
+									continue
+								}
+							}
+
 							if values, ok = (*data)[kmer]; !ok {
 								values = &[]uint64{}
 								(*data)[kmer] = values
@@ -730,8 +753,14 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 							// value = batchIDAndRefIDShift | ((*knl)[_j+1] & 1073741823)
 							value = batchIDAndRefIDShift | (((*knl)[_j+1] << BITS_REVERSE) & MASK_NONE_IDX)
+							// fmt.Printf("mask=%d\textra kmers=%d\t%s\tloc=%d\n", i+1, len(*knl)>>1, kmers.MustDecode(kmer, lh.K), (*knl)[_j+1]>>1)
 							*values = append(*values, value)
 						}
+					}
+
+					if filterKmers {
+						clear(*kmerCnt)
+						poolKmerCounter.Put(kmerCnt)
 					}
 
 					wg.Done()
@@ -2288,6 +2317,11 @@ var poolKmerAndLocs = &sync.Pool{New: func() interface{} {
 
 var poolInts = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 0, 1024)
+	return &tmp
+}}
+
+var poolKmerCounter = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]int, 20480)
 	return &tmp
 }}
 
