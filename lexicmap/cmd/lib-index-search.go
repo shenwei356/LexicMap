@@ -40,6 +40,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/taxdump"
 	"github.com/shenwei356/kmers"
@@ -726,45 +727,66 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	var j int
 	markers := poolBoolList.Get().(*[]bool)
 	*markers = (*markers)[:0]
-	for range *subs {
-		// mark if current anchor is equal to or nested in any previous anchor
-		*markers = append(*markers, false)
-	}
 
 	//         vQBegin    vQend
 	// --------===========------ v
 	// ------==============----- p  previous anchor
 	//       p.QBegin     p.QEnd
 
+	// store the index of each new QBegin
+	ri := rangeindex.NewRangeIndex()
+	var vQBegin, pQBegin int32
+	pQBegin = math.MaxInt32 // previous QEnd
+	for i, v := range *subs {
+		vQBegin = v.QBegin
+		if vQBegin != pQBegin {
+			ri.Add(uint32(vQBegin), uint32(i))
+			pQBegin = vQBegin
+		}
+
+		// mark if current anchor is equal to or nested in any previous anchor
+		*markers = append(*markers, false)
+	}
+	var _js []uint64
+	js := poolUint32s.Get().(*[]uint32)
+	var _v uint64
+
+	// fmt.Printf("anchor:%d/%d, a: %s\n", 0, len(*subs), (*subs)[0])
 	for i, v := range (*subs)[1:] {
-		// fmt.Printf("anchor:%d/%d, a: %s\n", i+1, len(*subs), v)
+		// fmt.Printf("anchor:%d/%d, a: %s\n", i+1, len(*subs), v) // 0-based
 
 		vQEnd = v.QBegin + int32(v.Len)
-		upbound = vQEnd - int32(k)
+		upbound = max(vQEnd-int32(k), 0)
 		vTBegin = v.TBegin
 		vTEnd = v.TBegin + int32(v.Len)
 
-		j = i        // not i - 1, because: range (*subs)[1:]
-		for j >= 0 { // have to check previous N seeds
-			p = (*subs)[j]
-			if p.QBegin < upbound { // no need to check
-				//          vQBegin    vQend
-				// ---------===========----- v
-				//     ================ k
-				//     upbound
-				// ------==============----- p  previous anchor
-				//       p.QBegin     p.Qend
-				break
-			}
+		//          vQBegin    vQend
+		// ---------===========----- v
+		//     ================ k
+		//     upbound
+		// ------==============----- p  previous anchor
+		//       p.QBegin     p.Qend
 
+		// fmt.Printf("region: %d - %d\n", uint32(upbound), uint32(v.QBegin))
+		_js = ri.Query(uint32(upbound), uint32(v.QBegin))
+
+		// if len(_js) > 0 { // always true
+		*js = (*js)[:0]
+		for _, _v = range _js {
+			*js = append(*js, uint32(_v&4294967295))
+		}
+		// fmt.Println(*js)
+		// slices.Sort(*js) // unnecessary, the indice are sorted
+
+		for j = int((*js)[0]); j <= i; j++ {
+			p = (*subs)[j]
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
 				vTBegin >= p.TBegin && vTEnd <= p.TBegin+int32(p.Len) {
+				// fmt.Printf("  nested in anchor %d: %s\n", j, p)
 				(*markers)[i+1] = true // because: range (*subs)[1:]
 				break
 			}
-
-			j--
 		}
 	}
 
@@ -782,6 +804,8 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	}
 
 	poolBoolList.Put(markers)
+	poolUint32s.Put(js)
+	ri.Release()
 }
 
 var poolBoolList = &sync.Pool{New: func() interface{} {
@@ -1487,7 +1511,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		// }
 
 		if len(*r.Subs) > 1 {
+			// fmt.Printf("anchors before: %d\n", len(*r.Subs))
 			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+			// fmt.Printf("anchors after: %d\n", len(*r.Subs))
 		}
 
 		chainer := idx.poolChainers.Get().(*Chainer)
@@ -2725,3 +2751,8 @@ var poolHashes = &sync.Pool{New: func() interface{} {
 // 	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
 // 		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
 // }
+
+var poolUint32s = &sync.Pool{New: func() interface{} {
+	tmp := make([]uint32, 1024)
+	return &tmp
+}}
