@@ -1828,6 +1828,9 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			GenomeBatchSize: nFiles, // just for this batch
 			GenomeBatches:   1,      // just for this batch
 			ContigInterval:  opt.ContigInterval,
+
+			SoftMaksing: opt.SoftMasking,
+			MaxKmerFreq: opt.MaxKmerFreq,
 		}
 		err = writeIndexInfo(filepath.Join(outdir, FileInfo), info)
 		if err != nil {
@@ -1913,6 +1916,8 @@ type IndexInfo struct {
 	GenomeBatchSize  int   `toml:"genome-batch-size"`
 	GenomeBatches    int   `toml:"genome-batches"`
 	ContigInterval   int   `toml:"contig-interval"`
+	SoftMaksing      bool  `toml:"soft-masking" comment:"Lowercase bases in soft-masked low-complexity regions are treated as A's and are not seeded,\nwhile they are saved for base-level alignment."`
+	MaxKmerFreq      int   `toml:"max-kmer-freq" comment:"If a mask captures the same k-mer at more than N positions of a genome,\nonly the first N positions are retained. (0 for no filtering)"`
 }
 
 // writeIndexInfo writes summary of one index

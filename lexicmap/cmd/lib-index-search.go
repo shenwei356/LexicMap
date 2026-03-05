@@ -748,8 +748,8 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		*markers = append(*markers, false)
 	}
 	var _js []uint64
-	js := poolUint32s.Get().(*[]uint32)
-	var _v uint64
+	// js := poolUint32s.Get().(*[]uint32)
+	// var _v uint64
 
 	// fmt.Printf("anchor:%d/%d, a: %s\n", 0, len(*subs), (*subs)[0])
 	for i, v := range (*subs)[1:] {
@@ -771,14 +771,15 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		_js = ri.Query(uint32(upbound), uint32(v.QBegin))
 
 		// if len(_js) > 0 { // always true
-		*js = (*js)[:0]
-		for _, _v = range _js {
-			*js = append(*js, uint32(_v&4294967295))
-		}
+		// *js = (*js)[:0]
+		// for _, _v = range _js {
+		// 	*js = append(*js, uint32(_v&4294967295))
+		// }
 		// fmt.Println(*js)
 		// slices.Sort(*js) // unnecessary, the indice are sorted
 
-		for j = int((*js)[0]); j <= i; j++ {
+		// for j = int((*js)[0]); j <= i; j++ {
+		for j = int(_js[0] & 4294967295); j <= i; j++ {
 			p = (*subs)[j]
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
@@ -804,7 +805,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	}
 
 	poolBoolList.Put(markers)
-	poolUint32s.Put(js)
+	// poolUint32s.Put(js)
 	ri.Release()
 }
 

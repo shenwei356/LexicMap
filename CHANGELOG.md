@@ -9,9 +9,11 @@
     - **Added a new flag `--soft-masking` to support soft-masked genomes (usually eukaryotic genomes)**. 
       Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded,
       while they will be saved for base-level alignment.
+      The value of this flag is appended to the index information file `info.toml`.
     - Added a new option `--max-kmer-freq`. If a mask captures the same k-mer at more than N positions in a genome,
       only the first N positions will be retained. This option may reduce search sensitivity, but it can be useful
       when simply checking whether a query matches any position in a genome that contains many tandem repeat sequences.
+      The value of this flag is appended to the index information file `info.toml`.
     - Added sequence validity checking. [#30](https://github.com/shenwei356/LexicMap/issues/30)
 - `lexicmap search`:
     - **New flag `-N/--top-n-chains` for keeping the top N chains in a genome for the query** (0 for all) in the chaining phase.

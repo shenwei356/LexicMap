@@ -449,6 +449,13 @@ Result ordering:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
+			if sopt.TopN > 0 {
+				log.Infof("  keep the top %d genomes", sopt.TopN)
+			}
+			if sopt.TopNChains > 0 {
+				log.Infof("  keep the top %d chains", sopt.TopNChains)
+			}
+
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
 			}
