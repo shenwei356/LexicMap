@@ -282,6 +282,7 @@ Output:
 				}
 				r.POS = sstart
 				r.MAPQ = 0 // compute later
+				clip5, clip3 = "", ""
 				if _qstart > 1 {
 					clip5 = fmt.Sprintf("%dS", _qstart-1)
 				}

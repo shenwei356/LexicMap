@@ -2120,7 +2120,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 										c.Alignment = c.Alignment[:0]
 									}
 
-									for _, op = range cigar.Ops {
+									for _, op = range trimOps(cigar.Ops) {
 										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
 										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
 										// c.CIGAR = append(c.CIGAR, op.Op)
@@ -2373,7 +2373,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								c.Alignment = c.Alignment[:0]
 							}
 
-							for _, op = range cigar.Ops {
+							for _, op = range trimOps(cigar.Ops) {
 								// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
 								c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
 								// c.CIGAR = append(c.CIGAR, op.Op)
