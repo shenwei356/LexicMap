@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -302,7 +303,8 @@ Output:
 					r.SEQ = "*"
 				}
 				r.QUAL = "*"
-				r.NM = int(float64(_alenHSP) * (1 - _pident/100))
+				// r.NM = int(float64(_alenHSP) * (1 - _pident/100)) // can't calculate it like this
+				r.NM = editDistanceFromCIGAR(cigar)
 				r.AS = algnScore
 
 				if preQuery != query && len(aligns) > 0 {
@@ -427,3 +429,17 @@ func init() {
 
 	toSamCmd.SetUsageTemplate(usageTemplate(""))
 }
+
+func editDistanceFromCIGAR(cigar string) (d int) {
+	var n int
+	for _, found := range reCIGAR.FindAllStringSubmatch(cigar, -1) {
+		switch found[2] {
+		case "X", "I", "D":
+			n, _ = strconv.Atoi(found[1])
+			d += n
+		}
+	}
+	return d
+}
+
+var reCIGAR = regexp.MustCompile(`(\d+)([M=XIDNSHP])`)
