@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
   <meta name="description" content="Info:
@@ -67,7 +67,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
       "name": "Indexing GlobDB",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/",
       "headline": "Indexing GlobDB",
-      "description": "Info:\nGlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.\nwget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https:\/\/bioinf.shenwei.me\/taxonkit\/usage\/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump\/taxid.map Indexing with LexicMap",
+      "description": "Info:\nGlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.\nwget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https:\/\/bioinf.shenwei.me\/taxonkit\/usage\/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump\/taxid.map Indexing with LexicMap",""
       "wordCount" : "111",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -1144,6 +1144,42 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
                     class="gdoc-nav__entry"
                   >
                     2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
                   </a>
                 </span>
               
@@ -2499,6 +2535,30 @@ lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

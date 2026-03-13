@@ -12,9 +12,9 @@
 <meta name="generator" content="Hugo 0.155.3">
 
 
-  <meta name="description" content="$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d &lt;index path&gt; [-m &lt;mask index&gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -m, --mask int ► View k-mers captured by Xth mask. (0 for all) (default 1) -f, --only-forward ► Only output forward k-mers. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples The default output is captured k-mers of the first mask." />
+  <meta name="description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 
-    <title>kmers | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>2sam | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,19 +35,19 @@
     
   <meta
     property="og:title"
-    content="kmers"
+    content="2sam"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d &lt;index path&gt; [-m &lt;mask index&gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -m, --mask int ► View k-mers captured by Xth mask. (0 for all) (default 1) -f, --only-forward ► Only output forward k-mers. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples The default output is captured k-mers of the first mask." />
+  <meta property="og:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/" />
+<meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/" />
 
 <meta property="article:section" content="Usage" />
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="kmers" />
-  <meta name="twitter:description" content="$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d &lt;index path&gt; [-m &lt;mask index&gt;] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -m, --mask int ► View k-mers captured by Xth mask. (0 for all) (default 1) -f, --only-forward ► Only output forward k-mers. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples The default output is captured k-mers of the first mask." />
+<meta name="twitter:title" content="2sam" />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 
 
   <script type="application/ld+json">
@@ -55,16 +55,16 @@
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Usage",
-      "name": "kmers",
-      "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/",
-      "headline": "kmers",
-      "description": "$ lexicmap utils kmers -h View k-mers captured by the masks Attention: 1. Mask index (column mask) is 1-based. 2. Prefix means the length of shared prefix between a k-mer and the mask. 3. K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. 4. Reversed means if the k-mer is reversed for suffix matching. Usage: lexicmap utils kmers [flags] -d \u003cindex path\u003e [-m \u003cmask index\u003e] [-o out.tsv.gz] Flags: -h, --help help for kmers -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -m, --mask int ► View k-mers captured by Xth mask. (0 for all) (default 1) -f, --only-forward ► Only output forward k-mers. -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples The default output is captured k-mers of the first mask.",""
-      "wordCount" : "992",
+      "name": "2sam",
+      "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/",
+      "headline": "2sam",
+      "description": " Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of \u0027lexicmap search\u0027 with the flag -a\/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N\u0027s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, \u0027X\u0027 (mismatch) in CIGAR is not converted to \u0027M\u0027 (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -s, --separater string ► Separater between sgenome and sseqid (default \u0022~\u0022) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data.",""
+      "wordCount" : "665",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
           "@type": "WebPage",
-          "@id": "https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/"
+          "@id": "https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/"
       },
       "copyrightHolder" : "LexicMap: efficient sequence alignment against millions of prokaryotic genomes​",
       "copyrightYear" : "0001",
@@ -148,7 +148,7 @@
   href="/LexicMap/custom.css"
   media="all"
 />
-  <link href="https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/" rel="canonical" type="text/html" />
+  <link href="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/" rel="canonical" type="text/html" />
 
 <!-- Made with Geekdoc theme https://github.com/thegeeklab/hugo-geekdoc -->
 
@@ -1168,7 +1168,7 @@
                 <span class="flex">
                   <a
                     href="/LexicMap/usage/utils/2sam/"
-                    class="gdoc-nav__entry"
+                    class="gdoc-nav__entry is-active"
                   >
                     2sam
                   </a>
@@ -1300,7 +1300,7 @@
                 <span class="flex">
                   <a
                     href="/LexicMap/usage/utils/kmers/"
-                    class="gdoc-nav__entry is-active"
+                    class="gdoc-nav__entry"
                   >
                     kmers
                   </a>
@@ -1855,7 +1855,7 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>kmers</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>2sam</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1876,29 +1876,43 @@
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>kmers</h1>
+    <h1>2sam</h1>
     
-    <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils kmers -h
-</span></span><span class="line"><span class="cl">View k-mers captured by the masks
+    <div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="usage"
+    >
+        Usage
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/#usage" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Usage" aria-label="Anchor to: Usage" href="#usage">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils 2sam -h
+</span></span><span class="line"><span class="cl">Convert the default search output to SAM format
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">Attention:
-</span></span><span class="line"><span class="cl">  1. Mask index (column mask) is 1-based.
-</span></span><span class="line"><span class="cl">  2. Prefix means the length of shared prefix between a k-mer and the mask.
-</span></span><span class="line"><span class="cl">  3. K-mer positions (column pos) are 1-based.
-</span></span><span class="line"><span class="cl">     For reference genomes with multiple sequences, the sequences were
-</span></span><span class="line"><span class="cl">     concatenated to a single sequence with intervals of N&#39;s.
-</span></span><span class="line"><span class="cl">  4. Reversed means if the k-mer is reversed for suffix matching.
+</span></span><span class="line"><span class="cl">Input:
+</span></span><span class="line"><span class="cl">   - Output file of &#39;lexicmap search&#39; with the flag -a/--all.
+</span></span><span class="line"><span class="cl">   - Do not support STDIN.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Output:
+</span></span><span class="line"><span class="cl">   - Clipped regions in SEQ are represented as N&#39;s,
+</span></span><span class="line"><span class="cl">     as the input contains only the aligned portion of the sequences.
+</span></span><span class="line"><span class="cl">   - Different from SAM files produced by Minimap2,
+</span></span><span class="line"><span class="cl">     &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match).
+</span></span><span class="line"><span class="cl">   - NM (edit distance) and AS (alignment score) fields are produced.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
-</span></span><span class="line"><span class="cl">  lexicmap utils kmers [flags] -d &lt;index path&gt; [-m &lt;mask index&gt;] [-o out.tsv.gz]
+</span></span><span class="line"><span class="cl">  lexicmap utils 2sam [flags] 
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
-</span></span><span class="line"><span class="cl">  -h, --help              help for kmers
-</span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
-</span></span><span class="line"><span class="cl">  -m, --mask int          ► View k-mers captured by Xth mask. (0 for all) (default 1)
-</span></span><span class="line"><span class="cl">  -f, --only-forward      ► Only output forward k-mers.
-</span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
-</span></span><span class="line"><span class="cl">                          (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">  -b, --buffer-size string      ► Size of buffer, supported unit: K, M, G. You need increase the value
+</span></span><span class="line"><span class="cl">                                when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;)
+</span></span><span class="line"><span class="cl">  -c, --concat-sgenome-sseqid   ► Concatenate sgenome and sseqid to make sure the reference sequence
+</span></span><span class="line"><span class="cl">                                names are distinct.
+</span></span><span class="line"><span class="cl">  -h, --help                    help for 2sam
+</span></span><span class="line"><span class="cl">  -o, --out-file string         ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
+</span></span><span class="line"><span class="cl">                                (default &#34;-&#34;)
+</span></span><span class="line"><span class="cl">  -s, --separater string        ► Separater between sgenome and sseqid (default &#34;~&#34;)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -1913,133 +1927,66 @@
     >
         Examples
     </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/kmers/#examples" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Examples" aria-label="Anchor to: Examples" href="#examples">
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/#examples" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Examples" aria-label="Anchor to: Examples" href="#examples">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
-<ol>
-<li>
-<p>The default output is captured k-mers of the first mask.</p>
-<pre><code> $ lexicmap utils kmers --quiet -d demo.lmi/ | head -n 20 | csvtk pretty -t
- mask   kmer                              prefix   number   ref               pos       strand   reversed
- ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
- 1      AAAAAAAAACGAAAAAGATTTTCCCTCATAC   7        1        GCF_000392875.1   2088530   +        yes     
- 1      AAAAAAAAACGCTTCTACATCGAGCAGCGAG   7        1        GCF_001457655.1   941619    +        yes     
- 1      AAAAAAAAACGTATCCCTCTTTATTACTTAT   7        1        GCF_000006945.2   3392260   -        yes     
- 1      AAAAAAAAAGATTTGATTTTTTTCATTAATA   7        1        GCF_000392875.1   766998    -        yes     
- 1      AAAAAAAAATCTATTTTAAAACCTAATCACG   7        1        GCF_000392875.1   2201506   +        yes     
- 1      AAAAAAAAATGTCACAACAGCCCAACCTCCA   7        1        GCF_000392875.1   860216    +        yes     
- 1      AAAAAAAACAAAAACTAGTTCGAGTGCCGAA   7        1        GCF_000006945.2   1587885   -        yes     
- 1      AAAAAAAACCATATTATGTCCGATCCTCACA   7        1        GCF_000392875.1   1060650   +        yes     
- 1      AAAAAAAACGAAAAACGGTAACACGGGAATT   7        1        GCF_001544255.1   1605298   +        yes     
- 1      AAAAAAAACGACGCAGAAAACGACATTGCGA   7        1        GCF_003697165.2   564733    +        yes     
- 1      AAAAAAAACGACTCCAGAGAGATCATCGTAT   7        1        GCF_000392875.1   1279686   +        yes     
- 1      AAAAAAAACGAGCGATTGGTTGCATTAAGGA   7        1        GCF_002949675.1   3914985   -        yes     
- 1      AAAAAAAACGAGCGCTCGGTTGCATTAAGGA   7        2        GCF_002949675.1   2061956   -        yes     
- 1      AAAAAAAACGAGCGCTCGGTTGCATTAAGGA   7        2        GCF_003697165.2   1514669   -        yes     
- 1      AAAAAAAACGCAACTTAAACAGTAAAACACG   7        1        GCF_002950215.1   1938205   +        yes     
- 1      AAAAAAAACGGGACGCGTAGTGCTGTGGTCT   7        1        GCF_000742135.1   2728620   -        yes     
- 1      AAAAAAAACGTAAATTTTTAAGATTGCGTCG   7        1        GCF_001457655.1   1547239   -        yes     
- 1      AAAAAAAACGTTAGAGAAAGCATCTAACACA   7        1        GCF_001027105.1   660296    +        yes     
- 1      AAAAAAAACGTTTTATCACTAATTTTCAGTT   7        1        GCF_000392875.1   1590621   -        yes     
-</code></pre>
-<p>Only forward k-mers.</p>
-<pre><code> $ lexicmap utils kmers --quiet -d demo.lmi/ -f | head -n 20 | csvtk pretty -t
- mask   kmer                              prefix   number   ref               pos       strand   reversed
- ----   -------------------------------   ------   ------   ---------------   -------   ------   --------
- 1      AAAAAAATAAAAACTTAGTTGTCCCATAACA   8        1        GCF_000392875.1   1044207   -        no      
- 1      AAAAAAATAAATCTGCGATGGCTGTTGATGG   8        1        GCF_002950215.1   462416    +        no      
- 1      AAAAAAATAACGTTGGCGATTACGATGCCAA   8        1        GCF_000392875.1   1422018   +        no      
- 1      AAAAAAATAACTCAATGAGGTTATGGGCATG   8        1        GCF_000742135.1   4160317   -        no      
- 1      AAAAAAATAACTGCTTTACTCTTTGCTCTTT   8        1        GCF_009759685.1   2134145   +        no      
- 1      AAAAAAATAAGAACACAAAAAAGGTATCTAG   8        1        GCF_001544255.1   1050935   +        no      
- 1      AAAAAAATAAGAAGGTAGCACCAATAACTTT   8        1        GCF_900638025.1   137037    -        no      
- 1      AAAAAAATAAGCTGGGCCGTTTGGGGAACGA   8        1        GCF_000742135.1   989338    -        no      
- 1      AAAAAAATAAGGGGAAATTATGGCAGGTAAT   8        1        GCF_001457655.1   883695    -        no      
- 1      AAAAAAATAAGTGAAAATCTATTTTCTGAAA   8        1        GCF_000392875.1   2823442   -        no      
- 1      AAAAAAATAATATTGTCCATTCTCCTAGCAA   8        1        GCF_001544255.1   173045    -        no      
- 1      AAAAAAATAATCAAAGGCCGGGGATTATACG   8        1        GCF_003697165.2   733341    -        no      
- 1      AAAAAAATACCCTGCGTGATGATGCGAGGTG   8        1        GCF_002950215.1   1422485   -        no      
- 1      AAAAAAATACTTGCCTTCGGGCTTATCTCAG   8        1        GCF_003697165.2   2823100   +        no      
- 1      AAAAAAATACTTGTTTGATTCTGTATTACGT   8        1        GCF_000392875.1   493472    +        no      
- 1      AAAAAAATAGAAAATGAGTCAACACCACTAT   8        1        GCF_006742205.1   1365300   +        no      
- 1      AAAAAAATAGAATTATATCGTGAACGTTTTG   8        1        GCF_009759685.1   2234982   +        no      
- 1      AAAAAAATAGAGGATTAAATGCTAATTCATA   8        1        GCF_001457655.1   671915    +        no      
- 1      AAAAAAATAGTATAAATCCGCCATATAAAAT   8        1        GCF_001457655.1   1222761   -        no      
-</code></pre>
-</li>
-<li>
-<p>Specify the mask.</p>
-<pre><code> $ lexicmap utils kmers --quiet -d demo.lmi/ --mask 12345 | head -n 20 | csvtk pretty -t
- mask    kmer                              prefix   number   ref               pos       strand   reversed
- -----   -------------------------------   ------   ------   ---------------   -------   ------   --------
- 12345   GCTGCACAAAGTACGATTACGATGCAAGCCC   8        1        GCF_002949675.1   716651    +        no      
- 12345   GCTGCACAACAAACGATTGTTGGTGAAATTT   8        1        GCF_000392875.1   836578    -        no      
- 12345   GCTGCACAACAACATGATAGTGTGAAATTAG   8        1        GCF_001027105.1   1150856   +        no      
- 12345   GCTGCACAACAGGCTGCGGCTGGTGTTGCGG   8        1        GCF_000742135.1   4128289   -        no      
- 12345   GCTGCACAACCAGGCAGAAAAAATAATGGGA   8        1        GCF_002950215.1   3009005   -        no      
- 12345   GCTGCACAACCTTTCCACAAGCCGTAAAACC   8        1        GCF_000006945.2   4306623   -        no      
- 12345   GCTGCACAACGATTAGAAAAAATGGGGTACG   8        1        GCF_001544255.1   2041481   -        no      
- 12345   GCTGCACAACTATCCCAATGCCGAGGTGGAA   8        1        GCF_000017205.1   5101754   +        no      
- 12345   GCTGCACAAGCACCCGGCCGTGGCCCTGGCG   8        1        GCF_000017205.1   1257468   +        no      
- 12345   GCTGCACAAGCGCTCGGTTTAGAGCAAACAC   8        1        GCF_009759685.1   1232954   -        no      
- 12345   GCTGCACAAGGGGCCACTTTCGTACATCGTC   8        1        GCF_000742135.1   3888020   +        yes     
- 12345   GCTGCACAAGTACCTGCTGGCCTACGCCTCG   8        1        GCF_000017205.1   1166094   +        no      
- 12345   GCTGCACAAGTTGCAAAACAGCTGATTAAGG   8        1        GCF_000392875.1   908172    +        no      
- 12345   GCTGCACAATATCGATTTGAACATTGCTCAG   8        1        GCF_003697165.2   3212441   +        no      
- 12345   GCTGCACAATATTTCATAATGACTTACGGCA   8        1        GCF_002950215.1   3443237   +        no      
- 12345   GCTGCACAATCCGCTGGGCTGGGTGCTCAAC   8        1        GCF_000742135.1   1083211   -        no      
- 12345   GCTGCACAATCGCCAGCCCCAGCCCTGTGCC   8        1        GCF_000006945.2   3658390   +        no      
- 12345   GCTGCACAATTACCACGTGAATTATTTGAAG   8        1        GCF_900638025.1   304434    -        no      
- 12345   GCTGCACAATTGCCAGCCCTAATCCCGTGCC   8        1        GCF_002950215.1   2671971   +        no      
-</code></pre>
-<p>&ldquo;reversed&rdquo; means means if the k-mer is reversed for suffix matching.
-E.g., <code>GCTGCACAAGGGGCCACTTTCGTACATCGTC</code> is reversed, so you need to reverse it before searching in the genome.</p>
-<pre><code> $ seqkit locate -p $(echo GCTGCACAAGGGGCCACTTTCGTACATCGTC | rev) refs/GCF_000742135.1.fa.gz -M | csvtk pretty -t
- seqID           patternName                       pattern                           strand   start     end    
- -------------   -------------------------------   -------------------------------   ------   -------   -------
- NZ_KN046818.1   CTGCTACATGCTTTCACCGGGGAACACGTCG   CTGCTACATGCTTTCACCGGGGAACACGTCG   +        3888020   3888050
-</code></pre>
-</li>
-<li>
-<p>For all masks. The result might be very big, therefore, writing to gzip format is recommended.</p>
-<pre><code> $ lexicmap utils kmers -d demo.lmi/ --mask 0 -o kmers.tsv.gz
+<p>Index with demo data.</p>
+<pre tabindex="0"><code>lexicmap index -I refs/ -O demo.lmi/
+</code></pre><p>Search with a 16S rRNA gene.</p>
+<pre tabindex="0"><code># use -a to output more fields.
+# use -n to limit matched genomes. But in practice, the value can&#39;t be too small.
 
- $ zcat kmers.tsv.gz | csvtk freq -t -f mask -nr | head -n 10
- mask    frequency
- 8206    700
- 16230   636
- 4974    625
- 14979   620
- 11723   619
- 12043   593
- 12      589
- 18      589
- 17491   584
+lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n 2
+</code></pre><p>Preview</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ cat q.gene.fasta.lexicmap_all.tsv \
+</span></span><span class="line"><span class="cl">    | csvtk cut -t -f query,sgenome,sseqid,qcovHSP,alenHSP,pident,bitscore,cigar \
+</span></span><span class="line"><span class="cl">    | csvtk pretty -t -S 3line
+</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</span></span><span class="line"><span class="cl"> query                         sgenome           sseqid          qcovHSP   alenHSP   pident   bitscore   cigar                                                    
+</span></span><span class="line"><span class="cl">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       75M1X3M1X8M1X1453M                                       
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
+</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</span></span></code></pre></div><p>2sam</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils 2sam q.gene.fasta.lexicmap_all.tsv 
+</span></span><span class="line"><span class="cl">10:25:03.274 [INFO] round 1/2: extracting subject sequence IDs and lengths ...
+</span></span><span class="line"><span class="cl">10:25:03.274 [INFO]   elapsed time: 188.502µs
+</span></span><span class="line"><span class="cl">10:25:03.274 [INFO] round 2/2: converting to SAM format ...
+</span></span><span class="line"><span class="cl">10:25:03.274 [INFO]   elapsed time: 75.289µs
+</span></span><span class="line"><span class="cl">@HD     VN:1.6  SO:unsorted     GO:query
+</span></span><span class="line"><span class="cl">@SQ     SN:NZ_CP033092.2        LN:4903501
+</span></span><span class="line"><span class="cl">@SQ     SN:NZ_CP026774.1        LN:4395762
+</span></span><span class="line"><span class="cl">@PG     ID:lexicmap     PN:lexicmap     VN:0.9.0
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     0       NZ_CP033092.2   458559  0       79M1X8M1X120M1X1332M    *       0       1542    AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCATAACGTCGCAAGACCAAAGAGGGGGACCTTCGGGCCTCTTGCCATCGGATGTGCCCAGATGGGATTAGCTAGTAGGTGGGGTAACGGCTCACCTAGGCGACGATCCCTAGCTGGTCTGAGAGGATGACCAGCCACACTGGAACTGAGACACGGTCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGCACAATGGGCGCAAGCCTGATGCAGCCATGCCGCGTGTATGAAGAAGGCCTTCGGGTTGTAAAGTACTTTCAGCGGGGAGGAAGGGAGTAAAGTTAATACCTTTGCTCATTGACGTTACCCGCAGAAGAAGCACCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCACGCAGGCGGTTTGTTAAGTCAGATGTGAAATCCCCGGGCTCAACCTGGGAACTGCATCTGATACTGGCAAGCTTGAGTCTCGTAGAGGGGGGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGGTGGCGAAGGCGGCCCCCTGGACGAAGACTGACGCTCAGGTGCGAAAGCGTGGGGAGCAAACAGGATTAGATACCCTGGTAGTCCACGCCGTAAACGATGTCGACTTGGAGGTTGTGCCCTTGAGGCGTGGCTTCCGGAGCTAACGCGTTAAGTCGACCGCCTGGGGAGTACGGCCGCAAGGTTAAAACTCAAATGAATTGACGGGGGCCCGCACAAGCGGTGGAGCATGTGGTTTAATTCGATGCAACGCGAAGAACCTTACCTGGTCTTGACATCCACGGAAGTTTTCAGAGATGAGAATGTGCCTTCGGGAACCGTGAGACAGGTGCTGCATGGCTGTCGTCAGCTCGTGTTGTGAAATGTTGGGTTAAGTCCCGCAACGAGCGCAACCCTTATCCTTTGTTGCCAGCGGTCCGGCCGGGAACTCAAAGGAGACTGCCAGTGATAAACTGGAGGAAGGTGGGGATGACGTCAAGTCATCATGGCCCTTACGACCAGGGCTACACACGTGCTACAATGGCGCATACAAAGAGAAGCGACCTCGCGAGAGCAAGCGGACCTCATAAAGTGCGTCGTAGTCCGGATTGGAGTCTGCAACTCGACTCCATGAAGTCGGAATCGCTAGTAATCGTGGATCAGAATGCCACGGTGAATACGTTCCCGGGCCTTGTACACACCGCCCGTCACACCATGGGAGTGGGTTGCAAAAGAAGTAGGTAGCTTAACCTTCGGGAGGGCGCTTACCACTTTGTGATTCATGACTGGGGTGAAGTCGTAACAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA     *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP033092.2   1285123 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   3780640 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4551515 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4591684 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4726193 0       75M1X3M1X8M1X1453M      *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4844587 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP026774.1   1662010 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2536624 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2636477 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2768883 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2810845 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   3061592 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   3646778 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span></code></pre></div><p>Validate with samtools</p>
+<pre tabindex="0"><code>$ lexicmap utils 2sam q.gene.fasta.lexicmap_all.tsv | samtool view -bS &gt; q.gene.fasta.lexicmap_all.tsv.bam
 </code></pre>
-<p>a faster way</p>
-<pre><code> seq 1 $(lexicmap utils masks -d demo.lmi/ --quiet | wc -l) \
-     | rush --eta 'echo -e {}&quot;\t&quot;$(lexicmap utils kmers -d demo.lmi/ -m {} -f --quiet | csvtk nrow)' \
-     | csvtk add-header -t -n mask,seeds \
-     | csvtk sort -t -k seeds:nr \
-     | head -n 10
-</code></pre>
-</li>
-<li>
-<p>Lengths of shared prefixes between probes and captured k-mers.</p>
-<pre><code> zcat kmers.tsv.gz \
-     | csvtk grep -t -f reversed -p  no \
-     | csvtk plot hist -t -f prefix -o prefix.hist.png \
-         --xlab &quot;length of common prefixes between captured k-mers and masks&quot;
-</code></pre>
- <img src="/LexicMap/prefix.hist.png" alt="" width="400"/>
-</li>
-</ol>
-<p>The output (TSV format) is formatted with <a
-  class="gdoc-markdown__link"
-  href="https://github.com/shenwei356/csvtk"
->csvtk pretty</a>.</p>
-
   </article>
 
 
@@ -2683,105 +2630,6 @@ E.g., <code>GCTGCACAAGGGGCCACTTTCGTACATCGTC</code> is reversed, so you need to r
         
 
         
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
-
-        
-          
-        
-
-        
-        
-      
-    
-
-  
-    
-
-    
-      
-    
-
-    
-      
-      
-
-      
-        
-        
-        
-        
-
-        
-        
-
-        
-
-        
           
           
         
@@ -2820,6 +2668,105 @@ E.g., <code>GCTGCACAAGGGGCCACTTTCGTACATCGTC</code> is reversed, so you need to r
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         
@@ -3115,11 +3062,11 @@ E.g., <code>GCTGCACAAGGGGCCACTTTCGTACATCGTC</code> is reversed, so you need to r
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/utils/masks/"
-      title="masks"
+      href="/LexicMap/usage/utils/2blast/"
+      title="2blast"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      masks
+      2blast
     </a>
   
 </span>
@@ -3127,10 +3074,10 @@ E.g., <code>GCTGCACAAGGGGCCACTTTCGTACATCGTC</code> is reversed, so you need to r
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/utils/genomes/"
-      title="genomes"
+      href="/LexicMap/usage/utils/merge-search-results/"
+      title="merge-search-results"
     >
-      genomes
+      merge-search-results
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

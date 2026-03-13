@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
   <meta name="description" content=" Usage $ lexicmap utils merge-search-results -h Merge a query&#39;s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and/or a file list via the flag -X/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data." />
@@ -58,7 +58,7 @@
       "name": "merge-search-results",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/",
       "headline": "merge-search-results",
-      "description": " Usage $ lexicmap utils merge-search-results -h Merge a query\u0027s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q\/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and\/or a file list via the flag -X\/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data.",
+      "description": " Usage $ lexicmap utils merge-search-results -h Merge a query\u0027s search results from multiple indexes Attention: 1. These search results should come from the same ONE query. If not, please specify one query with the flag -q\/--query 2. We assume that genome IDs are distinct across all indexes. 3. One or more input files are accepted, via positional parameters and\/or a file list via the flag -X\/--infile-list. 4. Both the default 20- and 24-column formats are supported, and formats better be consistent across all input files. If not, the output format would be the one with a valid record. Usage: lexicmap utils merge-search-results [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -h, --help help for merge-search-results -o, --out-file string ► Out file, supports the \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -q, --query string ► Query ID to merge Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Building 3 indexes with demo data.",""
       "wordCount" : "406",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -1135,6 +1135,42 @@
                     class="gdoc-nav__entry"
                   >
                     2blast
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
                   </a>
                 </span>
               
@@ -2552,6 +2588,30 @@
         
       
     
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
 
   
     
@@ -2975,11 +3035,11 @@
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/utils/2blast/"
-      title="2blast"
+      href="/LexicMap/usage/utils/2sam/"
+      title="2sam"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      2blast
+      2sam
     </a>
   
 </span>

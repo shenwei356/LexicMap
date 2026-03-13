@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
   <meta name="description" content=" LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (&gt;150 bp) against up to millions of prokaryotic genomes.
@@ -70,8 +70,8 @@ Wei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against
       "name": "Introduction",
       "url" : "https://bioinf.shenwei.me/LexicMap/introduction/",
       "headline": "Introduction",
-      "description": " LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (\u003e150 bp) against up to millions of prokaryotic genomes.\nSource code: https:\/\/github.com\/shenwei356\/LexicMap\nFor the latest features and improvements, please download the pre-release binaries.\nPlease cite:\nWei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https:\/\/doi.org\/10.1038\/s41587-025-02812-8",
-      "wordCount" : "1695",
+      "description": " LexicMap is a nucleotide sequence alignment tool for efficiently querying gene, plasmid, viral, or long-read sequences (\u003e150 bp) against up to millions of prokaryotic genomes.\nSource code: https:\/\/github.com\/shenwei356\/LexicMap\nFor the latest features and improvements, please download the pre-release binaries.\nPlease cite:\nWei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against millions of prokaryotic genomes with LexicMap. Nature Biotechnology. https:\/\/doi.org\/10.1038\/s41587-025-02812-8",""
+      "wordCount" : "1712",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1157,6 +1157,42 @@ Wei Shen, John A. Lees, Zamin Iqbal. (2025) Efficient sequence alignment against
           </li>
         
       
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
     
       
 
@@ -2136,7 +2172,8 @@ without the vital positional information for downstream analysis.</li>
 <li>low-similarity: the remaining.</li>
 </ul>
 </li>
-<li>The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.</li>
+<li><strong>The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.</strong></li>
+<li><strong>The memory use is lower since v0.8.0.</strong></li>
 </ol>
 </li>
 </ol>
@@ -2232,7 +2269,7 @@ Query coverage per genome = 93.548%
 Length = 4659463
 
  HSP cluster #1, HSP #1
- Score = 279 bits, Expect = 9.66e-75
+ Score = 212 bits, Expect = 1.18e-54
  Query coverage per seq = 93.548%, Aligned length = 177, Identities = 88.701%, Gaps = 6
  Query range = 13-186, Subject range = 1124816-1124989, Strand = Plus/Plus
 
@@ -2247,7 +2284,11 @@ Sbjct  1124876  AA--GCAGCGGCCAAAAAAATGATTAACACCTGTAATGAGTATCAGAAAAGACACGGTAA  11
 Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTCTATGTTACT  186
                  || |||||||||    |||||  |||||||||||||||||||||||| |||| |||
 Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
-</code></pre><p>Learn more: <a
+</code></pre><p>Export SAM format, see <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/"
+>usage</a>.</p>
+<p>Learn more: <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/LexicMap/tree/main/demo"
 >demo</a>,
@@ -2338,7 +2379,11 @@ Nature Biotechnology. <a
     </a>
 </div>
 <ul>
-<li>The queries need to be longer than 100 bp, though some shorter ones can also be aligned.</li>
+<li>The queries need to be longer than 100 bp, though some shorter ones can also be aligned.
+<a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-short-reads"
+>Does LexicMap support short reads?</a></li>
 <li>LexicMap is slow for ultra-long (&gt;1Mb) queries, and the alignment might be fragmented.</li>
 <li>LexicMap is slow for batch searching with more than hundreds of queries. However, there are <a
   class="gdoc-markdown__link"
@@ -3017,6 +3062,30 @@ propose new functions or ask for help.</p>
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

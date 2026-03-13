@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
-  <meta name="description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 " />
+  <meta name="description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -e, --extra ► Show extra columns, such as where the genome is stored (genome_batch, genome_index) -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 Extra columns" />
 
     <title>genomes | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="genomes"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 " />
+  <meta property="og:description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -e, --extra ► Show extra columns, such as where the genome is stored (genome_batch, genome_index) -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 Extra columns" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="genomes" />
-  <meta name="twitter:description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 " />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -e, --extra ► Show extra columns, such as where the genome is stored (genome_batch, genome_index) -h, --help help for genomes -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -o, --out-file string ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi/ \ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 Extra columns" />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "genomes",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/genomes/",
       "headline": "genomes",
-      "description": " Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -h, --help help for genomes -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -o, --out-file string ► Out file, supports the \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi\/ \\ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 ",
-      "wordCount" : "146",
+      "description": " Usage $ lexicmap utils genomes -h View genome IDs in the index Usage: lexicmap utils genomes [flags] Flags: -e, --extra ► Show extra columns, such as where the genome is stored (genome_batch, genome_index) -h, --help help for genomes -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -o, --out-file string ► Out file, supports the \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 8) Examples $ lexicmap utils genomes -d demo.lmi\/ \\ | csvtk pretty -t ref chunked --------------- ------- GCF_000148585.2 GCF_001457655.1 GCF_900638025.1 GCF_001096185.1 GCF_006742205.1 GCF_001544255.1 GCF_001027105.1 GCF_000392875.1 GCF_009759685.1 GCF_002949675.1 GCF_000006945.2 GCF_000017205.1 GCF_003697165.2 GCF_002950215.1 GCF_000742135.1 Extra columns",""
+      "wordCount" : "228",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1145,6 +1145,42 @@
           </li>
         
       
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
     
       
 
@@ -1858,6 +1894,8 @@
 </span></span><span class="line"><span class="cl">  lexicmap utils genomes [flags]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
+</span></span><span class="line"><span class="cl">  -e, --extra             ► Show extra columns, such as where the genome is stored (genome_batch,
+</span></span><span class="line"><span class="cl">                          genome_index)
 </span></span><span class="line"><span class="cl">  -h, --help              help for genomes
 </span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports the &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;)
@@ -1898,6 +1936,26 @@ GCF_000017205.1
 GCF_003697165.2          
 GCF_002950215.1          
 GCF_000742135.1
+</code></pre><p>Extra columns</p>
+<pre tabindex="0"><code>$ lexicmap utils genomes -d demo.lmi/ --extra \
+    | csvtk pretty -t
+ref               chunked   genome_batch   genome_index
+---------------   -------   ------------   ------------
+GCF_001457655.1             0              0           
+GCF_900638025.1             0              1           
+GCF_000148585.2             0              2           
+GCF_001096185.1             0              3           
+GCF_006742205.1             0              4           
+GCF_001027105.1             0              5           
+GCF_001544255.1             0              6           
+GCF_000392875.1             0              7           
+GCF_009759685.1             0              8           
+GCF_000006945.2             0              9           
+GCF_002949675.1             0              10          
+GCF_002950215.1             0              11          
+GCF_003697165.2             0              12          
+GCF_000742135.1             0              13          
+GCF_000017205.1             0              14          
 </code></pre>
   </article>
 
@@ -2502,6 +2560,30 @@ GCF_000742135.1
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

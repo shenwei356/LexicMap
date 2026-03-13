@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
-  <meta name="description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 40000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). (default 15) -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
+  <meta name="description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 20000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
 
     <title>masks | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="masks"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 40000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). (default 15) -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
+  <meta property="og:description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 20000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/masks/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="masks" />
-  <meta name="twitter:description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 40000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). (default 15) -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
+  <meta name="twitter:description" content="$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d &lt;index path&gt; | [-k &lt;k&gt;] [-n &lt;masks&gt;] [-s &lt;seed&gt;] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by &#34;lexicmap index&#34;. -k, --kmer int ► Maximum k-mer size. K needs to be &lt;= 32. (default 31) -m, --masks int ► Number of masks. (default 20000) -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "masks",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/masks/",
       "headline": "masks",
-      "description": "$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d \u003cindex path\u003e | [-k \u003ck\u003e] [-n \u003cmasks\u003e] [-s \u003cseed\u003e] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -k, --kmer int ► Maximum k-mer size. K needs to be \u003c= 32. (default 31) -m, --masks int ► Number of masks. (default 40000) -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). (default 15) -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi\/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi\/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi\/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes.",
-      "wordCount" : "430",
+      "description": "$ lexicmap utils masks -h View masks of the index or generate new masks randomly Usage: lexicmap utils masks [flags] { -d \u003cindex path\u003e | [-k \u003ck\u003e] [-n \u003cmasks\u003e] [-s \u003cseed\u003e] } [-o out.tsv.gz] Flags: -h, --help help for masks -d, --index string ► Index directory created by \u0022lexicmap index\u0022. -k, --kmer int ► Maximum k-mer size. K needs to be \u003c= 32. (default 31) -m, --masks int ► Number of masks. (default 20000) -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -p, --prefix int ► Length of mask k-mer prefix for checking low-complexity (0 for no checking). -s, --seed int ► The seed for generating random masks. (default 1) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils masks --quiet -d demo.lmi\/ | head -n 10 1 AAAAAAATTCTCGGCGGTGTTTCCAGGCGCA 2 AAAAAACGTGGCGTCCCCTGTATAACGGCTA 3 AAAAAAGAGGGGAAGCAAGCTGAAGGATATG 4 AAAAAATACAGGCTGGCATCTTTAACCCACC 5 AAAAAATCCAGGGTTCCGTTAAGGATCTGTC 6 AAAAACATTCATGCTAGCATACCTTGGCAAC 7 AAAAACCACAATGTGGAAGCACGAGAGGATT 8 AAAAACCTGTACCCACCCGACGTGGATCCTC 9 AAAAACGTAGGCGTACCTCTCATAGCTTGTA 10 AAAAACTATGGATACTTGCCGTAAATCACCT $ lexicmap utils masks --quiet -d demo.lmi\/ | tail -n 10 19991 TTTTTGAACTTGTGAAAAAGGCAGATGTGTG 19992 TTTTTGCGTTTATGCTGCCCTCAAACCATCT 19993 TTTTTGGATCCACTGTACGAGCACACTACCC 19994 TTTTTGTGGCTCATCGGGATCGGGAGCAGTC 19995 TTTTTTACATGTTGGGCTAGGGGCGGTTCAC 19996 TTTTTTATCGGACGCCAAGTTTGTAATCGTC 19997 TTTTTTCTTGCATCGTATTCAGCACGTTCCT 19998 TTTTTTGCCGAGTGACCCCGAAAAGCTCACA 19999 TTTTTTTATCGAGGCATGGTTGAAGACGGGT 20000 TTTTTTTCCGTAACTAGGTTCTGGCGATTCC # check a specific mask $ lexicmap utils masks --quiet -d demo.lmi\/ -m 12345 12345 GCTGCACACGCAAAGACTCACGTCTTCAACG Freqency of prefixes.",""
+      "wordCount" : "428",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1145,6 +1145,42 @@
           </li>
         
       
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
     
       
 
@@ -1852,12 +1888,12 @@
 </span></span><span class="line"><span class="cl">  -h, --help              help for masks
 </span></span><span class="line"><span class="cl">  -d, --index string      ► Index directory created by &#34;lexicmap index&#34;.
 </span></span><span class="line"><span class="cl">  -k, --kmer int          ► Maximum k-mer size. K needs to be &lt;= 32. (default 31)
-</span></span><span class="line"><span class="cl">  -m, --masks int         ► Number of masks. (default 40000)
+</span></span><span class="line"><span class="cl">  -m, --masks int         ► Number of masks. (default 20000)
 </span></span><span class="line"><span class="cl">  -o, --out-file string   ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                          (default &#34;-&#34;)
-</span></span><span class="line"><span class="cl">  -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no
-</span></span><span class="line"><span class="cl">                          checking). (default 15)
+</span></span><span class="line"><span class="cl">  -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no checking).
 </span></span><span class="line"><span class="cl">  -s, --seed int          ► The seed for generating random masks. (default 1)
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -2546,6 +2582,30 @@ In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.</p>
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       

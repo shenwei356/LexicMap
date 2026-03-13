@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.154.5">
+<meta name="generator" content="Hugo 0.155.3">
 
 
   <meta name="description" content=" Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index." />
@@ -58,8 +58,8 @@
       "name": "Step 2. Searching",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/search/",
       "headline": "Step 2. Searching",
-      "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.",
-      "wordCount" : "4524",
+      "description": " Table of contents Table of contents TL;DR Input Hardware requirements Algorithm Parameters Improving searching speed Searching with plasmids or other longer queries Steps Output Alignment result relationship Output format Examples Summarizing results TL;DR Build a LexicMap index.",""
+      "wordCount" : "4683",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -1145,6 +1145,42 @@
           </li>
         
       
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/2sam/"
+                    class="gdoc-nav__entry"
+                  >
+                    2sam
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
     
       
 
@@ -1920,8 +1956,11 @@
 <blockquote class="gdoc-hint note">
   <div class="gdoc-hint__title flex gap-8 align-center"><i class="fa note"></i>
       <span>Note</span></div>
-  <div class="gdoc-hint__text"><strong>Query length</strong><br>
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.</div>
+  <div class="gdoc-hint__text"><p><strong>Query length</strong></p>
+<p>LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.</p>
+<p><strong>If you want to search some short reads, you need to build the index with small <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 60 -d 30</code> for 125bp reads, or <code>-D 50 -D 25</code> for 100bp reads</strong>.</p>
+<p>Note that <strong>LexicMap is slow for ultra-long (&gt;1Mb) queries, and the alignment might be fragmented</strong>.</p>
+</div>
 </blockquote>
 
 <p>Input should be (gzipped) FASTA or FASTQ records from files or STDIN.</p>
@@ -2101,7 +2140,7 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
       <tr>
           <td style="text-align: left"><strong><code>-n/--top-n-genomes</code></strong></td>
           <td style="text-align: left">Default 0, 0 for all</td>
-          <td style="text-align: left">Keep top N genome matches for a query in the chaining phase</td>
+          <td style="text-align: left">Keep the top N genome matches for a query in the chaining phase</td>
           <td style="text-align: left">Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 5. The final number of genome hits might be smaller than this number as some chaining results might fail to pass the criteria in the alignment step.</td>
       </tr>
       <tr>
@@ -2162,13 +2201,13 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
       <tr>
           <td style="text-align: left"><strong><code>-p, --seed-min-prefix</code></strong></td>
           <td style="text-align: left">Default 15</td>
-          <td style="text-align: left">Minimum (prefix) length of matched seeds.</td>
+          <td style="text-align: left">Minimum (prefix) length of matched seeds (anchors).</td>
           <td style="text-align: left">Smaller values produce more results at the cost of slow speed.</td>
       </tr>
       <tr>
           <td style="text-align: left"><strong><code>-P, --seed-min-single-prefix</code></strong></td>
           <td style="text-align: left">Default 17</td>
-          <td style="text-align: left">Minimum (prefix) length of matched seeds if there&rsquo;s only one pair of seeds matched.</td>
+          <td style="text-align: left">Minimum (prefix) length of matched seeds (anchors) if there&rsquo;s only one pair of seeds matched.</td>
           <td style="text-align: left">Smaller values produce more results at the cost of slow speed.</td>
       </tr>
       <tr>
@@ -2184,10 +2223,10 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
           <td style="text-align: left"></td>
       </tr>
       <tr>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td style="text-align: left"><strong><code>--top-n-chains</code></strong></td>
+          <td style="text-align: left">Default 0</td>
+          <td style="text-align: left">Keep the top N chains in a genome for the query (0 for all) in the chaining phase</td>
+          <td style="text-align: left">Set a non-zero value if you only need the most similar matches. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be &gt;= 10.</td>
       </tr>
   </tbody>
 </table> </div>
@@ -2288,8 +2327,10 @@ For example, for a query <code>CATGCT</code> requiring matching at least 4-bp pr
 e.g., <code>-p 17 -P 19</code>,
 increase the search speed at the cost of decreased sensitivity for distant matches (similarity &lt; 90%) or short queries.
 Don&rsquo;t worry if you only search highly similar matches or long queries.</li>
-<li>Setting <code>-n/--top-n-genomes</code> to keep top N genome matches for a query (0 for all) in chaining phase.
+<li>Setting <code>-n/--top-n-genomes</code> to keep the top N genome matches for a query (0 for all) in chaining phase.
 For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.</li>
+<li>Setting <code>-N/--top-n-chains</code> to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
+if you only need the most similar matches.</li>
 <li><strong>Note that</strong>: alignment result filtering is performed in the final phase, so stricter filtering criteria,
 including <code>-q/--min-qcov-per-hsp</code>, <code>-Q/--min-qcov-per-genome</code>, and <code>-i/--align-min-match-pident</code>,
 do not significantly accelerate the search speed. Hence, you can search with default
@@ -2378,41 +2419,42 @@ Therefore, a plasmid might be aligned to multiple contigs with small <code>qcovH
 </ul>
 
 <div class="gdoc-expand">
-  <label class="gdoc-expand__head flex justify-between" for="91c7ea9f-4">
+  <label class="gdoc-expand__head flex justify-between" for="734052cb-4">
     <span>Click to show the log of a demo run.</span>
     <span>...</span>
   </label>
-  <input id="91c7ea9f-4" type="checkbox" class="gdoc-expand__control hidden" />
+  <input id="734052cb-4" type="checkbox" class="gdoc-expand__control hidden" />
   <div class="gdoc-markdown--nested gdoc-expand__content">
-    <pre><code>    $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv --debug
-    09:56:48.464 [INFO] LexicMap v0.7.0
-    09:56:48.464 [INFO]   https://github.com/shenwei356/LexicMap
-    09:56:48.464 [INFO] 
-    09:56:48.464 [INFO] checking input files ...
-    09:56:48.464 [INFO]   1 input file given: q.gene.fasta
-    09:56:48.464 [INFO] 
-    09:56:48.464 [INFO] loading index: demo.lmi/
-    09:56:48.464 [INFO]   reading masks...
-    09:56:48.467 [INFO]   reading indexes of seeds (k-mer-value) data...
-    09:56:49.434 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-    09:56:49.434 [INFO] index loaded in 969.583422ms
-    09:56:49.434 [INFO] 
-    09:56:49.434 [INFO] searching with 16 threads...
-    09:56:49.435 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): start to search
-    09:56:49.440 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished seed-matching (15 genome hits) in 5.354981ms
-    09:56:49.441 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished chaining (15 genome hits) in 1.045575ms
-    checked genomes:  15 / 15 [======================================] ETA: 0s. done
-    09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished alignment (15 genome hits) in 32.005224ms
-    09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished sorting alignment results (15 genome hits) in 13.758µs
+    <pre><code>10:12:13.965 [INFO] LexicMap v0.9.0
+10:12:13.965 [INFO]   https://github.com/shenwei356/LexicMap
+10:12:13.965 [INFO] 
+10:12:13.965 [INFO] checking input files ...
+10:12:13.965 [INFO]   1 input file given: q.gene.fasta
+10:12:13.965 [INFO] 
+10:12:13.965 [INFO] loading index: demo.lmi/
+10:12:13.965 [INFO]   reading masks...
+10:12:13.968 [INFO]   reading indexes of seeds (k-mer-value) data...
+10:12:14.806 [INFO]   creating reader pools for 3 genome batches, each with 16 readers...
+10:12:14.806 [INFO] index loaded in 841.087872ms
+10:12:14.806 [INFO] 
+10:12:14.806 [INFO] searching with 16 threads...
+10:12:14.806 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
+10:12:14.816 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): start to search
+10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished seed-matching (15 genome hits) in 10.652643ms
+10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished chaining (15 genome hits) in 349.626µs
+checked genomes:  15 / 15 [======================================] ETA: 0s. done
+10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished alignment (15 genome hits) in 28.559443ms
+10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished sorting alignment results (15 genome hits) in 13.2µs
+10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished searching in 0.040 seconds
 
-    09:56:49.473 [INFO] 
-    09:56:49.473 [INFO] processed queries: 1, speed: 1512.560 queries per minute
-    09:56:49.473 [INFO] 100.0000% (1/1) queries matched
-    09:56:49.473 [INFO] done searching
-    09:56:49.473 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    09:56:49.474 [INFO] 
-    09:56:49.474 [INFO] elapsed time: 1.009536088s
-    09:56:49.474 [INFO]
+10:12:14.856 [INFO] 
+10:12:14.856 [INFO] processed queries: 1, speed: 1197.806 queries per minute
+10:12:14.856 [INFO] 100.0000% (1/1) queries matched
+10:12:14.856 [INFO] done searching
+10:12:14.856 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+10:12:14.856 [INFO] 
+10:12:14.856 [INFO] elapsed time: 891.52111ms
+10:12:14.856 [INFO]
 </code></pre>
 
   </div>
@@ -2460,7 +2502,7 @@ Therefore, a plasmid might be aligned to multiple contigs with small <code>qcovH
 </span></span><span class="line"><span class="cl">Length = 4659463
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"> HSP cluster #1, HSP #1
-</span></span><span class="line"><span class="cl"> Score = 279 bits, Expect = 9.66e-75
+</span></span><span class="line"><span class="cl"> Score = 212 bits, Expect = 1.18e-54
 </span></span><span class="line"><span class="cl"> Query coverage per seq = 93.548%, Aligned length = 177, Identities = 88.701%, Gaps = 6
 </span></span><span class="line"><span class="cl"> Query range = 13-186, Subject range = 1124816-1124989, Strand = Plus/Plus
 </span></span><span class="line"><span class="cl">
@@ -3414,6 +3456,30 @@ and a query&rsquo;s search results in multiple indexes can be merged with <code>
       
     
 
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
     
       
       
