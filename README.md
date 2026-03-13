@@ -89,7 +89,8 @@ However, given the increasing rate at which genomes are sequenced, **existing to
         - high-similarity: (a) qcov >= 90% (genes) or 70% (plasmids), (b) pident>=90%.
         - medium-similarity: (a) not belong to high-similarity, (b) qcov >= 50% (genes) or 30% (plasmids), (c) pident>=80%.
         - low-similarity: the remaining.
-    1. The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.
+    1. **The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.**
+    1. **The memory use is lower since v0.8.0.**
 
 
 More documents: https://bioinf.shenwei.me/LexicMap.
@@ -243,6 +244,7 @@ See the [paper](#citation) for details.
 ## Limitations
 
 - The queries need to be longer than 100 bp, though some shorter ones can also be aligned.
+  [Does LexicMap support short reads?](https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-short-reads)
 - LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented.
 - LexicMap is slow for batch searching with more than hundreds of queries. However, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
 

@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.9.0 - 2026-xx-xx
+### v0.9.0 - 2026-03-13
 
 - New commands:
     - **`lexicmap utils 2sam`: Convert the default search output to SAM format** ([#26](https://github.com/shenwei356/LexicMap/issues/26)).
@@ -10,24 +10,24 @@
       Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded,
       while they will be saved for base-level alignment.
       The value of this flag is appended to the index information file `info.toml`.
-    - Added a new option `--max-kmer-freq`. If a mask captures the same k-mer at more than N positions in a genome,
+    - Added a new option `--max-kmer-freq`. If a mask captures the same k-mer at more than *N* positions in a genome,
       only the first N positions will be retained. This option may reduce search sensitivity, but it can be useful
       when simply checking whether a query matches any position in a genome that contains many tandem repeat sequences.
       The value of this flag is appended to the index information file `info.toml`.
     - Added sequence validity checking. [#30](https://github.com/shenwei356/LexicMap/issues/30)
 - `lexicmap search`:
+    - **Fixed the computation of bitscore and evalue**. Previous values were slightly overestimated.
+    - **Fixed CIGAR to follow the SAM spec**. Previously, 'D' and 'I' were inverted.
+    - Fixed merging search results from genome chunks. Some were not merged.
     - **New flag `-N/--top-n-chains` for keeping the top N chains in a genome for the query** (0 for all) in the chaining phase.
       It reduces search time when one needs only the most similar matches in a genome.
     - **Improved seed chaining speed and reduced the memory usage, especially for genomes with lots of repeat sequences**.
-    - **Fixed the computation of bitscore**. Previous values were slightly underestimated.
-    - **Fixed CIGAR to follow the SAM spec**. Previously, 'D' and 'I' were inverted.
-    - Fixed merging search results from genome chunks. Some were not merged.
 - `lexicmap utils subseq`:
     - Fixed a concurrency bug when using search result as the input.
 - `lexicmap utils genomes`:
     - Added a new flag `-e/--extra` to show more information.
 - `lexicmap utils masks`:
-    - Changed the default values of `-m/--masks` and `-p/--prefix` to match these in `lexicmap index`.
+    - Changed the default values of `-m/--masks` and `-p/--prefix` to match those in `lexicmap index`.
 
 ### v0.8.1 - 2025-12-19
 

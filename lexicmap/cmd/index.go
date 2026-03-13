@@ -42,7 +42,7 @@ var indexCmd = &cobra.Command{
 Input:
  *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
      in the file names.
-  2. Input plain or gzip/xz/zstd/bzip2 compressed FASTA/Q files can be given via positional arguments or
+  2. Input plain or gzip/xz/zstd/bzip2/lz4 compressed FASTA/Q files can be given via positional arguments or
      the flag -X/--infile-list with a list of input files.
      Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
@@ -51,7 +51,7 @@ Input:
   4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
      The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
      (-G/--big-genomes).
-     Changes since v0.5.0: 
+     Changes since v0.5.0:
        - Genomes with any single contig larger than the threshold will be skipped as before.
        - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
@@ -60,6 +60,7 @@ Input:
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
      1000-bp intervals of N’s to reduce the sequence scale to index.
   6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
+  7. Soft-masked sequences are supported with --soft-masking.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome

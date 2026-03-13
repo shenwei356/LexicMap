@@ -56,7 +56,7 @@ Step 2: searching
 
     lexicmap search -d db.lmi q.fasta -o r.tsv
 
-[10 utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available
+[11 utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available
 to explore the index data, merge search results, extract matched subsequences and more.
 
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}

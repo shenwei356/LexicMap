@@ -278,11 +278,8 @@ func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda,
 			// mismatch
 			case OpX:
 				score += n * mismatch
-			// gap
-			case OpI:
-				score -= gapOpen + n*gapExt
-			// case 'D', 'H':
-			case OpD, OpH:
+			// gaps
+			case OpI, OpD, OpH:
 				score -= gapOpen + n*gapExt
 			}
 		}

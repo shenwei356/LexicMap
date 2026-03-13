@@ -8,16 +8,14 @@ weight: 60
 
 ## Does LexicMap support short reads?
 
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.
+**LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default**.
 
-If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g.,
+**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. It will increase the indexing time and increase the index size. Don't worry this, if you have a small scale of genomes, like < 10,000.
 
-    --seed-max-desert 300 --seed-in-desert-dist 150
+If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
+speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
 
-Bigger values decrease the search sensitivity for distant targets, speed up the indexing
-speed, decrease the indexing memory occupation and decrease the index size. While the
-alignment speed is almost not affected.
-
+Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 
 ## Does LexicMap support fungi genomes?
 
@@ -37,6 +35,7 @@ Maximum genome size is about 268 Mb (268,435,456). More precisely:
 as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.
 
 For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.
+Since v0.9.0, you can set a small value of `-N, --top-n-chains` to keep a few matches if you only want to check if sequences match any position in a human genome, which would be faster.
 
 
 ## How's the hardware requirement?

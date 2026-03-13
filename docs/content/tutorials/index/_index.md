@@ -54,7 +54,7 @@ as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence
 <font color="red">**Sequences of each reference genome should be saved in separate FASTA files, with identifiers in the file names**.</font> 
 While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
 
-- **File type**: FASTA/Q files, in plain text or gzip/xz/zstd/bzip2 compressed formats.
+- **File type**: FASTA/Q files, in **plain text or gzip/xz/zstd/bzip2/lz4 compressed** formats.
 - **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
     - **Genome ID**: **they must not contain tab ("\t") symbols, and should be distinct for accurate result interpretation**, which will be shown in the search result.
         - A regular expression is also available to extract reference id from the file name.
@@ -65,11 +65,14 @@ While if you save *a few* **small** (viral) **complete** genomes (one sequence p
       The default value supports common sequence file extentions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
+       - **Soft-masked sequences** are supported since v0.9.0 with the flag `--soft-masking`.
+         Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded,
+         while they will be saved for base-level alignment.
     - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
     - Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
       (`cat files.txt | seqkit seq -n -X - | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add description in search result](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
     - **One or more sequences (contigs) in each file are allowed**.
-        - Unwanted sequences can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
+        - **Unwanted sequences** (such as plasmids) can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
     - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
@@ -104,7 +107,7 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 - **RAM**
     - More RAM (> 200 GB for >2 million genomes) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
-        - **The number of genomes**. Generally, more genomes consume more memory, but we can control the genome batch size.
+        - **The number of genomes**. Generally, more genomes consume more memory, but we can reduce it by using smaller genome batch sizes (see below).
         - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory occupation.
         - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 100),
@@ -165,18 +168,19 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 ## Parameters
 
 {{< hint type=note >}}
-**Query length**\
-LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 100 bp by default.
-However, short queries can also be aligned.
+**Query length**
 
-If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 50) and `-d/--seed-in-desert-dist` (default 50), e.g.,
+**LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default**.
 
-    --seed-max-desert 300 --seed-in-desert-dist 150
+**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. It will increase the indexing time and increase the index size. Don't worry, if you have a small scale of genomes, like < 10,000.
 
-Bigger values decrease the search sensitivity for distant targets, speed up the indexing
-speed, decrease the indexing memory occupation and decrease the index size. While the
-alignment speed is almost not affected.
+If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
+speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
+
+Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 {{< /hint >}}
+
+
 
 **Flags in bold text** are important and frequently used.
 
@@ -184,9 +188,10 @@ alignment speed is almost not affected.
 
 {{< tab "General" >}}
 
-| Flag               | Value                       | Function                    | Comment                                                                                                     |
-| :----------------- | :-------------------------- | :-------------------------- | :---------------------------------------------------------------------------------------------------------- |
-| **`-j/--threads`** | Default: all available CPUs | Number of CPU cores to use. | ► If the value is smaller than the number of available CPUs, make sure set the same value to `-c/--chunks`. |
+|Flag              |Value                      |Function                     |Comment                                                                                                                                                 |
+|:-----------------|:--------------------------|:----------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-j/--threads`**|Default: all available CPUs|Number of CPU cores to use.  |► If the value is smaller than the number of available CPUs, make sure set the same value to `-c/--chunks`.                                             |
+|`--soft-masking`  |Default: false             |Support soft-masked sequences|► Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded, while they will be saved for base-level alignment.  |
 
 {{< /tab>}}
 
@@ -281,80 +286,85 @@ We use a small dataset for demonstration.
 
     {{< expand "Click to show the log of a demo run." "..." >}}
 
-        # here we set a small --batch-size 5
+    # here we set a small --batch-size 5
+    # memusg is used to measure time and memory usage.
+    #    https://github.com/shenwei356/memusg/
 
-        $ lexicmap index -I refs/ -O demo.lmi --batch-size 5
-        09:44:36.593 [INFO] LexicMap v0.7.0
-        09:44:36.593 [INFO]   https://github.com/shenwei356/LexicMap
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] checking input files ...
-        09:44:36.593 [INFO]   scanning files from directory: refs/
-        09:44:36.593 [INFO]   15 input file(s) given
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] --------------------- [ main parameters ] ---------------------
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] input and output:
-        09:44:36.593 [INFO]   input directory: refs/
-        09:44:36.593 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-        09:44:36.593 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-        09:44:36.593 [INFO]     *regular expressions for filtering out sequences: []
-        09:44:36.593 [INFO]   min sequence length: 31
-        09:44:36.593 [INFO]   max genome size: 15000000
-        09:44:36.593 [INFO]   output directory: demo.lmi
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] mask generation:
-        09:44:36.593 [INFO]   k-mer size: 31
-        09:44:36.593 [INFO]   number of masks: 20000
-        09:44:36.593 [INFO]   rand seed: 1
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] seed data:
-        09:44:36.593 [INFO]   maximum sketching desert length: 100
-        09:44:36.593 [INFO]   distance of k-mers to fill deserts: 50
-        09:44:36.593 [INFO]   seeds data chunks: 16
-        09:44:36.593 [INFO]   seeds data indexing partitions: 4096
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] general:
-        09:44:36.593 [INFO]   genome batch size: 5
-        09:44:36.593 [INFO]   threads: 16
-        09:44:36.593 [INFO]   batch merge threads: 8
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] 
-        09:44:36.593 [INFO] --------------------- [ generating masks ] ---------------------
-        09:44:36.598 [INFO] 
-        09:44:36.598 [INFO] --------------------- [ building index ] ---------------------
-        09:44:36.778 [INFO] 
-        09:44:36.778 [INFO]   ------------------------[ batch 1/3 ]------------------------
-        09:44:36.778 [INFO]   building index for batch 1 with 5 files...
-        processed files:  5 / 5 [======================================] ETA: 0s. done
-        09:44:39.270 [INFO]   writing seeds...
-        09:44:39.354 [INFO]   finished writing seeds in 83.439262ms
-        09:44:39.354 [INFO]   finished building index for batch 1 in: 2.575661773s
-        09:44:39.354 [INFO] 
-        09:44:39.354 [INFO]   ------------------------[ batch 2/3 ]------------------------
-        09:44:39.354 [INFO]   building index for batch 2 with 5 files...
-        processed files:  5 / 5 [======================================] ETA: 0s. done
-        09:44:41.913 [INFO]   writing seeds...
-        09:44:41.975 [INFO]   finished writing seeds in 61.478898ms
-        09:44:41.975 [INFO]   finished building index for batch 2 in: 2.621098554s
-        09:44:41.975 [INFO] 
-        09:44:41.975 [INFO]   ------------------------[ batch 3/3 ]------------------------
-        09:44:41.975 [INFO]   building index for batch 3 with 5 files...
-        processed files:  5 / 5 [======================================] ETA: 0s. done
-        09:44:44.421 [INFO]   writing seeds...
-        09:44:44.489 [INFO]   finished writing seeds in 67.328842ms
-        09:44:44.489 [INFO]   finished building index for batch 3 in: 2.513863923s
-        09:44:44.489 [INFO] 
-        09:44:44.489 [INFO] merging 3 indexes...
-        09:44:44.489 [INFO]   [round 1]
-        09:44:44.489 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
-        09:44:44.691 [INFO]   [round 1] finished in 201.445296ms
-        09:44:44.691 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-        09:44:44.708 [INFO] 
-        09:44:44.708 [INFO] finished building LexicMap index from 15 files with 20000 masks in 8.115840913s
-        09:44:44.708 [INFO] LexicMap index saved: demo.lmi
-        09:44:44.708 [INFO] 
-        09:44:44.708 [INFO] elapsed time: 8.115880865s
-        09:44:44.708 [INFO]
+    $ memusg -t -s "lexicmap index -I refs/ -O demo.lmi --batch-size 5"
+    10:02:25.535 [INFO] LexicMap v0.9.0
+    10:02:25.535 [INFO]   https://github.com/shenwei356/LexicMap
+    10:02:25.535 [INFO] 
+    10:02:25.535 [INFO] checking input files ...
+    10:02:25.535 [INFO]   scanning files from directory: refs/
+    10:02:25.536 [INFO]   15 input file(s) given
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] --------------------- [ main parameters ] ---------------------
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] input and output:
+    10:02:25.536 [INFO]   input directory: refs/
+    10:02:25.536 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    10:02:25.536 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    10:02:25.536 [INFO]     *regular expressions for filtering out sequences: []
+    10:02:25.536 [INFO]   min sequence length: 31
+    10:02:25.536 [INFO]   max genome size: 15000000
+    10:02:25.536 [INFO]   output directory: demo.lmi
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] mask generation:
+    10:02:25.536 [INFO]   k-mer size: 31
+    10:02:25.536 [INFO]   number of masks: 20000
+    10:02:25.536 [INFO]   rand seed: 1
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] seed data:
+    10:02:25.536 [INFO]   maximum sketching desert length: 100
+    10:02:25.536 [INFO]   distance of k-mers to fill deserts: 50
+    10:02:25.536 [INFO]   seeds data chunks: 16
+    10:02:25.536 [INFO]   seeds data indexing partitions: 4096
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] general:
+    10:02:25.536 [INFO]   genome batch size: 5
+    10:02:25.536 [INFO]   threads: 16
+    10:02:25.536 [INFO]   batch merge threads: 8
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] 
+    10:02:25.536 [INFO] --------------------- [ generating masks ] ---------------------
+    10:02:25.542 [INFO] 
+    10:02:25.542 [INFO] --------------------- [ building index ] ---------------------
+    10:02:25.701 [INFO] 
+    10:02:25.701 [INFO]   ------------------------[ batch 1/3 ]------------------------
+    10:02:25.701 [INFO]   building index for batch 1 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    10:02:28.025 [INFO]   writing seeds...
+    10:02:28.109 [INFO]   finished writing seeds in 83.753228ms
+    10:02:28.109 [INFO]   finished building index for batch 1 in: 2.408534515s
+    10:02:28.136 [INFO] 
+    10:02:28.136 [INFO]   ------------------------[ batch 2/3 ]------------------------
+    10:02:28.136 [INFO]   building index for batch 2 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    10:02:30.651 [INFO]   writing seeds...
+    10:02:30.731 [INFO]   finished writing seeds in 79.893444ms
+    10:02:30.731 [INFO]   finished building index for batch 2 in: 2.59562701s
+    10:02:30.760 [INFO] 
+    10:02:30.760 [INFO]   ------------------------[ batch 3/3 ]------------------------
+    10:02:30.760 [INFO]   building index for batch 3 with 5 files...
+    processed files:  5 / 5 [======================================] ETA: 0s. done
+    10:02:33.087 [INFO]   writing seeds...
+    10:02:33.162 [INFO]   finished writing seeds in 75.00336ms
+    10:02:33.162 [INFO]   finished building index for batch 3 in: 2.401368929s
+    10:02:33.217 [INFO] 
+    10:02:33.217 [INFO] merging 3 indexes...
+    10:02:33.217 [INFO]   [round 1]
+    10:02:33.217 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
+    10:02:33.367 [INFO]   [round 1] finished in 150.175526ms
+    10:02:33.367 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+    10:02:33.382 [INFO] 
+    10:02:33.382 [INFO] finished building LexicMap index from 15 files with 20000 masks in 7.855422805s
+    10:02:33.382 [INFO] LexicMap index saved: demo.lmi
+    10:02:33.382 [INFO] 
+    10:02:33.382 [INFO] elapsed time: 7.855461916s
+    10:02:33.382 [INFO] 
+
+    elapsed time: 7.981s
+    peak rss: 1.3 GB
 
     {{< /expand >}}
 

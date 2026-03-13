@@ -29,8 +29,13 @@ weight: 10
 ## Input
 
 {{< hint type=note >}}
-**Query length**\
+**Query length**
+
 LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.
+
+**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. 
+
+Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 {{< /hint >}}
 
 Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
@@ -220,35 +225,36 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
 
 {{< expand "Click to show the log of a demo run." "..." >}}
 
-        $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv --debug
-        09:56:48.464 [INFO] LexicMap v0.7.0
-        09:56:48.464 [INFO]   https://github.com/shenwei356/LexicMap
-        09:56:48.464 [INFO] 
-        09:56:48.464 [INFO] checking input files ...
-        09:56:48.464 [INFO]   1 input file given: q.gene.fasta
-        09:56:48.464 [INFO] 
-        09:56:48.464 [INFO] loading index: demo.lmi/
-        09:56:48.464 [INFO]   reading masks...
-        09:56:48.467 [INFO]   reading indexes of seeds (k-mer-value) data...
-        09:56:49.434 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-        09:56:49.434 [INFO] index loaded in 969.583422ms
-        09:56:49.434 [INFO] 
-        09:56:49.434 [INFO] searching with 16 threads...
-        09:56:49.435 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): start to search
-        09:56:49.440 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished seed-matching (15 genome hits) in 5.354981ms
-        09:56:49.441 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished chaining (15 genome hits) in 1.045575ms
-        checked genomes:  15 / 15 [======================================] ETA: 0s. done
-        09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished alignment (15 genome hits) in 32.005224ms
-        09:56:49.473 [DEBU] NC_000913.3:4166659-4168200 (1542 bp): finished sorting alignment results (15 genome hits) in 13.758µs
+    10:12:13.965 [INFO] LexicMap v0.9.0
+    10:12:13.965 [INFO]   https://github.com/shenwei356/LexicMap
+    10:12:13.965 [INFO] 
+    10:12:13.965 [INFO] checking input files ...
+    10:12:13.965 [INFO]   1 input file given: q.gene.fasta
+    10:12:13.965 [INFO] 
+    10:12:13.965 [INFO] loading index: demo.lmi/
+    10:12:13.965 [INFO]   reading masks...
+    10:12:13.968 [INFO]   reading indexes of seeds (k-mer-value) data...
+    10:12:14.806 [INFO]   creating reader pools for 3 genome batches, each with 16 readers...
+    10:12:14.806 [INFO] index loaded in 841.087872ms
+    10:12:14.806 [INFO] 
+    10:12:14.806 [INFO] searching with 16 threads...
+    10:12:14.806 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
+    10:12:14.816 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): start to search
+    10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished seed-matching (15 genome hits) in 10.652643ms
+    10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished chaining (15 genome hits) in 349.626µs
+    checked genomes:  15 / 15 [======================================] ETA: 0s. done
+    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished alignment (15 genome hits) in 28.559443ms
+    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished sorting alignment results (15 genome hits) in 13.2µs
+    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished searching in 0.040 seconds
 
-        09:56:49.473 [INFO] 
-        09:56:49.473 [INFO] processed queries: 1, speed: 1512.560 queries per minute
-        09:56:49.473 [INFO] 100.0000% (1/1) queries matched
-        09:56:49.473 [INFO] done searching
-        09:56:49.473 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-        09:56:49.474 [INFO] 
-        09:56:49.474 [INFO] elapsed time: 1.009536088s
-        09:56:49.474 [INFO]
+    10:12:14.856 [INFO] 
+    10:12:14.856 [INFO] processed queries: 1, speed: 1197.806 queries per minute
+    10:12:14.856 [INFO] 100.0000% (1/1) queries matched
+    10:12:14.856 [INFO] done searching
+    10:12:14.856 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    10:12:14.856 [INFO] 
+    10:12:14.856 [INFO] elapsed time: 891.52111ms
+    10:12:14.856 [INFO]
 
 {{< /expand >}}
 
@@ -306,7 +312,7 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
     Length = 4659463
     
      HSP cluster #1, HSP #1
-     Score = 279 bits, Expect = 9.66e-75
+     Score = 212 bits, Expect = 1.18e-54
      Query coverage per seq = 93.548%, Aligned length = 177, Identities = 88.701%, Gaps = 6
      Query range = 13-186, Subject range = 1124816-1124989, Strand = Plus/Plus
     
