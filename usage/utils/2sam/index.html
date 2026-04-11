@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.155.3">
+<meta name="generator" content="Hugo 0.157.0">
 
 
   <meta name="description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
