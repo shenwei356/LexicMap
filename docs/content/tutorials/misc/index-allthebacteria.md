@@ -117,21 +117,23 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         mkdir -p atb;
         cd atb;
 
-        # attention, the URL might changes, please check it in the browser.
-        wget https://osf.io/download/4yv85/ -O file_list.all.latest.tsv.gz
+        # Attention, the URL might changes,
+        # please check in the browser: https://osf.io/zxfmy/files/osfstorage
+        # This url is for v0.2 + incr_202408 + incr_202505.
+        wget https://osf.io/download/3xs6h/ -O file_list.all.latest.tsv.gz
 
     If you only need to add assemblies from an incremental version.
     Please manually download the file list in the path `AllTheBacteria/Assembly/OSF Storage/File_lists`.
 
-1. Downloading assembly tarball files.
+2. Downloading assembly tarball files.
 
         # tarball file names and their URLs
-        zcat file_list.all.latest.tsv.gz | awk -F'\t' 'NR>1 {print $5"\t"$6}' | uniq > tar2url.tsv
+        zcat file_list.all.latest.tsv.gz | awk -F'\t' 'NR>1 {print $4"\t"$5}' | sort | uniq > tar2url.tsv
 
         # download
         cat tar2url.tsv | rush --eta -j 4 -c -C download.rush 'wget -O {1} {2}'
 
-1. Decompressing all tarballs. The decompressed genomes are stored in plain text,
+3. Decompressing all tarballs. The decompressed genomes are stored in plain text,
    so we use `gzip` (can be replaced with faster `pigz` ) to compress them to save disk space.
 
         # {^tar.xz} is for removing the suffix "tar.xz"
@@ -151,7 +153,7 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         │   ├── SAMD00195911.fa.gz
         │   ├── SAMD00195914.fa.gz
 
-1. Prepare a file list of assemblies.
+4. Prepare a file list of assemblies.
 
     -  Just use `find` or [fd](https://github.com/sharkdp/fd) (much faster).
 
@@ -173,10 +175,12 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
 
             find atb/ -name "*.fa.gz" | grep -w -f <(zcat hq_set.sample_list.txt.gz) > files.txt
 
-1. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
+5. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
 
         lexicmap index -S -X files.txt -O atb.lmi -b 25000 --log atb.lmi.log
         
+        # It's for the v0.2 + 2024008
+        #
         # dirsize atb.lmi
         atb.lmi: 5.24 TiB (5,758,698,088,389)
           2.87 TiB      seeds
@@ -190,11 +194,11 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
    
    It took 66h18m and 125GB RAM with 48 CPUs for 2.44m ATB genomes, with LexicMap v0.8.0 on my server.
    
-1. (Optional) Prepare Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+6. (Optional) Prepare Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
 
-        # Download species_calls.tsv.gz file in the directory (Latest_2024-08) of this page:
+        # Download species_calls.tsv.gz file in the directory (Latest_2025-05) of this page:
         # https://osf.io/h7wzy/files/osfstorage#
-        wget https://osf.io/download/7t9qd/ -O species_calls.tsv.gz
+        wget https://osf.io/download/n7kvu/ -O species_calls.tsv.gz
         
         # Download gtdb-taxdump files of version r214 that was used in
         # taxonomic classification of AllTheBacteria v2.0 and incremental 202408
