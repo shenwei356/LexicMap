@@ -20,6 +20,18 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
+  3. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
+     Only genomes with descendant TaxIds of the specific ones or themselves are searched,
+     in a similar way with BLAST+ 2.15.0 or later versions.
+     Negative values are allowed as a black list.
+
+     For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with
+     -t 543,-561.
+
+     Users only need to provide NCBI-format taxdump files (-T/--taxdump, can also create from
+     any taxonomy data with TaxonKit https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump )
+     and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
+     There's no need to rebuild the index.
 
 Alignment result relationship:
 
@@ -85,8 +97,16 @@ Flags:
                                        want to output blast-style format with "lexicmap utils 2blast".
       --debug                          ► Print debug information, including a progress bar.
                                        (recommended when searching with one query).
+      --gc-interval int                ► Force garbage collection every N queries (0 for disable). The
+                                       value can't be too small. (default 64)
+  -G, --genome2taxid string            ► Two-column tabular file for mapping genome ID to TaxId,
+                                       needed for filtering results with TaxIds. Genome IDs in the index
+                                       can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk
+                                       cut -t -f 1 | csvtk uniq -Ut"
   -h, --help                           help for search
   -d, --index string                   ► Index directory created by "lexicmap index".
+  -k, --keep-genomes-without-taxid     ► Keep genome hits without TaxId, i.e., those without TaxId in
+                                       the --genome2taxid file.
   -w, --load-whole-seeds               ► Load the whole seed data into memory for faster seed
                                        matching. It will consume a lot of RAM.
   -e, --max-evalue float               ► Maximum evalue of a HSP segment. (default 10)
@@ -95,8 +115,7 @@ Flags:
                                        batches or have multiple queries, and do not forgot to set a
                                        bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
   -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
-                                       improve the batch searching speed and consume much memory.
-                                       (default 8)
+                                       improve the batch searching speed and consume much memory. (default 8)
   -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
@@ -107,6 +126,16 @@ Flags:
                                        (default 15)
   -P, --seed-min-single-prefix int     ► Minimum (prefix/suffix) length of matched seeds (anchors) if
                                        there's only one pair of seeds matched. (default 17)
+  -T, --taxdump string                 ► Directory containing taxdump files (nodes.dmp, names.dmp,
+                                       etc.), needed for filtering results with TaxIds. For other
+                                       non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to
+                                       create taxdump files.
+      --taxid-file string              ► TaxIds from a file for filtering results, where the taxids
+                                       are equal to or are the children of the given taxids. Negative
+                                       values are allowed as a black list.
+  -t, --taxids strings                 ► TaxIds(s) for filtering results, where the taxids are equal
+                                       to or are the children of the given taxids. Negative values are
+                                       allowed as a black list.
   -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
                                        in the chaining phase. Value 1 is not recommended as the best
                                        chaining result does not always bring the best alignment, so it's
@@ -115,7 +144,6 @@ Flags:
                                        chaining phase. Value 1 is not recommended as the best chaining
                                        result does not always bring the best alignment, so it's better
                                        be >= 100. (default 0)
-
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

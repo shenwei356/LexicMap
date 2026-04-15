@@ -39,6 +39,32 @@ Input:
   7. Soft-masked sequences are supported with --soft-masking.
 
   Attention:
+   *1) ► You can rename the sequence filGenerate an index from FASTA/Q sequences
+
+Input:
+ *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
+     in the file names.
+  2. Input plain or gzip/xz/zstd/bzip2/lz4 compressed FASTA/Q files can be given via positional arguments or
+     the flag -X/--infile-list with a list of input files.
+     Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
+  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
+     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
+     -r/--file-regexp.
+  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
+     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
+     (-G/--big-genomes).
+     Changes since v0.5.0:
+       - Genomes with any single contig larger than the threshold will be skipped as before.
+       - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
+         be split into chunks and alignments from these chunks will be merged in "lexicmap search".
+     You need to increase the value for indexing fungi genomes.
+  5. Maximum genome size: 268,435,456.
+     More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
+     1000-bp intervals of N’s to reduce the sequence scale to index.
+  6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
+  7. Soft-masked sequences are supported with --soft-masking.
+
+  Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
        identifiers in the index and search result would be: the basenames of files with common FASTA/Q file
        extensions removed, which are extracted via the flag -N/--ref-name-regexp.
@@ -146,6 +172,11 @@ Flags:
                                   alignments from these chunks will be merged in "lexicmap search". The
                                   value needs to be smaller than the maximum supported genome size:
                                   268435456. (default 15000000)
+      --max-kmer-freq int         ► If a mask captures the same k-mer at more than N positions of a
+                                  genome, only the first N positions will be retained. This option may
+                                  reduce search sensitivity, but it's useful when simply checking
+                                  whether a query matches any position in a genome that contains many
+                                  tandem repeat sequences. (0 for no filtering)
       --max-open-files int        ► Maximum opened files, used in merging indexes. If there are >100
                                   batches, please increase this value and set a bigger "ulimit -n" in
                                   shell. (default 1024)
