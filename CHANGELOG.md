@@ -2,6 +2,8 @@
 
 ### v0.10.0 - 2026-xx-xx
 
+- New commands:
+    - `lexicmap utils genome-details`: Extract or view genome details in the index.
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
 

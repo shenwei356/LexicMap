@@ -2177,7 +2177,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{
 	return data, nil
 }
 
-// readGenomeChunksMapBig2Small reads the genome chunkfile and return a [][]list
+// readGenomeChunksLists reads the genome chunkfile and return a [][]list
 // with all batch+ref indexes of the same genome stored in one list.
 func readGenomeChunksLists(file string) ([][]uint64, error) {
 	fh, err := os.Open(file)

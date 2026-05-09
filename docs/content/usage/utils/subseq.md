@@ -1,6 +1,6 @@
 ---
 title: subseq
-weight: 20
+weight: 25
 ---
 
 ## Usage
