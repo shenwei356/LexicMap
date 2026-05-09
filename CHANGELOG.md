@@ -3,7 +3,7 @@
 ### v0.10.0 - 2026-xx-xx
 
 - `lexicmap search`:
-    - Added a new flag `--show-sseq-idx` to add a 1-based subject sequence index prefix to sseqid values.
+    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
 
 ### v0.9.0 - 2026-03-13
 

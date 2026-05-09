@@ -126,9 +126,9 @@ Flags:
                                        (default 15)
   -P, --seed-min-single-prefix int     ► Minimum (prefix/suffix) length of matched seeds (anchors) if
                                        there's only one pair of seeds matched. (default 17)
-      --show-sseq-idx                  ► Add a 1-based subject sequence index prefix to sseqid values,
-                                       e.g., 1/2:contig00001, where 2 is the total number of sequences
-                                       in the genome.
+      --show-sseq-idx                  ► Add 1-based genome chunk and subject sequence index prefixes
+                                       to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 means
+                                       chunk 2 of 3 and s1/10 means sequence 1 of 1.
   -T, --taxdump string                 ► Directory containing taxdump files (nodes.dmp, names.dmp,
                                        etc.), needed for filtering results with TaxIds. For other
                                        non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to

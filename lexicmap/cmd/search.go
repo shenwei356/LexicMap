@@ -548,9 +548,9 @@ Result ordering:
 						}
 
 						if showSseqIdx {
-							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%d/%d:%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
+							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\tc%d/%d:s%d/%d:%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
 								queryID, len(q.seq),
-								targets, id2name[r.BatchGenomeIndex], sd.SeqIdx+1, sd.NSeqs, sd.SeqID, r.AlignedFraction,
+								targets, id2name[r.BatchGenomeIndex], sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID, r.AlignedFraction,
 								_c,
 								j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
 								c.QBegin+1, c.QEnd+1,
@@ -713,7 +713,7 @@ func init() {
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
 	mapCmd.Flags().BoolP("show-sseq-idx", "", false,
-		formatFlagUsage(`Add a 1-based subject sequence index prefix to sseqid values, e.g., 1/2:contig00001, where 2 is the total number of sequences in the genome.`))
+		formatFlagUsage(`Add 1-based genome chunk and subject sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 means chunk 2 of 3 and s1/10 means sequence 1 of 10.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))

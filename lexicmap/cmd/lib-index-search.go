@@ -177,6 +177,7 @@ type Index struct {
 	genomeChunks                 [][]uint64 // original chunk information
 	poolGenomeChunksIdx2List     *sync.Pool
 	poolGenomeChunksPointer2List *sync.Pool
+	genomeChunksIdx              map[uint64][2]uint32 // batch+ref index -> #chunks, chunk index
 
 	// totalBases
 	totalBases int64
@@ -411,6 +412,15 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			data := make(map[uintptr]*[]int, 1024)
 			return &data
 		}}
+
+		// batch+ref index -> #chunks, chunk index
+		m := make(map[uint64][2]uint32, len(idx.genomeChunks))
+		for _, idxs := range idx.genomeChunks {
+			for i, idx := range idxs {
+				m[idx] = [2]uint32{uint32(len(idxs)), uint32(i)}
+			}
+		}
+		idx.genomeChunksIdx = m
 	}
 	// -----------------------------------------------------
 	// read index of seeds
@@ -932,6 +942,10 @@ type SimilarityDetail struct {
 	NSeqs  uint32 // the number of sequences
 	SeqIdx uint32 // index of the sequence in the genome
 	SeqID  []byte // seqid of the matched region
+
+	// genome chunk info
+	NChunks  uint32 // the number of genome chunks
+	ChunkIdx uint32 // index of the genome chunk in the genome
 }
 
 func (r *SearchResult) Reset() {
@@ -2169,6 +2183,20 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								sd.NSeqs = uint32(len(tSeq.SeqIDs))
 								sd.SeqLen = tSeq.SeqSizes[iSeq]
 
+								// genome chunk info
+								if idx.hasGenomeChunks {
+									if info, ok := idx.genomeChunksIdx[r.BatchGenomeIndex]; ok {
+										sd.NChunks = info[0]
+										sd.ChunkIdx = info[1]
+									} else {
+										sd.NChunks = 1
+										sd.ChunkIdx = 0
+									}
+								} else {
+									sd.NChunks = 1
+									sd.ChunkIdx = 0
+								}
+
 								*sds = append(*sds, sd)
 							} else {
 								RecycleSeqComparatorResult(r2)
@@ -2422,6 +2450,20 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						sd.SeqIdx = uint32(iSeq)
 						sd.NSeqs = uint32(len(tSeq.SeqIDs))
 						sd.SeqLen = tSeq.SeqSizes[iSeq]
+
+						// genome chunk info
+						if idx.hasGenomeChunks {
+							if info, ok := idx.genomeChunksIdx[r.BatchGenomeIndex]; ok {
+								sd.NChunks = info[0]
+								sd.ChunkIdx = info[1]
+							} else {
+								sd.NChunks = 1
+								sd.ChunkIdx = 0
+							}
+						} else {
+							sd.NChunks = 1
+							sd.ChunkIdx = 0
+						}
 
 						*sds = append(*sds, sd)
 					} else {
