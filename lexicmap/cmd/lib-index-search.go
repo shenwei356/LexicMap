@@ -929,7 +929,9 @@ type SimilarityDetail struct {
 
 	// sequence details
 	SeqLen int
-	SeqID  []byte // seqid of the region
+	NSeqs  uint32 // the number of sequences
+	SeqIdx uint32 // index of the sequence in the genome
+	SeqID  []byte // seqid of the matched region
 }
 
 func (r *SearchResult) Reset() {
@@ -2163,6 +2165,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 								sd.SeqID = sd.SeqID[:0]
 								// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 								sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+								sd.SeqIdx = uint32(iSeq)
+								sd.NSeqs = uint32(len(tSeq.SeqIDs))
 								sd.SeqLen = tSeq.SeqSizes[iSeq]
 
 								*sds = append(*sds, sd)
@@ -2415,6 +2419,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 						sd.SeqID = sd.SeqID[:0]
 						// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
 						sd.SeqID = append(sd.SeqID, (*tSeq.SeqIDs[iSeq])...)
+						sd.SeqIdx = uint32(iSeq)
+						sd.NSeqs = uint32(len(tSeq.SeqIDs))
 						sd.SeqLen = tSeq.SeqSizes[iSeq]
 
 						*sds = append(*sds, sd)

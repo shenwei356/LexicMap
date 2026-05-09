@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.10.0 - 2026-xx-xx
+
+- `lexicmap search`:
+    - Added a new flag `--show-sseq-idx` to add a 1-based subject sequence index prefix to sseqid values.
+
 ### v0.9.0 - 2026-03-13
 
 - New commands:
