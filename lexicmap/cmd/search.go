@@ -21,21 +21,18 @@
 package cmd
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
-	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
 )
 
@@ -236,92 +233,10 @@ Result ordering:
 		taxdumpDir := getFlagString(cmd, "taxdump")
 		genome2taxidFile := getFlagString(cmd, "genome2taxid")
 		taxidsStr := getFlagStringSlice(cmd, "taxids")
-		keepGenomesWithoutTaxId := getFlagBool(cmd, "keep-genomes-without-taxid")
-		var taxids, negativeTaxids []uint32
 		taxidFile := getFlagString(cmd, "taxid-file")
+		keepGenomesWithoutTaxId := getFlagBool(cmd, "keep-genomes-without-taxid")
 
-		var m, negativeM map[uint32]interface{}
-		var ok bool
-		var v uint32
-
-		if len(taxidsStr) > 0 {
-			if !(taxdumpDir != "" && genome2taxidFile != "") {
-				checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are need if -t/--taxids is given"))
-			}
-			m = make(map[uint32]interface{}, len(taxidsStr))
-			negativeM = make(map[uint32]interface{}, len(taxidsStr))
-			taxids = make([]uint32, 0, len(taxidsStr))
-			negativeTaxids = make([]uint32, 0, len(taxidsStr))
-
-			var val int64
-			for _, tmp := range taxidsStr {
-				val, err = strconv.ParseInt(tmp, 10, 32)
-				if err != nil {
-					checkError(fmt.Errorf("invalid TaxId: %s", tmp))
-				}
-
-				if val > 0 {
-					v = uint32(val)
-					if _, ok = m[v]; !ok {
-						taxids = append(taxids, v)
-						m[v] = struct{}{}
-					}
-				} else if val < 0 {
-					v = uint32(-val)
-					if _, ok = negativeM[v]; !ok {
-						negativeTaxids = append(negativeTaxids, v)
-						negativeM[v] = struct{}{}
-					}
-				}
-			}
-		}
-		if taxidFile != "" {
-			if m == nil {
-				m = make(map[uint32]interface{}, len(taxidsStr))
-			}
-
-			fh, err := xopen.Ropen(taxidFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read taxid file: %s", taxidFile))
-			}
-
-			scanner := bufio.NewScanner(fh)
-			var line string
-			var val int64
-			for scanner.Scan() {
-				line = strings.TrimSpace(strings.TrimRight(scanner.Text(), "\r\n"))
-				if line == "" {
-					continue
-				}
-
-				val, err = strconv.ParseInt(line, 10, 32)
-				if err != nil {
-					checkError(fmt.Errorf("invalid TaxId: %s", line))
-				}
-
-				if val > 0 {
-					v = uint32(val)
-					if _, ok = m[v]; !ok {
-						taxids = append(taxids, v)
-						m[v] = struct{}{}
-					}
-				} else if val < 0 {
-					v = uint32(-val)
-					if _, ok = negativeM[v]; !ok {
-						negativeTaxids = append(negativeTaxids, v)
-						negativeM[v] = struct{}{}
-					}
-				}
-			}
-			if err = scanner.Err(); err != nil {
-				checkError(fmt.Errorf("failed to read taxid file: %s", taxidFile))
-			}
-		}
-		// } else if taxdumpDir != "" {
-		// 	checkError(fmt.Errorf("the flag -T/--taxdump is given, but -t/--taxids is not"))
-		// } else if genome2taxidFile != "" {
-		// 	checkError(fmt.Errorf("the flag -G/--genome2taxid is given, but -t/--taxids is not"))
-		// }
+		taxids, negativeTaxids := parseTaxids(taxdumpDir, genome2taxidFile, taxidsStr, taxidFile)
 
 		// ---------------------------------------------------------------
 
@@ -801,27 +716,3 @@ func init() {
 		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
 }
-
-// Strands could be used to output strand for a reverse complement flag
-var Strands = [2]byte{'+', '-'}
-
-// Query is an object for each query sequence, it also contains the query result.
-type Query struct {
-	seqID  []byte
-	seq    []byte
-	result *[]*SearchResult
-}
-
-// Reset reset the data for next round of using
-func (q *Query) Reset() {
-	q.seqID = q.seqID[:0]
-	q.seq = q.seq[:0]
-	q.result = nil
-}
-
-var poolQuery = &sync.Pool{New: func() interface{} {
-	return &Query{
-		seqID: make([]byte, 0, 128),     // the id should be not too long
-		seq:   make([]byte, 0, 100<<10), // initialize with 100K
-	}
-}}

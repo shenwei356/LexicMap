@@ -94,8 +94,8 @@ github.com/shenwei356/lexichash v0.5.2 h1:FMgDNzGQwSbftRbShBTd/s9zb7yc2bdbQwj6O8
 github.com/shenwei356/lexichash v0.5.2/go.mod h1:28faiWx7wcz7pzOtUaCt4gdMyS0UTIdIArdQBQBKRC8=
 github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d h1:eeXLHcXyGEr72V1SOSEI7vSzUOTJvHutwF7Ykm+hscQ=
 github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d/go.mod h1:SiiGiRFyRtV7S9RamOrmQR5gpGIRhWJM1w0EtmuQ1io=
-github.com/shenwei356/util v0.5.4 h1:zZpLhiz1P5x7ylQvNRWU6weR42l+BaWXXcl0JYeaBvs=
-github.com/shenwei356/util v0.5.4/go.mod h1:9T+P2I2xGv98Y+KdtNyTJ99p8spXyLuSFmXQLU1dlmk=
+github.com/shenwei356/util v0.5.6 h1:Qdb8fUGeIUMA3ZQXYrdzJFCqNkOZDcol2pts7oMMg0M=
+github.com/shenwei356/util v0.5.6/go.mod h1:srQnMZk3ntd9AidKyEdsROEazlEn+dI8ZI0/5EQznw4=
 github.com/shenwei356/wfa v0.4.1 h1:8n9OLAn7G9T0/TM7F58gZioqG/OEDgTREWhyYNKXAso=
 github.com/shenwei356/wfa v0.4.1/go.mod h1:bl0x9YwlOu1Cm0+H/kW3V1N/kmTUldmXghyCy/BTzYk=
 github.com/shenwei356/xopen v0.4.0 h1:5B9+DmHw6bbJjYg8upFVD3S7t0AekGnat3pxo03weY4=
