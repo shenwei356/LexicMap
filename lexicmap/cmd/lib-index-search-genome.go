@@ -26,6 +26,7 @@ import (
 	"slices"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -34,17 +35,25 @@ import (
 
 // GSearchResultDetail is for storing genome search details
 type GSearchResultDetail struct {
-	BatchGenomeIndex uint64   // just for finding genome chunks of the same genome
+	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
 	Hits             []uint32 // count how many many k-mers are matched
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
+func (idx *Index) RecycleGSearchResultDetail(r *GSearchResultDetail) {
+	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
+	r.Score = 0
+	clear(r.Hits)
+	idx.poolGSearchResult.Put(r)
+}
+
+// RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchResultDetailsMap(m *map[uint64]*GSearchResultDetail) {
 	for _, r := range *m {
-		clear(r.Hits)
+		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		r.BatchGenomeIndex = 0
+		clear(r.Hits)
 		idx.poolGSearchResult.Put(r)
 	}
 	clear(*m)
@@ -54,9 +63,9 @@ func (idx *Index) RecycleGSearchResultDetailsMap(m *map[uint64]*GSearchResultDet
 // RecycleGSearchResultDetails recycles a list of GSearchResultDetail
 func (idx *Index) RecycleGSearchResultDetails(rs *[]*GSearchResultDetail) {
 	for _, r := range *rs {
-		clear(r.Hits)
+		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		r.BatchGenomeIndex = 0
+		clear(r.Hits)
 		idx.poolGSearchResult.Put(r)
 	}
 	*rs = (*rs)[:0]
@@ -70,7 +79,6 @@ func (idx *Index) RecycleGSearchResult(whiteList *map[uint64]interface{}) {
 }
 
 // GSearch searchs with a genome and return the list of possible genome internal ids.
-// TODO: handle genome chunks.
 func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 	if idx.opt.Debug {
 		startTime0 := time.Now()
@@ -146,7 +154,7 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 	}
 
 	// ------------------------------------------------------
-	// 2. search k-mers
+	// 2. search k-mers and return the most similar genomes
 
 	m := idx.poolGSearchResultsMap.Get().(*map[uint64]*GSearchResultDetail)
 
@@ -256,10 +264,11 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 					if r, ok = (*m)[refBatchAndIdxUint64]; !ok {
 						r = idx.poolGSearchResult.Get().(*GSearchResultDetail)
 
+						r.BatchGenomeIndex = append(r.BatchGenomeIndex, refBatchAndIdxUint64)
+
 						(*m)[refBatchAndIdxUint64] = r
 					}
 
-					r.BatchGenomeIndex = refBatchAndIdxUint64
 					r.Hits[sr.IQuery]++       // add count to the probe
 					r.Score += uint64(sr.Len) // matched length
 				}
@@ -331,7 +340,7 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 		return nil, nil
 	}
 
-	// 2.3) collect and sort
+	// collect and store with a list
 	rs := idx.poolGSearchResults.Get().(*[]*GSearchResultDetail)
 	for _, r := range *m {
 		*rs = append(*rs, r)
@@ -339,11 +348,87 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 	clear(*m)
 	idx.RecycleGSearchResultDetailsMap(m)
 
+	// 2.3) handle chunked genomes
+
+	// merge search result from genome chunks, if has split genome
+	if idx.hasGenomeChunks {
+		var r, rp *GSearchResultDetail
+		var i, j, _i int
+		var a uint64
+		var v uint32
+		var ok bool
+		var li *[]int
+		var ptr uintptr
+		gcIdx2List := idx.poolGenomeChunksIdx2List.Get().(*map[uint64]*[]int)
+		gcPtr2List := idx.poolGenomeChunksPointer2List.Get().(*map[uintptr]*[]int)
+
+		// collect "i"s belonging to the same genome
+		for i, r = range *rs {
+			a = r.BatchGenomeIndex[0]
+			if li, ok = (*gcIdx2List)[a]; !ok { // not a chunk of some genome
+				continue
+			}
+
+			*li = append(*li, i) // is is just the index in *rs
+
+			ptr = uintptr(unsafe.Pointer(li))
+			if _, ok = (*gcPtr2List)[ptr]; !ok {
+				(*gcPtr2List)[ptr] = li
+			}
+		}
+
+		// merge alignments of the same genome
+		for _, li = range *gcPtr2List {
+			if len(*li) == 1 { // there's only one genome chunk
+				// reset the list
+				(*li) = (*li)[:0]
+				continue
+			}
+			i = (*li)[0]
+			rp = (*rs)[i]
+
+			for _, j = range (*li)[1:] { // merge j -> i
+				r = (*rs)[j]
+
+				// merge r into rp
+				rp.Score += r.Score
+				for _i, v = range r.Hits {
+					rp.Hits[_i] += v
+				}
+
+				idx.RecycleGSearchResultDetail(r)
+				(*rs)[j] = nil
+			}
+
+			// reset the list
+			(*li) = (*li)[:0]
+		}
+
+		// adjust the result list
+		j = 0
+		for _, r = range *rs {
+			if r == nil {
+				continue
+			}
+
+			(*rs)[j] = r
+			j++
+		}
+		*rs = (*rs)[:j]
+
+		// recycle datastructure
+		clear(*gcPtr2List)
+		idx.poolGenomeChunksPointer2List.Put(gcPtr2List)
+		// clear(*gcIdx2List) # must not do this !!!
+		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
+	}
+
+	// 2.4) sort
 	topN := idx.opt.TopN
+	slices.SortFunc(*rs, func(a, b *GSearchResultDetail) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
 	if topN > 0 && len(*rs) > topN {
-		slices.SortFunc(*rs, func(a, b *GSearchResultDetail) int {
-			return cmp.Compare(b.Score, a.Score)
-		})
 		*rs = (*rs)[:topN]
 	}
 
@@ -351,8 +436,11 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 	clear(*whiteList)
 
 	fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
+	var refBatchAndIdxUint64 uint64
 	for _, r := range *rs {
-		(*whiteList)[r.BatchGenomeIndex] = struct{}{}
+		for _, refBatchAndIdxUint64 = range r.BatchGenomeIndex {
+			(*whiteList)[refBatchAndIdxUint64] = struct{}{}
+		}
 
 		hitKmers := 0
 		hitMasks := 0
@@ -364,7 +452,7 @@ func (idx *Index) GSearch(query *GQuery) (*map[uint64]interface{}, error) {
 		}
 		fmt.Printf("%s\t%s\t%d\t%d\t%d\t%.1f\n",
 			query.id,
-			idx.BatchGenomeIndex2GenomeID[r.BatchGenomeIndex], r.Score,
+			idx.BatchGenomeIndex2GenomeID[r.BatchGenomeIndex[0]], r.Score,
 			hitMasks,
 			hitKmers, float64(r.Score)/float64(hitKmers),
 		)
