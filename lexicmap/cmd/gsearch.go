@@ -21,40 +21,34 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/spf13/cobra"
 )
 
-var mapCmd = &cobra.Command{
-	Use:   "search",
-	Short: "Search sequences against an index",
-	Long: `Search sequences against an index
+var gsearchCmd = &cobra.Command{
+	Use:   "gsearch",
+	Short: "Search genomes against an index",
+	Long: `Search genomes against an index
 
 Attention:
-  1. Input should be (gzipped) FASTA or FASTQ records from files or stdin.
+  1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
   2. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
 
 Tips:
-  1. When using -a/--all, the search result would be formatted to Blast-style format
-     with 'lexicmap utils 2blast'. And the search speed would be slightly slowed down.
-  2. Alignment result filtering is performed in the final phase, so stricter filtering criteria,
-     including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
-     do not significantly accelerate the search speed. Hence, you can search with default
-     parameters and then filter the result with tools like awk or csvtk.
-  3. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
+  1. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
      in a similar way with BLAST+ 2.15.0 or later versions.
      Negative values are allowed as a black list.
@@ -67,54 +61,15 @@ Tips:
      and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
      There's no need to rebuild the index.
 
-Alignment result relationship:
-
-  Query
-  ├── Subject genome
-      ├── Subject sequence
-          ├── HSP cluster (a cluster of neighboring HSPs)
-              ├── High-Scoring segment Pair (HSP)
-
-  Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
-
-  > A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the
-  > highest alignment scores in a given search. https://www.ncbi.nlm.nih.gov/books/NBK62051/
 
 Output format:
   Tab-delimited format with 20+ columns, with 1-based positions.
 
-    1.  query,    Query sequence ID.
-    2.  qlen,     Query sequence length.
-    3.  hits,     Number of subject genomes.
-    4.  sgenome,  Subject genome ID.
-    5.  sseqid,   Subject sequence ID.
-    6.  qcovGnm,  Query coverage (percentage) per genome: $(aligned bases in the genome)/$qlen.
-    7.  cls,      Nth HSP cluster in the genome. (just for improving readability)
-                  It's useful to show if multiple adjacent HSPs are collinear.
-    8.  hsp,      Nth HSP in the genome.         (just for improving readability)
-    9.  qcovHSP   Query coverage (percentage) per HSP: $(aligned bases in a HSP)/$qlen.
-    10. alenHSP,  Aligned length in the current HSP.
-    11. pident,   Percentage of identical matches in the current HSP.
-    12. gaps,     Gaps in the current HSP.
-    13. qstart,   Start of alignment in query sequence.
-    14. qend,     End of alignment in query sequence.
-    15. sstart,   Start of alignment in subject sequence.
-    16. send,     End of alignment in subject sequence.
-    17. sstr,     Subject strand.
-    18. slen,     Subject sequence length.
-    19. evalue,   Expect value.
-    20. bitscore, Bit score.
-    21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
-    22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
-    23. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
-    24. align,    Alignment text ("|" and " ") between qseq and sseq. (optional with -a/--all)
-
-Result ordering:
-  For a HSP cluster, SimilarityScore = max(bitscore*pident)
-  1. Within each HSP cluster, HSPs are sorted by sstart.
-  2. Within each subject genome, HSP clusters are sorted in descending order by SimilarityScore.
-  3. Results of multiple subject genomes are sorted by the highest SimilarityScore of HSP clusters.
-
+    1.  query,    Query genome ID.
+	2.  subject,  Subject genome ID.
+	3.  ani,      Average nucleotide identity
+	4.  af,       Align fraction
+ 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -161,14 +116,30 @@ Result ordering:
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
+
+		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
+		var reRefName *regexp.Regexp
+		if reRefNameStr != "" {
+			if !regexp.MustCompile(`\(.+\)`).MatchString(reRefNameStr) {
+				checkError(fmt.Errorf(`value of --ref-name-regexp must contains "(" and ")" to capture the ref name from file name`))
+			}
+			if !reIgnoreCase.MatchString(reRefNameStr) {
+				reRefNameStr = reIgnoreCaseStr + reRefNameStr
+			}
+
+			reRefName, err = regexp.Compile(reRefNameStr)
+			if err != nil {
+				checkError(errors.Wrapf(err, "failed to parse regular expression for matching sequence header: %s", reRefName))
+			}
+		}
+
+		windows := getFlagPositiveInt(cmd, "windows")
+
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
-		moreColumns := getFlagBool(cmd, "all")
-		showSseqIdx := getFlagBool(cmd, "show-sseq-idx")
 
-		// maxMismatch := getFlagInt(cmd, "seed-max-mismatch")
 		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
 		if minSinglePrefix > 32 {
 			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
@@ -177,20 +148,10 @@ Result ordering:
 			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
 		}
 
-		// minMatches := getFlagPositiveInt(cmd, "seed-min-matches")
-		// if minMatches > 32 {
-		// 	checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be <= 32", minMatches))
-		// }
-		// if minMatches < minPrefix {
-		// 	checkError(fmt.Errorf("the value of flag -m/--seed-min-matches (%d) should be >= that of -P/--seed-min-single-prefix (%d)", minMatches, minSinglePrefix))
-		// }
-
 		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
 		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
 		extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
-		// if extLen < 1000 {
-		// 	checkError(fmt.Errorf("the value of flag --align-ext-len should be >= 1000"))
-		// }
+
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
@@ -200,7 +161,6 @@ Result ordering:
 			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
 		}
 		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
-		// maxAlignMismatch := getFlagPositiveInt(cmd, "align-max-kmer-dist")
 		alignBand := getFlagPositiveInt(cmd, "align-band")
 		if alignBand < maxAlignMaxGap {
 			checkError(fmt.Errorf("the value of flag --align-band should not be smaller thant the value of --align-max-gap"))
@@ -210,18 +170,12 @@ Result ordering:
 		if minQcovGenome > 100 {
 			checkError(fmt.Errorf("the value of flag -Q/--min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
 		}
-		// } else if minQcovGenome < 1 {
-		// 	log.Warningf("the value of flag -Q/--min-qcov-per-genome is percentage in a range of [0, 100], you set: %f", minQcovGenome)
-		// }
 		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
 		if minIdent < 60 || minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [60, 100]", minIdent))
 		}
 		maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
 
-		// } else if minIdent < 1 {
-		// 	log.Warningf("the value of flag -i/--align-min-match-pident is percentage in a range of [0, 100], you set: %f", minIdent)
-		// }
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
 			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
@@ -290,11 +244,6 @@ Result ordering:
 
 		gc := gcInterval > 0
 
-		// maxSeedingConcurrency := getFlagNonNegativeInt(cmd, "max-seed-conc")
-		// if maxSeedingConcurrency == 0 {
-		// 	maxSeedingConcurrency = runtime.NumCPU()
-		// }
-
 		// ---------------------------------------------------------------
 		// loading index
 
@@ -309,15 +258,11 @@ Result ordering:
 			Log2File:     opt.Log2File,
 			MaxOpenFiles: maxOpenFiles,
 
-			// MaxSeedingConcurrency: maxSeedingConcurrency,
-
-			MinPrefix: uint8(minPrefix),
-			// MaxMismatch:     maxMismatch,
+			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),
-			// MinMatchedBases: uint8(minMatches),
-			TopN:           topn,
-			TopNChains:     topNChains,
-			InMemorySearch: inMemorySearch,
+			TopN:            topn,
+			TopNChains:      topNChains,
+			InMemorySearch:  inMemorySearch,
 
 			MaxGap:      float64(maxGap),
 			MaxDistance: float64(maxDist),
@@ -328,7 +273,7 @@ Result ordering:
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
 
-			OutputSeq: moreColumns,
+			OutputSeq: false,
 
 			Debug: getFlagBool(cmd, "debug"),
 
@@ -337,23 +282,9 @@ Result ordering:
 			TaxIds:                  taxids,
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
+
+			Windows: windows,
 		}
-
-		// read info file to get the contig interval size
-		// fileInfo := filepath.Join(dbDir, FileInfo)
-		// info, err := readIndexInfo(fileInfo)
-		// if err != nil {
-		// 	checkError(fmt.Errorf("failed to read index info file: %s", err))
-		// }
-
-		// if extLen > info.ContigInterval {
-		// 	log.Infof("the value of flag --align-ext-len (%d) is adjusted to contig interval length in database (%d)", extLen, info.ContigInterval)
-		// 	sopt.ExtendLength = info.ContigInterval
-		// }
-		// if maxDist > info.ContigInterval {
-		// 	log.Infof("the value of flag --seed-max-dist (%d) is adjusted to contig interval length in database (%d)", maxDist, info.ContigInterval)
-		// 	sopt.MaxDistance = float64(info.ContigInterval)
-		// }
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
@@ -422,21 +353,18 @@ Result ordering:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\tcls\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
-		if moreColumns {
-			fmt.Fprintf(outfh, "\tcigar\tqseq\tsseq\talign")
-		}
+		fmt.Fprintf(outfh, "query\tsubject\tani\taf")
 		fmt.Fprintln(outfh)
-
-		gcIntervalMinus1 := gcInterval - 1
-		id2name := idx.BatchGenomeIndex2GenomeID
 
 		// -------  output function -------
 
-		printResult := func(q *Query) {
+		gcIntervalMinus1 := gcInterval - 1
+		// id2name := idx.BatchGenomeIndex2GenomeID
+
+		printResult := func(q *GQuery) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
-				poolQuery.Put(q)
+				RecycleGQuery(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
 					runtime.GC()
@@ -451,80 +379,7 @@ Result ordering:
 				}
 			}
 
-			queryID := q.seqID
-			// var c int
-			// var v *index.SubstrPair
-			// var i int
-			// var subs *[]*index.SubstrPair
-			var sd *SimilarityDetail
-			var cr *SeqComparatorResult
-			var c *Chain2Result
-			var targets = len(*q.result)
-			matched++
-
-			var strand byte
-			var _c, j int
-			for _, r := range *q.result { // each genome
-				_c = 1
-				j = 1
-				for _, sd = range *r.SimilarityDetails { // each chain
-					cr = sd.Similarity
-
-					// if sd.RC {
-					// 	strand = '-'
-					// } else {
-					// 	strand = '+'
-					// }
-
-					for _, c = range *cr.Chains { // each match
-						if c == nil {
-							continue
-						}
-
-						if sd.RC {
-							strand = '-'
-						} else {
-							strand = '+'
-						}
-
-						if showSseqIdx {
-							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\tc%d/%d:s%d/%d:%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-								queryID, len(q.seq),
-								targets, id2name[r.BatchGenomeIndex], sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID, r.AlignedFraction,
-								_c,
-								j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
-								c.QBegin+1, c.QEnd+1,
-								c.TBegin+1, c.TEnd+1,
-								strand, sd.SeqLen,
-								c.Evalue, c.BitScore,
-							)
-						} else {
-							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-								queryID, len(q.seq),
-								targets, id2name[r.BatchGenomeIndex], sd.SeqID, r.AlignedFraction,
-								_c,
-								j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
-								c.QBegin+1, c.QEnd+1,
-								c.TBegin+1, c.TEnd+1,
-								strand, sd.SeqLen,
-								c.Evalue, c.BitScore,
-							)
-						}
-						if moreColumns {
-							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
-						}
-
-						fmt.Fprintln(outfh)
-
-						j++
-					}
-					_c++
-				}
-				outfh.Flush()
-			}
-			idx.RecycleSearchResults(q.result)
-
-			poolQuery.Put(q)
+			RecycleGQuery(q)
 			outfh.Flush()
 
 			if gc && total&gcIntervalMinus1 == 0 {
@@ -532,7 +387,7 @@ Result ordering:
 			}
 		}
 
-		ch := make(chan *Query, maxQueryConcurrency)
+		ch := make(chan *GQuery, maxQueryConcurrency)
 		done := make(chan int)
 		go func() {
 
@@ -548,53 +403,41 @@ Result ordering:
 		var wg sync.WaitGroup
 		tokens := make(chan int, maxQueryConcurrency)
 
-		var record *fastx.Record
-		K := idx.k
+		gr := NewGenomeReader(idx.k, reRefName)
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
 			checkError(err)
 
-			for {
-				record, err = fastxReader.Read()
-				if err != nil {
-					if err == io.EOF {
-						break
-					}
-					checkError(err)
-					break
-				}
+			tokens <- 1
+			wg.Add(1)
 
-				query := poolQuery.Get().(*Query)
-				query.Reset()
+			// 1. read all sequences of the query genome
 
-				if len(record.Seq.Seq) < K {
-					query.result = nil
-					ch <- query
-					continue
-				}
+			query, err := gr.Read(file)
+			checkError(err)
+			// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
 
-				tokens <- 1
-				wg.Add(1)
+			// 2. search possible genome matches
+			// need to use kv.Search2(kmers []*[]uint64, ...)
+			genomeIds, err := idx.GSearch(query)
+			checkError(err)
 
-				query.seqID = append(query.seqID, record.ID...)
-				query.seq = append(query.seq, bytes.ToUpper(record.Seq.Seq)...)
+			// 3. align and compute similarity
 
-				go func(query *Query) {
-					defer func() {
-						<-tokens
-						wg.Done()
-					}()
+			go func(query *GQuery) {
+				defer func() {
+					<-tokens
+					wg.Done()
+				}()
 
-					var err error
-					query.result, err = idx.Search(query)
-					if err != nil {
-						checkError(err)
-					}
+				// search fragments for the query
 
-					ch <- query
-				}(query)
-			}
+				idx.RecycleGSearchResult(genomeIds)
+
+				ch <- query
+			}(query)
+
 			fastxReader.Close()
 		}
 		wg.Wait()
@@ -622,103 +465,92 @@ Result ordering:
 }
 
 func init() {
-	RootCmd.AddCommand(mapCmd)
+	RootCmd.AddCommand(gsearchCmd)
 
-	mapCmd.Flags().StringP("index", "d", "",
+	gsearchCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	mapCmd.Flags().StringP("out-file", "o", "-",
+	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
+
+	gsearchCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
-	mapCmd.Flags().IntP("max-open-files", "", 1024,
+	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
-	mapCmd.Flags().BoolP("show-sseq-idx", "", false,
-		formatFlagUsage(`Add 1-based genome chunk and subject sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 means chunk 2 of 3 and s1/10 means sequence 1 of 10.`))
-
-	mapCmd.Flags().BoolP("all", "a", false,
-		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
-
-	mapCmd.Flags().IntP("max-query-conc", "J", 8,
+	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
 
-	mapCmd.Flags().IntP("gc-interval", "", 64,
+	gsearchCmd.Flags().IntP("gc-interval", "", 64,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
-
-	// mapCmd.Flags().IntP("max-seed-conc", "S", 8,
-	// 	formatFlagUsage(`Maximum number of concurrent seed file matching. Bigger values improve seed matching speed in SSD.`))
 
 	// seed searching
 
-	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
+	gsearchCmd.Flags().IntP("windows", "W", 10,
+		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
+
+	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors).`))
 
-	mapCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
+	gsearchCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
 		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors) if there's only one pair of seeds matched.`))
 
-	// mapCmd.Flags().IntP("seed-min-matches", "m", 20,
-	// 	formatFlagUsage(`Minimum matched bases in the only one pair of seeds.`))
-
-	// mapCmd.Flags().IntP("seed-max-mismatch", "m", -1,
-	// 	formatFlagUsage(`Maximum mismatch between non-prefix regions of shared substrings.`))
-
-	mapCmd.Flags().IntP("seed-max-gap", "", 50,
+	gsearchCmd.Flags().IntP("seed-max-gap", "", 50,
 		formatFlagUsage(`Minimum gap in seed chaining.`))
-	mapCmd.Flags().IntP("seed-max-dist", "", 1000,
+	gsearchCmd.Flags().IntP("seed-max-dist", "", 1000,
 		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
-	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
+	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 100. (default 0)`))
 
-	mapCmd.Flags().IntP("top-n-chains", "N", 0,
+	gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
 		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
 
-	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
+	gsearchCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
 
 	// pseudo alignment
-	mapCmd.Flags().IntP("align-ext-len", "", 1000,
+	gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	mapCmd.Flags().IntP("align-max-gap", "", 20,
+	gsearchCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
-	// mapCmd.Flags().IntP("align-max-kmer-dist", "", 100,
-	// 	formatFlagUsage(`Maximum distance of (>=11bp) k-mers in a HSP segment.`))
-	mapCmd.Flags().IntP("align-band", "", 100,
+	gsearchCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
-	mapCmd.Flags().IntP("align-min-match-len", "l", 50,
+	gsearchCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
 	// general filtering thresholds
 
-	mapCmd.Flags().Float64P("align-min-match-pident", "i", 70,
+	gsearchCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
-	mapCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,
+	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
-	mapCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
+	gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
 		formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
 
-	mapCmd.Flags().Float64P("max-evalue", "e", 10,
+	gsearchCmd.Flags().Float64P("max-evalue", "e", 10,
 		formatFlagUsage(`Maximum evalue of a HSP segment.`))
 
-	mapCmd.Flags().BoolP("debug", "", false,
+	gsearchCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
 
-	mapCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]"))
+	gsearchCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]"))
 
 	// filter by taxids
 
-	mapCmd.Flags().StringP("taxdump", "T", "",
+	gsearchCmd.Flags().StringP("taxdump", "T", "",
 		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp, etc.), needed for filtering results with TaxIds. For other non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to create taxdump files.`))
-	mapCmd.Flags().StringP("genome2taxid", "G", "",
+	gsearchCmd.Flags().StringP("genome2taxid", "G", "",
 		formatFlagUsage(`Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. Genome IDs in the index can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut"`))
-	mapCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,
+	gsearchCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,
 		formatFlagUsage(`Keep genome hits without TaxId, i.e., those without TaxId in the --genome2taxid file.`))
-	mapCmd.Flags().StringSliceP("taxids", "t", []string{},
+	gsearchCmd.Flags().StringSliceP("taxids", "t", []string{},
 		formatFlagUsage(`TaxIds(s) for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
-	mapCmd.Flags().StringP("taxid-file", "", "",
+	gsearchCmd.Flags().StringP("taxid-file", "", "",
 		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
 }

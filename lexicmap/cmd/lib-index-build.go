@@ -424,8 +424,11 @@ const BITS_POSITION = 28
 // MAX_GENOME_SIZE is the maximum genome size, 268435456
 const MAX_GENOME_SIZE = 1 << BITS_POSITION
 
-// BITS_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
+// BITS_STRAND is the number of bits to indicate if the k-mer is from the reverse complement strand.
 const BITS_STRAND = 1
+
+// MASK_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
+const MASK_STRAND = 1
 
 // BITS_SUFFIX_IDX is the flag to indicate if the k-mer is reversed.
 const BITS_REVERSE = 1
@@ -434,7 +437,7 @@ const BITS_REVERSE = 1
 const MASK_REVERSE = 1
 
 // BITS_IDX is the number of bits to strore batch index and genome index.
-const BITS_IDX = BITS_BATCH_IDX + BITS_BATCH_IDX
+const BITS_IDX = BITS_BATCH_IDX + BITS_GENOME_IDX
 
 // BITS_NONE_POS is the number of bits except for position
 const BITS_NONE_POS = 64 - BITS_POSITION
@@ -991,7 +994,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// skip gap regions (N's)
 				gaps := reGaps.FindAllSubmatchIndex(refseq.Seq, -1)
 				if gaps != nil {
-					if _skipRegions == nil {
+					if _skipRegions == nil { // only one contig is available
 						skipRegions = poolSkipRegions.Get().(*[][2]int)
 						*skipRegions = (*skipRegions)[:0]
 					}

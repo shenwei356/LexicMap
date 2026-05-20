@@ -95,6 +95,9 @@ type IndexSearchingOptions struct {
 	TaxIds                  []uint32
 	NegativeTaxIds          []uint32
 	KeepGenomesWithoutTaxId bool
+
+	// For searching genomes
+	Windows int // the number of windows, in each window k-mers are masked.
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -189,6 +192,11 @@ type Index struct {
 	genomeIdx2TaxId       map[uint64]uint32
 	Taxonomy              *taxdump.Taxonomy
 	poolTaxIDfilter       *sync.Pool
+
+	// For searching genomes
+	poolGSearchResult     *sync.Pool
+	poolGSearchResultsMap *sync.Pool
+	poolGSearchResults    *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -381,9 +389,24 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.k8 = uint8(idx.lh.K)
 	idx.k = idx.lh.K
 
-	if opt.MinPrefix > idx.k8 { // check again
-		return nil, fmt.Errorf("MinPrefix (%d) should not be <= k (%d)", opt.MinPrefix, idx.k8)
+	if opt.MinPrefix > idx.k8 || int(opt.MinPrefix) < lenPrefix { // check again
+		return nil, fmt.Errorf("MinPrefix (%d) should be in the range of [%d, %d]", opt.MinPrefix, lenPrefix, idx.k8)
 	}
+
+	// for genome searching
+	idx.poolGSearchResult = &sync.Pool{New: func() interface{} {
+		return &GSearchResultDetail{
+			Hits: make([]uint32, len(idx.lh.Masks)),
+		}
+	}}
+	idx.poolGSearchResultsMap = &sync.Pool{New: func() interface{} {
+		tmp := make(map[uint64]*GSearchResultDetail, 1024)
+		return &tmp
+	}}
+	idx.poolGSearchResults = &sync.Pool{New: func() interface{} {
+		tmp := make([]*GSearchResultDetail, 0, 1024)
+		return &tmp
+	}}
 
 	// -----------------------------------------------------
 	// read genome chunks data if existed
@@ -860,7 +883,7 @@ type SearchResult struct {
 	// ID          []byte
 	GenomeSize int
 
-	Score  float32 //  score for soring
+	Score  float32 //  score for sorting
 	Chains *[]*[]int32
 
 	// more about the alignment detail
@@ -1235,7 +1258,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				for _, posQ = range locs {
 					// query k-mers do not have the reverse flag !!!!
-					rcQ = posQ&BITS_STRAND > 0 // if on the reverse complement sequence
+					rcQ = posQ&MASK_STRAND > 0 // if on the reverse complement sequence
 					posQ >>= BITS_STRAND
 
 					// matched
@@ -1302,8 +1325,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 						// posT = int(refpos << 34 >> 35)
 						posT = int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
-						rvT = refpos&BITS_REVERSE > 0
-						rcT = refpos>>BITS_REVERSE&BITS_REVERSE > 0
+						rvT = refpos&MASK_REVERSE > 0
+						rcT = refpos>>BITS_REVERSE&MASK_STRAND > 0
 
 						if !rvT {
 							// query location
@@ -1771,7 +1794,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 		// for remove duplicated alignments
 		var duplicated bool
-		hashes := poolHashes.Get().(*map[uint64]interface{})
+		hashes := poolUint64Map.Get().(*map[uint64]interface{})
 		var hash uint64
 
 		var tSeq *genome.Genome
@@ -2490,7 +2513,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		genome.RecycleGenome(tSeq)
 
 		clear(*hashes)
-		poolHashes.Put(hashes)
+		poolUint64Map.Put(hashes)
 		wfa.RecycleAligner(algn)
 
 		if len(*sds) == 0 { // no valid alignments
@@ -2787,7 +2810,7 @@ var poolBounds = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-var poolHashes = &sync.Pool{New: func() interface{} {
+var poolUint64Map = &sync.Pool{New: func() interface{} {
 	tmp := make(map[uint64]interface{}, 128)
 	return &tmp
 }}
