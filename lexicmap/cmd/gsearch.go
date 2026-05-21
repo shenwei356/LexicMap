@@ -138,6 +138,7 @@ Output format:
 		if fragSize < 100 {
 			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
 		}
+		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
@@ -273,7 +274,7 @@ Output format:
 			MaxDistance: float64(maxDist),
 
 			ExtendLength:  extLen,
-			ExtendLength2: 50,
+			ExtendLength2: 150,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
@@ -324,9 +325,9 @@ Output format:
 			if sopt.TopN > 0 {
 				log.Infof("  keep the top %d genomes", sopt.TopN)
 			}
-			if sopt.TopNChains > 0 {
-				log.Infof("  keep the top %d chains", sopt.TopNChains)
-			}
+			// if sopt.TopNChains > 0 {
+			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
+			// }
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
@@ -374,6 +375,7 @@ Output format:
 				return
 			}
 
+			matched++
 			if verbose {
 				if (total < 128 && total&7 == 0) || total&127 == 0 {
 					speed = float64(total) / time.Since(timeStart1).Minutes()
@@ -436,7 +438,7 @@ Output format:
 				checkError(err)
 
 				// 3. search fragments for the query
-				err = idx.GSearchAlign(query, fragSize, genomeIds, maxQueryConcurrency, gcInterval)
+				err = idx.GSearchAlign(query, fragSize, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 				checkError(err)
 
 				// clear up
@@ -516,9 +518,9 @@ func init() {
 	gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	gsearchCmd.Flags().IntP("align-max-gap", "", 20,
+	gsearchCmd.Flags().IntP("align-max-gap", "", 75,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
-	gsearchCmd.Flags().IntP("align-band", "", 100,
+	gsearchCmd.Flags().IntP("align-band", "", 150,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
 	gsearchCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
@@ -563,4 +565,6 @@ func init() {
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
+	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
+		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
 }

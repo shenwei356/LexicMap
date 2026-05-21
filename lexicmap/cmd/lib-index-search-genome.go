@@ -23,6 +23,7 @@ package cmd
 import (
 	"cmp"
 	"fmt"
+	"os"
 	"runtime"
 	"slices"
 	"sync"
@@ -32,6 +33,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 // GSearchResultDetail is for storing genome search details
@@ -87,9 +90,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 
 	if idx.opt.Debug {
 		startTime0 := time.Now()
-		log.Debugf("%s (%s bp): start to search genome", query.id, humanize.Comma(int64(query.genomeSize)))
+		log.Debugf("%s (%s bp): start to screen genomes", query.id, humanize.Comma(int64(query.genomeSize)))
 		defer func() {
-			log.Debugf("%s (%s bp): finished searching genome in %.3f seconds",
+			log.Debugf("%s (%s bp): finished screening genomes in %.3f seconds",
 				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
 		}()
 	}
@@ -471,10 +474,22 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 // GSearchAlign align fragments of a query to candidates genomes.
 func (idx *Index) GSearchAlign(
 	query *GQuery, fragLen int, genomeIds *map[uint64]interface{},
+	minAF float64,
 	maxQueryConcurrency int, gcInterval uint64) error {
 
 	if fragLen < 100 {
 		return fmt.Errorf("fragment length is too small")
+	}
+
+	debug := idx.opt.Debug
+
+	if debug {
+		startTime0 := time.Now()
+		log.Debugf("%s (%s bp): start to align fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+		defer func() {
+			log.Debugf("%s (%s bp): finished aligning fragments in %.3f seconds",
+				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
+		}()
 	}
 
 	if maxQueryConcurrency == 0 {
@@ -488,6 +503,47 @@ func (idx *Index) GSearchAlign(
 		}
 	}
 	gcIntervalMinus1 := gcInterval - 1
+
+	// -----------------------------------------------------------
+	// process bar
+	var pbs *mpb.Progress
+	var bar *mpb.Bar
+	var chDuration chan time.Duration
+	var doneDuration chan int
+	if debug {
+		// jobs
+		var nJobs int
+		var contig *[]byte
+		for _, contig = range query.seqs {
+			nJobs += len(*contig) / fragLen
+			if len(*contig)%fragLen >= 100 {
+				nJobs++
+			}
+		}
+
+		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+		bar = pbs.AddBar(int64(nJobs),
+			mpb.PrependDecorators(
+				decor.Name("checked fragments: ", decor.WC{W: len("checked fragments: "), C: decor.DindentRight}),
+				decor.Name("", decor.WCSyncSpaceR),
+				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+			),
+			mpb.AppendDecorators(
+				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
+				decor.OnComplete(decor.Name(""), ". done"),
+			),
+		)
+
+		chDuration = make(chan time.Duration, idx.opt.NumCPUs)
+		doneDuration = make(chan int)
+		go func() {
+			for t := range chDuration {
+				bar.EwmaIncrBy(1, t)
+			}
+			doneDuration <- 1
+		}()
+	}
 
 	// -----------------------------------------------------------
 
@@ -646,11 +702,24 @@ func (idx *Index) GSearchAlign(
 
 		// ---------------------------------------
 		// 1.4) compute ani and af
-		for _, gr = range *rs {
+		j := 0
+		for _, gr := range *rs {
 			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
 			gr.AF = float64(gr.AlignedLength) / float64(query.genomeSize)
+
+			if gr.AF < minAF {
+				poolGSearchResult.Put(gr)
+				continue
+			}
+
 			gr.Score = gr.ANI * gr.AF
+
+			(*rs)[j] = gr
+			j++
+
 		}
+		*rs = (*rs)[:j]
+
 		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
 			return cmp.Compare(b.Score, a.Score)
 		})
@@ -664,6 +733,7 @@ func (idx *Index) GSearchAlign(
 	var i, j, end0, s, e int
 	var contig *[]byte
 	buf8 := make([]byte, 8)
+	fcpus := float64(idx.opt.NumCPUs)
 	for i, contig = range query.seqs {
 		end0 = len(*contig)
 		for j = 0; j < end0; j += fragLen {
@@ -690,13 +760,17 @@ func (idx *Index) GSearchAlign(
 			tokens <- 1
 			wg.Add(1)
 			go func(i, j int, q *Query) {
+				timeStart := time.Now()
 				defer func() {
 					<-tokens
 					wg.Done()
+					if debug {
+						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+					}
 				}()
 
 				var err error
-				q.result, err = idx.Search(q, genomeIds)
+				q.result, err = idx.Search(q, genomeIds, false)
 				if err != nil {
 					checkError(fmt.Errorf("search contig #%d, fragment %d-%d: %s",
 						i+1, j*fragLen+1, (j+1)*fragLen, err))
@@ -710,6 +784,13 @@ func (idx *Index) GSearchAlign(
 	wg.Wait()
 	close(ch)
 	<-done
+
+	// process bar
+	if debug {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+	}
 
 	return nil
 }

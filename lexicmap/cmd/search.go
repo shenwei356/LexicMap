@@ -587,7 +587,7 @@ Result ordering:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query, nil)
+					query.result, err = idx.Search(query, nil, idx.opt.Debug)
 					if err != nil {
 						checkError(err)
 					}
