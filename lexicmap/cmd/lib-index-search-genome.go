@@ -37,23 +37,23 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
-// GSearchResultDetail is for storing genome search details
-type GSearchResultDetail struct {
+// GSearchScreenResultDetail is for storing genome search details
+type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
 	Hits             []uint8  // count how many many k-mers are matched for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
-func (idx *Index) RecycleGSearchDetailResult(r *GSearchResultDetail) {
+func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.Score = 0
 	clear(r.Hits)
 	idx.poolGSearchDetailResult.Put(r)
 }
 
-// RecycleGSearchDetailResultsMap recycles a map of GSearchResultDetail
-func (idx *Index) RecycleGSearchDetailResultsMap(m *map[uint64]*GSearchResultDetail) {
+// RecycleGSearchScreenDetailResultsMap recycles a map of GSearchResultDetail
+func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScreenResultDetail) {
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
@@ -64,8 +64,8 @@ func (idx *Index) RecycleGSearchDetailResultsMap(m *map[uint64]*GSearchResultDet
 	idx.poolGSearchDetailResultsMap.Put(m)
 }
 
-// RecycleGSearchDetailResults recycles a list of GSearchResultDetail
-func (idx *Index) RecycleGSearchDetailResults(rs *[]*GSearchResultDetail) {
+// RecycleGSearchScreenDetailResults recycles a list of GSearchResultDetail
+func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDetail) {
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
@@ -76,8 +76,8 @@ func (idx *Index) RecycleGSearchDetailResults(rs *[]*GSearchResultDetail) {
 	idx.poolGSearchDetailResults.Put(rs)
 }
 
-// RecycleGSearchResult recycles the result of GSearch()
-func (idx *Index) RecycleGSearchResult(whiteList *map[uint64]interface{}) {
+// RecycleGSearchScreenResult recycles the result of GSearch()
+func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]interface{}) {
 	clear(*whiteList)
 	poolUint64Map.Put(whiteList)
 }
@@ -88,12 +88,15 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 		return nil, fmt.Errorf("window size needs to be > 0")
 	}
 
+	whiteList := poolUint64Map.Get().(*map[uint64]interface{})
+	clear(*whiteList)
+
 	if idx.opt.Debug {
 		startTime0 := time.Now()
 		log.Debugf("%s (%s bp): start to screen genomes", query.id, humanize.Comma(int64(query.genomeSize)))
 		defer func() {
-			log.Debugf("%s (%s bp): finished screening genomes in %.3f seconds",
-				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
+			log.Debugf("%s (%s bp): finished screening genomes in %.3f seconds, got %d candidates",
+				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds(), len(*whiteList))
 		}()
 	}
 
@@ -163,7 +166,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 	// ------------------------------------------------------
 	// 2. search k-mers and return the most similar genomes
 
-	m := idx.poolGSearchDetailResultsMap.Get().(*map[uint64]*GSearchResultDetail)
+	m := idx.poolGSearchDetailResultsMap.Get().(*map[uint64]*GSearchScreenResultDetail)
 
 	inMemorySearch := idx.opt.InMemorySearch
 	var searchers []*kv.Searcher
@@ -267,9 +270,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 						}
 					}
 
-					var r *GSearchResultDetail
+					var r *GSearchScreenResultDetail
 					if r, ok = (*m)[refBatchAndIdxUint64]; !ok {
-						r = idx.poolGSearchDetailResult.Get().(*GSearchResultDetail)
+						r = idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
 
 						r.BatchGenomeIndex = append(r.BatchGenomeIndex, refBatchAndIdxUint64)
 
@@ -343,23 +346,23 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 	<-done
 
 	if len(*m) == 0 { // no results
-		idx.RecycleGSearchDetailResultsMap(m)
+		idx.RecycleGSearchScreenDetailResultsMap(m)
 		return nil, nil
 	}
 
 	// collect and store with a list
-	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchResultDetail)
+	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchScreenResultDetail)
 	for _, r := range *m {
 		*rs = append(*rs, r)
 	}
 	clear(*m)
-	idx.RecycleGSearchDetailResultsMap(m)
+	idx.RecycleGSearchScreenDetailResultsMap(m)
 
 	// 2.3) handle chunked genomes
 
 	// merge search result from genome chunks, if has split genome
 	if idx.hasGenomeChunks {
-		var r, rp *GSearchResultDetail
+		var r, rp *GSearchScreenResultDetail
 		var i, j, _i int
 		var a uint64
 		var v uint8
@@ -404,7 +407,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 					rp.Hits[_i] += v
 				}
 
-				idx.RecycleGSearchDetailResult(r)
+				idx.RecycleGSearchScreenDetailResult(r)
 				(*rs)[j] = nil
 			}
 
@@ -433,15 +436,12 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 
 	// 2.4) sort
 	topN := idx.opt.TopN
-	slices.SortFunc(*rs, func(a, b *GSearchResultDetail) int {
+	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
 		return cmp.Compare(b.Score, a.Score)
 	})
 	if topN > 0 && len(*rs) > topN {
 		*rs = (*rs)[:topN]
 	}
-
-	whiteList := poolUint64Map.Get().(*map[uint64]interface{})
-	clear(*whiteList)
 
 	// fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
 	var refBatchAndIdxUint64 uint64
@@ -485,9 +485,9 @@ func (idx *Index) GSearchAlign(
 
 	if debug {
 		startTime0 := time.Now()
-		log.Debugf("%s (%s bp): start to align fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+		log.Debugf("%s (%s bp): start to align genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
 		defer func() {
-			log.Debugf("%s (%s bp): finished aligning fragments in %.3f seconds",
+			log.Debugf("%s (%s bp): finished aligning genome fragments in %.3f seconds",
 				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
 		}()
 	}

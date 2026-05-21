@@ -394,16 +394,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// for genome searching
 	idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
-		return &GSearchResultDetail{
+		return &GSearchScreenResultDetail{
 			Hits: make([]uint8, len(idx.lh.Masks)),
 		}
 	}}
 	idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
-		tmp := make(map[uint64]*GSearchResultDetail, 1024)
+		tmp := make(map[uint64]*GSearchScreenResultDetail, 1024)
 		return &tmp
 	}}
 	idx.poolGSearchDetailResults = &sync.Pool{New: func() interface{} {
-		tmp := make([]*GSearchResultDetail, 0, 1024)
+		tmp := make([]*GSearchScreenResultDetail, 0, 1024)
 		return &tmp
 	}}
 

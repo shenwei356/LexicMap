@@ -439,14 +439,16 @@ Output format:
 
 				runtime.GC()
 
-				// 3. search fragments for the query
-				// TODO: extract the candidate genome and directly align with them
-				err = idx.GSearchAlign(query, fragSize, genomeIds, minAF, maxQueryConcurrency, gcInterval)
-				checkError(err)
+				if genomeIds != nil {
+					// 3. search fragments for the query
+					// TODO: extract the candidate genome and directly align with them
+					err = idx.GSearchAlign(query, fragSize, genomeIds, minAF, maxQueryConcurrency, gcInterval)
+					checkError(err)
 
-				// clear up
+					// clear up
 
-				idx.RecycleGSearchResult(genomeIds)
+					idx.RecycleGSearchScreenResult(genomeIds)
+				}
 
 				ch <- query
 			}(file)
