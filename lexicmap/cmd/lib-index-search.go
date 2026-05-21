@@ -193,9 +193,9 @@ type Index struct {
 	poolTaxIDfilter       *sync.Pool
 
 	// For searching genomes
-	poolGSearchResult     *sync.Pool
-	poolGSearchResultsMap *sync.Pool
-	poolGSearchResults    *sync.Pool
+	poolGSearchDetailResult     *sync.Pool
+	poolGSearchDetailResultsMap *sync.Pool
+	poolGSearchDetailResults    *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -393,16 +393,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	// for genome searching
-	idx.poolGSearchResult = &sync.Pool{New: func() interface{} {
+	idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
 		return &GSearchResultDetail{
-			Hits: make([]uint32, len(idx.lh.Masks)),
+			Hits: make([]uint8, len(idx.lh.Masks)),
 		}
 	}}
-	idx.poolGSearchResultsMap = &sync.Pool{New: func() interface{} {
+	idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
 		tmp := make(map[uint64]*GSearchResultDetail, 1024)
 		return &tmp
 	}}
-	idx.poolGSearchResults = &sync.Pool{New: func() interface{} {
+	idx.poolGSearchDetailResults = &sync.Pool{New: func() interface{} {
 		tmp := make([]*GSearchResultDetail, 0, 1024)
 		return &tmp
 	}}

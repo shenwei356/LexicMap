@@ -437,7 +437,10 @@ Output format:
 				genomeIds, err := idx.GSearchScreen(query, windows)
 				checkError(err)
 
+				runtime.GC()
+
 				// 3. search fragments for the query
+				// TODO: extract the candidate genome and directly align with them
 				err = idx.GSearchAlign(query, fragSize, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 				checkError(err)
 

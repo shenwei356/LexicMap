@@ -41,39 +41,39 @@ import (
 type GSearchResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
-	Hits             []uint32 // count how many many k-mers are matched
+	Hits             []uint8  // count how many many k-mers are matched for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
-func (idx *Index) RecycleGSearchResultDetail(r *GSearchResultDetail) {
+func (idx *Index) RecycleGSearchDetailResult(r *GSearchResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.Score = 0
 	clear(r.Hits)
-	idx.poolGSearchResult.Put(r)
+	idx.poolGSearchDetailResult.Put(r)
 }
 
-// RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
-func (idx *Index) RecycleGSearchResultDetailsMap(m *map[uint64]*GSearchResultDetail) {
+// RecycleGSearchDetailResultsMap recycles a map of GSearchResultDetail
+func (idx *Index) RecycleGSearchDetailResultsMap(m *map[uint64]*GSearchResultDetail) {
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
 		clear(r.Hits)
-		idx.poolGSearchResult.Put(r)
+		idx.poolGSearchDetailResult.Put(r)
 	}
 	clear(*m)
-	idx.poolGSearchResultsMap.Put(m)
+	idx.poolGSearchDetailResultsMap.Put(m)
 }
 
-// RecycleGSearchResultDetails recycles a list of GSearchResultDetail
-func (idx *Index) RecycleGSearchResultDetails(rs *[]*GSearchResultDetail) {
+// RecycleGSearchDetailResults recycles a list of GSearchResultDetail
+func (idx *Index) RecycleGSearchDetailResults(rs *[]*GSearchResultDetail) {
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
 		clear(r.Hits)
-		idx.poolGSearchResult.Put(r)
+		idx.poolGSearchDetailResult.Put(r)
 	}
 	*rs = (*rs)[:0]
-	idx.poolGSearchResults.Put(rs)
+	idx.poolGSearchDetailResults.Put(rs)
 }
 
 // RecycleGSearchResult recycles the result of GSearch()
@@ -163,7 +163,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 	// ------------------------------------------------------
 	// 2. search k-mers and return the most similar genomes
 
-	m := idx.poolGSearchResultsMap.Get().(*map[uint64]*GSearchResultDetail)
+	m := idx.poolGSearchDetailResultsMap.Get().(*map[uint64]*GSearchResultDetail)
 
 	inMemorySearch := idx.opt.InMemorySearch
 	var searchers []*kv.Searcher
@@ -269,7 +269,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 
 					var r *GSearchResultDetail
 					if r, ok = (*m)[refBatchAndIdxUint64]; !ok {
-						r = idx.poolGSearchResult.Get().(*GSearchResultDetail)
+						r = idx.poolGSearchDetailResult.Get().(*GSearchResultDetail)
 
 						r.BatchGenomeIndex = append(r.BatchGenomeIndex, refBatchAndIdxUint64)
 
@@ -343,17 +343,17 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 	<-done
 
 	if len(*m) == 0 { // no results
-		idx.RecycleGSearchResultDetailsMap(m)
+		idx.RecycleGSearchDetailResultsMap(m)
 		return nil, nil
 	}
 
 	// collect and store with a list
-	rs := idx.poolGSearchResults.Get().(*[]*GSearchResultDetail)
+	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchResultDetail)
 	for _, r := range *m {
 		*rs = append(*rs, r)
 	}
 	clear(*m)
-	idx.RecycleGSearchResultDetailsMap(m)
+	idx.RecycleGSearchDetailResultsMap(m)
 
 	// 2.3) handle chunked genomes
 
@@ -362,7 +362,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 		var r, rp *GSearchResultDetail
 		var i, j, _i int
 		var a uint64
-		var v uint32
+		var v uint8
 		var ok bool
 		var li *[]int
 		var ptr uintptr
@@ -404,7 +404,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 					rp.Hits[_i] += v
 				}
 
-				idx.RecycleGSearchResultDetail(r)
+				idx.RecycleGSearchDetailResult(r)
 				(*rs)[j] = nil
 			}
 
@@ -712,6 +712,10 @@ func (idx *Index) GSearchAlign(
 				continue
 			}
 
+			if gr.AF > 1 {
+				gr.AF = 1
+			}
+
 			gr.Score = gr.ANI * gr.AF
 
 			(*rs)[j] = gr
@@ -826,12 +830,12 @@ var poolGSearchResult = &sync.Pool{New: func() interface{} {
 }}
 
 var poolGSearchResults = &sync.Pool{New: func() interface{} {
-	tmp := make([]*GSearchResult, 0, 128)
+	tmp := make([]*GSearchResult, 0, 1024)
 	return &tmp
 }}
 
 var poolGSearchResultMap = &sync.Pool{New: func() interface{} {
-	tmp := make(map[uint64]*GSearchResult, 128)
+	tmp := make(map[uint64]*GSearchResult, 1024)
 	return &tmp
 }}
 
