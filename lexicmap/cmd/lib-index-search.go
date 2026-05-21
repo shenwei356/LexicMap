@@ -97,7 +97,6 @@ type IndexSearchingOptions struct {
 	KeepGenomesWithoutTaxId bool
 
 	// For searching genomes
-	Windows int // the number of windows, in each window k-mers are masked.
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -882,6 +881,7 @@ type SearchResult struct {
 	GenomeIndex int
 	// ID          []byte
 	GenomeSize int
+	NumSeqs    int
 
 	Score  float32 //  score for sorting
 	Chains *[]*[]int32
@@ -976,6 +976,7 @@ func (r *SearchResult) Reset() {
 	r.GenomeIndex = -1
 	// r.ID = r.ID[:0]
 	r.GenomeSize = 0
+	r.NumSeqs = 0
 	r.Subs = nil
 	r.Score = 0
 	r.Chains = nil
@@ -1039,7 +1040,7 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
-func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
+func (idx *Index) Search(query *Query, genomeIds *map[uint64]interface{}) (*[]*SearchResult, error) {
 	var startTime time.Time
 	debug := idx.opt.Debug
 
@@ -1222,6 +1223,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var sr *kv.SearchResult
 		var ok bool
 
+		// filter by taxid
 		var refBatchAndIdxUint64 uint64
 		var filter *map[uint64]bool
 		filterByTaxId := idx.filterByTaxId
@@ -1237,6 +1239,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var _taxid, taxid uint32
 		taxids := idx.opt.TaxIds
 		negativeTaxids := idx.opt.NegativeTaxIds
+
+		// filter by a list of BatchAndIdx
+		filterByGenomeID := genomeIds != nil
 
 		for srs := range ch {
 			// different k-mers in subjects,
@@ -1270,6 +1275,14 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					for _, refpos = range sr.Values {
 						// refBatchAndIdx = int(refpos >> 30) // batch+refIdx
 						refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
+
+						// filter by a white list of subject batch+refIdx
+						if filterByGenomeID {
+							if _, ok = (*genomeIds)[refBatchAndIdxUint64]; !ok {
+								continue
+							}
+						}
+
 						refBatchAndIdx = int(refBatchAndIdxUint64)
 
 						// filter by taxid
@@ -1378,6 +1391,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							r.GenomeIndex = refBatchAndIdx & MASK_GENOME_IDX
 							// r.ID = r.ID[:0] // extract it from genome file later
 							r.GenomeSize = 0
+							r.NumSeqs = 0
 							r.Subs = subs
 							r.Score = 0
 							r.Chains = nil            // important
@@ -1909,6 +1923,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// 	log.Debugf("  checking genome: %s", r.ID)
 				// }
 				r.GenomeSize = tSeq.GenomeSize
+				r.NumSeqs = tSeq.NumSeqs
 			}
 
 			iSeqPre = -1 // the index of previous sequence in this HSP
@@ -2629,7 +2644,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		return nil, nil
 	}
 
-	// merge search result from genome chunks, if has split genome
+	// merge search result from genome chunks, if has chunked genome
 	if idx.hasGenomeChunks {
 		var r, rp *SearchResult
 		var i, j int

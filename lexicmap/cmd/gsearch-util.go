@@ -41,7 +41,7 @@ type GQuery struct {
 
 	genomeSize int
 
-	result interface{} // TODO
+	result *[]*GSearchResult // fragment alignment results
 }
 
 var poolGQuery = &sync.Pool{New: func() interface{} {
@@ -85,9 +85,16 @@ func RecycleGQuery(q *GQuery) {
 		q.skipRegions = q.skipRegions[:0]
 	}
 	q.genomeSize = 0
-	q.result = nil
+
+	if q.result != nil {
+		RecycleGSearchResults(q.result)
+		q.result = nil
+	}
+
 	poolGQuery.Put(q)
 }
+
+// --------------------------------------------------------------
 
 // --------------------------------------------------------------
 
@@ -145,6 +152,7 @@ func (gr *GenomeReader) Read(file string) (*GQuery, error) {
 		*s = (*s)[:0]
 		*s = append(*s, record.Seq.Seq...)
 		q.seqs = append(q.seqs, s)
+		q.genomeSize += len(record.Seq.Seq)
 
 		q.bigSeq = append(q.bigSeq, record.Seq.Seq...)
 	}

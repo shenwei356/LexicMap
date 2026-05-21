@@ -134,6 +134,10 @@ Output format:
 		}
 
 		windows := getFlagPositiveInt(cmd, "windows")
+		fragSize := getFlagPositiveInt(cmd, "frag-size")
+		if fragSize < 100 {
+			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
+		}
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
@@ -153,7 +157,8 @@ Output format:
 		extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
 
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
-		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
+		// topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
+		topNChains := 1
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
@@ -282,8 +287,6 @@ Output format:
 			TaxIds:                  taxids,
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
-
-			Windows: windows,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -353,17 +356,16 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tsubject\tani\taf")
-		fmt.Fprintln(outfh)
+		fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
 
 		// -------  output function -------
 
 		gcIntervalMinus1 := gcInterval - 1
-		// id2name := idx.BatchGenomeIndex2GenomeID
+		id2name := idx.BatchGenomeIndex2GenomeID
 
 		printResult := func(q *GQuery) {
 			total++
-			if q.result == nil { // seqs shorter than K or queries without matches.
+			if q.result == nil || len(*q.result) == 0 { // seqs shorter than K or queries without matches.
 				RecycleGQuery(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
@@ -377,6 +379,12 @@ Output format:
 					speed = float64(total) / time.Since(timeStart1).Minutes()
 					fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f queries per minute\r", total, speed)
 				}
+			}
+
+			for _, gr := range *q.result {
+				fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+					q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AF*100,
+					len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize)
 			}
 
 			RecycleGQuery(q)
@@ -412,31 +420,31 @@ Output format:
 			tokens <- 1
 			wg.Add(1)
 
-			// 1. read all sequences of the query genome
-
-			query, err := gr.Read(file)
-			checkError(err)
-			// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
-
-			// 2. search possible genome matches
-			// need to use kv.Search2(kmers []*[]uint64, ...)
-			genomeIds, err := idx.GSearch(query)
-			checkError(err)
-
-			// 3. align and compute similarity
-
-			go func(query *GQuery) {
+			go func(file string) {
 				defer func() {
 					<-tokens
 					wg.Done()
 				}()
 
-				// search fragments for the query
+				// 1. read all sequences of the query genome
+				query, err := gr.Read(file)
+				checkError(err)
+				// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
+
+				// 2. search possible genome matches
+				genomeIds, err := idx.GSearchScreen(query, windows)
+				checkError(err)
+
+				// 3. search fragments for the query
+				err = idx.GSearchAlign(query, fragSize, genomeIds, maxQueryConcurrency, gcInterval)
+				checkError(err)
+
+				// clear up
 
 				idx.RecycleGSearchResult(genomeIds)
 
 				ch <- query
-			}(query)
+			}(file)
 
 			fastxReader.Close()
 		}
@@ -470,9 +478,6 @@ func init() {
 	gsearchCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
-
 	gsearchCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
@@ -486,9 +491,6 @@ func init() {
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
 
 	// seed searching
-
-	gsearchCmd.Flags().IntP("windows", "W", 10,
-		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 
 	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors).`))
@@ -504,8 +506,8 @@ func init() {
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 100. (default 0)`))
 
-	gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
-		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
+	// gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
+	// 	formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
 
 	gsearchCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
@@ -526,7 +528,7 @@ func init() {
 	gsearchCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
-	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 0,
+	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 70,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
 	gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
@@ -553,4 +555,12 @@ func init() {
 	gsearchCmd.Flags().StringP("taxid-file", "", "",
 		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
+	// genome search
+
+	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
+	gsearchCmd.Flags().IntP("windows", "W", 10,
+		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
+	gsearchCmd.Flags().IntP("frag-size", "", 1020,
+		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
 }
