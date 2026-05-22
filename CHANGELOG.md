@@ -4,6 +4,7 @@
 
 - New commands:
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
+    - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
 

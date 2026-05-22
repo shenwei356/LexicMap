@@ -472,10 +472,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 }
 
 // GSearchAlign align fragments of a query to candidates genomes.
-func (idx *Index) GSearchAlign(
-	query *GQuery, fragLen int, genomeIds *map[uint64]interface{},
-	minAF float64,
-	maxQueryConcurrency int, gcInterval uint64) error {
+// Each fragment is aligned in the classical way.
+func (idx *Index) GSearchAlign(query *GQuery, fragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
 
 	if fragLen < 100 {
 		return fmt.Errorf("fragment length is too small")
@@ -795,6 +793,13 @@ func (idx *Index) GSearchAlign(
 		<-doneDuration
 		pbs.Wait()
 	}
+
+	return nil
+}
+
+// GSearchAlign2 align fragments of a query to candidates genomes.
+// Different from GSearchAlign, this method directly extract candidates genomes for alignment.
+func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
 
 	return nil
 }

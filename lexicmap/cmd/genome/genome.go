@@ -72,8 +72,9 @@ var ErrVersionMismatch = errors.New("genome data: version mismatch")
 
 // Genome represents a reference sequence to insert and a matched subsequence
 type Genome struct {
-	ID  []byte // genome ID
-	Seq []byte // sequence, bases
+	ID   []byte   // genome ID
+	Seq  []byte   // (contatenated) sequence, bases
+	Seqs [][]byte // only used by the method Seqs, for returning all sequences in the form of slices of .Seq
 
 	GenomeSize int       // bases of all sequences
 	Len        int       // length of contatenated sequences
@@ -134,6 +135,7 @@ func (r *Genome) Reset() {
 	r.Locses = nil
 	r.TwoBit = nil
 
+	r.Seqs = nil
 }
 
 const TwentyMB = 20 << 20
@@ -146,6 +148,7 @@ func RecycleGenome(g *Genome) {
 	if cap(g.Seq) > TwentyMB {
 		g.Seq = make([]byte, 0, 1<<20)
 	}
+	g.Seqs = nil
 	if g.TwoBit != nil {
 		RecycleTwoBit(g.TwoBit)
 	}
@@ -474,9 +477,38 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-// Seq returns the sequence with index of genome (0-based).
+// Seq returns the concatenated sequence with an index of genome (0-based).
+// Please call RecycleGenome() after using the result.
 func (r *Reader) Seq(idx int) (*Genome, error) {
 	return r.SubSeq(idx, 0, math.MaxInt)
+}
+
+// Seqs returns all sequences with an index of genome (0-based).
+// Sequences are stored in Genome.Seqs, and Sequence IDs in SeqIDs.
+// Please call RecycleGenome() after using the result.
+func (r *Reader) Seqs(idx int) (*Genome, error) {
+	g, err := r.SubSeq(idx, 0, math.MaxInt)
+	if err != nil {
+		return nil, err
+	}
+
+	g.Seqs = make([][]byte, g.NumSeqs)
+
+	// interval size between contigs
+	var interval int
+	if g.NumSeqs > 1 {
+		interval = (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+	}
+
+	var offset int
+	var seqSize int
+	for i := 0; i < g.NumSeqs; i++ {
+		seqSize = g.SeqSizes[i]
+
+		g.Seqs[i] = g.Seq[offset : offset+seqSize]
+		offset += seqSize + interval
+	}
+	return g, nil
 }
 
 // GenomeInfo returns the genome information of a genome (idx is 0-based),

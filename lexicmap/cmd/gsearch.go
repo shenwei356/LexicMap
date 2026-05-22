@@ -32,7 +32,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
-	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/spf13/cobra"
 )
 
@@ -416,9 +415,6 @@ Output format:
 		gr := NewGenomeReader(idx.k, reRefName)
 
 		for _, file := range files {
-			fastxReader, err := fastx.NewReader(nil, file, "")
-			checkError(err)
-
 			tokens <- 1
 			wg.Add(1)
 
@@ -452,8 +448,6 @@ Output format:
 
 				ch <- query
 			}(file)
-
-			fastxReader.Close()
 		}
 		wg.Wait()
 		close(ch)
