@@ -336,7 +336,7 @@ func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
 }
 
 // WalkFn is used for walking the tree. Takes a
-// key and value, returning if iteration should
+// key and value, returning true if iteration should
 // be terminated.
 // type WalkFn func(key uint64, k uint8, v []uint64) bool
 type WalkFn func(key uint64, v []uint32) bool
@@ -362,6 +362,88 @@ func recursiveWalk(n *node, fn WalkFn) bool {
 	}
 
 	return false
+}
+
+// WalkGroupFn is called once per maximal group of k-mers that share a prefix
+// of at least lenPrefix bases. The keys and vals slices are reused across
+// calls; copy them if you need to retain across invocations.
+// Return true to abort iteration.
+type WalkGroupFn func(keys []uint64, vals [][]uint32, lenPrefix uint8) bool
+
+// WalkGroups visits each maximal subtree whose leaves share a prefix of at
+// least p bases, calling fn once per group with all k-mers in that subtree.
+// lenPrefix is the guaranteed minimum LCP within the group; specific pairs
+// may share more. Singleton groups (one k-mer) are also reported.
+// Returns true if iteration was aborted.
+func (t *Tree) WalkGroups(p uint8, fn WalkGroupFn) bool {
+	if p < 1 {
+		p = 1
+	}
+	if p > t.k {
+		p = t.k
+	}
+	keys := make([]uint64, 0, 1024)
+	vals := make([][]uint32, 0, 1024)
+	for _, child := range t.root.children {
+		if child != nil && recursiveWalkGroups(child, 0, p, &keys, &vals, fn) {
+			return true
+		}
+	}
+	return false
+}
+
+func recursiveWalkGroups(n *node, parentDepth, p uint8, keys *[]uint64, vals *[][]uint32, fn WalkGroupFn) bool {
+	depth := parentDepth + n.k
+	if depth >= p {
+		*keys = (*keys)[:0]
+		*vals = (*vals)[:0]
+		collectLeaves(n, keys, vals)
+		return fn(*keys, *vals, depth)
+	}
+	for _, child := range n.children {
+		if child != nil && recursiveWalkGroups(child, depth, p, keys, vals, fn) {
+			return true
+		}
+	}
+	return false
+}
+
+func collectLeaves(n *node, keys *[]uint64, vals *[][]uint32) {
+	if n.leaf != nil {
+		*keys = append(*keys, n.leaf.key)
+		*vals = append(*vals, n.leaf.val)
+	}
+	for _, child := range n.children {
+		if child != nil {
+			collectLeaves(child, keys, vals)
+		}
+	}
+}
+
+// WalkPairFn is called for each unordered pair of k-mers (a, b) whose LCP is
+// at least p bases; lenPrefix is the exact LCP of this pair.
+// Return true to abort iteration.
+type WalkPairFn func(keyA, keyB uint64, valsA, valsB []uint32, lenPrefix uint8) bool
+
+// WalkPairs visits every unordered pair of distinct k-mers in the tree
+// whose LCP is at least p bases. Returns true if iteration was aborted.
+func (t *Tree) WalkPairs(p uint8, fn WalkPairFn) bool {
+	shift := int(t.k) - 32
+	var stop bool
+	t.WalkGroups(p, func(keys []uint64, vals [][]uint32, _ uint8) bool {
+		n := len(keys)
+		for i := 0; i < n; i++ {
+			for j := i + 1; j < n; j++ {
+				lcp := uint8(bits.LeadingZeros64(keys[i]^keys[j])>>1 + shift)
+				if fn(keys[i], keys[j], vals[i], vals[j], lcp) {
+					stop = true
+					return true
+				}
+			}
+		}
+		return false
+	})
+	return stop
 }
 
 // KmerPrefix returns the first n bases. n needs to be > 0.

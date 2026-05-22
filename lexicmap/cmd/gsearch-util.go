@@ -191,3 +191,49 @@ func (gr *GenomeReader) Read(file string) (*GQuery, error) {
 }
 
 // --------------------------------------------------------------
+
+// cut genome sequences into non-overlapped fragments
+
+var poolFragments = &sync.Pool{
+	New: func() interface{} {
+		tmp := make([][]byte, 0, 5120) // for a 5Mb genome
+		return &tmp
+	},
+}
+
+func recycleFragments(frags *[][]byte) {
+	if frags != nil {
+		*frags = (*frags)[:0]
+		poolFragments.Put(frags)
+	}
+}
+
+// do not forget to call recycleFragments with the non-nil result
+func seqs2fragments(seqs *[]*[]byte, fragLen int, minFragLen int) *[][]byte {
+	if seqs == nil || len(*seqs) == 0 {
+		return nil
+	}
+
+	frags := poolFragments.Get().(*[][]byte)
+
+	var end, s, e int
+	var contig *[]byte
+
+	for _, contig = range *seqs {
+		end = len(*contig)
+		for s = 0; s < end; s += fragLen {
+			e = s + fragLen
+
+			if e > end {
+				e = end
+				if e-s < minFragLen { // skip short fragments
+					continue
+				}
+			}
+
+			*frags = append(*frags, (*contig)[s:e])
+		}
+	}
+
+	return frags
+}

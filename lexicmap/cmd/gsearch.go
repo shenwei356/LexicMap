@@ -137,6 +137,11 @@ Output format:
 		if fragSize < 100 {
 			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
 		}
+
+		minFragLen := getFlagPositiveInt(cmd, "min-frag-size")
+		if minFragLen < 100 {
+			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
+		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
@@ -356,7 +361,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
+		// fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
 
 		// -------  output function -------
 
@@ -438,7 +443,8 @@ Output format:
 				if genomeIds != nil {
 					// 3. search fragments for the query
 					// TODO: extract the candidate genome and directly align with them
-					err = idx.GSearchAlign(query, fragSize, genomeIds, minAF, maxQueryConcurrency, gcInterval)
+					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
+					err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					checkError(err)
 
 					// clear up
@@ -564,6 +570,8 @@ func init() {
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
+	gsearchCmd.Flags().IntP("min-frag-size", "", 1020,
+		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
 	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
 }

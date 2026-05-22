@@ -33,6 +33,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -473,9 +474,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 
 // GSearchAlign align fragments of a query to candidates genomes.
 // Each fragment is aligned in the classical way.
-func (idx *Index) GSearchAlign(query *GQuery, fragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
-
-	if fragLen < 100 {
+func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+	if fragLen < minFragLen {
 		return fmt.Errorf("fragment length is too small")
 	}
 
@@ -601,7 +601,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, genomeIds *map[uint64
 						}
 
 						gr.AlignedFragments++
-						gr.AlignedLength += c.AlignedLength
+						gr.AlignedLength += c.AlignedLength - c.Gaps // need to minus gaps
 						gr.AlignedMatches += c.MatchedBases
 					}
 				}
@@ -743,7 +743,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, genomeIds *map[uint64
 			e = j + fragLen
 			if e > end0 {
 				e = end0
-				if e-s < 100 { // skip fragments < 100 bp
+				if e-s < minFragLen { // skip fragments < 100 bp
 					continue
 				}
 			}
@@ -797,13 +797,6 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, genomeIds *map[uint64
 	return nil
 }
 
-// GSearchAlign2 align fragments of a query to candidates genomes.
-// Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
-
-	return nil
-}
-
 var poolQuery2 = &sync.Pool{New: func() interface{} {
 	return &Query{
 		// 4 bytes for contig index
@@ -812,6 +805,58 @@ var poolQuery2 = &sync.Pool{New: func() interface{} {
 		seq:   make([]byte, 0, 1<<10), // 2k id enough for the common 1020-bp fragments
 	}
 }}
+
+// GSearchAlign2 align fragments of a query to candidates genomes.
+// Different from GSearchAlign, this method directly extract candidates genomes for alignment.
+func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+	qfrags := seqs2fragments(&query.seqs, fragLen, minFragLen)
+
+	ids := make([]uint64, 0, len(*genomeIds))
+	for v := range *genomeIds {
+		ids = append(ids, v)
+	}
+	sortutil.Uint64s(ids)
+
+	cpr := NewFragmentComparator(idx.k8)
+
+	// for batchIDAndRefID := range *genomeIds {
+	for _, batchIDAndRefID := range ids {
+		genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+		genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
+
+		rdr := <-idx.poolGenomeRdrs[genomeBatch]
+
+		g, err := rdr.Seqs(genomeIdx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
+		// -------------------------------------------------------------
+
+		sfrags := seqs2fragments(&g.Seqs, fragLen, minFragLen)
+
+		// fmt.Printf("%s\n", (*qfrags)[4459])
+		// fmt.Printf("%s\n", (*sfrags)[298])
+
+		err = cpr.Compare(qfrags, sfrags)
+		if err != nil {
+			return err
+		}
+
+		// -------------------------------------------------------------
+
+		idx.poolGenomeRdrs[genomeBatch] <- rdr
+
+		recycleFragments(sfrags)
+
+		break
+	}
+
+	recycleFragments(qfrags)
+
+	return nil
+}
 
 // -------------------------------------------------------------------------
 

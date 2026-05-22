@@ -72,9 +72,9 @@ var ErrVersionMismatch = errors.New("genome data: version mismatch")
 
 // Genome represents a reference sequence to insert and a matched subsequence
 type Genome struct {
-	ID   []byte   // genome ID
-	Seq  []byte   // (contatenated) sequence, bases
-	Seqs [][]byte // only used by the method Seqs, for returning all sequences in the form of slices of .Seq
+	ID   []byte    // genome ID
+	Seq  []byte    // (contatenated) sequence, bases
+	Seqs []*[]byte // only used by the method Seqs, for returning all sequences in the form of slices of .Seq
 
 	GenomeSize int       // bases of all sequences
 	Len        int       // length of contatenated sequences
@@ -492,7 +492,7 @@ func (r *Reader) Seqs(idx int) (*Genome, error) {
 		return nil, err
 	}
 
-	g.Seqs = make([][]byte, g.NumSeqs)
+	g.Seqs = make([]*[]byte, g.NumSeqs)
 
 	// interval size between contigs
 	var interval int
@@ -505,7 +505,8 @@ func (r *Reader) Seqs(idx int) (*Genome, error) {
 	for i := 0; i < g.NumSeqs; i++ {
 		seqSize = g.SeqSizes[i]
 
-		g.Seqs[i] = g.Seq[offset : offset+seqSize]
+		tmp := g.Seq[offset : offset+seqSize]
+		g.Seqs[i] = &tmp
 		offset += seqSize + interval
 	}
 	return g, nil

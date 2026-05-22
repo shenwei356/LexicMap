@@ -108,7 +108,7 @@ Attention:
 		var genomeBatch, genomeIdx int
 		var rdr *genome.Reader
 		var i int
-		var s []byte
+		var s *[]byte
 		var text []byte
 		var buffer *bytes.Buffer
 
@@ -130,7 +130,7 @@ Attention:
 				outfh.Write(*g.SeqIDs[i])
 				outfh.Write(_mark_newline)
 
-				text, buffer = wrapByteSlice(s, lineWidth, buffer)
+				text, buffer = wrapByteSlice(*s, lineWidth, buffer)
 				outfh.Write(text)
 				outfh.Write(_mark_newline)
 			}
