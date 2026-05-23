@@ -32,7 +32,8 @@ type FragmentComparator struct {
 	k             uint8
 	ccc, ggg, ttt uint64
 
-	flat []uint32
+	flat    []uint32
+	entries []rtree.BatchEntry
 }
 
 func NewFragmentComparator(k uint8) *FragmentComparator {
@@ -43,7 +44,8 @@ func NewFragmentComparator(k uint8) *FragmentComparator {
 		ggg: util.Ns(0b10, k),
 		ttt: util.Ns(0b11, k),
 
-		flat: make([]uint32, 0, 128),
+		flat:    make([]uint32, 0, 128),
+		entries: make([]rtree.BatchEntry, 0, 1<<20),
 	}
 
 	return cpr
@@ -66,6 +68,8 @@ func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) error {
 	ccc := cpr.ccc
 	ggg := cpr.ggg
 	ttt := cpr.ttt
+
+	entries := cpr.entries[:0]
 
 	//  The last two bits of the uint32 tree node value are used to mark genome and kmer info
 	//  .... 0 1
@@ -90,8 +94,10 @@ func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) error {
 				continue
 			}
 
-			t.Insert(kmer, uint32(i<<2))
-			t.Insert(kmerRC, uint32(i<<2|2))
+			entries = append(entries,
+				rtree.BatchEntry{Key: kmer, Val: uint32(i << 2)},
+				rtree.BatchEntry{Key: kmerRC, Val: uint32(i<<2 | 2)},
+			)
 		}
 	}
 
@@ -112,11 +118,17 @@ func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) error {
 				continue
 			}
 
-			t.Insert(kmer, uint32(i<<2|1))
-			t.Insert(kmerRC, uint32(i<<2|3))
-
+			entries = append(entries,
+				rtree.BatchEntry{Key: kmer, Val: uint32(i<<2 | 1)},
+				rtree.BatchEntry{Key: kmerRC, Val: uint32(i<<2 | 3)},
+			)
 		}
 	}
+
+	// fmt.Fprintf(os.Stderr, "total %d k-mers\n", len(entries))
+
+	t.InsertBatch(entries)
+	cpr.entries = entries
 
 	// 1.2 find pairs
 

@@ -22,6 +22,8 @@ package tree
 
 import (
 	"math/bits"
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/shenwei356/kmers"
@@ -174,4 +176,73 @@ func TestWalkGroupsAndPairs(t *testing.T) {
 	if earlyCount != 3 {
 		t.Fatalf("early-abort count = %d, expected 3", earlyCount)
 	}
+}
+
+func TestInsertBatch(t *testing.T) {
+	const k uint8 = 21
+	mask := uint64(1)<<(uint64(k)*2) - 1
+
+	for _, n := range []int{1, 2, 100, 5000} {
+		rng := rand.New(rand.NewSource(int64(n)))
+
+		entries := make([]BatchEntry, n)
+		for i := 0; i < n; i++ {
+			entries[i] = BatchEntry{
+				Key: rng.Uint64() & mask,
+				Val: uint32(i),
+			}
+		}
+
+		ref := NewTree(k)
+		for _, e := range entries {
+			ref.Insert(e.Key, e.Val)
+		}
+		refMap := dumpTree(ref)
+		RecycleTree(ref)
+
+		batch := NewTree(k)
+		entriesCopy := make([]BatchEntry, len(entries))
+		copy(entriesCopy, entries)
+		batch.InsertBatch(entriesCopy)
+		batchMap := dumpTree(batch)
+		RecycleTree(batch)
+
+		if len(refMap) != len(batchMap) {
+			t.Fatalf("n=%d: distinct keys: ref=%d batch=%d", n, len(refMap), len(batchMap))
+		}
+		for key, refVals := range refMap {
+			batchVals, ok := batchMap[key]
+			if !ok {
+				t.Fatalf("n=%d: key %x missing in batch tree", n, key)
+			}
+			if !equalSortedUint32(refVals, batchVals) {
+				t.Fatalf("n=%d: key %x vals mismatch:\n  ref=%v\n  batch=%v",
+					n, key, refVals, batchVals)
+			}
+		}
+	}
+}
+
+func dumpTree(tr *Tree) map[uint64][]uint32 {
+	m := make(map[uint64][]uint32)
+	tr.Walk(func(key uint64, v []uint32) bool {
+		c := make([]uint32, len(v))
+		copy(c, v)
+		sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+		m[key] = c
+		return false
+	})
+	return m
+}
+
+func equalSortedUint32(a, b []uint32) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
