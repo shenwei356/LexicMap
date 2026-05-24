@@ -817,43 +817,76 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	}
 	sortutil.Uint64s(ids)
 
-	cpr := NewFragmentComparator(idx.k8)
+	// Pre-compute query-side k-mer entries once: the same qfrags is compared
+	// against every candidate genome, so collecting its canonical k-mers per
+	// goroutine was pure waste. entriesA is read concurrently below; do not
+	// mutate it after this point.
+	indexer := idx.poolFragmentComparator.Get().(*FragmentComparator)
+	entriesA, err := indexer.IndexA(qfrags)
+	if err != nil {
+		idx.poolFragmentComparator.Put(indexer)
+		return err
+	}
+	idx.poolFragmentComparator.Put(indexer)
+
+	var wg sync.WaitGroup
+	tokens := make(chan int, maxQueryConcurrency)
 
 	// for batchIDAndRefID := range *genomeIds {
 	for _, batchIDAndRefID := range ids {
-		genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
-		genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
-
-		rdr := <-idx.poolGenomeRdrs[genomeBatch]
-
-		g, err := rdr.Seqs(genomeIdx)
-		if err != nil {
-			return err
-		}
-
-		fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
-		// -------------------------------------------------------------
-
-		sfrags := seqs2fragments(&g.Seqs, fragLen, minFragLen)
-
-		// fmt.Printf("%s\n", (*qfrags)[4459])
-		// fmt.Printf("%s\n", (*sfrags)[298])
-
-		err = cpr.Compare(qfrags, sfrags)
-		if err != nil {
-			return err
-		}
 
 		// -------------------------------------------------------------
 
-		idx.poolGenomeRdrs[genomeBatch] <- rdr
+		tokens <- 1
+		wg.Add(1)
 
-		recycleFragments(sfrags)
+		go func(batchIDAndRefID uint64) {
+			defer func() {
+				<-tokens
+				wg.Done()
+			}()
 
-		break
+			genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+			genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
+
+			cpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
+
+			rdr := <-idx.poolGenomeRdrs[genomeBatch]
+
+			g, err := rdr.Seqs(genomeIdx)
+			checkError(err)
+
+			fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
+
+			// -------------------------------------------------------------
+
+			sfrags := seqs2fragments(&g.Seqs, fragLen, minFragLen)
+
+			pairs, err := cpr.CompareWithIndexedA(entriesA, sfrags)
+			if err != nil {
+				checkError(err)
+			}
+
+			for _, p := range *pairs {
+				fmt.Printf("%s\t%s\t%d\t%d\n", query.id, g.ID, p>>32, (p & 4294967295))
+			}
+
+			RecycleFragmentCompareResult(pairs)
+
+			// -------------------------------------------------------------
+
+			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			recycleFragments(sfrags)
+
+			idx.poolFragmentComparator.Put(cpr)
+		}(batchIDAndRefID)
 	}
 
+	wg.Wait()
+
+	// clean up
 	recycleFragments(qfrags)
+	RecycleResultOfIndexA(entriesA)
 
 	return nil
 }

@@ -21,66 +21,147 @@
 package cmd
 
 import (
-	"fmt"
+	"sync"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash/iterator"
+	"github.com/twotwotwo/sorts"
 )
 
-type FragmentComparator struct {
-	k             uint8
-	ccc, ggg, ttt uint64
+// FragmentComparatorOptions defines the options for comparing two sets
+// of genome fragments by counting shared k-mers. See FragmentComparator for details.
+type FragmentComparatorOptions struct {
+	K         uint8
+	MinPrefix uint8
 
-	flat    []uint32
-	entries []rtree.BatchEntry
+	MinSharedKmers uint16
+
+	// FracMinHash scaling factor: only k-mers with Hash64(canonical) % Scaled == 0
+	// are kept. 0 or 1 disables filtering. Larger values reduce memory and CPU
+	// roughly proportionally; MinSharedKmers should be retuned accordingly
+	// (e.g. Scaled=10 -> divide MinSharedKmers by ~10).
+	Scaled uint32
 }
 
-func NewFragmentComparator(k uint8) *FragmentComparator {
+// FragmentComparator compares two sets of genome fragments by counting shared
+// k-mers. It is designed for the case where one set of fragments (fragsA) is
+// fixed and compared against many sets of fragments (fragsB). The first step
+// is to pre-index fragsA into a sorted slice of canonical k-mer entries, which
+// can be reused across many comparisons. Each comparison then collects and
+// sorts entries for fragsB and merges the two sorted streams to count shared
+// k-mers per fragment pair.
+type FragmentComparator struct {
+	// options
+	options *FragmentComparatorOptions
+
+	ccc, ggg, ttt uint64
+
+	// reusable buffer for collecting (kmer, fragID|strand|genome) entries.
+	// after collection, sorted by Key and scanned linearly for equal-key runs.
+	entries []rtree.BatchEntry
+
+	poolChainers *sync.Pool
+}
+
+var poolMapUint64Uint16 = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]uint16, 1<<20)
+	return &tmp
+}}
+
+// NewFragmentComparator creates a new FragmentComparator with
+// the given options and pool of chainers.
+func NewFragmentComparator(options *FragmentComparatorOptions, poolChainers *sync.Pool) *FragmentComparator {
 	cpr := &FragmentComparator{
-		k: k,
+		options:      options,
+		poolChainers: poolChainers,
 
-		ccc: util.Ns(0b01, k),
-		ggg: util.Ns(0b10, k),
-		ttt: util.Ns(0b11, k),
+		ccc: util.Ns(0b01, options.K),
+		ggg: util.Ns(0b10, options.K),
+		ttt: util.Ns(0b11, options.K),
 
-		flat:    make([]uint32, 0, 128),
 		entries: make([]rtree.BatchEntry, 0, 1<<20),
 	}
 
 	return cpr
 }
 
-func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) error {
-	// ----------------------------------------------------
-	// 1. Find similar fragment pairs
+// Compare compares fragsA and fragsB by counting shared k-mers.
+func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) (*[]uint64, error) {
+	entriesA, err := cpr.IndexA(fragsA)
+	if err != nil {
+		return nil, err
+	}
+	pairs, err := cpr.CompareWithIndexedA(entriesA, fragsB)
+	cpr.entries = entriesA[:0]
+	return pairs, err
+}
 
-	// 1.1 build a prefix tree
+var poolBatchEntries = &sync.Pool{New: func() interface{} {
+	return make([]rtree.BatchEntry, 1<<20)
+}}
 
-	k := cpr.k
+// IndexA pre-computes canonical k-mer entries for fragsA, sorted by Key, so
+// that the result can be reused across many CompareWithIndexedA calls (one
+// query vs. many subject genomes). The returned slice is owned by the caller
+// and read concurrently by workers; it must not be mutated after this call.
+func (cpr *FragmentComparator) IndexA(fragsA *[][]byte) ([]rtree.BatchEntry, error) {
+	entries := poolBatchEntries.Get().([]rtree.BatchEntry)
+	entries, err := cpr.collectEntries(fragsA, 0, nil)
+	if err != nil {
+		return nil, err
+	}
+	sorts.ByUint64(rtree.BatchEntries(entries))
+	return entries, nil
+}
 
-	// a reusable Radix tree for searching k-mers sharing at least n-base prefixes.
-	t := rtree.NewTree(k)
+// RecycleResultOfIndexA recycles the result of IndexA.
+func RecycleResultOfIndexA(entries []rtree.BatchEntry) {
+	if entries != nil {
+		entries = entries[:0]
+		poolBatchEntries.Put(entries)
+	}
+}
 
-	var kmer, kmerRC uint64
-	var ok bool
+// CompareWithIndexedA compares pre-indexed entries of genome A (sorted by Key,
+// produced by IndexA) against fragsB of genome B. entriesA is read-only.
+// Avoids copying entriesA by collecting fragsB into a separate buffer
+// (cpr.entries), sorting only that buffer, and merging the two sorted streams.
+func (cpr *FragmentComparator) CompareWithIndexedA(entriesA []rtree.BatchEntry, fragsB *[][]byte) (*[]uint64, error) {
+	entriesB, err := cpr.collectEntries(fragsB, 1, cpr.entries[:0])
+	if err != nil {
+		return nil, err
+	}
+	cpr.entries = entriesB
+
+	sorts.ByUint64(rtree.BatchEntries(entriesB))
+
+	return cpr.scanPairsMerged(entriesA, entriesB), nil
+}
+
+// collectEntries iterates k-mers in frags, applies the same filters as Compare,
+// and appends one canonical entry per surviving position to dst. genomeBit
+// (0 or 1) is OR'ed into Val's lowest bit. If dst is nil a fresh buffer is
+// allocated.
+func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32, dst []rtree.BatchEntry) ([]rtree.BatchEntry, error) {
+	k := cpr.options.MinPrefix
+	scaled := uint64(cpr.options.Scaled)
+	useSketching := scaled > 1
 
 	ccc := cpr.ccc
 	ggg := cpr.ggg
 	ttt := cpr.ttt
 
-	entries := cpr.entries[:0]
+	if dst == nil {
+		dst = make([]rtree.BatchEntry, 0, 1<<20)
+	}
 
-	//  The last two bits of the uint32 tree node value are used to mark genome and kmer info
-	//  .... 0 1
-	//         | --- 0 for genome A,        1 for genome B
-	//       |------ 0 for positive strand, 1 for negative strand
-	//  ____-------- index of fragment
-	//
-	for i, s := range *fragsA {
+	var kmer, kmerRC, canon uint64
+	var ok bool
+	for i, s := range *frags {
 		iter, err := iterator.NewKmerIterator(s, int(k))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		for {
@@ -94,88 +175,77 @@ func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) error {
 				continue
 			}
 
-			entries = append(entries,
-				rtree.BatchEntry{Key: kmer, Val: uint32(i << 2)},
-				rtree.BatchEntry{Key: kmerRC, Val: uint32(i<<2 | 2)},
-			)
-		}
-	}
+			canon = min(kmer, kmerRC)
 
-	for i, s := range *fragsB {
-		iter, err := iterator.NewKmerIterator(s, int(k))
-		if err != nil {
-			return err
-		}
-
-		for {
-			kmer, kmerRC, ok, _ = iter.NextKmer()
-			if !ok {
-				break
-			}
-
-			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
-				util.IsLowComplexityDust(kmer, k) {
+			if useSketching && util.Hash64(canon)%scaled != 0 {
 				continue
 			}
 
-			entries = append(entries,
-				rtree.BatchEntry{Key: kmer, Val: uint32(i<<2 | 1)},
-				rtree.BatchEntry{Key: kmerRC, Val: uint32(i<<2 | 3)},
-			)
+			dst = append(dst, rtree.BatchEntry{Key: canon, Val: uint32(i)<<1 | genomeBit})
 		}
 	}
+	return dst, nil
+}
 
-	// fmt.Fprintf(os.Stderr, "total %d k-mers\n", len(entries))
+// scanPairsMerged walks the two sorted streams entriesA (genome A) and entriesB
+// (genome B) in lockstep. For every shared Key, it enumerates the cross product
+// of the A-run and B-run and accumulates per-pair counts in a pooled map.
+func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchEntry) *[]uint64 {
+	counter := poolMapUint64Uint16.Get().(*map[uint64]uint16)
 
-	t.InsertBatch(entries)
-	cpr.entries = entries
-
-	// 1.2 find pairs
-
-	// key: uint32(frag index in genome A) | uint32 (frag index in genome B)
-	m := make(map[uint64]uint16)
-
-	// Group all k-mers sharing a prefix of at least X bases (singletons too).
-	// Flatten each group's vals and enumerate all unordered value pairs:
-	// this covers both same-k-mer pairs (originally a separate Walk pass)
-	// and shared-prefix pairs in one tree traversal.
-	flat := cpr.flat
-	t.WalkGroups(15, func(keys []uint64, vals [][]uint32, lenPrefix uint8) bool {
-		flat = flat[:0]
-		for _, v := range vals {
-			flat = append(flat, v...)
+	nA, nB := len(entriesA), len(entriesB)
+	var ia, ib int
+	for ia < nA && ib < nB {
+		ka := entriesA[ia].Key
+		kb := entriesB[ib].Key
+		if ka < kb {
+			ia++
+			continue
 		}
-		n := len(flat)
-		if n < 2 {
-			return false
+		if kb < ka {
+			ib++
+			continue
 		}
-
-		var i, j int
-		var a, b uint32
-		for i = 0; i < n; i++ {
-			for j = i + 1; j < n; j++ {
-				a, b = flat[i], flat[j]
-				if a&1 == b&1 { // belong to the same genome
-					continue
-				}
-				if a&1 == 1 { // a belongs to genome B
-					a, b = b, a
-				}
-				m[uint64(a>>2)<<32|uint64(b>>2)]++
+		// equal: find end of run on each side
+		ja := ia + 1
+		for ja < nA && entriesA[ja].Key == ka {
+			ja++
+		}
+		jb := ib + 1
+		for jb < nB && entriesB[jb].Key == ka {
+			jb++
+		}
+		// enumerate cross pairs
+		for p := ia; p < ja; p++ {
+			fa := uint64(entriesA[p].Val >> 1)
+			rowKey := fa << 32
+			for q := ib; q < jb; q++ {
+				fb := uint64(entriesB[q].Val >> 1)
+				(*counter)[rowKey|fb]++
 			}
 		}
-		return false
-	})
-
-	// 1.3 filter pairs
-
-	for key, v := range m {
-		fmt.Printf("%d\t%d\t%d\n", key>>32, (key & 4294967295), v)
+		ia = ja
+		ib = jb
 	}
 
-	// ----------------------------------------------------
+	pairs := poolUint64s.New().(*[]uint64)
+	*pairs = (*pairs)[:0]
+	threshold := cpr.options.MinSharedKmers
+	for key, v := range *counter {
+		if v >= threshold {
+			*pairs = append(*pairs, key)
+		}
+	}
 
-	rtree.RecycleTree(t)
+	clear(*counter)
+	poolMapUint64Uint16.Put(counter)
 
-	return nil
+	return pairs
+}
+
+func RecycleFragmentCompareResult(pairs *[]uint64) {
+	if pairs != nil {
+		*pairs = (*pairs)[:0]
+		poolUint64s.Put(&pairs)
+	}
 }

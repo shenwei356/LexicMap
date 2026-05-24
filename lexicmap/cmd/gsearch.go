@@ -319,6 +319,13 @@ Output format:
 			MinIdentity:        minIdent,
 		})
 
+		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
+			K:              uint8(31),
+			MinPrefix:      15,
+			MinSharedKmers: 30,
+			Scaled:         0,
+		})
+
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))
 			log.Info()
