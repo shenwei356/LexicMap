@@ -40,7 +40,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
+
+	// "github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/taxdump"
 	"github.com/shenwei356/kmers"
@@ -766,20 +767,39 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	//       p.QBegin     p.QEnd
 
 	// store the index of each new QBegin
-	ri := rangeindex.NewRangeIndex()
-	var vQBegin, pQBegin int32
-	pQBegin = math.MaxInt32 // previous QEnd
-	for i, v := range *subs {
-		vQBegin = v.QBegin
-		if vQBegin != pQBegin {
-			ri.Add(uint32(vQBegin), uint32(i))
-			pQBegin = vQBegin
-		}
+	// ri := rangeindex.NewRangeIndex()
+	// var vQBegin, pQBegin int32
+	// pQBegin = math.MaxInt32 // previous QEnd
+	// for i, v := range *subs {
+	// 	vQBegin = v.QBegin
+	// 	if vQBegin != pQBegin {
+	// 		ri.Add(uint32(vQBegin), uint32(i))
+	// 		pQBegin = vQBegin
+	// 	}
+	//
+	// 	// mark if current anchor is equal to or nested in any previous anchor
+	// 	*markers = append(*markers, false)
+	// }
+	// var _js []uint64
+	// for range *subs {
+	// 	*markers = append(*markers, false)
+	// }
 
-		// mark if current anchor is equal to or nested in any previous anchor
-		*markers = append(*markers, false)
+	// Initialize markers to len(*subs) zeros, reusing the pool buffer.
+	// If cap is enough, just reslice + clear. Otherwise reuse what we have
+	// (clear it) and append the remainder; the append path then grows the
+	// underlying array, which Put will return to the pool for next time.
+	n := len(*subs)
+	if cap(*markers) >= n {
+		*markers = (*markers)[:n]
+		clear(*markers)
+	} else {
+		*markers = (*markers)[:cap(*markers)]
+		clear(*markers)
+		for len(*markers) < n {
+			*markers = append(*markers, false)
+		}
 	}
-	var _js []uint64
 	// js := poolUint32s.Get().(*[]uint32)
 	// var _v uint64
 
@@ -800,7 +820,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		//       p.QBegin     p.Qend
 
 		// fmt.Printf("region: %d - %d\n", uint32(upbound), uint32(v.QBegin))
-		_js = ri.Query(uint32(upbound), uint32(v.QBegin))
+		// _js = ri.Query(uint32(upbound), uint32(v.QBegin))
 
 		// if len(_js) > 0 { // always true
 		// *js = (*js)[:0]
@@ -811,7 +831,15 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		// slices.Sort(*js) // unnecessary, the indice are sorted
 
 		// for j = int((*js)[0]); j <= i; j++ {
-		for j = int(_js[0] & 4294967295); j <= i; j++ {
+		// for j = int(_js[0] & 4294967295); j <= i; j++ {
+
+		// subs is already sorted by QBegin ascending; binary-search directly
+		// in subs to find the first anchor whose QBegin >= upbound. This
+		// replaces the auxiliary RangeIndex above.
+		start, _ := slices.BinarySearchFunc((*subs)[:i+1], upbound, func(s *SubstrPair, target int32) int {
+			return int(s.QBegin - target)
+		})
+		for j = start; j <= i; j++ {
 			p = (*subs)[j]
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
@@ -838,7 +866,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 
 	poolBoolList.Put(markers)
 	// poolUint32s.Put(js)
-	ri.Release()
+	// ri.Release()
 }
 
 var poolBoolList = &sync.Pool{New: func() interface{} {
