@@ -31,8 +31,10 @@ import (
 	"unsafe"
 
 	"github.com/dustin/go-humanize"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/shenwei356/wfa"
 	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
@@ -77,19 +79,24 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 	idx.poolGSearchDetailResults.Put(rs)
 }
 
+var poolUint64ToUint64SliceMap = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]*[]uint64, 128)
+	return &tmp
+}}
+
 // RecycleGSearchScreenResult recycles the result of GSearch()
-func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]interface{}) {
+func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 	clear(*whiteList)
-	poolUint64Map.Put(whiteList)
+	poolUint64ToUint64SliceMap.Put(whiteList)
 }
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
-func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interface{}, error) {
+func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint64, error) {
 	if windows < 1 {
 		return nil, fmt.Errorf("window size needs to be > 0")
 	}
 
-	whiteList := poolUint64Map.Get().(*map[uint64]interface{})
+	whiteList := poolUint64ToUint64SliceMap.Get().(*map[uint64]*[]uint64)
 	clear(*whiteList)
 
 	if idx.opt.Debug {
@@ -447,8 +454,11 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 	// fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
 	var refBatchAndIdxUint64 uint64
 	for _, r := range *rs {
+		tmp := make([]uint64, len(r.BatchGenomeIndex))
+		copy(tmp, r.BatchGenomeIndex)
+		sortutil.Uint64s(tmp)
 		for _, refBatchAndIdxUint64 = range r.BatchGenomeIndex {
-			(*whiteList)[refBatchAndIdxUint64] = struct{}{}
+			(*whiteList)[refBatchAndIdxUint64] = &tmp
 		}
 
 		hitKmers := 0
@@ -469,12 +479,15 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]interfa
 
 	// fmt.Println(whiteList)
 
+	idx.RecycleGSearchScreenDetailResults(rs)
+
 	return whiteList, nil
 }
 
 // GSearchAlign align fragments of a query to candidates genomes.
 // Each fragment is aligned in the classical way.
-func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+// This method is not recommended.
+func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
 	if fragLen < minFragLen {
 		return fmt.Errorf("fragment length is too small")
 	}
@@ -546,6 +559,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 	// -----------------------------------------------------------
 
 	query.result = poolGSearchResults.Get().(*[]*GSearchResult)
+	*query.result = (*query.result)[:0]
 
 	var wg sync.WaitGroup
 	tokens := make(chan int, maxQueryConcurrency)
@@ -561,6 +575,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 		var c *Chain2Result
 
 		m := poolGSearchResultMap.Get().(*map[uint64]*GSearchResult)
+		clear(*m)
 		var ok bool
 		var gr *GSearchResult
 
@@ -585,6 +600,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 			for _, r = range *q.result { // each subject genome
 				if gr, ok = (*m)[r.BatchGenomeIndex]; !ok {
 					gr = poolGSearchResult.Get().(*GSearchResult)
+					gr.Reset()
 					gr.BatchGenomeIndex = r.BatchGenomeIndex
 					gr.GenomeSize = r.GenomeSize
 					gr.NumSeqs = r.NumSeqs
@@ -617,6 +633,7 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 		// ---------------------------------------
 		// 1.2 from map to slice
 		rs := poolGSearchResults.Get().(*[]*GSearchResult)
+		*rs = (*rs)[:0]
 		for _, gr = range *m {
 
 			*rs = append(*rs, gr)
@@ -808,14 +825,11 @@ var poolQuery2 = &sync.Pool{New: func() interface{} {
 
 // GSearchAlign2 align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]interface{}, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
-	qfrags := seqs2fragments(&query.seqs, fragLen, minFragLen)
+func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+	// --------------------------------------------------------------------------------
+	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
-	ids := make([]uint64, 0, len(*genomeIds))
-	for v := range *genomeIds {
-		ids = append(ids, v)
-	}
-	sortutil.Uint64s(ids)
+	qfrags := seqs2fragments(&query.seqs, fragLen, minFragLen)
 
 	// Pre-compute query-side k-mer entries once: the same qfrags is compared
 	// against every candidate genome, so collecting its canonical k-mers per
@@ -829,66 +843,383 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	}
 	idx.poolFragmentComparator.Put(indexer)
 
+	// --------------------------------------------------------------------------------
+	// Step 3. collect alignment results
+
+	rs := poolGSearchResults.Get().(*[]*GSearchResult)
+	*rs = (*rs)[:0]
+
+	ch := make(chan *GSearchResult, maxQueryConcurrency)
+	done := make(chan int)
+
+	go func() {
+		for r := range ch {
+			*rs = append(*rs, r)
+		}
+
+		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
+			return cmp.Compare(b.Score, a.Score)
+		})
+
+		query.result = rs
+
+		done <- 1
+	}()
+
+	// --------------------------------------------------------------------------------
+	// Step2. align fragments to candidate genomes
+
 	var wg sync.WaitGroup
 	tokens := make(chan int, maxQueryConcurrency)
 
-	// for batchIDAndRefID := range *genomeIds {
-	for _, batchIDAndRefID := range ids {
+	alignOption := &wfa.Options{GlobalAlignment: true}
 
+	// only keep one copy of batchIDAndRefIDs for chunks belonging to the same genome
+	toDelete := make([]uint64, 0, len(*genomeIds))
+	for id, ids := range *genomeIds {
+		// fmt.Println(id, *ids)
+		if id != (*ids)[0] {
+			toDelete = append(toDelete, id)
+		}
+	}
+	for _, id := range toDelete {
+		delete(*genomeIds, id)
+	}
+
+	for _, batchIDAndRefIDs := range *genomeIds {
 		// -------------------------------------------------------------
 
 		tokens <- 1
 		wg.Add(1)
 
-		go func(batchIDAndRefID uint64) {
+		go func(batchIDAndRefIDs *[]uint64) {
 			defer func() {
 				<-tokens
 				wg.Done()
 			}()
 
-			genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
-			genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
+			// -------------------------------------------------------------
+			// 1. read the genome sequences
 
-			cpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
+			var g *genome.Genome
+			genomes := make([]*genome.Genome, len(*batchIDAndRefIDs))
+			for i, batchIDAndRefID := range *batchIDAndRefIDs {
+				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+				genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
 
-			rdr := <-idx.poolGenomeRdrs[genomeBatch]
+				rdr := <-idx.poolGenomeRdrs[genomeBatch]
 
-			g, err := rdr.Seqs(genomeIdx)
-			checkError(err)
+				_g, err := rdr.Seqs(genomeIdx)
+				if err != nil {
+					checkError(fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s",
+						genomeBatch, genomeIdx, err))
+				}
 
-			fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
+				if i == 0 { // use the first one for later use
+					g = _g
+				} else { // append sequences to the first genome object
+					g.Seqs = append(g.Seqs, _g.Seqs...)
+					_g.Seqs = nil
+					g.NumSeqs += _g.NumSeqs
+					g.GenomeSize += _g.GenomeSize
+				}
+
+				genomes[i] = _g // recycle them later
+
+				// fmt.Printf("%s, %d seqs, %d bp\n", _g.ID, _g.NumSeqs, _g.GenomeSize)
+
+				idx.poolGenomeRdrs[genomeBatch] <- rdr
+			}
+
+			// fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
 
 			// -------------------------------------------------------------
+			// 2. find similar fragment pairs
 
 			sfrags := seqs2fragments(&g.Seqs, fragLen, minFragLen)
 
-			pairs, err := cpr.CompareWithIndexedA(entriesA, sfrags)
+			sfragsRC := poolFragments.Get().(*[][]byte)
+			n := len(*sfrags)
+			if cap(*sfragsRC) >= n {
+				*sfragsRC = (*sfragsRC)[:n]
+				clear(*sfragsRC)
+			} else {
+				*sfragsRC = (*sfragsRC)[:cap(*sfragsRC)]
+				clear(*sfragsRC)
+				for len(*sfragsRC) < n {
+					*sfragsRC = append(*sfragsRC, nil)
+				}
+			}
+
+			fcpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
+			pairs, err := fcpr.CompareWithIndexedA(entriesA, sfrags)
 			if err != nil {
-				checkError(err)
+				checkError(fmt.Errorf("fail to find similar fragments: %s", err))
 			}
-
-			for _, p := range *pairs {
-				fmt.Printf("%s\t%s\t%d\t%d\n", query.id, g.ID, p>>32, (p & 4294967295))
-			}
-
-			RecycleFragmentCompareResult(pairs)
+			sortutil.Uint64s(*pairs)
 
 			// -------------------------------------------------------------
+			// 3. sequence alignment
 
-			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+
+			algn := wfa.New(wfa.DefaultPenalties, alignOption)
+			algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+
+			minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+			minPIdent := idx.seqCompareOption.MinIdentity
+
+			ma := poolFragAlignResultMap.Get().(*map[uint32]*[]*Chain2Result)
+			mb := poolFragAlignResultMap.Get().(*map[uint32]*[]*Chain2Result)
+
+			var a, b, b2 []byte
+			var ia, ib uint64
+			var cr, cr2 *SeqComparatorResult
+			var ls *[]*Chain2Result
+			var ok bool
+			var c *Chain2Result
+			for _, p := range *pairs {
+				ia, ib = p>>32, p&4294967295
+				a = (*qfrags)[ia]
+				b = (*sfrags)[ib]
+
+				// fmt.Printf("%s\t%s\t%d\t%d\t", query.id, g.ID, ia, ib)
+				// fmt.Printf("%s\n%s\n", a, b)
+
+				// -----------------------------------------------
+				// a) pseudo alignment
+				cpr.RecycleIndex()
+				err = cpr.Index(a)
+				if err != nil {
+					checkError(fmt.Errorf("fail to index query fragment: %s", err))
+				}
+
+				// positive strand
+				cr, err = cpr.Compare(0, uint32(len(a)), b, len(a))
+				if err != nil {
+					checkError(fmt.Errorf("fail to compare query fragment and subject fragment: %s", err))
+				}
+
+				// negative strand
+				b2 = (*sfragsRC)[ib]
+				if b2 == nil {
+					b2 = make([]byte, len(b))
+					copy(b2, b)
+					RC(b2)
+					(*sfragsRC)[ib] = b2
+				}
+				cr2, err = cpr.Compare(0, uint32(len(a)), b2, len(a))
+				if err != nil {
+					checkError(fmt.Errorf("fail to compare query fragment and rc subject fragment: %s", err))
+				}
+
+				if cr == nil && cr2 == nil {
+					// fmt.Printf("no hit\n")
+					continue
+				}
+
+				if cr != nil && cr2 != nil { // both strands has hits
+					// choose the strand with the longer aligned length, if tie, choose the positive strand
+					if (*cr.Chains)[0].QEnd-(*cr.Chains)[0].QBegin < (*cr2.Chains)[0].QEnd-(*cr2.Chains)[0].QBegin {
+						RecycleSeqComparatorResult(cr)
+						cr = cr2
+						b = b2
+					} else {
+						RecycleSeqComparatorResult(cr2)
+					}
+				} else if cr == nil { // only has hit in the negative strand
+					cr = cr2
+					b = b2
+				} // only has hit in the positive strand
+
+				// -----------------------------------------------
+				// b) base-level alignment
+
+				c = (*cr.Chains)[0]   // choose the first chain with the highest chaining score
+				(*cr.Chains)[0] = nil // avoid being recycled before we finish processing c
+
+				// fmt.Printf("q[%d,%d]\tt[%d,%d]\t", c.QBegin+1, c.QEnd+1, c.TBegin+1, c.TEnd+1)
+
+				_qseq, _tseq, _, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
+				if err != nil {
+					checkError(fmt.Errorf("fail to extend aligned region: %s", err))
+				}
+
+				cigar, err := algn.Align(_qseq, _tseq)
+				if err != nil {
+					checkError(fmt.Errorf("fail to align sequences: %s", err))
+				}
+
+				c.AlignedBasesQ = cigar.QEnd - cigar.QBegin + 1
+				c.AlignedLength = int(cigar.AlignLen)
+				c.MatchedBases = int(cigar.Matches)
+				c.Gaps = int(cigar.Gaps)
+				c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+				if c.AlignedFraction > 100 {
+					c.AlignedFraction = 100
+				}
+				c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+				c.Evalue = c.AlignedFraction * c.PIdent // just for sorting, not the real e-value
+
+				// fmt.Printf("%s\t%s\t%d\t%d\tpident: %.2f, alen: %d, matches: %d, af: %.2f, score: %.2f\n",
+				// 	query.id, g.ID, ia, ib, c.PIdent, c.AlignedLength, c.MatchedBases, c.AlignedFraction, c.Evalue)
+
+				// -----------------------------------------------
+				// c) filter and store the result
+
+				if c.PIdent >= minPIdent && c.AlignedFraction >= minQcovHSP {
+					if ls, ok = (*ma)[uint32(ia)]; !ok {
+						ls = poolChains2.Get().(*[]*Chain2Result)
+						*ls = (*ls)[:0]
+						(*ma)[uint32(ia)] = ls
+					}
+					*ls = append(*ls, c)
+
+					c.Score = int(ia)    // for finding the corresponding subject fragment in the reciprocal comparison
+					c.BitScore = int(ib) // for finding the corresponding subject fragment in the reciprocal comparison
+
+					if ls, ok = (*mb)[uint32(ib)]; !ok {
+						ls = poolChains2.Get().(*[]*Chain2Result)
+						*ls = (*ls)[:0]
+						(*mb)[uint32(ib)] = ls
+					}
+					*ls = append(*ls, c)
+				} else {
+					poolChain2.Put(c)
+				}
+
+				// -----------------------------------------------
+				// clean up
+				wfa.RecycleAlignmentResult(cigar)
+				RecycleSeqComparatorResult(cr)
+			}
+
+			// -------------------------------------------------------------
+			// 4. orthologous fragments between two genomes are identified when they showed reciprocal best hit in alignment results.
+
+			for _, ls = range *ma {
+				if len(*ls) > 1 {
+					slices.SortFunc(*ls, func(a, b *Chain2Result) int {
+						// return cmp.Compare(b.Evalue, a.Evalue)
+						if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
+							return d
+						}
+						if d := cmp.Compare(a.Score, b.Score); d != 0 {
+							return d
+						}
+						return cmp.Compare(a.BitScore, b.BitScore)
+					})
+				}
+			}
+
+			for _, ls = range *mb {
+				if len(*ls) > 1 {
+					slices.SortFunc(*ls, func(a, b *Chain2Result) int {
+						return cmp.Compare(b.Evalue, a.Evalue)
+					})
+				}
+			}
+
+			// ANI result
+			gr := poolGSearchResult.Get().(*GSearchResult)
+			gr.Reset()
+			gr.BatchGenomeIndex = (*batchIDAndRefIDs)[0]
+			gr.GenomeSize = g.GenomeSize
+			gr.NumSeqs = g.NumSeqs
+
+			var _ia, _ib uint32
+			var ls2 *[]*Chain2Result
+			for _ia, ls = range *ma {
+				_ib = uint32((*ls)[0].BitScore)
+
+				if ls2, ok = (*mb)[_ib]; !ok {
+					continue
+				}
+				if (*ls2)[0].Score != int(_ia) { // reciprocal best hit
+					continue
+				}
+
+				c = (*ls)[0]
+				// fmt.Printf("%s\t%s\t%d\t%d\tpident: %.2f, alen: %d, matches: %d, af: %.2f, gaps: %d\n",
+				// 	query.id, g.ID, _ia, _ib, c.PIdent, c.AlignedLength, c.MatchedBases, c.AlignedFraction, c.Gaps)
+
+				gr.AlignedFragments++
+				gr.AlignedLength += c.AlignedLength - c.Gaps
+				gr.AlignedMatches += c.MatchedBases
+			}
+
+			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
+			gr.AF = float64(gr.AlignedLength) / float64(query.genomeSize)
+			if gr.AF > 1 {
+				gr.AF = 1
+			}
+			gr.Score = gr.ANI * gr.AF
+
+			if gr.AF < minAF {
+				poolGSearchResult.Put(gr)
+			} else {
+				ch <- gr
+			}
+
+			// manually recycle ma and mb
+			for _, ls = range *ma {
+				for _, c = range *ls {
+					poolChain2.Put(c)
+				}
+				*ls = (*ls)[:0]
+				poolChains2.Put(ls)
+			}
+			for _, ls = range *mb {
+				*ls = (*ls)[:0]
+				poolChains2.Put(ls)
+			}
+			clear(*ma)
+			clear(*mb)
+			poolFragAlignResultMap.Put(ma)
+			poolFragAlignResultMap.Put(mb)
+
+			// -------------------------------------------------------------
+			// 5. clean up
+
+			wfa.RecycleAligner(algn)
+			idx.poolSeqComparator.Put(cpr)
+			RecycleFragmentCompareResult(pairs)
+			idx.poolFragmentComparator.Put(fcpr)
 			recycleFragments(sfrags)
+			recycleFragments(sfragsRC)
+			for _, g := range genomes {
+				genome.RecycleGenome(g)
+			}
 
-			idx.poolFragmentComparator.Put(cpr)
-		}(batchIDAndRefID)
+		}(batchIDAndRefIDs)
 	}
 
 	wg.Wait()
+	close(ch)
+	<-done
 
-	// clean up
+	// --------------------------------------------------------------------------------
+	// Step4. align fragments to candidate genomes
+
 	recycleFragments(qfrags)
 	RecycleResultOfIndexA(entriesA)
 
 	return nil
+}
+
+var poolFragAlignResultMap = &sync.Pool{New: func() interface{} {
+	// poolChains2 provides pool of *[]*Chain2Result
+	tmp := make(map[uint32]*[]*Chain2Result, 4096)
+	return &tmp
+}}
+
+func RecycleFragAlignResultMap(m *map[uint32]*[]*Chain2Result) {
+	for _, rs := range *m {
+		RecycleChaining2Result(rs)
+	}
+	clear(*m)
+	poolFragAlignResultMap.Put(m)
 }
 
 // -------------------------------------------------------------------------
@@ -908,6 +1239,24 @@ type GSearchResult struct {
 	Score float64 // for sorting
 }
 
+// Reset zeros all fields. Call this when (re)obtaining a GSearchResult from
+// the pool, since the pool may return an instance with stale accumulator
+// fields (AlignedFragments / AlignedLength / AlignedMatches) that the
+// caller increments rather than overwrites.
+func (r *GSearchResult) Reset() {
+	r.BatchGenomeIndex = 0
+	r.GenomeSize = 0
+	r.NumSeqs = 0
+
+	r.AlignedFragments = 0
+	r.AlignedLength = 0
+	r.AlignedMatches = 0
+
+	r.ANI = 0
+	r.AF = 0
+	r.Score = 0
+}
+
 var poolGSearchResult = &sync.Pool{New: func() interface{} {
 	return &GSearchResult{}
 }}
@@ -924,16 +1273,18 @@ var poolGSearchResultMap = &sync.Pool{New: func() interface{} {
 
 func RecycleGSearchResults(rs *[]*GSearchResult) {
 	for _, r := range *rs {
+		r.Reset()
 		poolGSearchResult.Put(r)
 	}
 	*rs = (*rs)[:0]
-	poolGSearchResults.Put(*rs)
+	poolGSearchResults.Put(rs)
 }
 
 func RecycleGSearchResultMap(rs *map[uint64]*GSearchResult) {
 	for _, r := range *rs {
+		r.Reset()
 		poolGSearchResult.Put(r)
 	}
 	clear(*rs)
-	poolGSearchResultMap.Put(*rs)
+	poolGSearchResultMap.Put(rs)
 }

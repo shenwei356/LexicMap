@@ -1079,7 +1079,7 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
-func (idx *Index) Search(query *Query, genomeIds *map[uint64]interface{}, debug bool) (*[]*SearchResult, error) {
+func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bool) (*[]*SearchResult, error) {
 	var startTime time.Time
 	// debug := idx.opt.Debug
 

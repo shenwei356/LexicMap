@@ -319,11 +319,12 @@ Output format:
 			MinIdentity:        minIdent,
 		})
 
+		scaled := getFlagNonNegativeInt(cmd, "scale")
 		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
-			K:              uint8(31),
-			MinPrefix:      15,
-			MinSharedKmers: 30,
-			Scaled:         0,
+			K: uint8(15),
+			// MinPrefix:      15,
+			MinSharedKmers: uint16(fragSize / 15 / scaled),
+			Scaled:         uint32(scaled),
 		})
 
 		if outputLog {
@@ -449,7 +450,6 @@ Output format:
 
 				if genomeIds != nil {
 					// 3. search fragments for the query
-					// TODO: extract the candidate genome and directly align with them
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					checkError(err)
@@ -542,7 +542,7 @@ func init() {
 	gsearchCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
-	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 70,
+	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 35,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
 	gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
@@ -579,6 +579,8 @@ func init() {
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 1020,
 		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
+	gsearchCmd.Flags().IntP("scale", "", 8,
+		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
 	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
 }

@@ -32,8 +32,8 @@ import (
 // FragmentComparatorOptions defines the options for comparing two sets
 // of genome fragments by counting shared k-mers. See FragmentComparator for details.
 type FragmentComparatorOptions struct {
-	K         uint8
-	MinPrefix uint8
+	K uint8
+	// MinPrefix uint8
 
 	MinSharedKmers uint16
 
@@ -87,13 +87,14 @@ func NewFragmentComparator(options *FragmentComparatorOptions, poolChainers *syn
 }
 
 // Compare compares fragsA and fragsB by counting shared k-mers.
+// Do not forget to call RecycleFragmentCompareResult on the result to recycle the internal buffer.
 func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) (*[]uint64, error) {
 	entriesA, err := cpr.IndexA(fragsA)
 	if err != nil {
 		return nil, err
 	}
 	pairs, err := cpr.CompareWithIndexedA(entriesA, fragsB)
-	cpr.entries = entriesA[:0]
+	RecycleResultOfIndexA(entriesA)
 	return pairs, err
 }
 
@@ -107,8 +108,9 @@ var poolBatchEntries = &sync.Pool{New: func() interface{} {
 // and read concurrently by workers; it must not be mutated after this call.
 func (cpr *FragmentComparator) IndexA(fragsA *[][]byte) ([]rtree.BatchEntry, error) {
 	entries := poolBatchEntries.Get().([]rtree.BatchEntry)
-	entries, err := cpr.collectEntries(fragsA, 0, nil)
+	entries, err := cpr.collectEntries(fragsA, 0, entries[:0])
 	if err != nil {
+		RecycleResultOfIndexA(entries)
 		return nil, err
 	}
 	sorts.ByUint64(rtree.BatchEntries(entries))
@@ -144,7 +146,7 @@ func (cpr *FragmentComparator) CompareWithIndexedA(entriesA []rtree.BatchEntry, 
 // (0 or 1) is OR'ed into Val's lowest bit. If dst is nil a fresh buffer is
 // allocated.
 func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32, dst []rtree.BatchEntry) ([]rtree.BatchEntry, error) {
-	k := cpr.options.MinPrefix
+	k := cpr.options.K
 	scaled := uint64(cpr.options.Scaled)
 	useSketching := scaled > 1
 
@@ -228,7 +230,7 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		ib = jb
 	}
 
-	pairs := poolUint64s.New().(*[]uint64)
+	pairs := poolUint64s.Get().(*[]uint64)
 	*pairs = (*pairs)[:0]
 	threshold := cpr.options.MinSharedKmers
 	for key, v := range *counter {
@@ -246,6 +248,6 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 func RecycleFragmentCompareResult(pairs *[]uint64) {
 	if pairs != nil {
 		*pairs = (*pairs)[:0]
-		poolUint64s.Put(&pairs)
+		poolUint64s.Put(pairs)
 	}
 }
