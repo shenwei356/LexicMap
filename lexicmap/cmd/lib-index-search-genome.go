@@ -45,14 +45,14 @@ import (
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
-	Hits             []uint8  // count how many k-mers are matched for each mask
+	// Hits             []uint8  // count how many k-mers are matched for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.Score = 0
-	clear(r.Hits)
+	// clear(r.Hits)
 	idx.poolGSearchDetailResult.Put(r)
 }
 
@@ -61,7 +61,7 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		clear(r.Hits)
+		// clear(r.Hits)
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	clear(*m)
@@ -73,7 +73,7 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		clear(r.Hits)
+		// clear(r.Hits)
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	*rs = (*rs)[:0]
@@ -291,7 +291,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 						(*m)[refBatchAndIdxUint64] = r
 					}
 
-					r.Hits[sr.IQuery]++       // add count to the probe
+					// r.Hits[sr.IQuery]++       // add count to the probe
 					r.Score += uint64(sr.Len) // matched length
 				}
 			}
@@ -375,9 +375,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 	// merge search result from genome chunks, if has split genome
 	if idx.hasGenomeChunks {
 		var r, rp *GSearchScreenResultDetail
-		var i, j, _i int
+		var i, j int
 		var a uint64
-		var v uint8
 		var ok bool
 		var li *[]int
 		var ptr uintptr
@@ -415,9 +414,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 				// merge r into rp
 				rp.BatchGenomeIndex = append(rp.BatchGenomeIndex, r.BatchGenomeIndex...)
 				rp.Score += r.Score
-				for _i, v = range r.Hits {
-					rp.Hits[_i] += v
-				}
+				// for _i, v = range r.Hits {
+				// 	rp.Hits[_i] += v
+				// }
 
 				idx.RecycleGSearchScreenDetailResult(r)
 				(*rs)[j] = nil
@@ -465,14 +464,14 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 			(*whiteList)[refBatchAndIdxUint64] = &tmp
 		}
 
-		hitKmers := 0
-		hitMasks := 0
-		for _, v := range r.Hits {
-			if v > 0 {
-				hitKmers += int(v)
-				hitMasks++
-			}
-		}
+		// hitKmers := 0
+		// hitMasks := 0
+		// for _, v := range r.Hits {
+		// 	if v > 0 {
+		// 		hitKmers += int(v)
+		// 		hitMasks++
+		// 	}
+		// }
 		// fmt.Printf("%s\t%s\t%d\t%d\t%d\t%.1f\n",
 		// 	query.id,
 		// 	idx.BatchGenomeIndex2GenomeID[r.BatchGenomeIndex[0]], r.Score,

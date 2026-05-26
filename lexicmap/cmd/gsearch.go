@@ -463,7 +463,7 @@ Output format:
 				if genomeIds != nil {
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
-					err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
+					err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
 					checkError(err)
 
 					// clear up
@@ -585,7 +585,7 @@ func init() {
 
 	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
 		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
-	gsearchCmd.Flags().IntP("windows", "W", 10,
+	gsearchCmd.Flags().IntP("windows", "W", 1,
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))

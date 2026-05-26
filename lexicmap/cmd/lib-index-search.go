@@ -407,7 +407,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// for genome searching
 	idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
 		return &GSearchScreenResultDetail{
-			Hits: make([]uint8, len(idx.lh.Masks)),
+			// Hits: make([]uint8, len(idx.lh.Masks)),
 		}
 	}}
 	idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
