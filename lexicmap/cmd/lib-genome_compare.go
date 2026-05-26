@@ -21,12 +21,14 @@
 package cmd
 
 import (
+	"slices"
 	"sync"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/twotwotwo/sorts"
+	"github.com/twotwotwo/sorts/sortutil"
 )
 
 // FragmentComparatorOptions defines the options for comparing two sets
@@ -36,6 +38,8 @@ type FragmentComparatorOptions struct {
 	// MinPrefix uint8
 
 	MinSharedKmers uint16
+
+	TopN int // if > 0, for a, only return the top N subject b with the most shared k-mers
 
 	// FracMinHash scaling factor: only k-mers with Hash64(canonical) % Scaled == 0
 	// are kept. 0 or 1 disables filtering. Larger values reduce memory and CPU
@@ -239,6 +243,47 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		}
 	}
 
+	if cpr.options.TopN > 0 {
+		sortutil.Uint64s(*pairs)
+
+		ma := poolFragPairMap.Get().(*map[uint64]*[]uint64)
+
+		var ia, ib uint64
+		var ls *[]uint64
+		var ok bool
+		for _, p := range *pairs {
+			ia, ib = p>>32, p&4294967295
+
+			if ls, ok = (*ma)[ia]; !ok {
+				ls = poolKmerAndLocs.Get().(*[]uint64)
+				*ls = (*ls)[:0]
+				(*ma)[ia] = ls
+			}
+			*ls = append(*ls, ib)
+		}
+
+		*pairs = (*pairs)[:0]
+		for ia, ls := range *ma {
+			if len(*ls) > cpr.options.TopN {
+				slices.SortFunc(*ls, func(a, b uint64) int {
+					return int((*counter)[ia<<32|b]) - int((*counter)[ia<<32|a])
+				})
+
+				*ls = (*ls)[:cpr.options.TopN]
+			}
+			for _, ib := range *ls {
+				*pairs = append(*pairs, ia<<32|ib)
+			}
+		}
+
+		for _, ls := range *ma {
+			*ls = (*ls)[:0]
+			poolKmerAndLocs.Put(ls)
+		}
+		clear(*ma)
+		poolFragPairMap.Put(ma)
+	}
+
 	clear(*counter)
 	poolMapUint64Uint16.Put(counter)
 
@@ -251,3 +296,8 @@ func RecycleFragmentCompareResult(pairs *[]uint64) {
 		poolUint64s.Put(pairs)
 	}
 }
+
+var poolFragPairMap = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]*[]uint64, 4096)
+	return &tmp
+}}

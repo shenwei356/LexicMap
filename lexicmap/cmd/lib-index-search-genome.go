@@ -45,7 +45,7 @@ import (
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
-	Hits             []uint8  // count how many many k-mers are matched for each mask
+	Hits             []uint8  // count how many k-mers are matched for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
@@ -104,8 +104,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 		startTime0 := time.Now()
 		log.Debugf("%s (%s bp): start to screen genomes", query.id, humanize.Comma(int64(query.genomeSize)))
 		defer func() {
-			log.Debugf("%s (%s bp): finished screening genomes in %.3f seconds, got %d candidates",
-				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds(), len(*whiteList))
+			log.Debugf("%s (%s bp): finished screening genomes in %s",
+				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0))
 		}()
 	}
 
@@ -131,6 +131,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 	lenSeq := len(query.bigSeq)
 	step := lenSeq / (windows + 1) // step size
 	window := step << 1            // window size
+	if windows == 1 {
+		window = lenSeq
+	}
 
 	k := idx.k
 	k8 := uint8(idx.lh.K)
@@ -831,6 +834,9 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	if len(*qfrags) == 0 {
+		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the fragment size?")
+	}
 
 	// Pre-compute query-side k-mer entries once: the same qfrags is compared
 	// against every candidate genome, so collecting its canonical k-mers per
@@ -958,6 +964,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 				checkError(fmt.Errorf("fail to find similar fragments: %s", err))
 			}
 			sortutil.Uint64s(*pairs)
+			// fmt.Fprintf(os.Stderr, "%s vs %s: %d pairs\n", query.id, g.ID, len(*pairs))
 
 			// -------------------------------------------------------------
 			// 3. sequence alignment
@@ -1157,7 +1164,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			if gr.AF > 1 {
 				gr.AF = 1
 			}
-			gr.Score = gr.ANI * gr.AF
+			gr.Score = gr.ANI // * gr.AF
 
 			if gr.AF < minAF {
 				poolGSearchResult.Put(gr)

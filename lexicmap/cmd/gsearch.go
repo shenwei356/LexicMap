@@ -65,9 +65,13 @@ Output format:
   Tab-delimited format with 20+ columns, with 1-based positions.
 
     1.  query,    Query genome ID.
-	2.  subject,  Subject genome ID.
-	3.  ani,      Average nucleotide identity
-	4.  af,       Align fraction
+    2.  subject,  Subject genome ID.
+    3.  ani,      Average nucleotide identity.
+    4.  af,       Align fraction.
+    5.  qcontigs, Number of contigs in the query genome.
+    6.  qsize,    Size of the query genome.
+    7.  scontigs, Number of contigs in the subject genome.
+    8.  ssize,    Size of the subject genome.
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -326,6 +330,7 @@ Output format:
 			K:              uint8(kf),
 			MinSharedKmers: max(3, minSharedKmers),
 			Scaled:         uint32(scaled),
+			TopN:           5,
 		})
 
 		if outputLog {
@@ -443,6 +448,11 @@ Output format:
 				query, err := gr.Read(file)
 				checkError(err)
 				// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
+				if query.genomeSize < fragSize {
+					log.Warningf("query genome %s is smaller than fragment size (%d), skipped", query.id, fragSize)
+					ch <- query
+					return
+				}
 
 				// 2. search possible genome matches
 				genomeIds, err := idx.GSearchScreen(query, windows)
