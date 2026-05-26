@@ -150,9 +150,9 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 	scaled := uint64(cpr.options.Scaled)
 	useSketching := scaled > 1
 
-	ccc := cpr.ccc
-	ggg := cpr.ggg
-	ttt := cpr.ttt
+	// ccc := cpr.ccc
+	// ggg := cpr.ggg
+	// ttt := cpr.ttt
 
 	if dst == nil {
 		dst = make([]rtree.BatchEntry, 0, 1<<20)
@@ -172,10 +172,10 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 				break
 			}
 
-			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
-				util.IsLowComplexityDust(kmer, k) {
-				continue
-			}
+			// if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+			// 	util.IsLowComplexityDust(kmer, k) {
+			// 	continue
+			// }
 
 			canon = min(kmer, kmerRC)
 

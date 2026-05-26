@@ -23,6 +23,7 @@ package cmd
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"slices"
@@ -486,7 +487,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 
 // GSearchAlign align fragments of a query to candidates genomes.
 // Each fragment is aligned in the classical way.
-// This method is not recommended.
+// This method is very slow for lots of reference genomes.
 func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
 	if fragLen < minFragLen {
 		return fmt.Errorf("fragment length is too small")
@@ -829,7 +830,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	// --------------------------------------------------------------------------------
 	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
-	qfrags := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
 
 	// Pre-compute query-side k-mer entries once: the same qfrags is compared
 	// against every candidate genome, so collecting its canonical k-mers per
@@ -936,7 +937,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			// -------------------------------------------------------------
 			// 2. find similar fragment pairs
 
-			sfrags := seqs2fragments(&g.Seqs, fragLen, minFragLen)
+			sfrags, _ := seqs2fragments(&g.Seqs, fragLen, minFragLen)
 
 			sfragsRC := poolFragments.Get().(*[][]byte)
 			n := len(*sfrags)
@@ -1136,9 +1137,11 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 				if ls2, ok = (*mb)[_ib]; !ok {
 					continue
 				}
-				if (*ls2)[0].Score != int(_ia) { // reciprocal best hit
+				if (*ls2)[0].Score != int(_ia) {
 					continue
 				}
+
+				// reciprocal best hit
 
 				c = (*ls)[0]
 				// fmt.Printf("%s\t%s\t%d\t%d\tpident: %.2f, alen: %d, matches: %d, af: %.2f, gaps: %d\n",
@@ -1150,7 +1153,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			}
 
 			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
-			gr.AF = float64(gr.AlignedLength) / float64(query.genomeSize)
+			gr.AF = float64(gr.AlignedLength) / float64(qfragLens)
 			if gr.AF > 1 {
 				gr.AF = 1
 			}
@@ -1244,7 +1247,7 @@ type GSearchResult struct {
 // fields (AlignedFragments / AlignedLength / AlignedMatches) that the
 // caller increments rather than overwrites.
 func (r *GSearchResult) Reset() {
-	r.BatchGenomeIndex = 0
+	r.BatchGenomeIndex = math.MaxUint64
 	r.GenomeSize = 0
 	r.NumSeqs = 0
 

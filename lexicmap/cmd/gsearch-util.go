@@ -24,12 +24,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sync"
 
 	"github.com/shenwei356/bio/seqio/fastx"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 // GQuery represents a genome query
@@ -209,15 +211,17 @@ func recycleFragments(frags *[][]byte) {
 }
 
 // do not forget to call recycleFragments with the non-nil result
-func seqs2fragments(seqs *[]*[]byte, fragLen int, minFragLen int) *[][]byte {
+func seqs2fragments(seqs *[]*[]byte, fragLen int, minFragLen int) (*[][]byte, int) {
 	if seqs == nil || len(*seqs) == 0 {
-		return nil
+		return nil, 0
 	}
 
 	frags := poolFragments.Get().(*[][]byte)
 
 	var end, s, e int
 	var contig *[]byte
+
+	var n int
 
 	for _, contig = range *seqs {
 		end = len(*contig)
@@ -232,8 +236,95 @@ func seqs2fragments(seqs *[]*[]byte, fragLen int, minFragLen int) *[][]byte {
 			}
 
 			*frags = append(*frags, (*contig)[s:e])
+			n += e - s
 		}
 	}
 
-	return frags
+	return frags, n
+}
+
+// --------------------------------------------------------------
+
+// Quantiles for the standard normal — pick by desired true-positive retention.
+const (
+	ZQuantile95  = 1.645 // 95% sensitivity
+	ZQuantile975 = 1.96  // 97.5%
+	ZQuantile99  = 2.33  // 99%
+)
+
+// MinSharedKmersThreshold returns the recommended MinSharedKmers cutoff for
+// a FragmentComparator under the Mash / sourmash model (iid mutations,
+// sketched shared-count ~ Poisson(μ)).
+//
+//	μ = (L - k + 1) * ani^k / scaled
+//	T = floor(μ - z * sqrt(μ))
+//
+// L is the fragment length in bp; ani is the minimum identity to tolerate
+// (e.g. 0.80); z is the standard-normal quantile (use ZQuantile95 etc.).
+// Result is clamped to [1, math.MaxUint16].
+func MinSharedKmersThreshold(L int, k uint8, scaled uint32, ani, z float64) uint16 {
+	if scaled == 0 {
+		scaled = 1
+	}
+	nk := L - int(k) + 1
+	if nk <= 0 {
+		return 1
+	}
+	mu := float64(nk) * math.Pow(ani, float64(k)) / float64(scaled)
+	t := math.Floor(mu - z*math.Sqrt(mu))
+	if t < 1 {
+		return 1
+	}
+	if t > float64(math.MaxUint16) {
+		return math.MaxUint16
+	}
+	return uint16(t)
+}
+
+// MinSharedKmersThresholdExact returns the largest MinSharedKmers cutoff that
+// still retains at least `retention` of true ANI-matching fragment pairs,
+// using the exact Binomial distribution. Prefer this over the normal-
+// approximation variant when μ is small (short fragments or large scaled).
+//
+//	X ~ Binomial(n, q),   n = L - k + 1,   q = ani^k / scaled
+//	T = Quantile(1 - retention)
+//
+// retention=0.95 → keep 95% of true positives at the given ANI.
+// Result is clamped to [1, math.MaxUint16].
+func MinSharedKmersThresholdExact(L int, k uint8, scaled uint32, ani, retention float64) uint16 {
+	if scaled == 0 {
+		scaled = 1
+	}
+	nk := L - int(k) + 1
+	if nk <= 0 {
+		return 1
+	}
+	q := math.Pow(ani, float64(k)) / float64(scaled)
+	if q <= 0 {
+		return 1
+	}
+	if q > 1 {
+		q = 1
+	}
+	b := distuv.Binomial{N: float64(nk), P: q}
+
+	// Binomial has no Quantile in gonum; binary-search the CDF for the
+	// smallest T with CDF(T-1) <= 1-retention, i.e. P(X >= T) >= retention.
+	alpha := 1 - retention
+	lo, hi := 0, nk
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if b.CDF(float64(mid)) > alpha {
+			hi = mid
+		} else {
+			lo = mid + 1
+		}
+	}
+	if lo < 1 {
+		return 1
+	}
+	if lo > math.MaxUint16 {
+		return math.MaxUint16
+	}
+	return uint16(lo)
 }

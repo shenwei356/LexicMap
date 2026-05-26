@@ -278,7 +278,7 @@ Output format:
 			MaxDistance: float64(maxDist),
 
 			ExtendLength:  extLen,
-			ExtendLength2: 150,
+			ExtendLength2: 50,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
@@ -320,10 +320,11 @@ Output format:
 		})
 
 		scaled := getFlagNonNegativeInt(cmd, "scale")
+		kf := 11
+		minSharedKmers := MinSharedKmersThresholdExact(fragSize, uint8(kf), uint32(scaled), 0.80, 0.99)
 		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
-			K: uint8(15),
-			// MinPrefix:      15,
-			MinSharedKmers: uint16(fragSize / 15 / scaled),
+			K:              uint8(kf),
+			MinSharedKmers: max(3, minSharedKmers),
 			Scaled:         uint32(scaled),
 		})
 
@@ -340,6 +341,7 @@ Output format:
 			// if sopt.TopNChains > 0 {
 			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
 			// }
+			log.Infof("  minimum shared k-mers between genome fragments: %d", minSharedKmers)
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
@@ -369,7 +371,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		// fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
+		fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
 
 		// -------  output function -------
 
@@ -530,9 +532,9 @@ func init() {
 	gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	gsearchCmd.Flags().IntP("align-max-gap", "", 75,
+	gsearchCmd.Flags().IntP("align-max-gap", "", 50,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
-	gsearchCmd.Flags().IntP("align-band", "", 150,
+	gsearchCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
 	gsearchCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
@@ -579,7 +581,7 @@ func init() {
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 1020,
 		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
-	gsearchCmd.Flags().IntP("scale", "", 8,
+	gsearchCmd.Flags().IntP("scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
 	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
