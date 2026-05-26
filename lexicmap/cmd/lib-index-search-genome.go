@@ -166,7 +166,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 			*(*_kmersW)[j] = append(*(*_kmersW)[j], kmer)
 		}
 
-		if i == windows-1 { // sort k-mers and remove duplicates
+		if i == windows-1 && windows > 1 { // sort k-mers and remove duplicates
 			for j = range *_kmers {
 				util.UniqUint64s((*_kmersW)[j])
 			}
