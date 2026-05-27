@@ -140,6 +140,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	getAnchor := scr.getAnchor
 	var anchor, anchorNext uint64
 	var lastNext uint64
+	shift := k - 32
 
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
@@ -276,7 +277,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 					sr1 = poolSearchResult.Get().(*SearchResult)
 					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr1.Kmer = kmer1
-					sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
+					sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift
 					sr1.IsSuffix = reversedKmer
 					// sr1.Mismatch = mismatch
 					sr1.Values = sr1.Values[:0]
@@ -362,6 +363,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	getAnchor := scr.getAnchor
 	var anchor, anchorNext uint64
 	var lastNext uint64
+	shift := k - 32
 
 	for iQ, data := range scr.KVdata {
 		if len(data) == 0 { // this hapens when no captured k-mer for a mask
@@ -499,7 +501,7 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 						sr1 = poolSearchResult.Get().(*SearchResult)
 						sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr1.Kmer = kmer1
-						sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32
+						sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift
 						sr1.IsSuffix = reversedKmer
 						sr1.IQuery2 = iKmer
 						// sr1.Mismatch = mismatch

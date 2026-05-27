@@ -145,6 +145,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	// }
 	k := scr.K
+	shift := k - 32
 	if p < 1 || p > k {
 		p = k
 	}
@@ -416,7 +417,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						sr = poolSearchResult.Get().(*SearchResult)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
-						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
 						sr.IsSuffix = reversedKmer
 						// sr.Mismatch = mismatch
 						sr.Values = sr.Values[:0]
@@ -429,7 +430,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					sr = poolSearchResult.Get().(*SearchResult)
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
-					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
 					sr.IsSuffix = reversedKmer
 					// sr.Mismatch = mismatch
 					sr.Values = sr.Values[:0]
@@ -509,7 +510,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						sr = poolSearchResult.Get().(*SearchResult)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer2
-						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32 // kmer 2
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
 						sr.IsSuffix = reversedKmer
 						// sr.Mismatch = mismatch
 						sr.Values = sr.Values[:0]
@@ -522,7 +523,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					sr = poolSearchResult.Get().(*SearchResult)
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
-					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32 // kmer 2
+					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
 					sr.IsSuffix = reversedKmer
 					// sr.Mismatch = mismatch
 					sr.Values = sr.Values[:0]
@@ -583,6 +584,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	// }
 	k := scr.K
+	shift := k - 32
 	if p < 1 || p > k {
 		p = k
 	}
@@ -855,7 +857,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 							sr = poolSearchResult.Get().(*SearchResult)
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
-							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
 							sr.IsSuffix = reversedKmer
 							sr.IQuery2 = iKmer // difrrent from those in Search()
 							// sr.Mismatch = mismatch
@@ -869,7 +871,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						sr = poolSearchResult.Get().(*SearchResult)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
-						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + k - 32 // kmer 1
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
 						sr.IsSuffix = reversedKmer
 						sr.IQuery2 = iKmer // difrrent from those in Search()
 						// sr.Mismatch = mismatch
@@ -950,7 +952,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 							sr = poolSearchResult.Get().(*SearchResult)
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
-							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
 							sr.IsSuffix = reversedKmer
 							sr.IQuery2 = iKmer // difrrent from those in Search()
 							// sr.Mismatch = mismatch
@@ -964,7 +966,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 						sr = poolSearchResult.Get().(*SearchResult)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
-						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + k - 32
+						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
 						sr.IsSuffix = reversedKmer
 						sr.IQuery2 = iKmer // difrrent from those in Search()
 						// sr.Mismatch = mismatch
