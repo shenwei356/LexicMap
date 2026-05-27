@@ -322,8 +322,10 @@ var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
 
 // RecycleSeqComparatorResult recycles a SeqComparatorResult
 func RecycleSeqComparatorResult(r *SeqComparatorResult) {
-	RecycleChaining2Result(r.Chains)
-	r.Chains = nil
+	if r.Chains != nil {
+		RecycleChaining2Result(r.Chains)
+		r.Chains = nil
+	}
 	poolSeqComparatorResult.Put(r)
 }
 

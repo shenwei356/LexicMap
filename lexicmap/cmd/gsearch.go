@@ -463,8 +463,8 @@ Output format:
 				if genomeIds != nil {
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
-					err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
-					// err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					// err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
 					checkError(err)
 
 					// clear up
@@ -555,7 +555,7 @@ func init() {
 	gsearchCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
-	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 35,
+	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 70,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
 	gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
