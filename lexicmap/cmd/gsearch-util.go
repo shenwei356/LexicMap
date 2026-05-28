@@ -123,7 +123,7 @@ func (gr *GenomeReader) Recycle(q *GQuery) {
 }
 
 // Read reads a genome from a file or stdin
-func (gr *GenomeReader) Read(file string) (*GQuery, error) {
+func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*GQuery, error) {
 	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err
@@ -134,6 +134,16 @@ func (gr *GenomeReader) Read(file string) (*GQuery, error) {
 
 	var record *fastx.Record
 	i := 0
+
+	var table [256]byte
+	if convertNtoA {
+		if softMasking {
+			table = baseConvertCaseSensitive
+		} else {
+			table = baseConvert
+		}
+	}
+
 	for {
 		record, err = fastxReader.Read()
 		if err != nil {
@@ -148,6 +158,10 @@ func (gr *GenomeReader) Read(file string) (*GQuery, error) {
 			q.skipRegions = append(q.skipRegions, [2]int{len(q.bigSeq), len(q.bigSeq) + gr.k - 1})
 
 			q.bigSeq = append(q.bigSeq, gr.nnn...)
+		}
+
+		if convertNtoA {
+			convertSeq(record.Seq.Seq, table)
 		}
 
 		s := poolSeq.Get().(*[]byte)
@@ -190,6 +204,53 @@ func (gr *GenomeReader) Read(file string) (*GQuery, error) {
 	q.id = append(q.id, []byte(genomeID)...)
 
 	return q, nil
+}
+
+// --------------------------------------------------------------
+
+func convertSeq(seq []byte, table [256]byte) {
+	for i, b := range seq {
+		seq[i] = table[b]
+	}
+}
+
+var baseConvert = [256]byte{
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'C', 'C', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'C', 'T', 'T', 'A', 'A', 'A', 'C', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'C', 'C', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'C', 'T', 'T', 'A', 'A', 'A', 'C', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+}
+
+// baseConvertCaseSensitive converts all lower-cases to A (soft masking)
+var baseConvertCaseSensitive = [256]byte{
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'C', 'C', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'G', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'C', 'T', 'T', 'A', 'A', 'A', 'C', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', // convert all lower cases to A
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', // convert all lower cases to A
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
+	'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A',
 }
 
 // --------------------------------------------------------------

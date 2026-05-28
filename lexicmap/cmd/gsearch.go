@@ -66,12 +66,13 @@ Output format:
 
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
-    3.  ani,      Average nucleotide identity.
-    4.  af,       Align fraction.
-    5.  qcontigs, Number of contigs in the query genome.
-    6.  qsize,    Size of the query genome.
-    7.  scontigs, Number of contigs in the subject genome.
-    8.  ssize,    Size of the subject genome.
+    3.  ANI,      Average nucleotide identity.
+    4.  qAF,      Align fraction of the query genome.
+    5.  sAF,	  Align fraction of the subject genome.
+    6.  qctgs,    Number of contigs in the query genome.
+    7.  qsize,    Size of the query genome.
+    8.  sctgs,    Number of contigs in the subject genome.
+    9.  ssize,    Size of the subject genome.
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -153,21 +154,29 @@ Output format:
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 
-		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
-		if minSinglePrefix > 32 {
-			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
-		}
-		if minSinglePrefix < minPrefix {
-			checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
-		}
+		orthoANI := getFlagBool(cmd, "OrthoANI")
 
-		maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
-		maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
-		extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
+		// minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
+		// if minSinglePrefix > 32 {
+		// 	checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be <= 32", minSinglePrefix))
+		// }
+		// if minSinglePrefix < minPrefix {
+		// 	checkError(fmt.Errorf("the value of flag -P/--seed-min-single-prefix (%d) should be >= that of -p/--seed-min-prefix (%d)", minSinglePrefix, minPrefix))
+		// }
+		minSinglePrefix := minPrefix // not used in this command
+
+		// maxGap := getFlagPositiveInt(cmd, "seed-max-gap")
+		// maxDist := getFlagPositiveInt(cmd, "seed-max-dist")
+		maxGap := 1  // not used in this command
+		maxDist := 1 // not used in this command
+
+		// extLen := getFlagNonNegativeInt(cmd, "align-ext-len")
+		extLen := 1 // not used in this command
 
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		// topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
-		topNChains := 1
+		topNChains := 0 // not used in this command
+
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
@@ -180,19 +189,27 @@ Output format:
 			checkError(fmt.Errorf("the value of flag --align-band should not be smaller thant the value of --align-max-gap"))
 		}
 
-		minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
-		if minQcovGenome > 100 {
-			checkError(fmt.Errorf("the value of flag -Q/--min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
-		}
+		// minQcovGenome := getFlagNonNegativeFloat64(cmd, "min-qcov-per-genome")
+		// if minQcovGenome > 100 {
+		// 	checkError(fmt.Errorf("the value of flag -Q/--min-qcov-per-genome (%f) should be in range of [0, 100]", minQcovGenome))
+		// }
+		minQcovGenome := 0.0 // not used in this command
+
 		minIdent := getFlagNonNegativeFloat64(cmd, "align-min-match-pident")
 		if minIdent < 60 || minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [60, 100]", minIdent))
 		}
-		maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
+		// maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
+		maxEvalue := 10.0 // not used in this command
 
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
 			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
+		}
+		if orthoANI {
+			minQcovChain /= 2
+			minFragLen = fragSize
+			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%.2f)", minQcovChain, minQcovChain)
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -346,7 +363,11 @@ Output format:
 			// if sopt.TopNChains > 0 {
 			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
 			// }
-			log.Infof("  minimum shared k-mers between genome fragments: %d", minSharedKmers)
+			if orthoANI {
+				log.Infof("  minimum shared k-mers between genome fragments: %d", minSharedKmers)
+				log.Infof("  minimum query coverage per HSP: %.2f%% (the value of -q/--min-qcov-per-hsp is halved)", minQcovChain)
+			}
+			log.Infof("  minimum base identity in a HSP segment: %.2f%%", minIdent)
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
@@ -354,6 +375,7 @@ Output format:
 			if len(taxids)+len(negativeTaxids) > 0 {
 				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
 			}
+
 		}
 
 		// ---------------------------------------------------------------
@@ -376,7 +398,7 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tsubject\tani\taf\tqcontigs\tqsize\tscontigs\tssize\n")
+		fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
 
 		// -------  output function -------
 
@@ -403,8 +425,8 @@ Output format:
 			}
 
 			for _, gr := range *q.result {
-				fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
-					q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AF*100,
+				fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+					q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
 					len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize)
 			}
 
@@ -445,7 +467,7 @@ Output format:
 				}()
 
 				// 1. read all sequences of the query genome
-				query, err := gr.Read(file)
+				query, err := gr.Read(file, true, idx.softMasking) // N's are converted to A's.
 				checkError(err)
 				// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
 				if query.genomeSize < fragSize {
@@ -458,13 +480,16 @@ Output format:
 				genomeIds, err := idx.GSearchScreen(query, windows)
 				checkError(err)
 
-				runtime.GC()
+				// runtime.GC()
 
 				if genomeIds != nil {
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
-					// err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
-					err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					if orthoANI {
+						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					} else {
+						err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					}
 					checkError(err)
 
 					// clear up
@@ -502,6 +527,8 @@ Output format:
 func init() {
 	RootCmd.AddCommand(gsearchCmd)
 
+	// general flags
+
 	gsearchCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
@@ -509,29 +536,43 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
-	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
+	gsearchCmd.Flags().IntP("max-query-conc", "J", 2,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
 
-	gsearchCmd.Flags().IntP("gc-interval", "", 64,
+	gsearchCmd.Flags().IntP("gc-interval", "", 4,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
 
-	// seed searching
+	// genome filtering/screening
+
+	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
+		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 15,
-		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors).`))
+		formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))
 
-	gsearchCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
-		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors) if there's only one pair of seeds matched.`))
-
-	gsearchCmd.Flags().IntP("seed-max-gap", "", 50,
-		formatFlagUsage(`Minimum gap in seed chaining.`))
-	gsearchCmd.Flags().IntP("seed-max-dist", "", 1000,
-		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
+	gsearchCmd.Flags().IntP("windows", "W", 1,
+		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
+	gsearchCmd.Flags().IntP("frag-size", "", 1020,
+		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
+	gsearchCmd.Flags().IntP("min-frag-size", "", 100,
+		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
+	gsearchCmd.Flags().IntP("scale", "", 4,
+		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
-		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 100. (default 0)`))
+		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
+
+	// alignment
+
+	// gsearchCmd.Flags().IntP("seed-min-single-prefix", "P", 17,
+	// 	formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors) if there's only one pair of seeds matched.`))
+
+	// gsearchCmd.Flags().IntP("seed-max-gap", "", 50,
+	// 	formatFlagUsage(`Minimum gap in seed chaining.`))
+	// gsearchCmd.Flags().IntP("seed-max-dist", "", 1000,
+	// 	formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	// gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
 	// 	formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
@@ -540,14 +581,14 @@ func init() {
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
 
 	// pseudo alignment
-	gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
-		formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
+	// gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
+	// 	formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	gsearchCmd.Flags().IntP("align-max-gap", "", 50,
+	gsearchCmd.Flags().IntP("align-max-gap", "", 100,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	gsearchCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
-	gsearchCmd.Flags().IntP("align-min-match-len", "l", 50,
+	gsearchCmd.Flags().IntP("align-min-match-len", "l", 30,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
 	// general filtering thresholds
@@ -558,11 +599,11 @@ func init() {
 	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 70,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
-	gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
-		formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
+	// gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
+	// 	formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
 
-	gsearchCmd.Flags().Float64P("max-evalue", "e", 10,
-		formatFlagUsage(`Maximum evalue of a HSP segment.`))
+	// gsearchCmd.Flags().Float64P("max-evalue", "e", 10,
+	// 	formatFlagUsage(`Maximum evalue of a HSP segment.`))
 
 	gsearchCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
@@ -582,18 +623,11 @@ func init() {
 	gsearchCmd.Flags().StringP("taxid-file", "", "",
 		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
-	// genome search
+	// ani-af related filtering
 
-	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
-	gsearchCmd.Flags().IntP("windows", "W", 1,
-		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
-	gsearchCmd.Flags().IntP("frag-size", "", 1020,
-		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
-	gsearchCmd.Flags().IntP("min-frag-size", "", 1020,
-		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
-	gsearchCmd.Flags().IntP("scale", "", 4,
-		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
+	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
+		formatFlagUsage(`Compute OrthoANI.`))
+
 	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
 }

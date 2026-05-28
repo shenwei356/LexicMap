@@ -164,6 +164,7 @@ type Index struct {
 	poolChainers    *sync.Pool
 
 	// for sequence comparing
+	softMasking       bool
 	contigInterval    int // read from info file
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
@@ -264,6 +265,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	idx.contigInterval = info.ContigInterval
+	idx.softMasking = info.SoftMaksing
 
 	// -----------------------------------------------------
 	// taxid-related files

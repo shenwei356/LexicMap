@@ -723,18 +723,22 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 		j := 0
 		for _, gr := range *rs {
 			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
-			gr.AF = float64(gr.AlignedLength) / float64(query.genomeSize)
+			gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
+			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
 
-			if gr.AF < minAF {
+			if gr.AFq < minAF {
 				poolGSearchResult.Put(gr)
 				continue
 			}
 
-			if gr.AF > 1 {
-				gr.AF = 1
+			if gr.AFq > 1 {
+				gr.AFq = 1
+			}
+			if gr.AFs > 1 {
+				gr.AFs = 1
 			}
 
-			gr.Score = gr.ANI * gr.AF
+			gr.Score = gr.ANI * gr.AFq
 
 			(*rs)[j] = gr
 			j++
@@ -942,7 +946,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			// -------------------------------------------------------------
 			// 2. find similar fragment pairs
 
-			sfrags, _ := seqs2fragments(&g.Seqs, fragLen, minFragLen)
+			sfrags, sfragLens := seqs2fragments(&g.Seqs, fragLen, minFragLen)
 
 			sfragsRC := poolFragments.Get().(*[][]byte)
 			n := len(*sfrags)
@@ -1159,13 +1163,17 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			}
 
 			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
-			gr.AF = float64(gr.AlignedLength) / float64(qfragLens)
-			if gr.AF > 1 {
-				gr.AF = 1
+			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
+			if gr.AFq > 1 {
+				gr.AFq = 1
+			}
+			if gr.AFs > 1 {
+				gr.AFs = 1
 			}
 			gr.Score = gr.ANI // * gr.AF
 
-			if gr.AF < minAF {
+			if gr.AFq < minAF {
 				poolGSearchResult.Put(gr)
 			} else {
 				ch <- gr
@@ -1244,7 +1252,8 @@ type GSearchResult struct {
 	AlignedMatches   int
 
 	ANI   float64
-	AF    float64
+	AFq   float64
+	AFs   float64
 	Score float64 // for sorting
 }
 
@@ -1262,7 +1271,8 @@ func (r *GSearchResult) Reset() {
 	r.AlignedMatches = 0
 
 	r.ANI = 0
-	r.AF = 0
+	r.AFq = 0
+	r.AFs = 0
 	r.Score = 0
 }
 

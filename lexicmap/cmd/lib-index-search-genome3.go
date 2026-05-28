@@ -72,10 +72,8 @@ var poolSubjectSketch = &sync.Pool{New: func() interface{} {
 // Defaults for in-memory desert filling. They match the typical index-build
 // defaults (--seed-max-desert / --seed-in-desert-dist) so a query fragment
 // sees similar seed density to what the persistent index would have.
-const (
-	gsa3DesertMaxLen           = 70
-	gsa3DesertExpectedSeedDist = 35
-)
+var gsa3DesertMaxLen = 50
+var gsa3DesertExpectedSeedDist = 25
 
 // buildSubjectSketch masks the concatenated subject with the loaded LexicHash,
 // drops low-complexity k-mers, and (optionally) fills sketching deserts so
@@ -593,7 +591,7 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))
 
 	alignOption := &wfa.Options{GlobalAlignment: true}
-	var minPrefix uint8 = 11 // idx.opt.MinPrefix
+	var minPrefix uint8 = idx.seqCompareOption.MinPrefix
 	minPIdent := idx.seqCompareOption.MinIdentity
 	minQcovHSP := idx.seqCompareOption.MinAlignedFraction
 	extLen := fragLen / 2 // idx.opt.ExtendLength
@@ -716,14 +714,18 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			if gr.AlignedLength > 0 {
 				gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
 			}
-			gr.AF = float64(gr.AlignedLength) / float64(qfragLens)
-			if gr.AF > 1 {
-				gr.AF = 1
+			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
+			if gr.AFq > 1 {
+				gr.AFq = 1
+			}
+			if gr.AFs > 1 {
+				gr.AFs = 1
 			}
 			gr.Score = gr.ANI
 			// fmt.Printf("aligned fragments: %d, aligned length: %d, total length: %d, matched bases: %d, ANI: %.2f, AF: %.2f\n", gr.AlignedFragments, gr.AlignedLength, qfragLens, gr.AlignedMatches, gr.ANI, gr.AF)
 
-			if gr.AF < minAF {
+			if gr.AFq < minAF {
 				poolGSearchResult.Put(gr)
 			} else {
 				ch <- gr

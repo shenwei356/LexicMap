@@ -21,7 +21,7 @@ require (
 	github.com/shenwei356/util v0.5.6
 	github.com/shenwei356/wfa v0.4.1
 	github.com/shenwei356/xopen v0.4.0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.10.2
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.7.2
 	github.com/zeebo/wyhash v0.0.1
@@ -52,7 +52,7 @@ require (
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/shenwei356/breader v0.3.2 // indirect
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/image v0.38.0 // indirect
