@@ -174,8 +174,8 @@ Output format:
 		extLen := 1 // not used in this command
 
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
-		// topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
-		topNChains := 0 // not used in this command
+		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
+		// topNChains := 5 // not used in this command
 
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
@@ -210,6 +210,15 @@ Output format:
 			minQcovChain /= 2
 			minFragLen = fragSize
 			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%.2f)", minQcovChain, minQcovChain)
+		} else {
+			maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
+			seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
+			if seedInDesertDist > maxDesert/2 {
+				checkError(fmt.Errorf("value of --seed-in-desert-dist should be smaller than 0.5 * --seed-max-desert"))
+			}
+
+			gsa3DesertMaxLen = maxDesert
+			gsa3DesertExpectedSeedDist = seedInDesertDist
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -574,8 +583,8 @@ func init() {
 	// gsearchCmd.Flags().IntP("seed-max-dist", "", 1000,
 	// 	formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
-	// gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
-	// 	formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
+	gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
+		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
 
 	gsearchCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
@@ -583,6 +592,11 @@ func init() {
 	// pseudo alignment
 	// gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 	// 	formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
+
+	gsearchCmd.Flags().IntP("seed-max-desert", "", 60,
+		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
+	gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 30,
+		formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	gsearchCmd.Flags().IntP("align-max-gap", "", 100,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))

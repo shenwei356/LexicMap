@@ -1153,7 +1153,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						start = int(pre) - 1000 // start position in the sequence
 						posOfPre = 1000         // the location of previous seed in the list
 						if start < 0 {
-							posOfPre += start
+							posOfPre += start // pre
 							start = 0
 						}
 						end = int(pos) + 1000 + k // end position in the sequence

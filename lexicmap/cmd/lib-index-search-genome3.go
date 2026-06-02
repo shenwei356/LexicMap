@@ -26,11 +26,16 @@ import (
 	"fmt"
 	"math"
 	"math/bits"
+	"os"
 	"regexp"
 	"slices"
 	"sync"
+	"time"
 
+	"github.com/dustin/go-humanize"
 	itree "github.com/rdleal/intervalst/interval"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
@@ -72,8 +77,8 @@ var poolSubjectSketch = &sync.Pool{New: func() interface{} {
 // Defaults for in-memory desert filling. They match the typical index-build
 // defaults (--seed-max-desert / --seed-in-desert-dist) so a query fragment
 // sees similar seed density to what the persistent index would have.
-var gsa3DesertMaxLen = 50
-var gsa3DesertExpectedSeedDist = 25
+var gsa3DesertMaxLen = 60
+var gsa3DesertExpectedSeedDist = 30
 
 // buildSubjectSketch masks the concatenated subject with the loaded LexicHash,
 // drops low-complexity k-mers, and (optionally) fills sketching deserts so
@@ -502,6 +507,14 @@ func sortKmerPairs(knl *[]uint64) {
 // ANI = aligned_matches / aligned_length (sum over fragments),
 // AF  = aligned_length / total_query_fragment_length.
 func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+	debug := idx.opt.Debug
+
+	startTime0 := time.Now()
+
+	if debug {
+		log.Debugf("%s (%s bp): start to preprocess query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+	}
+
 	// 1) Cut the query into fragments.
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
 	if len(*qfrags) == 0 {
@@ -511,6 +524,7 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 
 	// 2) Pre-compute each query fragment's masked k-mers once. They are
 	// read-only thereafter and shared across all candidate subjects.
+
 	qSeeds := make([]*qFragSeeds, len(*qfrags))
 	{
 		var wgPre sync.WaitGroup
@@ -556,6 +570,14 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 
 	// 3) For each candidate subject, chunked or not, drop secondary chunk
 	// keys so we process each genome exactly once (same as GSearchAlign2).
+
+	startTime := time.Now()
+	if debug {
+		log.Debugf("%s (%s bp): finished preprocessing query genome fragments in %.3f seconds",
+			query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
+		log.Debugf("%s (%s bp): start to align query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+	}
+
 	toDelete := make([]uint64, 0, len(*genomeIds))
 	for id, ids := range *genomeIds {
 		if id != (*ids)[0] {
@@ -565,6 +587,41 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 	for _, id := range toDelete {
 		delete(*genomeIds, id)
 	}
+
+	// -----------------------------------------------------------
+	// process bar
+	var pbs *mpb.Progress
+	var bar *mpb.Bar
+	var chDuration chan time.Duration
+	var doneDuration chan int
+	if debug {
+		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+		bar = pbs.AddBar(int64(len(*genomeIds)),
+			mpb.PrependDecorators(
+				decor.Name("checked subject genomes: ", decor.WC{W: len("checked subject genomes: "), C: decor.DindentRight}),
+				decor.Name("", decor.WCSyncSpaceR),
+				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+			),
+			mpb.AppendDecorators(
+				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
+				decor.OnComplete(decor.Name(""), ". done"),
+			),
+		)
+
+		chDuration = make(chan time.Duration, idx.opt.NumCPUs)
+		doneDuration = make(chan int)
+		go func() {
+			for t := range chDuration {
+				bar.EwmaIncrBy(1, t)
+			}
+			doneDuration <- 1
+		}()
+	}
+
+	fcpus := float64(idx.opt.NumCPUs)
+
+	// -----------------------------------------------------------
 
 	rs := poolGSearchResults.Get().(*[]*GSearchResult)
 	*rs = (*rs)[:0]
@@ -605,13 +662,22 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 		wg.Add(1)
 
 		go func(batchIDAndRefIDs *[]uint64) {
+			var g *genome.Genome
+			timeStart := time.Now()
 			defer func() {
 				<-tokens
 				wg.Done()
+				if debug {
+					log.Debugf("%s (%s bp): aligning subject genome %s (%s bp) took %s",
+						query.id, humanize.Comma(int64(query.genomeSize)),
+						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+						humanize.Comma(int64(g.GenomeSize)), time.Since(timeStart))
+					log.Debug()
+					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+				}
 			}()
 
 			// a) Load all chunks of this genome.
-			var g *genome.Genome
 			genomes := make([]*genome.Genome, len(*batchIDAndRefIDs))
 			for i, batchIDAndRefID := range *batchIDAndRefIDs {
 				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
@@ -738,12 +804,22 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			for _, gx := range genomes {
 				genome.RecycleGenome(gx)
 			}
+
 		}(batchIDAndRefIDs)
 	}
 
 	wg.Wait()
 	close(ch)
 	<-done
+
+	// process bar
+	if debug {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+		log.Debugf("%s (%s bp): finished aligning query genome fragments in %.3f seconds",
+			query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime).Seconds())
+	}
 
 	return nil
 }
@@ -880,11 +956,18 @@ func alignQueryFragToSubject(
 	// in chain-space but differ at the sequence level.
 	var bestMatched, bestAligned, bestGaps int
 	var bestScore int = -1
+	topChains := idx.chainingOptions.TopChains // only check the best N chains
+	onlyTopChains := topChains > 0
 
 	if fwdOk {
+		i := 0
 		for _, chain := range *fwdChains {
 			if chain == nil {
 				continue
+			}
+			i++
+			if onlyTopChains && i > topChains {
+				break
 			}
 			matched, aligned, gaps, ok := alignChain(
 				qfrag, concat, chain, sketch, false, algn,
@@ -904,9 +987,14 @@ func alignQueryFragToSubject(
 	}
 
 	if revOk {
+		i := 0
 		for _, chain := range *revChains {
 			if chain == nil {
 				continue
+			}
+			i++
+			if onlyTopChains && i > topChains {
+				break
 			}
 			matched, aligned, gaps, ok := alignChain(
 				qfrag, concatRC, chain, sketch, true, algn,

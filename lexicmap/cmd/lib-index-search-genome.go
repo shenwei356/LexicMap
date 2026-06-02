@@ -499,9 +499,9 @@ func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genom
 
 	if debug {
 		startTime0 := time.Now()
-		log.Debugf("%s (%s bp): start to align genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+		log.Debugf("%s (%s bp): start to align query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
 		defer func() {
-			log.Debugf("%s (%s bp): finished aligning genome fragments in %.3f seconds",
+			log.Debugf("%s (%s bp): finished aligning query genome fragments in %.3f seconds",
 				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
 		}()
 	}
@@ -833,6 +833,17 @@ var poolQuery2 = &sync.Pool{New: func() interface{} {
 // GSearchAlign2 align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
 func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+	debug := idx.opt.Debug
+
+	if debug {
+		startTime0 := time.Now()
+		log.Debugf("%s (%s bp): start to align query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
+		defer func() {
+			log.Debugf("%s (%s bp): finished aligning query genome fragments in %.3f seconds",
+				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
+		}()
+	}
+
 	// --------------------------------------------------------------------------------
 	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
@@ -896,6 +907,41 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 		delete(*genomeIds, id)
 	}
 
+	// -----------------------------------------------------------
+	// process bar
+	var pbs *mpb.Progress
+	var bar *mpb.Bar
+	var chDuration chan time.Duration
+	var doneDuration chan int
+	if debug {
+		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+		bar = pbs.AddBar(int64(len(*genomeIds)),
+			mpb.PrependDecorators(
+				decor.Name("checked subject genomes: ", decor.WC{W: len("checked subject genomes: "), C: decor.DindentRight}),
+				decor.Name("", decor.WCSyncSpaceR),
+				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+			),
+			mpb.AppendDecorators(
+				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
+				decor.OnComplete(decor.Name(""), ". done"),
+			),
+		)
+
+		chDuration = make(chan time.Duration, idx.opt.NumCPUs)
+		doneDuration = make(chan int)
+		go func() {
+			for t := range chDuration {
+				bar.EwmaIncrBy(1, t)
+			}
+			doneDuration <- 1
+		}()
+	}
+
+	fcpus := float64(idx.opt.NumCPUs)
+
+	// -----------------------------------------------------------
+
 	for _, batchIDAndRefIDs := range *genomeIds {
 		// -------------------------------------------------------------
 
@@ -903,9 +949,13 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 		wg.Add(1)
 
 		go func(batchIDAndRefIDs *[]uint64) {
+			timeStart := time.Now()
 			defer func() {
 				<-tokens
 				wg.Done()
+				if debug {
+					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+				}
 			}()
 
 			// -------------------------------------------------------------
@@ -1215,6 +1265,13 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	wg.Wait()
 	close(ch)
 	<-done
+
+	// process bar
+	if debug {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
+	}
 
 	// --------------------------------------------------------------------------------
 	// Step4. align fragments to candidate genomes
