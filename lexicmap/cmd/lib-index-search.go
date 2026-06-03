@@ -146,9 +146,10 @@ type Index struct {
 	openFileTokens chan int // control the max open files
 
 	// lexichash
-	lh *lexichash.LexicHash
-	k  int
-	k8 uint8
+	lh        *lexichash.LexicHash
+	lenPrefix uint8 // 20,000 -> 7
+	k8        uint8
+	k         int
 
 	// k-mer-value searchers
 	Searchers         []*kv.Searcher
@@ -391,6 +392,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		lenPrefix++
 	}
 	lenPrefix--
+	idx.lenPrefix = uint8(lenPrefix)
 	err = idx.lh.IndexMasks(lenPrefix)
 	if err != nil {
 		return nil, err

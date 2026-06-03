@@ -259,7 +259,7 @@ var baseConvertCaseSensitive = [256]byte{
 
 var poolFragments = &sync.Pool{
 	New: func() interface{} {
-		tmp := make([][]byte, 0, 5120) // for a 5Mb genome
+		tmp := make([][]byte, 0, 10240) // for a 10Mb genome
 		return &tmp
 	},
 }
