@@ -310,7 +310,7 @@ Output format:
 			MaxDistance: float64(maxDist),
 
 			ExtendLength:  extLen,
-			ExtendLength2: 50,
+			ExtendLength2: 100,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
@@ -347,6 +347,8 @@ Output format:
 				// can not be two small
 				BandBase:  alignBand,
 				BandCount: int(alignBand / 2),
+
+				HeuristicKmerPidentThreshold: 0,
 			},
 
 			MinAlignedFraction: minQcovChain,

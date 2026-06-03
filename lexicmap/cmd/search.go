@@ -374,6 +374,8 @@ Result ordering:
 				// can not be two small
 				BandBase:  alignBand,
 				BandCount: int(alignBand / 2),
+
+				HeuristicKmerPidentThreshold: 15,
 			},
 
 			MinAlignedFraction: minQcovChain,

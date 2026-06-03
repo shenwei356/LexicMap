@@ -34,6 +34,8 @@ type Chaining2Options struct {
 	MaxDistance int
 	BandCount   int // only check i in range of  i − A < j < i
 	BandBase    int // only check i where i.Qstart+i.Len + A < j.Qstart
+
+	HeuristicKmerPidentThreshold float64 // for filtering less similar chaining results
 }
 
 // DefaultChaining2Options is the defalt vaule of Chaining2Option.
@@ -45,6 +47,8 @@ var DefaultChaining2Options = Chaining2Options{
 	MaxDistance: 100,
 	BandCount:   50,
 	BandBase:    100,
+
+	HeuristicKmerPidentThreshold: 15,
 }
 
 // Chainer2 is an object for chaining the anchors in two similar sequences.
@@ -318,6 +322,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		&nAlignedBasesT,
 		Mi,
 		nil, // &ce.bounds,
+		ce.options.HeuristicKmerPidentThreshold,
 	)
 
 	if len(*paths) == 0 {
@@ -341,6 +346,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	_nAlignedBasesT *int,
 	Mi0 int, // found Mi
 	bounds *[]int32, // intervals of previous chains
+	heuristicKmerPidentThreshold float64,
 ) (
 	float64, // score
 	int, // query begin position (0-based)
@@ -467,7 +473,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			// fmt.Println(nMatchedBases, nAlignedBasesQ, pident)
 
 			// the pident here (pseudo alignment) would be much lower than the real one .
-			if pident < 15 {
+			if pident < heuristicKmerPidentThreshold {
 				firstAnchorOfAChain = true
 				break
 			}
@@ -510,7 +516,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 
 			if nAlignedBasesQ >= minAlignLen {
 				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
-				if pident >= 15 {
+				if pident >= heuristicKmerPidentThreshold {
 					if pident > 100 {
 						pident = 100
 					}
@@ -569,6 +575,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			_nAlignedBasesT,
 			-1,
 			bounds,
+			heuristicKmerPidentThreshold,
 		)
 		if _score > 0 {
 			if _qB < qB {
@@ -605,6 +612,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 			_nAlignedBasesT,
 			-1,
 			bounds,
+			heuristicKmerPidentThreshold,
 		)
 		if _score > 0 {
 			if _qB < qB {
