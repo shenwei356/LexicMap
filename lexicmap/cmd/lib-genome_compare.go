@@ -39,7 +39,7 @@ type FragmentComparatorOptions struct {
 
 	MinSharedKmers uint16
 
-	TopN int // if > 0, for a, only return the top N subject b with the most shared k-mers
+	TopNFragments int // if > 0, for a, only return the top N subject b with the most shared k-mers
 
 	// FracMinHash scaling factor: only k-mers with Hash64(canonical) % Scaled == 0
 	// are kept. 0 or 1 disables filtering. Larger values reduce memory and CPU
@@ -243,7 +243,7 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		}
 	}
 
-	if cpr.options.TopN > 0 {
+	if cpr.options.TopNFragments > 0 {
 		sortutil.Uint64s(*pairs)
 
 		ma := poolFragPairMap.Get().(*map[uint64]*[]uint64)
@@ -264,12 +264,12 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 
 		*pairs = (*pairs)[:0]
 		for ia, ls := range *ma {
-			if len(*ls) > cpr.options.TopN {
+			if len(*ls) > cpr.options.TopNFragments {
 				slices.SortFunc(*ls, func(a, b uint64) int {
 					return int((*counter)[ia<<32|b]) - int((*counter)[ia<<32|a])
 				})
 
-				*ls = (*ls)[:cpr.options.TopN]
+				*ls = (*ls)[:cpr.options.TopNFragments]
 			}
 			for _, ib := range *ls {
 				*pairs = append(*pairs, ia<<32|ib)

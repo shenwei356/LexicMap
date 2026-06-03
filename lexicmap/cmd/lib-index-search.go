@@ -98,6 +98,7 @@ type IndexSearchingOptions struct {
 	KeepGenomesWithoutTaxId bool
 
 	// For searching genomes
+	MaxSubjectGenomeSize int
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -198,8 +199,8 @@ type Index struct {
 	poolGSearchDetailResult     *sync.Pool
 	poolGSearchDetailResultsMap *sync.Pool
 	poolGSearchDetailResults    *sync.Pool
-	fragmentsCompareOption      *FragmentComparatorOptions
-	poolFragmentComparator      *sync.Pool
+	// fragmentsCompareOption      *FragmentComparatorOptions
+	poolFragmentComparator *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -216,7 +217,7 @@ func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 // SetFragmentCompareOptions sets the genome fragment comparing options.
 // This command must be called after SetSeqCompareOptions
 func (idx *Index) SetFragmentCompareOptions(fco *FragmentComparatorOptions) {
-	idx.fragmentsCompareOption = fco
+	// idx.fragmentsCompareOption = fco
 	idx.poolFragmentComparator = &sync.Pool{New: func() interface{} {
 		return NewFragmentComparator(fco, idx.poolChainers2)
 	}}

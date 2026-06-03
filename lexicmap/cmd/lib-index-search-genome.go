@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"runtime"
 	"slices"
 	"sync"
 	"time"
@@ -487,340 +486,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 	return whiteList, nil
 }
 
-// GSearchAlign align fragments of a query to candidates genomes.
-// Each fragment is aligned in the classical way.
-// This method is very slow for lots of reference genomes.
-func (idx *Index) GSearchAlign(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
-	if fragLen < minFragLen {
-		return fmt.Errorf("fragment length is too small")
-	}
-
-	debug := idx.opt.Debug
-
-	if debug {
-		startTime0 := time.Now()
-		log.Debugf("%s (%s bp): start to align query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
-		defer func() {
-			log.Debugf("%s (%s bp): finished aligning query genome fragments in %.3f seconds",
-				query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime0).Seconds())
-		}()
-	}
-
-	if maxQueryConcurrency == 0 {
-		maxQueryConcurrency = runtime.NumCPU()
-	}
-	gc := gcInterval > 0
-	if gcInterval > 0 {
-		gcInterval = uint64(roundup32(uint32(gcInterval)))
-		if gcInterval == 1 {
-			gcInterval = 2
-		}
-	}
-	gcIntervalMinus1 := gcInterval - 1
-
-	// -----------------------------------------------------------
-	// process bar
-	var pbs *mpb.Progress
-	var bar *mpb.Bar
-	var chDuration chan time.Duration
-	var doneDuration chan int
-	if debug {
-		// jobs
-		var nJobs int
-		var contig *[]byte
-		for _, contig = range query.seqs {
-			nJobs += len(*contig) / fragLen
-			if len(*contig)%fragLen >= 100 {
-				nJobs++
-			}
-		}
-
-		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-		bar = pbs.AddBar(int64(nJobs),
-			mpb.PrependDecorators(
-				decor.Name("checked fragments: ", decor.WC{W: len("checked fragments: "), C: decor.DindentRight}),
-				decor.Name("", decor.WCSyncSpaceR),
-				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
-			),
-			mpb.AppendDecorators(
-				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
-				decor.OnComplete(decor.Name(""), ". done"),
-			),
-		)
-
-		chDuration = make(chan time.Duration, idx.opt.NumCPUs)
-		doneDuration = make(chan int)
-		go func() {
-			for t := range chDuration {
-				bar.EwmaIncrBy(1, t)
-			}
-			doneDuration <- 1
-		}()
-	}
-
-	// -----------------------------------------------------------
-
-	query.result = poolGSearchResults.Get().(*[]*GSearchResult)
-	*query.result = (*query.result)[:0]
-
-	var wg sync.WaitGroup
-	tokens := make(chan int, maxQueryConcurrency)
-
-	// 1) collect alignment results
-	ch := make(chan *Query, maxQueryConcurrency)
-	done := make(chan int)
-	var total, matched uint64
-	go func() {
-		var r *SearchResult
-		var sd *SimilarityDetail
-		var cr *SeqComparatorResult
-		var c *Chain2Result
-
-		m := poolGSearchResultMap.Get().(*map[uint64]*GSearchResult)
-		clear(*m)
-		var ok bool
-		var gr *GSearchResult
-
-		// 1.1) collect alignment results
-
-		for q := range ch { // each fragment
-			total++
-
-			if q.result == nil {
-				poolQuery.Put(q)
-
-				if gc && total&gcIntervalMinus1 == 0 {
-					runtime.GC()
-				}
-
-				continue
-			}
-
-			matched++
-			// ------------------------------------------------
-
-			for _, r = range *q.result { // each subject genome
-				if gr, ok = (*m)[r.BatchGenomeIndex]; !ok {
-					gr = poolGSearchResult.Get().(*GSearchResult)
-					gr.Reset()
-					gr.BatchGenomeIndex = r.BatchGenomeIndex
-					gr.GenomeSize = r.GenomeSize
-					gr.NumSeqs = r.NumSeqs
-
-					(*m)[r.BatchGenomeIndex] = gr
-				}
-
-				for _, sd = range *r.SimilarityDetails { // each chain
-					cr = sd.Similarity
-
-					for _, c = range *cr.Chains { // each match
-						if c == nil {
-							continue
-						}
-
-						gr.AlignedFragments++
-						gr.AlignedLength += c.AlignedLength - c.Gaps // need to minus gaps
-						gr.AlignedMatches += c.MatchedBases
-					}
-				}
-			}
-
-			// ------------------------------------------------
-
-			if gc && total&gcIntervalMinus1 == 0 {
-				runtime.GC()
-			}
-		}
-
-		// ---------------------------------------
-		// 1.2 from map to slice
-		rs := poolGSearchResults.Get().(*[]*GSearchResult)
-		*rs = (*rs)[:0]
-		for _, gr = range *m {
-
-			*rs = append(*rs, gr)
-		}
-		clear(*m)
-		poolGSearchResultMap.Put(m)
-
-		// ---------------------------------------
-		// 1.3) merge results of genome chunks
-		if idx.hasGenomeChunks {
-			var r, rp *GSearchResult
-			var i, j int
-			var a uint64
-			var ok bool
-			var li *[]int
-			var ptr uintptr
-			gcIdx2List := idx.poolGenomeChunksIdx2List.Get().(*map[uint64]*[]int)
-			gcPtr2List := idx.poolGenomeChunksPointer2List.Get().(*map[uintptr]*[]int)
-
-			// collect "i"s belonging to the same genome
-			for i, r = range *rs {
-				a = r.BatchGenomeIndex
-				if li, ok = (*gcIdx2List)[a]; !ok { // not a chunk of some genome
-					continue
-				}
-
-				*li = append(*li, i) // is is just the index in *rs
-
-				ptr = uintptr(unsafe.Pointer(li))
-				if _, ok = (*gcPtr2List)[ptr]; !ok {
-					(*gcPtr2List)[ptr] = li
-				}
-			}
-
-			// merge alignments of the same genome
-			for _, li = range *gcPtr2List {
-				if len(*li) == 1 { // there's only one genome chunk
-					// reset the list
-					(*li) = (*li)[:0]
-					continue
-				}
-				i = (*li)[0]
-				rp = (*rs)[i]
-
-				for _, j = range (*li)[1:] { // merge j -> i
-					r = (*rs)[j]
-
-					// merge r into rp
-					rp.GenomeSize += r.GenomeSize
-					rp.NumSeqs += r.NumSeqs
-					rp.AlignedFragments += r.AlignedFragments
-					rp.AlignedLength += r.AlignedLength
-					rp.AlignedMatches += r.AlignedMatches
-
-					poolGSearchResult.Put(r)
-					(*rs)[j] = nil
-				}
-
-				// reset the list
-				(*li) = (*li)[:0]
-			}
-
-			// adjust the result list
-			j = 0
-			for _, r = range *rs {
-				if r == nil {
-					continue
-				}
-
-				(*rs)[j] = r
-				j++
-			}
-			*rs = (*rs)[:j]
-
-			// recycle datastructure
-			clear(*gcPtr2List)
-			idx.poolGenomeChunksPointer2List.Put(gcPtr2List)
-			// clear(*gcIdx2List) # must not do this !!!
-			idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
-		}
-
-		// ---------------------------------------
-		// 1.4) compute ani and af
-		j := 0
-		for _, gr := range *rs {
-			gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
-			gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
-			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
-
-			if gr.AFq < minAF {
-				poolGSearchResult.Put(gr)
-				continue
-			}
-
-			if gr.AFq > 1 {
-				gr.AFq = 1
-			}
-			if gr.AFs > 1 {
-				gr.AFs = 1
-			}
-
-			gr.Score = gr.ANI * gr.AFq
-
-			(*rs)[j] = gr
-			j++
-
-		}
-		*rs = (*rs)[:j]
-
-		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			return cmp.Compare(b.Score, a.Score)
-		})
-
-		// ---------------------------------------
-		query.result = rs
-		done <- 1
-	}()
-
-	// 2) alignment fragments
-	var i, j, end0, s, e int
-	var contig *[]byte
-	buf8 := make([]byte, 8)
-	fcpus := float64(idx.opt.NumCPUs)
-	for i, contig = range query.seqs {
-		end0 = len(*contig)
-		for j = 0; j < end0; j += fragLen {
-			s = j
-			e = j + fragLen
-			if e > end0 {
-				e = end0
-				if e-s < minFragLen { // skip fragments < 100 bp
-					continue
-				}
-			}
-
-			q := poolQuery2.Get().(*Query)
-			q.Reset()
-
-			// seq id
-			be.PutUint32(buf8[:4], uint32(i))
-			be.PutUint32(buf8[4:8], uint32(j))
-			q.seqID = append(q.seqID, buf8...)
-
-			// seq
-			q.seq = append(q.seq, (*contig)[s:e]...)
-
-			tokens <- 1
-			wg.Add(1)
-			go func(i, j int, q *Query) {
-				timeStart := time.Now()
-				defer func() {
-					<-tokens
-					wg.Done()
-					if debug {
-						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
-					}
-				}()
-
-				var err error
-				q.result, err = idx.Search(q, genomeIds, false)
-				if err != nil {
-					checkError(fmt.Errorf("search contig #%d, fragment %d-%d: %s",
-						i+1, j*fragLen+1, (j+1)*fragLen, err))
-				}
-
-				ch <- q
-			}(i, j, q)
-		}
-	}
-
-	wg.Wait()
-	close(ch)
-	<-done
-
-	// process bar
-	if debug {
-		close(chDuration)
-		<-doneDuration
-		pbs.Wait()
-	}
-
-	return nil
-}
-
 var poolQuery2 = &sync.Pool{New: func() interface{} {
 	return &Query{
 		// 4 bytes for contig index
@@ -963,6 +628,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 
 			var g *genome.Genome
 			genomes := make([]*genome.Genome, len(*batchIDAndRefIDs))
+			maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
 			for i, batchIDAndRefID := range *batchIDAndRefIDs {
 				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
 				genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
@@ -982,6 +648,20 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 					_g.Seqs = nil
 					g.NumSeqs += _g.NumSeqs
 					g.GenomeSize += _g.GenomeSize
+				}
+
+				if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize {
+					log.Warningf("skipped subject genome %s (%s bp) which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+						humanize.Comma(int64(g.GenomeSize)),
+						humanize.Comma(int64(maxSubjectGenomeSize)))
+
+					idx.poolGenomeRdrs[genomeBatch] <- rdr
+					for _, gx := range genomes {
+						genome.RecycleGenome(gx)
+						return
+					}
+					break
 				}
 
 				genomes[i] = _g // recycle them later

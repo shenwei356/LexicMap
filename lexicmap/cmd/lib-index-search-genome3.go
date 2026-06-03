@@ -339,6 +339,9 @@ func (idx *Index) fillSeedDesertsInMemory(
 			(*loc2maskidxRC)[i] = -1
 		}
 		for im, lsW := range *_locses2 {
+			if (*_kmers2)[im] == 0 {
+				continue
+			}
 			for _, lw := range lsW {
 				p := lw >> 1
 				if p < 0 || p >= n {
@@ -668,17 +671,18 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 				<-tokens
 				wg.Done()
 				if debug {
-					log.Debugf("%s (%s bp): aligning subject genome %s (%s bp) took %s",
-						query.id, humanize.Comma(int64(query.genomeSize)),
-						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
-						humanize.Comma(int64(g.GenomeSize)), time.Since(timeStart))
-					log.Debug()
+					// log.Debugf("%s (%s bp): aligning subject genome %s (%s bp) took %s",
+					// 	query.id, humanize.Comma(int64(query.genomeSize)),
+					// 	idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+					// 	humanize.Comma(int64(g.GenomeSize)), time.Since(timeStart))
+					// log.Debug()
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 				}
 			}()
 
 			// a) Load all chunks of this genome.
 			genomes := make([]*genome.Genome, len(*batchIDAndRefIDs))
+			maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
 			for i, batchIDAndRefID := range *batchIDAndRefIDs {
 				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
 				genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
@@ -697,6 +701,21 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 					g.NumSeqs += _g.NumSeqs
 					g.GenomeSize += _g.GenomeSize
 				}
+
+				if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize {
+					log.Warningf("skipped subject genome %s (%s bp) which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+						humanize.Comma(int64(g.GenomeSize)),
+						humanize.Comma(int64(maxSubjectGenomeSize)))
+
+					idx.poolGenomeRdrs[genomeBatch] <- rdr
+					for _, gx := range genomes {
+						genome.RecycleGenome(gx)
+						return
+					}
+					break
+				}
+
 				genomes[i] = _g
 				idx.poolGenomeRdrs[genomeBatch] <- rdr
 			}

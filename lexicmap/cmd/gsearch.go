@@ -154,6 +154,8 @@ Output format:
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 
+		maxSubjectGenomeSize := getFlagNonNegativeInt(cmd, "max-subject-genome-size") * 1000 * 1000
+
 		orthoANI := getFlagBool(cmd, "OrthoANI")
 
 		// minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
@@ -322,6 +324,8 @@ Output format:
 			TaxIds:                  taxids,
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
+
+			MaxSubjectGenomeSize: maxSubjectGenomeSize,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -356,7 +360,7 @@ Output format:
 			K:              uint8(kf),
 			MinSharedKmers: max(3, minSharedKmers),
 			Scaled:         uint32(scaled),
-			TopN:           5,
+			TopNFragments:  5,
 		})
 
 		if outputLog {
@@ -567,11 +571,12 @@ func init() {
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 100,
 		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
-	gsearchCmd.Flags().IntP("scale", "", 4,
-		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
+
+	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 256,
+		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))
 
 	// alignment
 
@@ -584,7 +589,7 @@ func init() {
 	// 	formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	gsearchCmd.Flags().IntP("top-n-chains", "N", 5,
-		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
+		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment.`))
 
 	gsearchCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
@@ -639,9 +644,13 @@ func init() {
 
 	// ani-af related filtering
 
+	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
+		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
+
+	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
 		formatFlagUsage(`Compute OrthoANI.`))
 
-	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
-		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
+	gsearchCmd.Flags().IntP("scale", "", 4,
+		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
 }
