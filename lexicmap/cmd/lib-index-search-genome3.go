@@ -74,6 +74,12 @@ var poolSubjectSketch = &sync.Pool{New: func() interface{} {
 	return &subjectSketch{}
 }}
 
+// poolConcat is for reusing large byte slices for concatenated genome sequences
+var poolConcat = &sync.Pool{New: func() interface{} {
+	tmp := make([]byte, 0, 10<<20) // 10MB initial capacity
+	return &tmp
+}}
+
 // Defaults for in-memory desert filling. They match the typical index-build
 // defaults (--seed-max-desert / --seed-in-desert-dist) so a query fragment
 // sees similar seed density to what the persistent index would have.
@@ -722,7 +728,8 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 
 			// b) Concatenate contigs with a 1.5*fragLen separator and
 			// record the (per-N-block) skip regions for masking.
-			var concat []byte
+			concat := poolConcat.Get().(*[]byte)
+			*concat = (*concat)[:0]
 			var concatSize int
 			for _, s := range g.Seqs {
 				concatSize += len(*s)
@@ -731,22 +738,24 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			if concatSize < 0 {
 				concatSize = 0
 			}
-			concat = make([]byte, 0, concatSize)
+			if cap(*concat) < concatSize {
+				*concat = make([]byte, 0, concatSize)
+			}
 			var skipRegions [][2]int
 			contigBounds := make([][2]int, 0, len(g.Seqs))
 			for i, s := range g.Seqs {
 				if i > 0 {
-					boundary := len(concat)
+					boundary := len(*concat)
 					skipRegions = append(skipRegions, [2]int{boundary, boundary + contigInterval - 1})
-					concat = append(concat, nnn...)
+					*concat = append(*concat, nnn...)
 				}
-				cs := len(concat)
-				concat = append(concat, (*s)...)
-				contigBounds = append(contigBounds, [2]int{cs, len(concat)})
+				cs := len(*concat)
+				*concat = append(*concat, (*s)...)
+				contigBounds = append(contigBounds, [2]int{cs, len(*concat)})
 			}
 
 			// skip gap regions (N's)
-			gaps := reGaps.FindAllSubmatchIndex(concat, -1)
+			gaps := reGaps.FindAllSubmatchIndex(*concat, -1)
 			if gaps != nil {
 				for _, gap := range gaps {
 					skipRegions = append(skipRegions, [2]int{gap[0], gap[1] - 1})
@@ -757,7 +766,7 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			}
 
 			// c) Build the subject sketch.
-			sketch, err := idx.buildSubjectSketch(concat, skipRegions, contigBounds, true)
+			sketch, err := idx.buildSubjectSketch(*concat, skipRegions, contigBounds, true)
 			if err != nil {
 				checkError(fmt.Errorf("fail to build subject sketch: %s", err))
 			}
@@ -765,9 +774,14 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			// d) Reverse complement of the concatenated subject. Built once
 			// up-front because most queries will exercise both strands; the
 			// extra ~|concat| bytes are cheaper than re-RCing per fragment.
-			concatRC := make([]byte, len(concat))
-			copy(concatRC, concat)
-			RC(concatRC)
+			concatRC := poolConcat.Get().(*[]byte)
+			if cap(*concatRC) < len(*concat) {
+				*concatRC = make([]byte, len(*concat))
+			} else {
+				*concatRC = (*concatRC)[:len(*concat)]
+			}
+			copy(*concatRC, *concat)
+			RC(*concatRC)
 
 			// e) Set up per-subject scratch (chainer, WFA aligner).
 			chainer := idx.poolChainers2.Get().(*Chainer2)
@@ -783,7 +797,7 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			// f) Align each query fragment, keeping only the best chain.
 			for i, qfrag := range *qfrags {
 				matched, alignedLen, gaps, pident, ok := alignQueryFragToSubject(
-					qfrag, qSeeds[i], sketch, concat, concatRC,
+					qfrag, qSeeds[i], sketch, (*concat), (*concatRC),
 					chainer, algn, minPrefix, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
 				)
@@ -829,6 +843,12 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			for _, gx := range genomes {
 				genome.RecycleGenome(gx)
 			}
+
+			// Recycle concat and concatRC
+			*concat = (*concat)[:0]
+			poolConcat.Put(concat)
+			*concatRC = (*concatRC)[:0]
+			poolConcat.Put(concatRC)
 
 		}(batchIDAndRefIDs)
 	}

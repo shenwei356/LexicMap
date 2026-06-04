@@ -886,7 +886,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 }
 
 var poolBoolList = &sync.Pool{New: func() interface{} {
-	m := make([]bool, 0, 1024)
+	m := make([]bool, 0, 10240)
 	return &m
 }}
 

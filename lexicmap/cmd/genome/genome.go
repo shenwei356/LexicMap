@@ -138,7 +138,7 @@ func (r *Genome) Reset() {
 	r.Seqs = nil
 }
 
-const TwentyMB = 20 << 20
+const TwentyMB = 20 << 20 // 20MB
 
 // RecycleGenome recycle a Genome
 func RecycleGenome(g *Genome) {
@@ -365,7 +365,7 @@ type Reader struct {
 
 var poolReader = &sync.Pool{New: func() interface{} {
 	return &Reader{
-		buf: make([]byte, 10<<10), // 10k
+		buf: make([]byte, 10<<20), // 10M
 	}
 }}
 
@@ -471,6 +471,11 @@ func (r *Reader) Close() error {
 	if err != nil {
 		poolReader.Put(r)
 		return err
+	}
+
+	// Reset buf if it grew too large to prevent memory bloat in the pool
+	if cap(r.buf) > TwentyMB {
+		r.buf = make([]byte, 10<<20) // reset to 10MB
 	}
 
 	poolReader.Put(r)

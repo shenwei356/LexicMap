@@ -103,8 +103,11 @@ Output format:
 		timeStart := time.Now()
 		defer func() {
 			if outputLog {
+				var m runtime.MemStats
+				runtime.ReadMemStats(&m)
 				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
+				log.Infof("elapsed time: %s, memory usage: %.3f GB (estimated)",
+					time.Since(timeStart), float64(m.Alloc-m.HeapReleased)/1000000000)
 				log.Info()
 			}
 			if opt.Log2File {
@@ -456,7 +459,6 @@ Output format:
 		ch := make(chan *GQuery, maxQueryConcurrency)
 		done := make(chan int)
 		go func() {
-
 			for r := range ch {
 				printResult(r)
 			}
