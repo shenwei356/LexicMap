@@ -782,7 +782,7 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 
 			// f) Align each query fragment, keeping only the best chain.
 			for i, qfrag := range *qfrags {
-				matched, alignedLen, gaps, ok := alignQueryFragToSubject(
+				matched, alignedLen, gaps, pident, ok := alignQueryFragToSubject(
 					qfrag, qSeeds[i], sketch, concat, concatRC,
 					chainer, algn, minPrefix, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
@@ -793,11 +793,17 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 				gr.AlignedFragments++
 				gr.AlignedLength += alignedLen - gaps
 				gr.AlignedMatches += matched
+				gr.Pidents = append(gr.Pidents, pident)
 			}
 
 			// g) ANI / AF on the accumulated alignment.
 			if gr.AlignedLength > 0 {
-				gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength)
+				// gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength) // shouldn't do this
+				sumPident := 0.0
+				for _, p := range gr.Pidents {
+					sumPident += p
+				}
+				gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
@@ -874,7 +880,7 @@ func alignQueryFragToSubject(
 	minPIdent float64,
 	minQcov float64,
 	idx *Index,
-) (int, int, int, bool) {
+) (int, int, int, float64, bool) {
 	subjectLen := sketch.seqLen
 	K8 := uint8(K)
 
@@ -966,7 +972,7 @@ func alignQueryFragToSubject(
 	revChains, revOk := chainsFromSubs(revSubs, chainer, K)
 
 	if !fwdOk && !revOk {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 
 	// Try all chains (both forward and reverse) and pick the one with
@@ -974,6 +980,7 @@ func alignQueryFragToSubject(
 	// multi-copy conserved genes, multiple chains may look identical
 	// in chain-space but differ at the sequence level.
 	var bestMatched, bestAligned, bestGaps int
+	var bestPident float64
 	var bestScore int = -1
 	topChains := idx.chainingOptions.TopChains // only check the best N chains
 	onlyTopChains := topChains > 0
@@ -988,7 +995,7 @@ func alignQueryFragToSubject(
 			if onlyTopChains && i > topChains {
 				break
 			}
-			matched, aligned, gaps, ok := alignChain(
+			matched, aligned, gaps, pident, ok := alignChain(
 				qfrag, concat, chain, sketch, false, algn,
 				extLen, extLen2, minPIdent, minQcov, idx,
 			)
@@ -999,6 +1006,7 @@ func alignQueryFragToSubject(
 					bestMatched = matched
 					bestAligned = aligned
 					bestGaps = gaps
+					bestPident = pident
 				}
 			}
 		}
@@ -1015,7 +1023,7 @@ func alignQueryFragToSubject(
 			if onlyTopChains && i > topChains {
 				break
 			}
-			matched, aligned, gaps, ok := alignChain(
+			matched, aligned, gaps, pident, ok := alignChain(
 				qfrag, concatRC, chain, sketch, true, algn,
 				extLen, extLen2, minPIdent, minQcov, idx,
 			)
@@ -1026,6 +1034,7 @@ func alignQueryFragToSubject(
 					bestMatched = matched
 					bestAligned = aligned
 					bestGaps = gaps
+					bestPident = pident
 				}
 			}
 		}
@@ -1033,10 +1042,10 @@ func alignQueryFragToSubject(
 	}
 
 	if bestScore <= 0 {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 
-	return bestMatched, bestAligned, bestGaps, true
+	return bestMatched, bestAligned, bestGaps, bestPident, true
 }
 
 // addAnchor emits one SubstrPair from a (qLoc, sLoc) match. The two locs are
@@ -1129,10 +1138,10 @@ func alignChain(
 	minPIdent float64,
 	minQcov float64,
 	idx *Index,
-) (int, int, int, bool) {
+) (int, int, int, float64, bool) {
 	// Guard against degenerate chains.
 	if chain.QEnd < chain.QBegin || chain.TEnd < chain.TBegin {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 
 	qLen := len(qfrag)
@@ -1174,23 +1183,24 @@ func alignChain(
 	defer idx.poolSeqComparator.Put(cpr)
 
 	if err := cpr.Index(qfrag); err != nil {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 	defer cpr.RecycleIndex()
 
 	cr, err := cpr.Compare(uint32(qExpBegin), uint32(qExpEnd), tSubseq, qLen)
 	if err != nil {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 	if cr == nil {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 	defer RecycleSeqComparatorResult(cr)
 
 	// WFA alignment on each sub-chain.
 	var totMatched, totAligned, totGaps int
 
-	for _, c := range *cr.Chains {
+	// for _, c := range *cr.Chains {
+	for _, c := range (*cr.Chains)[:1] {
 		if c.QEnd < c.QBegin || c.TEnd < c.TBegin {
 			continue
 		}
@@ -1220,7 +1230,7 @@ func alignChain(
 	}
 
 	if totAligned <= 0 {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 
 	pident := float64(totMatched) / float64(totAligned) * 100
@@ -1230,8 +1240,8 @@ func alignChain(
 		af = 100
 	}
 	if pident < minPIdent || af < minQcov {
-		return 0, 0, 0, false
+		return 0, 0, 0, 0, false
 	}
 
-	return totMatched, totAligned, totGaps, true
+	return totMatched, totAligned, totGaps, pident, true
 }

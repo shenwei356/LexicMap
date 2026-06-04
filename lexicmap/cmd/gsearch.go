@@ -617,7 +617,7 @@ func init() {
 	gsearchCmd.Flags().Float64P("align-min-match-pident", "i", 70,
 		formatFlagUsage(`Minimum base identity (percentage) in a HSP segment.`))
 
-	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 70,
+	gsearchCmd.Flags().Float64P("min-qcov-per-hsp", "q", 30,
 		formatFlagUsage(`Minimum query coverage (percentage) per HSP.`))
 
 	// gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
