@@ -103,11 +103,8 @@ Output format:
 		timeStart := time.Now()
 		defer func() {
 			if outputLog {
-				var m runtime.MemStats
-				runtime.ReadMemStats(&m)
 				log.Info()
-				log.Infof("elapsed time: %s, memory usage: %.3f GB (estimated)",
-					time.Since(timeStart), float64(m.Alloc-m.HeapReleased)/1000000000)
+				log.Infof("elapsed time: %s", time.Since(timeStart))
 				log.Info()
 			}
 			if opt.Log2File {
