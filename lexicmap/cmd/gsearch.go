@@ -211,7 +211,7 @@ Output format:
 		if orthoANI {
 			minQcovChain /= 2
 			minFragLen = fragSize
-			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%.2f)", minQcovChain, minQcovChain)
+			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%.2f)", minQcovChain, fragSize)
 		} else {
 			maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
 			seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")

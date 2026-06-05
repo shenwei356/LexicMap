@@ -486,15 +486,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 	return whiteList, nil
 }
 
-var poolQuery2 = &sync.Pool{New: func() interface{} {
-	return &Query{
-		// 4 bytes for contig index
-		// 4 bytes for start position
-		seqID: make([]byte, 0, 8),
-		seq:   make([]byte, 0, 1<<10), // 2k id enough for the common 1020-bp fragments
-	}
-}}
-
 // GSearchAlign2 align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
 func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
@@ -532,19 +523,25 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 	// --------------------------------------------------------------------------------
 	// Step 3. collect alignment results
 
-	rs := poolGSearchResults.Get().(*[]*GSearchResult)
-	*rs = (*rs)[:0]
-
 	ch := make(chan *GSearchResult, maxQueryConcurrency)
 	done := make(chan int)
 
 	go func() {
+		rs := poolGSearchResults.Get().(*[]*GSearchResult)
+		*rs = (*rs)[:0]
+
 		for r := range ch {
 			*rs = append(*rs, r)
 		}
 
 		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			return cmp.Compare(b.Score, a.Score)
+			if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
+				return d
+			}
+			if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
+				return d
+			}
+			return cmp.Compare(b.AFs, a.AFs)
 		})
 
 		query.result = rs
@@ -839,26 +836,25 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			// -------------------------------------------------------------
 			// 4. orthologous fragments between two genomes are identified when they showed reciprocal best hit in alignment results.
 
+			fsort := func(a, b *Chain2Result) int {
+				if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
+					return d
+				}
+				if d := cmp.Compare(a.Score, b.Score); d != 0 {
+					return d
+				}
+				return cmp.Compare(a.BitScore, b.BitScore)
+			}
+
 			for _, ls = range *ma {
 				if len(*ls) > 1 {
-					slices.SortFunc(*ls, func(a, b *Chain2Result) int {
-						// return cmp.Compare(b.Evalue, a.Evalue)
-						if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
-							return d
-						}
-						if d := cmp.Compare(a.Score, b.Score); d != 0 {
-							return d
-						}
-						return cmp.Compare(a.BitScore, b.BitScore)
-					})
+					slices.SortFunc(*ls, fsort)
 				}
 			}
 
 			for _, ls = range *mb {
 				if len(*ls) > 1 {
-					slices.SortFunc(*ls, func(a, b *Chain2Result) int {
-						return cmp.Compare(b.Evalue, a.Evalue)
-					})
+					slices.SortFunc(*ls, fsort)
 				}
 			}
 

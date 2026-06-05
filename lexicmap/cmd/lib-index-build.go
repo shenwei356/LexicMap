@@ -2116,7 +2116,7 @@ func readGenomeList(file string) ([]string, error) {
 
 // readGenomeChunksMapBig2Small reads the genome chunkfile and return a map
 // with bigger batch+ref index mapping to a smaller one.
-func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{}, error) {
+func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]struct{}, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) { // no file
@@ -2127,7 +2127,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{
 	defer fh.Close()
 
 	r := bufio.NewReader(fh)
-	data := make(map[uint64]map[uint64]interface{}, 1024)
+	data := make(map[uint64]map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)
 	var n, chunks, i, j int
@@ -2161,7 +2161,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{
 
 			a = be.Uint64(buf)
 
-			m := make(map[uint64]interface{}, max(8, chunks))
+			m := make(map[uint64]struct{}, max(8, chunks))
 
 			if i > 0 {
 				for j = 0; j < i; j++ {
@@ -2239,7 +2239,7 @@ func readGenomeChunksLists(file string) ([][]uint64, error) {
 
 // readGenomeChunksMap reads the genome chunkfile and return a map
 // with batch+ref index as the key.
-func readGenomeChunksMap(file string) (map[uint64]interface{}, error) {
+func readGenomeChunksMap(file string) (map[uint64]struct{}, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) { // no file
@@ -2250,7 +2250,7 @@ func readGenomeChunksMap(file string) (map[uint64]interface{}, error) {
 	defer fh.Close()
 
 	r := bufio.NewReader(fh)
-	data := make(map[uint64]interface{}, 1024)
+	data := make(map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)
 	var n, chunks, i int

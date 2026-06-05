@@ -632,18 +632,26 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 
 	// -----------------------------------------------------------
 
-	rs := poolGSearchResults.Get().(*[]*GSearchResult)
-	*rs = (*rs)[:0]
-
 	ch := make(chan *GSearchResult, maxQueryConcurrency)
 	done := make(chan int)
 	go func() {
+		rs := poolGSearchResults.Get().(*[]*GSearchResult)
+		*rs = (*rs)[:0]
+
 		for r := range ch {
 			*rs = append(*rs, r)
 		}
+
 		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			return cmp.Compare(b.Score, a.Score)
+			if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
+				return d
+			}
+			if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
+				return d
+			}
+			return cmp.Compare(b.AFs, a.AFs)
 		})
+
 		query.result = rs
 		done <- 1
 	}()

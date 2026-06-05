@@ -243,7 +243,8 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		}
 	}
 
-	if cpr.options.TopNFragments > 0 {
+	topNFragments := cpr.options.TopNFragments
+	if topNFragments > 0 {
 		sortutil.Uint64s(*pairs)
 
 		ma := poolFragPairMap.Get().(*map[uint64]*[]uint64)
@@ -264,12 +265,12 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 
 		*pairs = (*pairs)[:0]
 		for ia, ls := range *ma {
-			if len(*ls) > cpr.options.TopNFragments {
+			if len(*ls) > topNFragments {
 				slices.SortFunc(*ls, func(a, b uint64) int {
 					return int((*counter)[ia<<32|b]) - int((*counter)[ia<<32|a])
 				})
 
-				*ls = (*ls)[:cpr.options.TopNFragments]
+				*ls = (*ls)[:topNFragments]
 			}
 			for _, ib := range *ls {
 				*pairs = append(*pairs, ia<<32|ib)

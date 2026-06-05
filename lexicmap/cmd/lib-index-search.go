@@ -1852,7 +1852,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 		// for remove duplicated alignments
 		var duplicated bool
-		hashes := poolUint64Map.Get().(*map[uint64]interface{})
+		hashes := poolUint64Map.Get().(*map[uint64]struct{})
 		var hash uint64
 
 		var tSeq *genome.Genome
@@ -2870,7 +2870,7 @@ var poolBounds = &sync.Pool{New: func() interface{} {
 }}
 
 var poolUint64Map = &sync.Pool{New: func() interface{} {
-	tmp := make(map[uint64]interface{}, 128)
+	tmp := make(map[uint64]struct{}, 128)
 	return &tmp
 }}
 
