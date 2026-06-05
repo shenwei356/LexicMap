@@ -803,11 +803,14 @@ func (idx *Index) GSearchAlign3(query *GQuery, fragLen int, minFragLen int, geno
 			gr.NumSeqs = g.NumSeqs
 
 			// f) Align each query fragment, keeping only the best chain.
+			fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(g.GenomeSize), 0.625, 0.41)
+
 			for i, qfrag := range *qfrags {
 				matched, alignedLen, gaps, pident, ok := alignQueryFragToSubject(
 					qfrag, qSeeds[i], sketch, (*concat), (*concatRC),
 					chainer, algn, minPrefix, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
+					&fScoreAndEvalue,
 				)
 				if !ok {
 					continue
@@ -908,6 +911,7 @@ func alignQueryFragToSubject(
 	minPIdent float64,
 	minQcov float64,
 	idx *Index,
+	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
 ) (int, int, int, float64, bool) {
 	subjectLen := sketch.seqLen
 	K8 := uint8(K)
@@ -1026,7 +1030,9 @@ func alignQueryFragToSubject(
 			matched, aligned, gaps, pident, ok := alignChain(
 				qfrag, concat, chain, sketch, false, algn,
 				extLen, extLen2, minPIdent, minQcov, idx,
+				fScoreAndEvalue,
 			)
+
 			if ok {
 				score := matched * aligned
 				if score > bestScore {
@@ -1054,6 +1060,7 @@ func alignQueryFragToSubject(
 			matched, aligned, gaps, pident, ok := alignChain(
 				qfrag, concatRC, chain, sketch, true, algn,
 				extLen, extLen2, minPIdent, minQcov, idx,
+				fScoreAndEvalue,
 			)
 			if ok {
 				score := matched * aligned
@@ -1166,6 +1173,7 @@ func alignChain(
 	minPIdent float64,
 	minQcov float64,
 	idx *Index,
+	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
 ) (int, int, int, float64, bool) {
 	// Guard against degenerate chains.
 	if chain.QEnd < chain.QBegin || chain.TEnd < chain.TBegin {
@@ -1226,11 +1234,18 @@ func alignChain(
 
 	// WFA alignment on each sub-chain.
 	var totMatched, totAligned, totGaps int
+	maxEvalue := idx.opt.MaxEvalue
+	maxTrials := 2
 
-	// for _, c := range *cr.Chains {
-	for _, c := range (*cr.Chains)[:1] {
+	trials := 0
+	for _, c := range *cr.Chains {
 		if c.QEnd < c.QBegin || c.TEnd < c.TBegin {
 			continue
+		}
+
+		trials++
+		if trials > maxTrials { // can't find a valid alignment for the best 3 chains, give up
+			break
 		}
 
 		cTBegin := c.TBegin
@@ -1251,10 +1266,19 @@ func alignChain(
 			continue
 		}
 
+		// score and e-value
+		_, _, evalue := (*fScoreAndEvalue)(len(_qseq), cigar)
+		if evalue > maxEvalue {
+			wfa.RecycleAlignmentResult(cigar)
+			continue
+		}
+
 		totMatched += int(cigar.Matches)
 		totAligned += int(cigar.AlignLen)
 		totGaps += int(cigar.Gaps)
 		wfa.RecycleAlignmentResult(cigar)
+
+		break // keep the best ONE match
 	}
 
 	if totAligned <= 0 {

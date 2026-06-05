@@ -40,6 +40,18 @@ var gsearchCmd = &cobra.Command{
 	Short: "Search genomes against an index",
 	Long: `Search genomes against an index
 
+The algorithm:
+  1. Genome filtering: candidate genomes are screened by the total length of shared seeds
+     (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
+     the genomes in the index, with lexichash masking.
+  2. Alignment:
+     a) (default): cut the query genome into non-overlap fragments and align them to the
+        candidate genome with a lexichash-based approach used in 'lexicmap search', with
+        steps of variable-length seed matching, chaining, and alignment.
+     b) (OrthoANI mode): cut both the query genome and candidate genomes into non-overlap
+        fragments and only orthologous fragment pairs are used for calculating the ANI and
+        AF values, which is similar to the algorithm of OrthoANI.
+
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
   2. One or more input files are accepted, via positional parameters
@@ -60,9 +72,8 @@ Tips:
      and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
      There's no need to rebuild the index.
 
-
 Output format:
-  Tab-delimited format with 20+ columns, with 1-based positions.
+  Tab-delimited format with 9 columns.
 
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
@@ -201,8 +212,7 @@ Output format:
 		if minIdent < 60 || minIdent > 100 {
 			checkError(fmt.Errorf("the value of flag -i/--align-min-match-pident (%f) should be in range of [60, 100]", minIdent))
 		}
-		// maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
-		maxEvalue := 10.0 // not used in this command
+		maxEvalue := getFlagNonNegativeFloat64(cmd, "max-evalue")
 
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
@@ -310,7 +320,7 @@ Output format:
 			MaxDistance: float64(maxDist),
 
 			ExtendLength:  extLen,
-			ExtendLength2: 100,
+			ExtendLength2: 50,
 
 			MinQueryAlignedFractionInAGenome: minQcovGenome,
 			MaxEvalue:                        maxEvalue,
@@ -599,9 +609,9 @@ func init() {
 	// gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 	// 	formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	gsearchCmd.Flags().IntP("seed-max-desert", "", 60,
+	gsearchCmd.Flags().IntP("seed-max-desert", "", 50,
 		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
-	gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 30,
+	gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 25,
 		formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	gsearchCmd.Flags().IntP("align-max-gap", "", 100,
@@ -622,8 +632,8 @@ func init() {
 	// gsearchCmd.Flags().Float64P("min-qcov-per-genome", "Q", 0,
 	// 	formatFlagUsage(`Minimum query coverage (percentage) per genome.`))
 
-	// gsearchCmd.Flags().Float64P("max-evalue", "e", 10,
-	// 	formatFlagUsage(`Maximum evalue of a HSP segment.`))
+	gsearchCmd.Flags().Float64P("max-evalue", "e", 1e-15,
+		formatFlagUsage(`Maximum evalue of a HSP segment.`))
 
 	gsearchCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
@@ -650,8 +660,8 @@ func init() {
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
-		formatFlagUsage(`Compute OrthoANI.`))
+		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap gsearch --help' for details.`))
 
 	gsearchCmd.Flags().IntP("scale", "", 4,
-		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison. 0 for no scaling.`))
+		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison in the OrthoANI mode. 0 for no scaling.`))
 }

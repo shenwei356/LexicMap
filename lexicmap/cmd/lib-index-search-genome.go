@@ -699,6 +699,9 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 			// -------------------------------------------------------------
 			// 3. sequence alignment
 
+			fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(g.GenomeSize), 0.625, 0.41)
+			maxEvalue := idx.opt.MaxEvalue
+
 			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 
 			algn := wfa.New(wfa.DefaultPenalties, alignOption)
@@ -786,6 +789,14 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 				cigar, err := algn.Align(_qseq, _tseq)
 				if err != nil {
 					checkError(fmt.Errorf("fail to align sequences: %s", err))
+				}
+
+				_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
+				if evalue > maxEvalue {
+					poolChain2.Put(c)
+					wfa.RecycleAlignmentResult(cigar)
+					RecycleSeqComparatorResult(cr)
+					continue
 				}
 
 				c.AlignedBasesQ = cigar.QEnd - cigar.QBegin + 1
