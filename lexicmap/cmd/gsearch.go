@@ -211,7 +211,7 @@ Output format:
 		if orthoANI {
 			minQcovChain /= 2
 			minFragLen = fragSize
-			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%.2f)", minQcovChain, fragSize)
+			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%d)", minQcovChain, fragSize)
 		} else {
 			maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
 			seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
@@ -576,7 +576,7 @@ func init() {
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
 
-	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 256,
+	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 20,
 		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))
 
 	// alignment

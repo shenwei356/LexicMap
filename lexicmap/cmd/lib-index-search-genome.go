@@ -648,7 +648,7 @@ func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, geno
 				}
 
 				if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize {
-					log.Warningf("skipped subject genome %s (%s bp) which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+					log.Warningf("skipped subject genome %s (>= %s bp) which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
 						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
 						humanize.Comma(int64(g.GenomeSize)),
 						humanize.Comma(int64(maxSubjectGenomeSize)))
