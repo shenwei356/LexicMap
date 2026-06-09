@@ -36,18 +36,18 @@ import (
 )
 
 var gsearchCmd = &cobra.Command{
-	Use:   "gsearch",
+	Use:   "search-genome",
 	Short: "Search genomes against an index",
 	Long: `Search genomes against an index
 
 The algorithm:
-  1. Genome filtering: candidate genomes are screened by the total length of shared seeds
+  1. Genome screening: candidate genomes are screened by the total length of shared seeds
      (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
      the genomes in the index, with lexichash masking.
   2. Alignment:
      a) (default): cut the query genome into non-overlap fragments and align them to the
         candidate genome with a lexichash-based approach used in 'lexicmap search', with
-        steps of variable-length seed matching, chaining, and alignment.
+        similar steps of variable-length seed matching, chaining, and alignment.
      b) (OrthoANI mode): cut both the query genome and candidate genomes into non-overlap
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
@@ -79,7 +79,7 @@ Output format:
     2.  subject,  Subject genome ID.
     3.  ANI,      Average nucleotide identity.
     4.  qAF,      Align fraction of the query genome.
-    5.  sAF,	  Align fraction of the subject genome.
+    5.  sAF,      Align fraction of the subject genome.
     6.  qctgs,    Number of contigs in the query genome.
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.
