@@ -198,8 +198,8 @@ Output format:
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
-		if minAlignLen < minSinglePrefix {
-			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= that of -M/--seed-min-single-prefix (%d)", minAlignLen, minSinglePrefix))
+		if minAlignLen < 20 {
+			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= 20", minAlignLen))
 		}
 		maxAlignMaxGap := getFlagPositiveInt(cmd, "align-max-gap")
 		alignBand := getFlagPositiveInt(cmd, "align-band")
@@ -581,10 +581,10 @@ func init() {
 	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
 		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
-	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 15,
+	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 21,
 		formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))
 
-	gsearchCmd.Flags().IntP("windows", "W", 1,
+	gsearchCmd.Flags().IntP("windows", "", 1,
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
@@ -668,7 +668,7 @@ func init() {
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
-		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap gsearch --help' for details.`))
+		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap search-genome --help' for details.`))
 
 	gsearchCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
