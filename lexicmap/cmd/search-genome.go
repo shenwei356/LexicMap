@@ -168,6 +168,11 @@ Output format:
 		maxSubjectGenomeSize := getFlagNonNegativeInt(cmd, "max-subject-genome-size") * 1000 * 1000
 
 		orthoANI := getFlagBool(cmd, "OrthoANI")
+		samplingScale := getFlagPositiveInt(cmd, "kmer-scale")
+		if samplingScale != 2 && samplingScale != 4 && samplingScale != 8 {
+			checkError(fmt.Errorf("the value of flag --kmer-scale (%d) should be one of 2, 4, or 8", samplingScale))
+		}
+		gsa3SamplingScale = samplingScale
 
 		// minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
 		// if minSinglePrefix > 32 {
@@ -223,14 +228,14 @@ Output format:
 			minFragLen = fragSize
 			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%d)", minQcovChain, fragSize)
 		} else {
-			maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
-			seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
-			if seedInDesertDist > maxDesert/2 {
-				checkError(fmt.Errorf("value of --seed-in-desert-dist should be smaller than 0.5 * --seed-max-desert"))
-			}
+			// maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
+			// seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
+			// if seedInDesertDist > maxDesert/2 {
+			// 	checkError(fmt.Errorf("value of --seed-in-desert-dist should be smaller than 0.5 * --seed-max-desert"))
+			// }
 
-			gsa3DesertMaxLen = maxDesert
-			gsa3DesertExpectedSeedDist = seedInDesertDist
+			// gsa3DesertMaxLen = maxDesert
+			// gsa3DesertExpectedSeedDist = seedInDesertDist
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -365,13 +370,12 @@ Output format:
 			MinIdentity:        minIdent,
 		})
 
-		scaled := getFlagNonNegativeInt(cmd, "scale")
 		kf := 11
-		minSharedKmers := MinSharedKmersThresholdExact(fragSize, uint8(kf), uint32(scaled), 0.80, 0.99)
+		minSharedKmers := MinSharedKmersThresholdExact(fragSize, uint8(kf), uint32(samplingScale), 0.80, 0.99)
 		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
 			K:              uint8(kf),
 			MinSharedKmers: max(3, minSharedKmers),
-			Scaled:         uint32(scaled),
+			Scaled:         uint32(samplingScale),
 			TopNFragments:  5,
 		})
 
@@ -512,8 +516,12 @@ Output format:
 					if orthoANI {
 						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
 					} else {
-						err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
 					}
+
+					// it's too slow
+					// err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+
 					checkError(err)
 
 					// clear up
@@ -609,10 +617,10 @@ func init() {
 	// gsearchCmd.Flags().IntP("align-ext-len", "", 1000,
 	// 	formatFlagUsage(`Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.`))
 
-	gsearchCmd.Flags().IntP("seed-max-desert", "", 50,
-		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
-	gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 25,
-		formatFlagUsage(`Distance of k-mers to fill deserts.`))
+	// gsearchCmd.Flags().IntP("seed-max-desert", "", 50,
+	// 	formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
+	// gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 25,
+	// 	formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	gsearchCmd.Flags().IntP("align-max-gap", "", 100,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
@@ -662,6 +670,6 @@ func init() {
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
 		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap gsearch --help' for details.`))
 
-	gsearchCmd.Flags().IntP("scale", "", 4,
-		formatFlagUsage(`Using 1/scale of k-mers for fragment comparison in the OrthoANI mode. 0 for no scaling.`))
+	gsearchCmd.Flags().IntP("kmer-scale", "", 4,
+		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
 }
