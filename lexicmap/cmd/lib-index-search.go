@@ -528,8 +528,14 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		chIM = make(chan *kv.InMemorySearcher, threads)
 		go func() {
 			for scr := range chIM {
-				if scr.MaskPrefix() != idx.maskPrefix || scr.AnchorPrefix() != idx.anchorPrefix {
-					checkError(fmt.Errorf("mask prefix or anchor prefix mismatch between info.toml file and the seed data: %s"))
+				if scr.MaskPrefix() != idx.maskPrefix {
+					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
+						idx.maskPrefix, scr.MaskPrefix()))
+				}
+				if scr.AnchorPrefix() != idx.anchorPrefix { // users might have run 'lexicmap utils reindex-seeds'
+					idx.anchorPrefix = scr.AnchorPrefix()
+					// checkError(fmt.Errorf("lengths of anchor prefix mismatch between info.toml file (%d) and the seed data: (%d)",
+					// 	idx.anchorPrefix, scr.AnchorPrefix()))
 				}
 
 				idx.InMemorySearchers = append(idx.InMemorySearchers, scr)
@@ -540,8 +546,14 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		ch = make(chan *kv.Searcher, threads)
 		go func() {
 			for scr := range ch {
-				if scr.MaskPrefix() != idx.maskPrefix || scr.AnchorPrefix() != idx.anchorPrefix {
-					checkError(fmt.Errorf("mask prefix or anchor prefix mismatch between info.toml file and the seed data: %s"))
+				if scr.MaskPrefix() != idx.maskPrefix {
+					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
+						idx.maskPrefix, scr.MaskPrefix()))
+				}
+				if scr.AnchorPrefix() != idx.anchorPrefix { // users might have run 'lexicmap utils reindex-seeds'
+					idx.anchorPrefix = scr.AnchorPrefix()
+					// checkError(fmt.Errorf("lengths of anchor prefix mismatch between info.toml file (%d) and the seed data: (%d)",
+					// 	idx.anchorPrefix, scr.AnchorPrefix()))
 				}
 
 				idx.Searchers = append(idx.Searchers, scr)
