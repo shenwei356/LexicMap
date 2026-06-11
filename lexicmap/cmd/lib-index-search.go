@@ -146,10 +146,12 @@ type Index struct {
 	openFileTokens chan int // control the max open files
 
 	// lexichash
-	lh        *lexichash.LexicHash
-	lenPrefix uint8 // 20,000 -> 7
-	k8        uint8
-	k         int
+	lh *lexichash.LexicHash
+	k8 uint8
+	k  int
+
+	maskPrefix   uint8 // length of mask prefix
+	anchorPrefix uint8 // length of anchor prefix
 
 	// k-mer-value searchers
 	Searchers         []*kv.Searcher
@@ -387,17 +389,15 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	// create a lookup table for faster masking
-	lenPrefix := 1
-	for 1<<(lenPrefix<<1) <= len(idx.lh.Masks) {
-		lenPrefix++
-	}
-	lenPrefix--
-	idx.lenPrefix = uint8(lenPrefix)
-	err = idx.lh.IndexMasks(lenPrefix)
+	maskPrefix := max(int(math.Log2(float64(len(idx.lh.Masks)))/2), 1)
+	idx.maskPrefix = uint8(maskPrefix)
+	idx.anchorPrefix = uint8(max(int(math.Log2(float64(info.Partitions))/2), 1))
+
+	err = idx.lh.IndexMasks(maskPrefix)
 	if err != nil {
 		return nil, err
 	}
-	err = idx.lh.IndexMasksWithDistinctPrefixes(lenPrefix + 1)
+	err = idx.lh.IndexMasksWithDistinctPrefixes(maskPrefix + 1)
 	if err != nil {
 		return nil, err
 	}
@@ -405,8 +405,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.k8 = uint8(idx.lh.K)
 	idx.k = idx.lh.K
 
-	if opt.MinPrefix > idx.k8 || int(opt.MinPrefix) < lenPrefix { // check again
-		return nil, fmt.Errorf("MinPrefix (%d) should be in the range of [%d, %d]", opt.MinPrefix, lenPrefix, idx.k8)
+	if opt.MinPrefix > idx.k8 || opt.MinPrefix < idx.maskPrefix+idx.anchorPrefix { // check again
+		return nil, fmt.Errorf("MinPrefix (%d) should be in the range of [%d, %d]", opt.MinPrefix, idx.maskPrefix+idx.anchorPrefix, idx.k8)
 	}
 
 	// for genome searching
@@ -484,6 +484,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	} else {
 		idx.Searchers = make([]*kv.Searcher, 0, len(fileSeeds))
 	}
+
 	idx.searcherTokens = make([]chan int, len(fileSeeds))
 	for i := range idx.searcherTokens {
 		idx.searcherTokens[i] = make(chan int, 1)
@@ -527,6 +528,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		chIM = make(chan *kv.InMemorySearcher, threads)
 		go func() {
 			for scr := range chIM {
+				if scr.MaskPrefix() != idx.maskPrefix || scr.AnchorPrefix() != idx.anchorPrefix {
+					checkError(fmt.Errorf("mask prefix or anchor prefix mismatch between info.toml file and the seed data: %s"))
+				}
+
 				idx.InMemorySearchers = append(idx.InMemorySearchers, scr)
 			}
 			done <- 1
@@ -535,6 +540,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		ch = make(chan *kv.Searcher, threads)
 		go func() {
 			for scr := range ch {
+				if scr.MaskPrefix() != idx.maskPrefix || scr.AnchorPrefix() != idx.anchorPrefix {
+					checkError(fmt.Errorf("mask prefix or anchor prefix mismatch between info.toml file and the seed data: %s"))
+				}
+
 				idx.Searchers = append(idx.Searchers, scr)
 
 				idx.openFileTokens <- 1 // increase the number of open files

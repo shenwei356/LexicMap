@@ -405,7 +405,7 @@ Output format:
 				log.Infof("  minimum query coverage per HSP: %.2f%%", minQcovChain)
 			}
 			log.Infof("  minimum base identity in a HSP segment: %.2f%%", minIdent)
-			log.Infof("  maximum evalue: %e", maxEvalue)
+			log.Infof("  maximum evalue: %.2e", maxEvalue)
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
@@ -416,6 +416,8 @@ Output format:
 			}
 
 		}
+
+		onlyGenomeScreening := getFlagBool(cmd, "only-genome-screening")
 
 		// ---------------------------------------------------------------
 		// searching
@@ -437,7 +439,11 @@ Output format:
 		var total, matched uint64
 		var speed float64 // k reads/second
 
-		fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
+		if !onlyGenomeScreening {
+			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
+		} else {
+			fmt.Fprintf(outfh, "query\tsubject\tnBases\tnKmers\tnMasks\n")
+		}
 
 		// -------  output function -------
 
@@ -446,7 +452,8 @@ Output format:
 
 		printResult := func(q *GQuery) {
 			total++
-			if q.result == nil || len(*q.result) == 0 { // seqs shorter than K or queries without matches.
+			if !((q.result != nil && len(*q.result) != 0) ||
+				(q.screenDetails != nil && len(*q.screenDetails) != 0)) { // seqs shorter than K or queries without matches.
 				RecycleGQuery(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
@@ -463,10 +470,26 @@ Output format:
 				}
 			}
 
-			for _, gr := range *q.result {
-				fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
-					q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
-					len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize)
+			if !onlyGenomeScreening {
+				for _, gr := range *q.result {
+					fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+						q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
+						len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize)
+				}
+			} else {
+				var hitKmers, hitMasks uint64
+				var v uint8
+				for _, gr := range *q.screenDetails {
+					hitKmers, hitMasks = 0, 0
+					for _, v = range gr.Hits {
+						if v > 0 {
+							hitKmers += uint64(v)
+							hitMasks++
+						}
+					}
+					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%d\n", q.id, id2name[gr.BatchGenomeIndex[0]],
+						gr.Score, hitKmers, hitMasks)
+				}
 			}
 
 			RecycleGQuery(q)
@@ -515,10 +538,16 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, err := idx.GSearchScreen(query, windows)
+				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening)
 				checkError(err)
 
-				// runtime.GC()
+				if onlyGenomeScreening {
+					query.screenDetails = rs
+					ch <- query
+					return
+				} else {
+					idx.RecycleGSearchScreenDetailResults(rs)
+				}
 
 				if genomeIds != nil {
 					// 3. search fragments for the query
@@ -682,4 +711,8 @@ func init() {
 
 	gsearchCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
+
+	// only for research
+	gsearchCmd.Flags().BoolP("only-genome-screening", "S", false,
+		formatFlagUsage(`Only perform genome screening, no ANI computation`))
 }

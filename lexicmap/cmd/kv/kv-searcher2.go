@@ -36,6 +36,9 @@ type InMemorySearcher struct {
 
 	rdr *Reader // reader of the kv-data file
 
+	maskPrefix   uint8 // length of mask prefix
+	anchorPrefix uint8 // length of anchor prefix
+
 	// kv data of the ChunkSize masks.
 	// A list of k-mer and value pairs are intermittently saved in a []uint64
 	KVdata    [][]uint64
@@ -56,6 +59,7 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 	indexes := make([][]int, rdr.ChunkSize)
 	var getAnchor func(uint64) uint64
 	once := true
+	var _maskPrefix, _anchorPrefix uint8
 	for i := 0; i < rdr.ChunkSize; i++ {
 		m, index, maskPrefix, anchorPrefix, err := rdr.ReadDataOfAMaskAsListAndCreateIndex()
 		if err != nil {
@@ -68,6 +72,7 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		if once {
 			once = false
 			getAnchor = AnchorExtracter(rdr.K, maskPrefix, anchorPrefix)
+			_maskPrefix, _anchorPrefix = maskPrefix, anchorPrefix
 		}
 	}
 
@@ -80,9 +85,22 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		Indexes:    indexes,
 		getAnchor:  getAnchor,
 
+		maskPrefix:   _maskPrefix,
+		anchorPrefix: _anchorPrefix,
+
 		maxKmer: 1<<(rdr.K<<1) - 1,
 	}
 	return scr, nil
+}
+
+// MaskPrefix returns the length of mask prefix
+func (scr *InMemorySearcher) MaskPrefix() uint8 {
+	return scr.maskPrefix
+}
+
+// AnchorPrefix returns the length of anchor prefix of the index
+func (scr *InMemorySearcher) AnchorPrefix() uint8 {
+	return scr.anchorPrefix
 }
 
 // Search queries a k-mer and returns k-mers with a minimum prefix of p,
@@ -99,8 +117,8 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	// }
 	k := scr.K
-	if p < 1 || p > k {
-		p = k
+	if p < scr.maskPrefix+scr.anchorPrefix || p > k {
+		return nil, fmt.Errorf("the minimum prefix length should be in the range of [%d, %d]", scr.maskPrefix+scr.anchorPrefix, k)
 	}
 
 	// checkMismatch := m >= 0 && m < int(k-p)
@@ -320,8 +338,8 @@ func (scr *InMemorySearcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool,
 	// 	return nil, fmt.Errorf("invalid kmer for k=%d: %d", scr.K, kmer)
 	// }
 	k := scr.K
-	if p < 1 || p > k {
-		p = k
+	if p < scr.maskPrefix+scr.anchorPrefix || p > k {
+		return nil, fmt.Errorf("the minimum prefix length should be in the range of [%d, %d]", scr.maskPrefix+scr.anchorPrefix, k)
 	}
 
 	// checkMismatch := m >= 0 && m < int(k-p)

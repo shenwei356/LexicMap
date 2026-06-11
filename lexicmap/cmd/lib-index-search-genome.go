@@ -44,14 +44,17 @@ import (
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
-	// Hits             []uint8  // count how many k-mers are matched for each mask
+
+	Hits []uint8 // count how many k-mers are matched for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.Score = 0
-	// clear(r.Hits)
+	if r.Hits != nil {
+		clear(r.Hits)
+	}
 	idx.poolGSearchDetailResult.Put(r)
 }
 
@@ -60,7 +63,9 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		// clear(r.Hits)
+		if r.Hits != nil {
+			clear(r.Hits)
+		}
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	clear(*m)
@@ -72,7 +77,9 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
-		// clear(r.Hits)
+		if r.Hits != nil {
+			clear(r.Hits)
+		}
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	*rs = (*rs)[:0]
@@ -91,9 +98,9 @@ func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 }
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
-func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint64, error) {
+func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
 	if windows < 1 {
-		return nil, fmt.Errorf("window size needs to be > 0")
+		return nil, nil, fmt.Errorf("window size needs to be > 0")
 	}
 
 	whiteList := poolUint64ToUint64SliceMap.Get().(*map[uint64]*[]uint64)
@@ -290,7 +297,12 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 						(*m)[refBatchAndIdxUint64] = r
 					}
 
-					// r.Hits[sr.IQuery]++       // add count to the probe
+					if saveDetails {
+						if r.Hits == nil {
+							r.Hits = make([]uint8, len(idx.lh.Masks))
+						}
+						r.Hits[sr.IQuery]++ // add count to the probe
+					}
 					r.Score += uint64(sr.Len) // matched length
 				}
 			}
@@ -358,7 +370,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 
 	if len(*m) == 0 { // no results
 		idx.RecycleGSearchScreenDetailResultsMap(m)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// collect and store with a list
@@ -481,9 +493,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int) (*map[uint64]*[]uint
 
 	// fmt.Println(whiteList)
 
-	idx.RecycleGSearchScreenDetailResults(rs)
+	// idx.RecycleGSearchScreenDetailResults(rs)
 
-	return whiteList, nil
+	return whiteList, rs, nil
 }
 
 // GSearchAlign2 align fragments of a query to candidates genomes.

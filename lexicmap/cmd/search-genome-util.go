@@ -44,6 +44,8 @@ type GQuery struct {
 	genomeSize int
 
 	result *[]*GSearchResult // fragment alignment results
+
+	screenDetails *[]*GSearchScreenResultDetail
 }
 
 var poolGQuery = &sync.Pool{New: func() interface{} {
