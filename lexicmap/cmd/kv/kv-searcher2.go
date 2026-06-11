@@ -58,10 +58,8 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 	kvdata := make([][]uint64, rdr.ChunkSize)
 	indexes := make([][]int, rdr.ChunkSize)
 	var getAnchor func(uint64) uint64
-	once := true
-	var _maskPrefix, _anchorPrefix uint8
 	for i := 0; i < rdr.ChunkSize; i++ {
-		m, index, maskPrefix, anchorPrefix, err := rdr.ReadDataOfAMaskAsListAndCreateIndex()
+		m, index, _, _, err := rdr.ReadDataOfAMaskAsListAndCreateIndex()
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading kv-data")
 		}
@@ -69,12 +67,8 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		kvdata[i] = m
 		indexes[i] = index
 
-		if once {
-			once = false
-			getAnchor = AnchorExtracter(rdr.K, maskPrefix, anchorPrefix)
-			_maskPrefix, _anchorPrefix = maskPrefix, anchorPrefix
-		}
 	}
+	getAnchor = AnchorExtracter(rdr.K, rdr.maskPrefix, rdr.anchorPrefix)
 
 	scr := &InMemorySearcher{
 		K:          rdr.K,
@@ -85,8 +79,8 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		Indexes:    indexes,
 		getAnchor:  getAnchor,
 
-		maskPrefix:   _maskPrefix,
-		anchorPrefix: _anchorPrefix,
+		maskPrefix:   rdr.maskPrefix,
+		anchorPrefix: rdr.anchorPrefix,
 
 		maxKmer: 1<<(rdr.K<<1) - 1,
 	}

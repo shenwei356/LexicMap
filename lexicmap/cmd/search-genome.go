@@ -32,6 +32,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
+	"github.com/shenwei356/util/stats"
 	"github.com/spf13/cobra"
 )
 
@@ -442,13 +443,14 @@ Output format:
 		if !onlyGenomeScreening {
 			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
 		} else {
-			fmt.Fprintf(outfh, "query\tsubject\tnBases\tnKmers\tnMasks\n")
+			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen\tq25BestLen\tq50BestLen\tq75BestLen\n")
 		}
 
 		// -------  output function -------
 
 		gcIntervalMinus1 := gcInterval - 1
 		id2name := idx.BatchGenomeIndex2GenomeID
+		_stats := stats.NewQuantiler()
 
 		printResult := func(q *GQuery) {
 			total++
@@ -479,16 +481,23 @@ Output format:
 			} else {
 				var hitKmers, hitMasks uint64
 				var v uint8
+				var i int
 				for _, gr := range *q.screenDetails {
 					hitKmers, hitMasks = 0, 0
-					for _, v = range gr.Hits {
+					_stats.Reset()
+					for i, v = range gr.Hits {
 						if v > 0 {
 							hitKmers += uint64(v)
 							hitMasks++
+
+							_stats.Add(float64(gr.LongestMatches[i]))
 						}
 					}
-					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%d\n", q.id, id2name[gr.BatchGenomeIndex[0]],
-						gr.Score, hitKmers, hitMasks)
+					fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\t%.2f\t%.2f\t%.2f\n",
+						q.id, id2name[gr.BatchGenomeIndex[0]],
+						minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
+						hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+						gr.Score2, float64(gr.Score2)/float64(hitMasks), _stats.Percentile(25), _stats.Percentile(50), _stats.Percentile(75))
 				}
 			}
 
@@ -530,6 +539,11 @@ Output format:
 				// 1. read all sequences of the query genome
 				query, err := gr.Read(file, true, idx.softMasking) // N's are converted to A's.
 				checkError(err)
+				if query == nil { // no valid sequence
+					log.Warningf("no valid sequences in %s, skipped", file)
+					return
+				}
+
 				// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
 				if query.genomeSize < fragSize {
 					log.Warningf("query genome %s is smaller than fragment size (%d), skipped", query.id, fragSize)

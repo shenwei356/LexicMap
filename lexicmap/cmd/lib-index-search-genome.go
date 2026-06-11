@@ -44,8 +44,10 @@ import (
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
+	Score2           uint64   // score2 for sorting, total matched best k-mers.
 
-	Hits []uint8 // count how many k-mers are matched for each mask
+	Hits           []uint8 // count how many k-mers are matched for each mask
+	LongestMatches []uint8 // record the longest match for each mask
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
@@ -54,6 +56,9 @@ func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail)
 	r.Score = 0
 	if r.Hits != nil {
 		clear(r.Hits)
+	}
+	if r.LongestMatches != nil {
+		clear(r.LongestMatches)
 	}
 	idx.poolGSearchDetailResult.Put(r)
 }
@@ -65,6 +70,9 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 		r.Score = 0
 		if r.Hits != nil {
 			clear(r.Hits)
+		}
+		if r.LongestMatches != nil {
+			clear(r.LongestMatches)
 		}
 		idx.poolGSearchDetailResult.Put(r)
 	}
@@ -79,6 +87,9 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 		r.Score = 0
 		if r.Hits != nil {
 			clear(r.Hits)
+		}
+		if r.LongestMatches != nil {
+			clear(r.LongestMatches)
 		}
 		idx.poolGSearchDetailResult.Put(r)
 	}
@@ -301,7 +312,16 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*
 						if r.Hits == nil {
 							r.Hits = make([]uint8, len(idx.lh.Masks))
 						}
-						r.Hits[sr.IQuery]++ // add count to the probe
+						if r.Hits[sr.IQuery] < 255 { // avoid overflow
+							r.Hits[sr.IQuery]++ // add count to the probe
+						}
+
+						if r.LongestMatches == nil {
+							r.LongestMatches = make([]uint8, len(idx.lh.Masks))
+						}
+						if r.LongestMatches[sr.IQuery] < uint8(sr.Len) { // update longest match
+							r.LongestMatches[sr.IQuery] = uint8(sr.Len)
+						}
 					}
 					r.Score += uint64(sr.Len) // matched length
 				}
@@ -376,6 +396,10 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*
 	// collect and store with a list
 	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchScreenResultDetail)
 	for _, r := range *m {
+		r.Score2 = 0
+		for _, v := range r.LongestMatches {
+			r.Score2 += uint64(v)
+		}
 		*rs = append(*rs, r)
 	}
 	clear(*m)
