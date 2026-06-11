@@ -1874,6 +1874,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 					&fScoreAndEvalue,
 				)
 				if !ok {
+					// fmt.Printf("fail to align fragment %d: %s\n", i+1, qfrag)
 					continue
 				}
 				gr.AlignedFragments++

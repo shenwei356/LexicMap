@@ -289,6 +289,12 @@ Output format:
 		if maxQueryConcurrency == 0 {
 			maxQueryConcurrency = runtime.NumCPU()
 		}
+		var threadsPerQuery int
+		if len(files) < maxQueryConcurrency {
+			threadsPerQuery = opt.NumCPUs / len(files)
+		} else {
+			threadsPerQuery = opt.NumCPUs / maxQueryConcurrency
+		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
 		gcInterval := uint64(_gcInterval)
@@ -376,7 +382,7 @@ Output format:
 			K:              uint8(kf),
 			MinSharedKmers: max(3, minSharedKmers),
 			Scaled:         uint32(samplingScale),
-			TopNFragments:  5,
+			TopNFragments:  topNChains,
 		})
 
 		if outputLog {
@@ -395,11 +401,15 @@ Output format:
 			if orthoANI {
 				log.Infof("  minimum shared k-mers between genome fragments: %d", minSharedKmers)
 				log.Infof("  minimum query coverage per HSP: %.2f%% (the value of -q/--min-qcov-per-hsp is halved)", minQcovChain)
+			} else {
+				log.Infof("  minimum query coverage per HSP: %.2f%%", minQcovChain)
 			}
 			log.Infof("  minimum base identity in a HSP segment: %.2f%%", minIdent)
+			log.Infof("  maximum evalue: %e", maxEvalue)
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
+				log.Infof("  threads per query: %d", threadsPerQuery)
 			}
 			if len(taxids)+len(negativeTaxids) > 0 {
 				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
@@ -514,13 +524,13 @@ Output format:
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					if orthoANI {
-						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
 					} else {
-						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
 					}
 
 					// it's too slow
-					// err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, opt.NumCPUs, gcInterval)
+					// err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
 
 					checkError(err)
 
@@ -570,8 +580,8 @@ func init() {
 	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
-	gsearchCmd.Flags().IntP("max-query-conc", "J", 2,
-		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
+	gsearchCmd.Flags().IntP("max-query-conc", "J", 4,
+		formatFlagUsage(`Maximum number of concurrent queries.`))
 
 	gsearchCmd.Flags().IntP("gc-interval", "", 4,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
@@ -589,7 +599,7 @@ func init() {
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 100,
-		formatFlagUsage(`The minimum length of fragment in the end of a sequence during cutting fragments`))
+		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
