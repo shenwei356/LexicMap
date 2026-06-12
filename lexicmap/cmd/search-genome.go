@@ -21,18 +21,21 @@
 package cmd
 
 import (
+	"bytes"
+	"cmp"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
-	"github.com/shenwei356/util/stats"
 	"github.com/spf13/cobra"
 )
 
@@ -419,6 +422,7 @@ Output format:
 		}
 
 		onlyGenomeScreening := getFlagBool(cmd, "only-genome-screening")
+		extra := getFlagBool(cmd, "extra")
 
 		// ---------------------------------------------------------------
 		// searching
@@ -443,14 +447,43 @@ Output format:
 		if !onlyGenomeScreening {
 			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
 		} else {
-			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen\tq25BestLen\tq50BestLen\tq75BestLen\n")
+			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen")
+			// fmt.Fprintf(outfh, "\tq25BestLen\tq50BestLen\tq75BestLen")
+			if extra {
+				fmt.Fprintf(outfh, "\tbestLens")
+			}
+			fmt.Fprintf(outfh, "\n")
 		}
 
 		// -------  output function -------
 
 		gcIntervalMinus1 := gcInterval - 1
 		id2name := idx.BatchGenomeIndex2GenomeID
-		_stats := stats.NewQuantiler()
+
+		matches := make([]uint8, 0, len(idx.lh.Masks))
+		var matchesS bytes.Buffer
+
+		matches2strslice := func(sep byte) {
+			n := len(matches)
+			if n == 0 {
+				return
+			}
+
+			slices.SortFunc(matches, func(a, b uint8) int {
+				return cmp.Compare(b, a)
+			})
+
+			matchesS.Reset()
+			matchesS.WriteString(strconv.Itoa(int(matches[0])))
+
+			if n == 1 {
+				return
+			}
+
+			for _, v := range matches[1:] {
+				matchesS.WriteString(fmt.Sprintf("%c%d", sep, v))
+			}
+		}
 
 		printResult := func(q *GQuery) {
 			total++
@@ -484,20 +517,39 @@ Output format:
 				var i int
 				for _, gr := range *q.screenDetails {
 					hitKmers, hitMasks = 0, 0
-					_stats.Reset()
+					// _stats.Reset()
+					if extra {
+						matches = matches[:0]
+					}
 					for i, v = range gr.Hits {
 						if v > 0 {
 							hitKmers += uint64(v)
 							hitMasks++
 
-							_stats.Add(float64(gr.LongestMatches[i]))
+							if extra {
+								matches = append(matches, gr.LongestMatches[i])
+							}
 						}
 					}
-					fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\t%.2f\t%.2f\t%.2f\n",
-						q.id, id2name[gr.BatchGenomeIndex[0]],
-						minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
-						hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
-						gr.Score2, float64(gr.Score2)/float64(hitMasks), _stats.Percentile(25), _stats.Percentile(50), _stats.Percentile(75))
+
+					if extra {
+						matches2strslice(',')
+
+						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\t%s\n",
+							q.id, id2name[gr.BatchGenomeIndex[0]],
+							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
+							hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+							gr.Score2, float64(gr.Score2)/float64(hitMasks),
+							matchesS.Bytes(),
+						)
+					} else {
+						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\n",
+							q.id, id2name[gr.BatchGenomeIndex[0]],
+							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
+							hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+							gr.Score2, float64(gr.Score2)/float64(hitMasks),
+						)
+					}
 				}
 			}
 
@@ -640,9 +692,9 @@ func init() {
 	gsearchCmd.Flags().IntP("windows", "", 1,
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
-		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation`))
+		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 100,
-		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments`))
+		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
@@ -717,7 +769,7 @@ func init() {
 	// ani-af related filtering
 
 	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
-		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage)`))
+		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage).`))
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
@@ -728,5 +780,7 @@ func init() {
 
 	// only for research
 	gsearchCmd.Flags().BoolP("only-genome-screening", "S", false,
-		formatFlagUsage(`Only perform genome screening, no ANI computation`))
+		formatFlagUsage(`Only perform genome screening, no ANI computation.`))
+	gsearchCmd.Flags().BoolP("extra", "", false,
+		formatFlagUsage(`Show extra columns for -S/--only-genome-screening.`))
 }
