@@ -897,16 +897,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 		return err
 	}
 
-	anchorPrefix := 0
-	partitions := nAnchors
-	for partitions > 0 {
-		partitions >>= 2
-		anchorPrefix++
-	}
-	anchorPrefix--
-	if anchorPrefix < 1 {
-		anchorPrefix = 1
-	}
+	anchorPrefix := max(int(math.Log2(float64(nAnchors))/2), 1)
 
 	getAnchor := AnchorExtracter(K, maskPrefix, uint8(anchorPrefix))
 

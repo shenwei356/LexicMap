@@ -40,7 +40,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
+
+	// "github.com/shenwei356/LexicMap/lexicmap/cmd/rangeindex"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/taxdump"
 	"github.com/shenwei356/kmers"
@@ -95,6 +96,9 @@ type IndexSearchingOptions struct {
 	TaxIds                  []uint32
 	NegativeTaxIds          []uint32
 	KeepGenomesWithoutTaxId bool
+
+	// For searching genomes
+	MaxSubjectGenomeSize int
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -143,8 +147,11 @@ type Index struct {
 
 	// lexichash
 	lh *lexichash.LexicHash
-	k  int
 	k8 uint8
+	k  int
+
+	maskPrefix   uint8 // length of mask prefix
+	anchorPrefix uint8 // length of anchor prefix
 
 	// k-mer-value searchers
 	Searchers         []*kv.Searcher
@@ -161,6 +168,7 @@ type Index struct {
 	poolChainers    *sync.Pool
 
 	// for sequence comparing
+	softMasking       bool
 	contigInterval    int // read from info file
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
@@ -189,6 +197,13 @@ type Index struct {
 	genomeIdx2TaxId       map[uint64]uint32
 	Taxonomy              *taxdump.Taxonomy
 	poolTaxIDfilter       *sync.Pool
+
+	// For searching genomes
+	poolGSearchDetailResult     *sync.Pool
+	poolGSearchDetailResultsMap *sync.Pool
+	poolGSearchDetailResults    *sync.Pool
+	// fragmentsCompareOption      *FragmentComparatorOptions
+	poolFragmentComparator *sync.Pool
 }
 
 // SetSeqCompareOptions sets the sequence comparing options
@@ -199,6 +214,15 @@ func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 	}}
 	idx.poolSeqComparator = &sync.Pool{New: func() interface{} {
 		return NewSeqComparator(sco, idx.poolChainers2)
+	}}
+}
+
+// SetFragmentCompareOptions sets the genome fragment comparing options.
+// This command must be called after SetSeqCompareOptions
+func (idx *Index) SetFragmentCompareOptions(fco *FragmentComparatorOptions) {
+	// idx.fragmentsCompareOption = fco
+	idx.poolFragmentComparator = &sync.Pool{New: func() interface{} {
+		return NewFragmentComparator(fco, idx.poolChainers2)
 	}}
 }
 
@@ -245,6 +269,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	idx.contigInterval = info.ContigInterval
+	idx.softMasking = info.SoftMaksing
 
 	// -----------------------------------------------------
 	// taxid-related files
@@ -364,16 +389,15 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	// create a lookup table for faster masking
-	lenPrefix := 1
-	for 1<<(lenPrefix<<1) <= len(idx.lh.Masks) {
-		lenPrefix++
-	}
-	lenPrefix--
-	err = idx.lh.IndexMasks(lenPrefix)
+	maskPrefix := max(int(math.Log2(float64(len(idx.lh.Masks)))/2), 1)
+	idx.maskPrefix = uint8(maskPrefix)
+	idx.anchorPrefix = uint8(max(int(math.Log2(float64(info.Partitions))/2), 1))
+
+	err = idx.lh.IndexMasks(maskPrefix)
 	if err != nil {
 		return nil, err
 	}
-	err = idx.lh.IndexMasksWithDistinctPrefixes(lenPrefix + 1)
+	err = idx.lh.IndexMasksWithDistinctPrefixes(maskPrefix + 1)
 	if err != nil {
 		return nil, err
 	}
@@ -381,9 +405,24 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.k8 = uint8(idx.lh.K)
 	idx.k = idx.lh.K
 
-	if opt.MinPrefix > idx.k8 { // check again
-		return nil, fmt.Errorf("MinPrefix (%d) should not be <= k (%d)", opt.MinPrefix, idx.k8)
+	if opt.MinPrefix > idx.k8 || opt.MinPrefix < idx.maskPrefix+idx.anchorPrefix { // check again
+		return nil, fmt.Errorf("MinPrefix (%d) should be in the range of [%d, %d]", opt.MinPrefix, idx.maskPrefix+idx.anchorPrefix, idx.k8)
 	}
+
+	// for genome searching
+	idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
+		return &GSearchScreenResultDetail{
+			// Hits: make([]uint8, len(idx.lh.Masks)),
+		}
+	}}
+	idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
+		tmp := make(map[uint64]*GSearchScreenResultDetail, 1024)
+		return &tmp
+	}}
+	idx.poolGSearchDetailResults = &sync.Pool{New: func() interface{} {
+		tmp := make([]*GSearchScreenResultDetail, 0, 1024)
+		return &tmp
+	}}
 
 	// -----------------------------------------------------
 	// read genome chunks data if existed
@@ -445,6 +484,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	} else {
 		idx.Searchers = make([]*kv.Searcher, 0, len(fileSeeds))
 	}
+
 	idx.searcherTokens = make([]chan int, len(fileSeeds))
 	for i := range idx.searcherTokens {
 		idx.searcherTokens[i] = make(chan int, 1)
@@ -488,6 +528,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		chIM = make(chan *kv.InMemorySearcher, threads)
 		go func() {
 			for scr := range chIM {
+				if scr.MaskPrefix() != idx.maskPrefix {
+					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
+						idx.maskPrefix, scr.MaskPrefix()))
+				}
+				if scr.AnchorPrefix() != idx.anchorPrefix { // users might have run 'lexicmap utils reindex-seeds'
+					idx.anchorPrefix = scr.AnchorPrefix()
+					// checkError(fmt.Errorf("lengths of anchor prefix mismatch between info.toml file (%d) and the seed data: (%d)",
+					// 	idx.anchorPrefix, scr.AnchorPrefix()))
+				}
+
 				idx.InMemorySearchers = append(idx.InMemorySearchers, scr)
 			}
 			done <- 1
@@ -496,6 +546,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		ch = make(chan *kv.Searcher, threads)
 		go func() {
 			for scr := range ch {
+				if scr.MaskPrefix() != idx.maskPrefix {
+					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
+						idx.maskPrefix, scr.MaskPrefix()))
+				}
+				if scr.AnchorPrefix() != idx.anchorPrefix { // users might have run 'lexicmap utils reindex-seeds'
+					idx.anchorPrefix = scr.AnchorPrefix()
+					// checkError(fmt.Errorf("lengths of anchor prefix mismatch between info.toml file (%d) and the seed data: (%d)",
+					// 	idx.anchorPrefix, scr.AnchorPrefix()))
+				}
+
 				idx.Searchers = append(idx.Searchers, scr)
 
 				idx.openFileTokens <- 1 // increase the number of open files
@@ -744,20 +804,39 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 	//       p.QBegin     p.QEnd
 
 	// store the index of each new QBegin
-	ri := rangeindex.NewRangeIndex()
-	var vQBegin, pQBegin int32
-	pQBegin = math.MaxInt32 // previous QEnd
-	for i, v := range *subs {
-		vQBegin = v.QBegin
-		if vQBegin != pQBegin {
-			ri.Add(uint32(vQBegin), uint32(i))
-			pQBegin = vQBegin
-		}
+	// ri := rangeindex.NewRangeIndex()
+	// var vQBegin, pQBegin int32
+	// pQBegin = math.MaxInt32 // previous QEnd
+	// for i, v := range *subs {
+	// 	vQBegin = v.QBegin
+	// 	if vQBegin != pQBegin {
+	// 		ri.Add(uint32(vQBegin), uint32(i))
+	// 		pQBegin = vQBegin
+	// 	}
+	//
+	// 	// mark if current anchor is equal to or nested in any previous anchor
+	// 	*markers = append(*markers, false)
+	// }
+	// var _js []uint64
+	// for range *subs {
+	// 	*markers = append(*markers, false)
+	// }
 
-		// mark if current anchor is equal to or nested in any previous anchor
-		*markers = append(*markers, false)
+	// Initialize markers to len(*subs) zeros, reusing the pool buffer.
+	// If cap is enough, just reslice + clear. Otherwise reuse what we have
+	// (clear it) and append the remainder; the append path then grows the
+	// underlying array, which Put will return to the pool for next time.
+	n := len(*subs)
+	if cap(*markers) >= n {
+		*markers = (*markers)[:n]
+		clear(*markers)
+	} else {
+		*markers = (*markers)[:cap(*markers)]
+		clear(*markers)
+		for len(*markers) < n {
+			*markers = append(*markers, false)
+		}
 	}
-	var _js []uint64
 	// js := poolUint32s.Get().(*[]uint32)
 	// var _v uint64
 
@@ -778,7 +857,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		//       p.QBegin     p.Qend
 
 		// fmt.Printf("region: %d - %d\n", uint32(upbound), uint32(v.QBegin))
-		_js = ri.Query(uint32(upbound), uint32(v.QBegin))
+		// _js = ri.Query(uint32(upbound), uint32(v.QBegin))
 
 		// if len(_js) > 0 { // always true
 		// *js = (*js)[:0]
@@ -789,7 +868,15 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		// slices.Sort(*js) // unnecessary, the indice are sorted
 
 		// for j = int((*js)[0]); j <= i; j++ {
-		for j = int(_js[0] & 4294967295); j <= i; j++ {
+		// for j = int(_js[0] & 4294967295); j <= i; j++ {
+
+		// subs is already sorted by QBegin ascending; binary-search directly
+		// in subs to find the first anchor whose QBegin >= upbound. This
+		// replaces the auxiliary RangeIndex above.
+		start, _ := slices.BinarySearchFunc((*subs)[:i+1], upbound, func(s *SubstrPair, target int32) int {
+			return int(s.QBegin - target)
+		})
+		for j = start; j <= i; j++ {
 			p = (*subs)[j]
 			// same or nested region
 			if vQEnd <= p.QBegin+int32(p.Len) &&
@@ -816,11 +903,11 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 
 	poolBoolList.Put(markers)
 	// poolUint32s.Put(js)
-	ri.Release()
+	// ri.Release()
 }
 
 var poolBoolList = &sync.Pool{New: func() interface{} {
-	m := make([]bool, 0, 1024)
+	m := make([]bool, 0, 10240)
 	return &m
 }}
 
@@ -859,8 +946,9 @@ type SearchResult struct {
 	GenomeIndex int
 	// ID          []byte
 	GenomeSize int
+	NumSeqs    int
 
-	Score  float32 //  score for soring
+	Score  float32 //  score for sorting
 	Chains *[]*[]int32
 
 	// more about the alignment detail
@@ -953,6 +1041,7 @@ func (r *SearchResult) Reset() {
 	r.GenomeIndex = -1
 	// r.ID = r.ID[:0]
 	r.GenomeSize = 0
+	r.NumSeqs = 0
 	r.Subs = nil
 	r.Score = 0
 	r.Chains = nil
@@ -1016,9 +1105,9 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
-func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
+func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bool) (*[]*SearchResult, error) {
 	var startTime time.Time
-	debug := idx.opt.Debug
+	// debug := idx.opt.Debug
 
 	if debug {
 		startTime0 := time.Now()
@@ -1199,6 +1288,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var sr *kv.SearchResult
 		var ok bool
 
+		// filter by taxid
 		var refBatchAndIdxUint64 uint64
 		var filter *map[uint64]bool
 		filterByTaxId := idx.filterByTaxId
@@ -1214,6 +1304,9 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		var _taxid, taxid uint32
 		taxids := idx.opt.TaxIds
 		negativeTaxids := idx.opt.NegativeTaxIds
+
+		// filter by a list of BatchAndIdx
+		filterByGenomeID := genomeIds != nil
 
 		for srs := range ch {
 			// different k-mers in subjects,
@@ -1235,7 +1328,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				}
 				for _, posQ = range locs {
 					// query k-mers do not have the reverse flag !!!!
-					rcQ = posQ&BITS_STRAND > 0 // if on the reverse complement sequence
+					rcQ = posQ&MASK_STRAND > 0 // if on the reverse complement sequence
 					posQ >>= BITS_STRAND
 
 					// matched
@@ -1247,6 +1340,14 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 					for _, refpos = range sr.Values {
 						// refBatchAndIdx = int(refpos >> 30) // batch+refIdx
 						refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
+
+						// filter by a white list of subject batch+refIdx
+						if filterByGenomeID {
+							if _, ok = (*genomeIds)[refBatchAndIdxUint64]; !ok {
+								continue
+							}
+						}
+
 						refBatchAndIdx = int(refBatchAndIdxUint64)
 
 						// filter by taxid
@@ -1302,8 +1403,8 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 						// posT = int(refpos << 34 >> 35)
 						posT = int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
-						rvT = refpos&BITS_REVERSE > 0
-						rcT = refpos>>BITS_REVERSE&BITS_REVERSE > 0
+						rvT = refpos&MASK_REVERSE > 0
+						rcT = refpos>>BITS_REVERSE&MASK_STRAND > 0
 
 						if !rvT {
 							// query location
@@ -1355,6 +1456,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 							r.GenomeIndex = refBatchAndIdx & MASK_GENOME_IDX
 							// r.ID = r.ID[:0] // extract it from genome file later
 							r.GenomeSize = 0
+							r.NumSeqs = 0
 							r.Subs = subs
 							r.Score = 0
 							r.Chains = nil            // important
@@ -1771,7 +1873,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 
 		// for remove duplicated alignments
 		var duplicated bool
-		hashes := poolHashes.Get().(*map[uint64]interface{})
+		hashes := poolUint64Map.Get().(*map[uint64]struct{})
 		var hash uint64
 
 		var tSeq *genome.Genome
@@ -1886,6 +1988,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 				// 	log.Debugf("  checking genome: %s", r.ID)
 				// }
 				r.GenomeSize = tSeq.GenomeSize
+				r.NumSeqs = tSeq.NumSeqs
 			}
 
 			iSeqPre = -1 // the index of previous sequence in this HSP
@@ -2490,7 +2593,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		genome.RecycleGenome(tSeq)
 
 		clear(*hashes)
-		poolHashes.Put(hashes)
+		poolUint64Map.Put(hashes)
 		wfa.RecycleAligner(algn)
 
 		if len(*sds) == 0 { // no valid alignments
@@ -2606,7 +2709,7 @@ func (idx *Index) Search(query *Query) (*[]*SearchResult, error) {
 		return nil, nil
 	}
 
-	// merge search result from genome chunks, if has split genome
+	// merge search result from genome chunks, if has chunked genome
 	if idx.hasGenomeChunks {
 		var r, rp *SearchResult
 		var i, j int
@@ -2787,8 +2890,8 @@ var poolBounds = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-var poolHashes = &sync.Pool{New: func() interface{} {
-	tmp := make(map[uint64]interface{}, 128)
+var poolUint64Map = &sync.Pool{New: func() interface{} {
+	tmp := make(map[uint64]struct{}, 128)
 	return &tmp
 }}
 

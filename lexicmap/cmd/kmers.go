@@ -341,7 +341,7 @@ Attention:
 					if onlyFwd && rvFlag == 1 {
 						continue
 					}
-					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND)
+					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&MASK_STRAND)
 					batchIDAndRefID = v >> BITS_NONE_IDX
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer1, k), util.MustKmerLongestPrefix(kmer1, maskCode, k8, k8),
@@ -368,7 +368,7 @@ Attention:
 					if onlyFwd && rvFlag == 1 {
 						continue
 					}
-					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&BITS_STRAND)
+					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&MASK_STRAND)
 					batchIDAndRefID = v >> BITS_NONE_IDX
 					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
 						mask, decoder(kmer2, k), util.MustKmerLongestPrefix(kmer2, maskCode, k8, k8),

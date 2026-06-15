@@ -15,6 +15,8 @@ Available Commands:
   2blast               Convert the default search output to blast-style format
   2sam                 Convert the default search output to SAM format
   edit-genome-ids      Edit genome IDs in the index via a regular expression
+  genome-details       Extract or view genome details in the index
+  genome-seqs          Extract all sequences of a given genome id
   genomes              View genome IDs in the index
   kmers                View k-mers captured by the masks
   masks                View masks of the index or generate new masks randomly
@@ -46,6 +48,8 @@ Subcommands:
 - [masks](masks/)
 - [kmers](kmers/)
 - [genomes](genomes/)
+- [genome-details](genomes-details/)
+- [genome-seqs](genome-seqs)
 - [subseq](subseq/)
 - [seed-pos](seed-pos/)
 - [reindex-seeds](reindex-seeds/)

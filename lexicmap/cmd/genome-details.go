@@ -52,7 +52,9 @@ Output format:
     ref             genome id
     genome_size     genome size (sum of all genome chunks)
     chunks          the number of genome chunks
-    chunk           nth genome chunk
+    chunk           nth genome chunk (1-based)
+    cidx            the index of the genome chunk (0-based)
+    gidx            the index of the genome in the chunk (0-based)
     chunk_size      genome (chunk) size
     seqs            the number of sequences in the genome (chunk)
     seqsizes        comma-separated sequence sizes in the genome (chunk)    (optional with -e/--extra)
@@ -349,10 +351,6 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 		for i, g := range _genomes {
 			if i == 0 {
-				// batch+ref index
-				be.PutUint64(buf, _idxs[i])
-				bw.Write(buf)
-
 				// genome id from genome data
 				// be.PutUint16(buf[:2], uint16(len(g.ID)))
 				// bw.Write(buf[:2])
@@ -365,6 +363,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 				bw.Write(buf[:6])
 				bw.Write(id)
 			}
+
+			// batch+ref index of each chunk
+			be.PutUint64(buf, _idxs[i])
+			bw.Write(buf)
 
 			// genome size
 			be.PutUint32(buf[:4], uint32(g.GenomeSize))
@@ -439,13 +441,14 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 	buf := make([]byte, 1024)
 	var n int
-	// var batchIDAndRefID uint64
+	var batchIDAndRefID uint64
 	var l16 uint16
 	var nChunks, nSeqs uint32
 	genomeID := make([]byte, 0, 1024)
 	var genomeSize, seqSize uint32
 	var i, j, lenID int
 
+	batchIDAndRefIDs := make([]uint64, 0, 1024)
 	genomeSizes := make([]uint32, 0, 1024)
 	seqSizes := make([][]uint32, 0, 1024)
 	seqIDs := make([][][]byte, 0, 1024)
@@ -453,9 +456,9 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 	var buf1, buf2 bytes.Buffer
 
 	if extra {
-		fmt.Fprintf(outfh, "ref\tgenome_size\tchunks\tchunk\tchunk_size\tseqs\tseqsizes\tseqids\n")
+		fmt.Fprintf(outfh, "ref\tgenome_size\tchunks\tchunk\tcidx\tgidx\tchunk_size\tseqs\tseqsizes\tseqids\n")
 	} else {
-		fmt.Fprintf(outfh, "ref\tgenome_size\tchunks\tchunk\tchunk_size\tseqs\n")
+		fmt.Fprintf(outfh, "ref\tgenome_size\tchunks\tchunk\tcidx\tgidx\tchunk_size\tseqs\n")
 	}
 
 	// flags
@@ -467,21 +470,20 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 	hasSeqIDs := (flags & FLAG_SAVE_SEQIDS) != 0
 
 	for {
-		// batch+ref index (8 bytes), the length of genome id (2 bytes), the number of chunks (4 bytes)
-		n, err = io.ReadFull(br, buf[:14])
+		// the length of genome id (2 bytes), the number of chunks (4 bytes)
+		n, err = io.ReadFull(br, buf[:6])
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			return ErrBrokenFile
 		}
-		if n < 14 {
+		if n < 6 {
 			return ErrBrokenFile
 		}
-		// batchIDAndRefID = be.Uint64(buf[:8]) // batch+ref index
 
-		l16 = be.Uint16(buf[8:10])      // length of genome id
-		nChunks = be.Uint32(buf[10:14]) // number of chunks
+		l16 = be.Uint16(buf[:2])      // length of genome id
+		nChunks = be.Uint32(buf[2:6]) // number of chunks
 
 		n, err = io.ReadFull(br, buf[:l16])
 		if n < int(l16) {
@@ -489,20 +491,24 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 		}
 		genomeID = append(genomeID[:0], buf[:l16]...) // genome id
 
+		batchIDAndRefIDs = batchIDAndRefIDs[:0]
 		genomeSizes = genomeSizes[:0]
 		seqSizes = seqSizes[:0]
 		seqIDs = seqIDs[:0]
 
 		for i = 0; i < int(nChunks); i++ {
-			// genome size (4 bytes), number of sequences (4 bytes)
-			n, err = io.ReadFull(br, buf[:8])
-			if n < 8 {
+			// batch+ref index (8 bytes), genome size (4 bytes), number of sequences (4 bytes)
+			n, err = io.ReadFull(br, buf[:16])
+			if n < 16 {
 				return ErrBrokenFile
 			}
-			genomeSize = be.Uint32(buf[:4]) // genome size
+
+			batchIDAndRefID = be.Uint64(buf[:8]) // batch+ref index
+			batchIDAndRefIDs = append(batchIDAndRefIDs, batchIDAndRefID)
+			genomeSize = be.Uint32(buf[8:12]) // genome size
 			genomeSizes = append(genomeSizes, genomeSize)
 
-			nSeqs = be.Uint32(buf[4:8]) // number of sequences
+			nSeqs = be.Uint32(buf[12:16]) // number of sequences
 
 			// seq sizes
 			_seqSizes := make([]uint32, nSeqs)
@@ -569,14 +575,20 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 					}
 				}
 
-				fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%d\t%s\t%s\n",
-					genomeID, totalGenomeSize, nChunks, i+1, genomeSizes[i], len(seqSizes[i]), buf1.String(), buf2.String())
+				fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\n",
+					genomeID, totalGenomeSize, nChunks, i+1,
+					batchIDAndRefIDs[i]>>BITS_GENOME_IDX,
+					batchIDAndRefIDs[i]&MASK_GENOME_IDX,
+					genomeSizes[i], len(seqSizes[i]), buf1.String(), buf2.String())
 
 			}
 		} else {
 			for i = 0; i < int(nChunks); i++ {
-				fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%d\n",
-					genomeID, totalGenomeSize, nChunks, i+1, genomeSizes[i], len(seqSizes[i]))
+				fmt.Fprintf(outfh, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+					genomeID, totalGenomeSize, nChunks, i+1,
+					batchIDAndRefIDs[i]>>BITS_GENOME_IDX,
+					batchIDAndRefIDs[i]&MASK_GENOME_IDX,
+					genomeSizes[i], len(seqSizes[i]))
 
 			}
 		}

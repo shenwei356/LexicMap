@@ -21,6 +21,9 @@
 package tree
 
 import (
+	"math/bits"
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/shenwei356/kmers"
@@ -64,4 +67,182 @@ func TestTree(t *testing.T) {
 		RecycleTree(_t)
 	}
 
+}
+
+func TestWalkGroupsAndPairs(t *testing.T) {
+	const k uint8 = 6
+	const p uint8 = 4
+
+	_t := NewTree(k)
+	defer RecycleTree(_t)
+
+	n := uint64(1) << (k * 2)
+	inserted := make([]uint64, 0, n)
+	for i := uint64(0); i < n; i++ {
+		v := uint32(i & 3)
+		if v == 3 || v == 0 {
+			continue
+		}
+		_t.Insert(i, v)
+		inserted = append(inserted, i)
+	}
+
+	shift := int(k) - 32
+	lcp := func(a, b uint64) uint8 {
+		return uint8(bits.LeadingZeros64(a^b)>>1 + shift)
+	}
+
+	expectedPairs := make(map[[2]uint64]uint8)
+	for i := 0; i < len(inserted); i++ {
+		for j := i + 1; j < len(inserted); j++ {
+			a, b := inserted[i], inserted[j]
+			if a > b {
+				a, b = b, a
+			}
+			if l := lcp(a, b); l >= p {
+				expectedPairs[[2]uint64{a, b}] = l
+			}
+		}
+	}
+
+	// -------------------------------------------------------------------------------
+
+	gotKeys := make(map[uint64]bool)
+	var groupCount int
+	_t.WalkGroups(p, func(keys []uint64, vals [][]uint32, lenPrefix uint8) bool {
+		groupCount++
+		if len(keys) != len(vals) {
+			t.Fatalf("group: len(keys)=%d != len(vals)=%d", len(keys), len(vals))
+		}
+		if lenPrefix < p {
+			t.Fatalf("group lenPrefix %d < p %d", lenPrefix, p)
+		}
+		for i := 0; i < len(keys); i++ {
+			for j := i + 1; j < len(keys); j++ {
+				if l := lcp(keys[i], keys[j]); l < lenPrefix {
+					t.Fatalf("intra-group LCP %d < reported %d for %x vs %x",
+						l, lenPrefix, keys[i], keys[j])
+				}
+			}
+			if gotKeys[keys[i]] {
+				t.Fatalf("k-mer %x reported in multiple groups", keys[i])
+			}
+			gotKeys[keys[i]] = true
+		}
+		return false
+	})
+	if len(gotKeys) != len(inserted) {
+		t.Fatalf("WalkGroups covered %d k-mers, expected %d", len(gotKeys), len(inserted))
+	}
+	t.Logf("WalkGroups: %d groups for %d k-mers (p=%d)", groupCount, len(inserted), p)
+
+	// -------------------------------------------------------------------------------
+
+	gotPairs := make(map[[2]uint64]uint8)
+	_t.WalkPairs(p, func(a, b uint64, va, vb []uint32, lenPrefix uint8) bool {
+		if a > b {
+			a, b = b, a
+		}
+		if _, dup := gotPairs[[2]uint64{a, b}]; dup {
+			t.Fatalf("pair (%x,%x) reported twice", a, b)
+		}
+		gotPairs[[2]uint64{a, b}] = lenPrefix
+		return false
+	})
+
+	if len(gotPairs) != len(expectedPairs) {
+		t.Fatalf("WalkPairs got %d pairs, expected %d", len(gotPairs), len(expectedPairs))
+	}
+	for pair, want := range expectedPairs {
+		got, ok := gotPairs[pair]
+		if !ok {
+			t.Fatalf("missing pair (%x,%x)", pair[0], pair[1])
+		}
+		if got != want {
+			t.Fatalf("pair (%x,%x) lenPrefix: got %d, want %d", pair[0], pair[1], got, want)
+		}
+	}
+
+	// -------------------------------------------------------------------------------
+
+	var earlyCount int
+	aborted := _t.WalkPairs(p, func(a, b uint64, va, vb []uint32, lenPrefix uint8) bool {
+		earlyCount++
+		return earlyCount >= 3
+	})
+	if !aborted {
+		t.Fatalf("WalkPairs should report aborted=true on early return")
+	}
+	if earlyCount != 3 {
+		t.Fatalf("early-abort count = %d, expected 3", earlyCount)
+	}
+}
+
+func TestInsertBatch(t *testing.T) {
+	const k uint8 = 21
+	mask := uint64(1)<<(uint64(k)*2) - 1
+
+	for _, n := range []int{1, 2, 100, 5000} {
+		rng := rand.New(rand.NewSource(int64(n)))
+
+		entries := make([]BatchEntry, n)
+		for i := 0; i < n; i++ {
+			entries[i] = BatchEntry{
+				Key: rng.Uint64() & mask,
+				Val: uint32(i),
+			}
+		}
+
+		ref := NewTree(k)
+		for _, e := range entries {
+			ref.Insert(e.Key, e.Val)
+		}
+		refMap := dumpTree(ref)
+		RecycleTree(ref)
+
+		batch := NewTree(k)
+		entriesCopy := make([]BatchEntry, len(entries))
+		copy(entriesCopy, entries)
+		batch.InsertBatch(entriesCopy)
+		batchMap := dumpTree(batch)
+		RecycleTree(batch)
+
+		if len(refMap) != len(batchMap) {
+			t.Fatalf("n=%d: distinct keys: ref=%d batch=%d", n, len(refMap), len(batchMap))
+		}
+		for key, refVals := range refMap {
+			batchVals, ok := batchMap[key]
+			if !ok {
+				t.Fatalf("n=%d: key %x missing in batch tree", n, key)
+			}
+			if !equalSortedUint32(refVals, batchVals) {
+				t.Fatalf("n=%d: key %x vals mismatch:\n  ref=%v\n  batch=%v",
+					n, key, refVals, batchVals)
+			}
+		}
+	}
+}
+
+func dumpTree(tr *Tree) map[uint64][]uint32 {
+	m := make(map[uint64][]uint32)
+	tr.Walk(func(key uint64, v []uint32) bool {
+		c := make([]uint32, len(v))
+		copy(c, v)
+		sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
+		m[key] = c
+		return false
+	})
+	return m
+}
+
+func equalSortedUint32(a, b []uint32) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
