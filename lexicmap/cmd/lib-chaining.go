@@ -334,6 +334,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 			// score2idx = append(score2idx, [2]float32{m, float32(i)})
 			score2idx = append(score2idx, packF32AndU32(m, uint32(i)))
 		}
+		// preserve any grown capacity for next call
+		ce.prevQIdx = prevQIdx
 	} else { // but for a large number of anchors, we use a intervel tree to reduce comparison
 		// an interval tree for fast filtering by TBegin
 		// _itree := itree.NewMultiValueSearchTreeWithOptions[int32, int32](cmpFn2, itree.TreeWithIntervalPoint()) // some anchors have the same TBegin
@@ -386,6 +388,8 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 				for _, _v = range _js {
 					js = append(js, int32(_v&4294967295))
 				}
+				// preserve any grown capacity for the next iteration / call
+				ce.prevQIdx = js
 				// sortutil.Int32s(js)
 				slices.Sort(js)
 
@@ -471,6 +475,11 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 
 		ri.Release() // do not forget this
 	}
+
+	// preserve any grown capacity for next call
+	ce.maxscoresIdxs = maxscoresIdxs
+	ce.directions = directions
+	ce.score2idx = score2idx
 
 	// print the score matrix
 	// fmt.Printf("i\tpair-i\tiMax\tj:scores\n")

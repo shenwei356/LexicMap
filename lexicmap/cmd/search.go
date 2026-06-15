@@ -358,6 +358,30 @@ Result ordering:
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
 
+		idx.SetSeqCompareOptions(&SeqComparatorOptions{
+			K:         uint8(31),
+			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
+
+			Chaining2Options: Chaining2Options{
+				// should be relative small
+				MaxGap: maxAlignMaxGap,
+				// better be larger than MinPrefix
+				MinScore:    int(float64(minAlignLen) * minIdent / 100),
+				MinAlignLen: minAlignLen,
+				MinIdentity: minIdent,
+				// can not be < k
+				// MaxDistance: maxAlignMismatch,
+				// can not be two small
+				BandBase:  alignBand,
+				BandCount: int(alignBand / 2),
+
+				HeuristicKmerPidentThreshold: 15,
+			},
+
+			MinAlignedFraction: minQcovChain,
+			MinIdentity:        minIdent,
+		})
+
 		if outputLog {
 			log.Infof("index loaded in %s", time.Since(timeStart))
 			log.Info()
@@ -381,9 +405,9 @@ Result ordering:
 		}
 
 		// ---------------------------------------------------------------
-		// mapping
+		// searching
 
-		id2name := idx.BatchGenomeIndex2GenomeID
+		// -------  output handler -------
 
 		timeStart1 := time.Now()
 
@@ -407,6 +431,9 @@ Result ordering:
 		fmt.Fprintln(outfh)
 
 		gcIntervalMinus1 := gcInterval - 1
+		id2name := idx.BatchGenomeIndex2GenomeID
+
+		// -------  output function -------
 
 		printResult := func(q *Query) {
 			total++
@@ -507,7 +534,6 @@ Result ordering:
 			}
 		}
 
-		// outputter
 		ch := make(chan *Query, maxQueryConcurrency)
 		done := make(chan int)
 		go func() {
@@ -519,33 +545,13 @@ Result ordering:
 			done <- 1
 		}()
 
+		// -------  input  -------
+
 		var wg sync.WaitGroup
 		tokens := make(chan int, maxQueryConcurrency)
 
 		var record *fastx.Record
 		K := idx.k
-
-		idx.SetSeqCompareOptions(&SeqComparatorOptions{
-			K:         uint8(31),
-			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
-
-			Chaining2Options: Chaining2Options{
-				// should be relative small
-				MaxGap: maxAlignMaxGap,
-				// better be larger than MinPrefix
-				MinScore:    int(float64(minAlignLen) * minIdent / 100),
-				MinAlignLen: minAlignLen,
-				MinIdentity: minIdent,
-				// can not be < k
-				// MaxDistance: maxAlignMismatch,
-				// can not be two small
-				BandBase:  alignBand,
-				BandCount: int(alignBand / 2),
-			},
-
-			MinAlignedFraction: minQcovChain,
-			MinIdentity:        minIdent,
-		})
 
 		for _, file := range files {
 			fastxReader, err := fastx.NewReader(nil, file, "")
@@ -583,7 +589,7 @@ Result ordering:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query)
+					query.result, err = idx.Search(query, nil, idx.opt.Debug)
 					if err != nil {
 						checkError(err)
 					}
@@ -596,6 +602,8 @@ Result ordering:
 		wg.Wait()
 		close(ch)
 		<-done
+
+		// -------  final log  -------
 
 		if outputLog {
 			fmt.Fprintf(os.Stderr, "\n")

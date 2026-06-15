@@ -25,6 +25,7 @@ import (
 	"sync"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/twotwotwo/sorts"
 )
 
 // leafNode is used to represent a value.
@@ -62,15 +63,70 @@ func (n *node) Reset() {
 type Tree struct {
 	k    uint8 // use a global K
 	root *node // root node
+
+	nodes  nodeArena
+	leaves leafArena
 }
 
-var poolLeafNode = &sync.Pool{New: func() interface{} {
-	return &leafNode{val: make([]uint32, 0, 1)}
-}}
+// Each tree owns its own chunked arenas for nodes and leaves so that all
+// allocations for a single tree are physically contiguous, drastically
+// improving cache locality during Insert / Walk / Search. Chunks are fixed
+// size, so the address of any element is stable for the tree's lifetime
+// (and across Tree recycling, since chunks are reused in place).
+const (
+	nodeChunkSize = 1024
+	leafChunkSize = 1024
+)
 
-var poolNode = &sync.Pool{New: func() interface{} {
-	return &node{}
-}}
+type nodeArena struct {
+	chunks [][]node
+	cur    int
+	pos    int
+}
+
+func (a *nodeArena) alloc() *node {
+	if a.pos >= nodeChunkSize {
+		a.cur++
+		a.pos = 0
+	}
+	if a.cur >= len(a.chunks) {
+		a.chunks = append(a.chunks, make([]node, nodeChunkSize))
+	}
+	n := &a.chunks[a.cur][a.pos]
+	a.pos++
+	n.Reset()
+	return n
+}
+
+func (a *nodeArena) reset() {
+	a.cur = 0
+	a.pos = 0
+}
+
+type leafArena struct {
+	chunks [][]leafNode
+	cur    int
+	pos    int
+}
+
+func (a *leafArena) alloc() *leafNode {
+	if a.pos >= leafChunkSize {
+		a.cur++
+		a.pos = 0
+	}
+	if a.cur >= len(a.chunks) {
+		a.chunks = append(a.chunks, make([]leafNode, leafChunkSize))
+	}
+	n := &a.chunks[a.cur][a.pos]
+	a.pos++
+	n.Reset()
+	return n
+}
+
+func (a *leafArena) reset() {
+	a.cur = 0
+	a.pos = 0
+}
 
 var poolTree = &sync.Pool{New: func() interface{} {
 	return &Tree{}
@@ -80,31 +136,16 @@ var poolTree = &sync.Pool{New: func() interface{} {
 func NewTree(k uint8) *Tree {
 	t := poolTree.Get().(*Tree)
 	t.k = k
-	n := poolNode.Get().(*node)
-	n.Reset()
-	t.root = n
+	t.nodes.reset()
+	t.leaves.reset()
+	t.root = t.nodes.alloc()
 	return t
 }
 
-// RecycleTree recycles the tree object.
+// RecycleTree recycles the tree object. Node and leaf memory stays with
+// the tree's arenas for reuse on the next NewTree from the pool.
 func RecycleTree(t *Tree) {
-	recursiveRecycle(t.root)
 	poolTree.Put(t)
-}
-
-// recursiveRecycle recycle all nodes, including leaf nodes.
-func recursiveRecycle(n *node) {
-	if n.leaf != nil {
-		poolLeafNode.Put(n.leaf)
-	}
-
-	for _, child := range n.children {
-		if child != nil {
-			recursiveRecycle(child)
-		}
-	}
-
-	poolNode.Put(n)
 }
 
 // K returns the K value of k-mers.
@@ -131,8 +172,7 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 
 			// n is not a leaf node, that means
 			// the current key is a prefix of some other keys.
-			leaf := poolLeafNode.Get().(*leafNode)
-			leaf.Reset()
+			leaf := t.leaves.alloc()
 			leaf.key = key0
 			leaf.val = append(leaf.val, v)
 			n.leaf = leaf
@@ -147,12 +187,10 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 
 		// No child, create one
 		if n == nil {
-			n = poolNode.Get().(*node)
-			n.Reset()
+			n = t.nodes.alloc()
 			n.prefix = search
 			n.k = k
-			leaf := poolLeafNode.Get().(*leafNode)
-			leaf.Reset()
+			leaf := t.leaves.alloc()
 			leaf.key = key0
 			leaf.val = append(leaf.val, v)
 			n.leaf = leaf
@@ -165,21 +203,19 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 
 		// has a child -- exists a path
 
-		// Determine longest prefix of the search key on match
-		// commonPrefix := KmerLongestPrefix(search, n.prefix, k, n.k)
-		// because k >= n.k
-		commonPrefix := util.MustKmerLongestPrefix(search, n.prefix, k, n.k)
-		// the new key is longer than key of n, continue to search. len(prefix) = len(n)
-		if commonPrefix == n.k {
-			search = util.KmerSuffix(search, k, commonPrefix) // left bases
-			k = k - commonPrefix                              // need to update it
+		// Fast path: the common case is that search fully contains n.prefix
+		// (commonPrefix == n.k), in which case we only need an equality test,
+		// not a precise LCP. Slow path computes the LCP only when we must split.
+		shifted := search >> ((k - n.k) << 1)
+		if shifted == n.prefix {
+			search = util.KmerSuffix(search, k, n.k)
+			k = k - n.k
 			continue
 		}
 
-		// the new key and the key of node n share a prefix, len(prefix) < len(n)
-		// Split the node n
-		child := poolNode.Get().(*node)
-		child.Reset()
+		// search and n.prefix diverge before n.k bases: need to split n.
+		commonPrefix := uint8(bits.LeadingZeros64(shifted^n.prefix)>>1) + n.k - 32
+		child := t.nodes.alloc()
 		// o---<=8, here the prefix of one of the 8 is ---,
 		child.prefix = util.KmerPrefix(search, k, commonPrefix)
 		child.k = commonPrefix
@@ -192,8 +228,7 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 		n.k = n.k - commonPrefix
 
 		// Create a new leaf node for the new key
-		leaf := poolLeafNode.Get().(*leafNode)
-		leaf.Reset()
+		leaf := t.leaves.alloc()
 		leaf.key = key0
 		leaf.val = append(leaf.val, v)
 
@@ -207,8 +242,7 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 
 		// the new key and the key of node n share a prefix shorter than both of them
 		// Create a new child node for the node
-		n = poolNode.Get().(*node)
-		n.Reset()
+		n = t.nodes.alloc()
 		n.prefix = search
 		n.k = k
 		n.leaf = leaf
@@ -217,6 +251,163 @@ func (t *Tree) Insert(key uint64, v uint32) bool {
 		child.numChildren++
 		return false
 	}
+}
+
+// BatchEntry is a (key, value) pair for InsertBatch.
+type BatchEntry struct {
+	Key uint64
+	Val uint32
+}
+
+// BatchEntries is a sortable slice of BatchEntry, ordered by Key ascending.
+// It implements both sort.Interface and sorts.Uint64Interface, so callers
+// may pass it to sort.Sort, sorts.Quicksort, or sorts.ByUint64 (parallel
+// radix sort). Since Key is bit-packed in lexicographic order, sorting by
+// uint64 Key is equivalent to lexicographic order on the k-mer.
+type BatchEntries []BatchEntry
+
+func (s BatchEntries) Len() int           { return len(s) }
+func (s BatchEntries) Less(i, j int) bool { return s[i].Key < s[j].Key }
+func (s BatchEntries) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s BatchEntries) Key(i int) uint64   { return s[i].Key }
+
+// InsertBatch builds the tree from the given entries in O(n log n) time
+// (dominated by sort) without per-key tree descent or split operations.
+// The tree must be empty (freshly created via NewTree). entries is sorted
+// in place by Key.
+func (t *Tree) InsertBatch(entries []BatchEntry) {
+	if len(entries) == 0 {
+		return
+	}
+	K := t.k
+
+	// slowest:
+	// sort.Slice(entries, func(i, j int) bool {
+	// 	return entries[i].Key < entries[j].Key
+	// })
+	//
+	// much slower:
+	// slices.SortFunc(entries, func(a, b BatchEntry) int {
+	// 	if a.Key < b.Key {
+	// 		return -1
+	// 	} else if a.Key > b.Key {
+	// 		return 1
+	// 	}
+	// 	return 0
+	// })
+	//
+	// slightly slower:
+	// sorts.Quicksort(BatchEntries(entries))
+	//
+	sorts.ByUint64(BatchEntries(entries))
+
+	// Path stack: each entry is a node on the current rightmost path from
+	// root to the most recently inserted leaf. depth[i] is the cumulative
+	// k-mer base depth at that node (i.e. number of bases from root to the
+	// END of nodes[i].prefix). depth[0] == 0 for the root.
+	stack := make([]frame, 0, int(K)+1)
+	stack = append(stack, frame{n: t.root, depth: 0})
+
+	shift := int(K) - 32
+
+	// Insert the very first leaf as a child of root.
+	first := entries[0]
+	insertFreshLeaf(t, &stack, first.Key, first.Val, K)
+
+	prev := first.Key
+	for i := 1; i < len(entries); i++ {
+		cur := entries[i]
+		key := cur.Key
+
+		if key == prev {
+			// Same k-mer as previous: append to the current leaf, which is
+			// the leaf attached to the deepest node on the stack.
+			top := stack[len(stack)-1].n
+			top.leaf.val = append(top.leaf.val, cur.Val)
+			continue
+		}
+
+		// LCP between prev and cur, in bases.
+		lcp := uint8(bits.LeadingZeros64(prev^key)>>1 + shift)
+
+		// Pop frames whose START depth is >= lcp; they cannot contain the
+		// branch point. The branch point lies inside the frame whose
+		// (start_depth <= lcp) and (end_depth > lcp), or exactly between
+		// frames if end_depth == lcp.
+		for len(stack) > 1 {
+			top := stack[len(stack)-1]
+			startDepth := top.depth - top.n.k
+			if startDepth >= lcp {
+				stack = stack[:len(stack)-1]
+				continue
+			}
+			break
+		}
+
+		top := stack[len(stack)-1]
+		if top.depth > lcp {
+			// Branch point lies strictly inside top.n.prefix: split it.
+			// top.n keeps the suffix; insert a new parent that holds the
+			// shared prefix, then the new branch hangs off the new parent.
+			parent := stack[len(stack)-2].n
+			startDepth := top.depth - top.n.k
+			splitAt := lcp - startDepth // # bases of top.n.prefix to keep above
+
+			oldN := top.n
+			oldFirstBase := util.KmerBaseAt(oldN.prefix, oldN.k, 0)
+
+			mid := t.nodes.alloc()
+			mid.prefix = util.KmerPrefix(oldN.prefix, oldN.k, splitAt)
+			mid.k = splitAt
+			parent.children[oldFirstBase] = mid
+			// parent.numChildren unchanged: replaced one child with one child.
+
+			oldN.prefix = util.KmerSuffix(oldN.prefix, oldN.k, splitAt)
+			oldN.k = oldN.k - splitAt
+			mid.children[util.KmerBaseAt(oldN.prefix, oldN.k, 0)] = oldN
+			mid.numChildren++
+
+			// Replace top of stack with mid (oldN is no longer on the
+			// rightmost path; the new leaf will be).
+			stack[len(stack)-1] = frame{n: mid, depth: lcp}
+		}
+
+		// Now stack top's end_depth == lcp. Hang a new branch holding the
+		// suffix of cur from there.
+		insertFreshLeaf(t, &stack, key, cur.Val, K)
+		prev = key
+	}
+}
+
+// insertFreshLeaf creates a new node holding key's suffix below the current
+// stack top (whose end depth must be < K) and pushes it onto the stack.
+// It also creates the leaf and attaches it to the new node.
+func insertFreshLeaf(t *Tree, stack *[]frame, key uint64, v uint32, K uint8) {
+	top := (*stack)[len(*stack)-1]
+	parent := top.n
+	parentDepth := top.depth
+
+	suffix := util.KmerSuffix(key, K, parentDepth)
+	suffixK := K - parentDepth
+
+	n := t.nodes.alloc()
+	n.prefix = suffix
+	n.k = suffixK
+
+	leaf := t.leaves.alloc()
+	leaf.key = key
+	leaf.val = append(leaf.val, v)
+	n.leaf = leaf
+
+	parent.children[util.KmerBaseAt(suffix, suffixK, 0)] = n
+	parent.numChildren++
+
+	*stack = append(*stack, frame{n: n, depth: K})
+}
+
+type frame struct {
+	n     *node
+	depth uint8
 }
 
 // SearchResult records information of a search result.
@@ -336,7 +527,7 @@ func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
 }
 
 // WalkFn is used for walking the tree. Takes a
-// key and value, returning if iteration should
+// key and value, returning true if iteration should
 // be terminated.
 // type WalkFn func(key uint64, k uint8, v []uint64) bool
 type WalkFn func(key uint64, v []uint32) bool
@@ -362,6 +553,88 @@ func recursiveWalk(n *node, fn WalkFn) bool {
 	}
 
 	return false
+}
+
+// WalkGroupFn is called once per maximal group of k-mers that share a prefix
+// of at least lenPrefix bases. The keys and vals slices are reused across
+// calls; copy them if you need to retain across invocations.
+// Return true to abort iteration.
+type WalkGroupFn func(keys []uint64, vals [][]uint32, lenPrefix uint8) bool
+
+// WalkGroups visits each maximal subtree whose leaves share a prefix of at
+// least p bases, calling fn once per group with all k-mers in that subtree.
+// lenPrefix is the guaranteed minimum LCP within the group; specific pairs
+// may share more. Singleton groups (one k-mer) are also reported.
+// Returns true if iteration was aborted.
+func (t *Tree) WalkGroups(p uint8, fn WalkGroupFn) bool {
+	if p < 1 {
+		p = 1
+	}
+	if p > t.k {
+		p = t.k
+	}
+	keys := make([]uint64, 0, 1024)
+	vals := make([][]uint32, 0, 1024)
+	for _, child := range t.root.children {
+		if child != nil && recursiveWalkGroups(child, 0, p, &keys, &vals, fn) {
+			return true
+		}
+	}
+	return false
+}
+
+func recursiveWalkGroups(n *node, parentDepth, p uint8, keys *[]uint64, vals *[][]uint32, fn WalkGroupFn) bool {
+	depth := parentDepth + n.k
+	if depth >= p {
+		*keys = (*keys)[:0]
+		*vals = (*vals)[:0]
+		collectLeaves(n, keys, vals)
+		return fn(*keys, *vals, depth)
+	}
+	for _, child := range n.children {
+		if child != nil && recursiveWalkGroups(child, depth, p, keys, vals, fn) {
+			return true
+		}
+	}
+	return false
+}
+
+func collectLeaves(n *node, keys *[]uint64, vals *[][]uint32) {
+	if n.leaf != nil {
+		*keys = append(*keys, n.leaf.key)
+		*vals = append(*vals, n.leaf.val)
+	}
+	for _, child := range n.children {
+		if child != nil {
+			collectLeaves(child, keys, vals)
+		}
+	}
+}
+
+// WalkPairFn is called for each unordered pair of k-mers (a, b) whose LCP is
+// at least p bases; lenPrefix is the exact LCP of this pair.
+// Return true to abort iteration.
+type WalkPairFn func(keyA, keyB uint64, valsA, valsB []uint32, lenPrefix uint8) bool
+
+// WalkPairs visits every unordered pair of distinct k-mers in the tree
+// whose LCP is at least p bases. Returns true if iteration was aborted.
+func (t *Tree) WalkPairs(p uint8, fn WalkPairFn) bool {
+	shift := int(t.k) - 32
+	var stop bool
+	t.WalkGroups(p, func(keys []uint64, vals [][]uint32, _ uint8) bool {
+		n := len(keys)
+		for i := 0; i < n; i++ {
+			for j := i + 1; j < n; j++ {
+				lcp := uint8(bits.LeadingZeros64(keys[i]^keys[j])>>1 + shift)
+				if fn(keys[i], keys[j], vals[i], vals[j], lcp) {
+					stop = true
+					return true
+				}
+			}
+		}
+		return false
+	})
+	return stop
 }
 
 // KmerPrefix returns the first n bases. n needs to be > 0.

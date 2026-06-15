@@ -59,7 +59,7 @@ func parseTaxids(taxdumpDir string, genome2taxidFile string, taxidsStr []string,
 
 	var taxids, negativeTaxids []uint32
 
-	var m, negativeM map[uint32]interface{}
+	var m, negativeM map[uint32]struct{}
 	var ok bool
 	var v uint32
 
@@ -67,8 +67,8 @@ func parseTaxids(taxdumpDir string, genome2taxidFile string, taxidsStr []string,
 		if !(taxdumpDir != "" && genome2taxidFile != "") {
 			checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are need if -t/--taxids is given"))
 		}
-		m = make(map[uint32]interface{}, len(taxidsStr))
-		negativeM = make(map[uint32]interface{}, len(taxidsStr))
+		m = make(map[uint32]struct{}, len(taxidsStr))
+		negativeM = make(map[uint32]struct{}, len(taxidsStr))
 		taxids = make([]uint32, 0, len(taxidsStr))
 		negativeTaxids = make([]uint32, 0, len(taxidsStr))
 
@@ -96,7 +96,7 @@ func parseTaxids(taxdumpDir string, genome2taxidFile string, taxidsStr []string,
 	}
 	if taxidFile != "" {
 		if m == nil {
-			m = make(map[uint32]interface{}, len(taxidsStr))
+			m = make(map[uint32]struct{}, len(taxidsStr))
 		}
 
 		fh, err := xopen.Ropen(taxidFile)

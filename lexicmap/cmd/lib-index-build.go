@@ -424,8 +424,11 @@ const BITS_POSITION = 28
 // MAX_GENOME_SIZE is the maximum genome size, 268435456
 const MAX_GENOME_SIZE = 1 << BITS_POSITION
 
-// BITS_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
+// BITS_STRAND is the number of bits to indicate if the k-mer is from the reverse complement strand.
 const BITS_STRAND = 1
+
+// MASK_STRAND is the flag to indicate if the k-mer is from the reverse complement strand.
+const MASK_STRAND = 1
 
 // BITS_SUFFIX_IDX is the flag to indicate if the k-mer is reversed.
 const BITS_REVERSE = 1
@@ -434,7 +437,7 @@ const BITS_REVERSE = 1
 const MASK_REVERSE = 1
 
 // BITS_IDX is the number of bits to strore batch index and genome index.
-const BITS_IDX = BITS_BATCH_IDX + BITS_BATCH_IDX
+const BITS_IDX = BITS_BATCH_IDX + BITS_GENOME_IDX
 
 // BITS_NONE_POS is the number of bits except for position
 const BITS_NONE_POS = 64 - BITS_POSITION
@@ -991,7 +994,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// skip gap regions (N's)
 				gaps := reGaps.FindAllSubmatchIndex(refseq.Seq, -1)
 				if gaps != nil {
-					if _skipRegions == nil {
+					if _skipRegions == nil { // only one contig is available
 						skipRegions = poolSkipRegions.Get().(*[][2]int)
 						*skipRegions = (*skipRegions)[:0]
 					}
@@ -1150,7 +1153,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						start = int(pre) - 1000 // start position in the sequence
 						posOfPre = 1000         // the location of previous seed in the list
 						if start < 0 {
-							posOfPre += start
+							posOfPre += start // pre
 							start = 0
 						}
 						end = int(pos) + 1000 + k // end position in the sequence
@@ -2113,7 +2116,7 @@ func readGenomeList(file string) ([]string, error) {
 
 // readGenomeChunksMapBig2Small reads the genome chunkfile and return a map
 // with bigger batch+ref index mapping to a smaller one.
-func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{}, error) {
+func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]struct{}, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) { // no file
@@ -2124,7 +2127,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{
 	defer fh.Close()
 
 	r := bufio.NewReader(fh)
-	data := make(map[uint64]map[uint64]interface{}, 1024)
+	data := make(map[uint64]map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)
 	var n, chunks, i, j int
@@ -2158,7 +2161,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]interface{
 
 			a = be.Uint64(buf)
 
-			m := make(map[uint64]interface{}, max(8, chunks))
+			m := make(map[uint64]struct{}, max(8, chunks))
 
 			if i > 0 {
 				for j = 0; j < i; j++ {
@@ -2236,7 +2239,7 @@ func readGenomeChunksLists(file string) ([][]uint64, error) {
 
 // readGenomeChunksMap reads the genome chunkfile and return a map
 // with batch+ref index as the key.
-func readGenomeChunksMap(file string) (map[uint64]interface{}, error) {
+func readGenomeChunksMap(file string) (map[uint64]struct{}, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) { // no file
@@ -2247,7 +2250,7 @@ func readGenomeChunksMap(file string) (map[uint64]interface{}, error) {
 	defer fh.Close()
 
 	r := bufio.NewReader(fh)
-	data := make(map[uint64]interface{}, 1024)
+	data := make(map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)
 	var n, chunks, i int

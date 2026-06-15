@@ -81,6 +81,9 @@ type SeqComparator struct {
 	// a prefix tree for matching k-mers
 	tree *rtree.Tree
 
+	// reusable buffer for bulk-loading the tree
+	entries []rtree.BatchEntry
+
 	ccc, ggg, ttt uint64
 }
 
@@ -97,6 +100,8 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 		// poolSub: &sync.Pool{New: func() interface{} {
 		// 	return &SubstrPair{}
 		// }},
+
+		entries: make([]rtree.BatchEntry, 0, 4096),
 
 		ccc: util.Ns(0b01, options.K),
 		ggg: util.Ns(0b10, options.K),
@@ -127,22 +132,27 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	ggg := cpr.ggg
 	ttt := cpr.ttt
 
+	entries := cpr.entries[:0]
+
 	for {
 		kmer, kmerRC, ok, _ = iter.NextKmer()
 		if !ok {
 			break
 		}
 
-		// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmer, k))
 		if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
 			util.IsLowComplexityDust(kmer, k8) {
 			continue
 		}
 
-		t.Insert(kmer, uint32(iter.Index()<<1))
-		t.Insert(kmerRC, uint32(iter.Index()<<1|1))
+		entries = append(entries,
+			rtree.BatchEntry{Key: kmer, Val: uint32(iter.Index() << 1)},
+			rtree.BatchEntry{Key: kmerRC, Val: uint32(iter.Index()<<1 | 1)},
+		)
 	}
 
+	t.InsertBatch(entries)
+	cpr.entries = entries
 	cpr.tree = t
 
 	return nil
@@ -312,8 +322,10 @@ var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
 
 // RecycleSeqComparatorResult recycles a SeqComparatorResult
 func RecycleSeqComparatorResult(r *SeqComparatorResult) {
-	RecycleChaining2Result(r.Chains)
-	r.Chains = nil
+	if r.Chains != nil {
+		RecycleChaining2Result(r.Chains)
+		r.Chains = nil
+	}
 	poolSeqComparatorResult.Put(r)
 }
 
