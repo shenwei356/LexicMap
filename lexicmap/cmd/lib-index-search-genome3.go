@@ -1616,7 +1616,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	startTime0 := time.Now()
 
 	if debug {
-		log.Debugf("%s (%s bp): start to preprocess query genome fragments (sampled mode)", query.id, humanize.Comma(int64(query.genomeSize)))
+		log.Debugf("%s (%s bp): start to preprocess query genome fragments", query.id, humanize.Comma(int64(query.genomeSize)))
 	}
 
 	// 1) Cut the query into fragments.

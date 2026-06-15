@@ -365,7 +365,7 @@ type Reader struct {
 
 var poolReader = &sync.Pool{New: func() interface{} {
 	return &Reader{
-		buf: make([]byte, 10<<20), // 10M
+		buf: make([]byte, 10<<10), // 10K
 	}
 }}
 
