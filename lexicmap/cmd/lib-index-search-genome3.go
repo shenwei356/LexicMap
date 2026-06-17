@@ -41,6 +41,7 @@ import (
 	"github.com/shenwei356/wfa"
 )
 
+
 // In-memory sketch of a subject genome. We only need it long enough to
 // process all query fragments against this subject, then it is recycled.
 // The seed layout mirrors what buildAnIndex writes to disk: primary k-mer
@@ -71,9 +72,28 @@ var poolKmerMap = &sync.Pool{New: func() interface{} {
 	return &m
 }}
 
+// poolKmerSlice is for reusing position slices to reduce allocations
+var poolKmerSlice = &sync.Pool{New: func() interface{} {
+	s := make([]uint32, 0, 8) // pre-allocate for typical k-mer frequency
+	return &s
+}}
+
 // poolQSeeds is for reusing query seed slices
 var poolQSeeds = &sync.Pool{New: func() interface{} {
 	s := make([]*[]uint64, 0, 10240)
+	return &s
+}}
+
+// kmerLookup stores the result of a k-mer map lookup for batch processing
+type kmerLookup struct {
+	qk    uint64
+	qloc  int
+	slocs []uint32
+}
+
+// poolKmerLookups is for reusing kmerLookup slices in batch processing
+var poolKmerLookups = &sync.Pool{New: func() interface{} {
+	s := make([]kmerLookup, 0, 64) // pre-allocate for batch processing
 	return &s
 }}
 
@@ -147,10 +167,17 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 			}
 
 			// Store k-mer in forward part
+			if _, exists := (*kmerMap)[kmer]; !exists {
+				// Pre-allocate with reasonable capacity to reduce reallocations
+				(*kmerMap)[kmer] = make([]uint32, 0, 4)
+			}
 			(*kmerMap)[kmer] = append((*kmerMap)[kmer], uint32(pos))
 
 			// Mirror to RC part: the RC position is rcStart + (forwardLen - pos - k)
 			rcPos := rcStart + (forwardLen - pos - k)
+			if _, exists := (*kmerMap)[kmerRC]; !exists {
+				(*kmerMap)[kmerRC] = make([]uint32, 0, 4)
+			}
 			(*kmerMap)[kmerRC] = append((*kmerMap)[kmerRC], uint32(rcPos))
 
 			pos++
@@ -320,19 +347,46 @@ func alignQueryFragToSubjectSampled(
 
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
+	// Use batching to improve cache locality and reduce map lookup overhead
 	const maxMatchesPerKmer = 100
-	for i := 0; i+1 < len(qKmers); i += 2 {
-		qk := qKmers[i]
-		qloc := int(qKmers[i+1])
+	const batchSize = 8 // Process multiple k-mers in a batch
 
-		if slocs, found := (*sKmerMap)[qk]; found {
-			maxN := len(slocs)
+	// Get lookups slice from pool and reuse it
+	lookups := poolKmerLookups.Get().(*[]kmerLookup)
+	defer func() {
+		*lookups = (*lookups)[:0]
+		poolKmerLookups.Put(lookups)
+	}()
+
+	// Pre-fetch map entries in batches to improve cache hit rate
+	for batchStart := 0; batchStart+1 < len(qKmers); batchStart += batchSize * 2 {
+		batchEnd := batchStart + batchSize*2
+		if batchEnd > len(qKmers) {
+			batchEnd = len(qKmers)
+		}
+
+		// First pass: lookup all k-mers in the batch to warm up cache
+		*lookups = (*lookups)[:0]
+
+		for i := batchStart; i+1 < batchEnd; i += 2 {
+			qk := qKmers[i]
+			qloc := int(qKmers[i+1])
+
+			if slocs, found := (*sKmerMap)[qk]; found {
+				*lookups = append(*lookups, kmerLookup{qk, qloc, slocs})
+			}
+		}
+
+		// Second pass: process all matches in the batch
+		for _, lookup := range *lookups {
+			maxN := len(lookup.slocs)
 			if maxN > maxMatchesPerKmer {
 				maxN = maxMatchesPerKmer
 			}
+
 			for j := 0; j < maxN; j++ {
-				sloc := int(slocs[j])
-				qpos := qloc
+				sloc := int(lookup.slocs[j])
+				qpos := lookup.qloc
 				spos := sloc
 
 				// Create anchor directly without strand consideration
