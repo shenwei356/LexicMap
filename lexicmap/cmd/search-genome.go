@@ -624,9 +624,6 @@ Output format:
 						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
 					}
 
-					// it's too slow
-					// err = idx.GSearchAlign3(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
-
 					checkError(err)
 
 					// clear up
