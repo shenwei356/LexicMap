@@ -156,7 +156,7 @@ var clusterCmd = &cobra.Command{
 			}()
 		}
 
-		// ----------
+		// ---------------------------------------------------------------
 
 		// Global statistics across all masks - accumulate prefix length sums
 		globalCounts := make(map[uint64]uint32, 10240) // gid1<<32|gid2 -> sum of prefix lengths
@@ -166,6 +166,7 @@ var clusterCmd = &cobra.Command{
 		k := int(info.K)
 		kMinus32 := k - 32 // precompute to avoid repeated calculation
 		threshold := uint64(1) << ((k - minPrefix) * 2)
+		minPrefixU8 := uint8(minPrefix) // convert to uint8 for comparison
 
 		// Reusable genome slice to reduce allocations
 		genomes := make([]uint32, 0, 4096)
@@ -174,7 +175,7 @@ var clusterCmd = &cobra.Command{
 		window := make([]*KmerRecord, 0, 4096)
 		maskCounts := make(map[uint64]uint8, 4096) // local counts for this mask (max prefix per pair)
 
-		var chunkSize, chunk, iMask int
+		var chunkSize, chunk int
 		var fileSeeds string
 
 		// ----------
@@ -198,50 +199,71 @@ var clusterCmd = &cobra.Command{
 		// compute the chunk
 		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
 
+		var r *os.File
+		var config1 uint8
+		var use3BytesForSeedPos bool
+		var bytesPos int
+		var fUint64 func([]byte) uint64
+		var headerSize = 32 // kv-data file header is 32 bytes
+
 		for mask, maskCode := range lh.Masks {
 			_ = maskCode
 
 			startTime = time.Now()
 
 			chunk = mask / chunkSize
-			iMask = mask % chunkSize
 
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
-			// kv-data index file
-			_, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+			// Read kv-data file header and open file at the start of each chunk
+			if mask%chunkSize == 0 {
+				if r != nil {
+					r.Close()
+				}
+
+				// Read only the header of kv-data file
+				_, _, _, config1, err = kv.ReadKVDataHeader(fileSeeds)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read kv-data header: %s", err))
+				}
+
+				use3BytesForSeedPos = config1&kv.MaskUse3BytesForSeedPos > 0
+				if !use3BytesForSeedPos {
+					checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
+				}
+
+				bytesPos = 8
+				fUint64 = be.Uint64
+				if use3BytesForSeedPos {
+					bytesPos = 7
+					fUint64 = kv.Uint64ThreeBytes
+				}
+
+				// Open kv-data file
+				r, err = os.Open(fileSeeds)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read kv-data file: %s", err))
+				}
+
+				// Skip the header (32 bytes)
+				_, err = r.Seek(int64(headerSize), 0)
+				if err != nil {
+					checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
+				}
+			}
+
+			// Read nKmers for current mask (masks are stored sequentially)
+			_, err = io.ReadFull(r, buf8[:8])
 			if err != nil {
-				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+				checkError(err)
 			}
+			nKmers := be.Uint64(buf8[:8])
 
-			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0
-			if !use3BytesForSeedPos {
-				checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
-			}
-
-			bytesPos := 8
-			fUint64 := be.Uint64
-			if use3BytesForSeedPos {
-				bytesPos = 7
-				fUint64 = kv.Uint64ThreeBytes
-			}
-
-			if len(indexes[iMask]) == 0 { // no k-mers
+			if nKmers == 0 { // no k-mers
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(startTime)))
 				}
 				continue
-			}
-
-			// kv-data file
-			r, err := os.Open(fileSeeds)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
-			}
-
-			_, err = r.Seek(int64(indexes[iMask][1])>>1, 0)
-			if err != nil {
-				checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
 			}
 
 			// -------------------------------------------------------------------------
@@ -279,7 +301,7 @@ var clusterCmd = &cobra.Command{
 				}
 
 				if first {
-					kmer1 = indexes[iMask][0] // from the index
+					kmer1 = v1 // the first kmer is stored as absolute value
 					first = false
 				} else {
 					kmer1 = v1 + _offset
@@ -336,7 +358,7 @@ var clusterCmd = &cobra.Command{
 
 				// Process kmer1 with sliding window
 				if len(genomes) > 0 {
-					processKmerWithWindow(kmer1, &genomes, &window, maskCounts, threshold, kMinus32)
+					processKmerWithWindow(kmer1, &genomes, &window, maskCounts, threshold, kMinus32, minPrefixU8)
 				}
 
 				if lastPair && !hasKmer2 {
@@ -365,15 +387,13 @@ var clusterCmd = &cobra.Command{
 
 				// Process kmer2 with sliding window
 				if len(genomes) > 0 {
-					processKmerWithWindow(kmer2, &genomes, &window, maskCounts, threshold, kMinus32)
+					processKmerWithWindow(kmer2, &genomes, &window, maskCounts, threshold, kMinus32, minPrefixU8)
 				}
 
 				if lastPair {
 					break
 				}
 			}
-
-			r.Close()
 
 			// -------------------------------------------------------------------------
 
@@ -394,6 +414,11 @@ var clusterCmd = &cobra.Command{
 			if showProgressBar {
 				chDuration <- time.Duration(float64(time.Since(startTime)))
 			}
+		}
+
+		// Close the last opened file
+		if r != nil {
+			r.Close()
 		}
 
 		if showProgressBar {
@@ -478,7 +503,7 @@ var kmerRecordPool = sync.Pool{
 }
 
 // processKmerWithWindow processes a k-mer against the sliding window
-func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts map[uint64]uint8, threshold uint64, kMinus32 int) {
+func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) {
 	const moveThreshold = 512 // only move elements when waste exceeds this threshold
 
 	// Clean up window: remove k-mers that are too far away
@@ -507,6 +532,11 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 		// Calculate exact prefix length using XOR and leading zeros
 		// prefixLen = (bits.LeadingZeros64(kmer1^kmer2) >> 1) + kMinus32
 		prefixLen := uint8((bits.LeadingZeros64(currentCode^(*window)[i].code) >> 1) + kMinus32)
+
+		// Skip if prefix length is less than minimum
+		if prefixLen < minPrefix {
+			continue
+		}
 
 		// Cartesian product of genome IDs
 		for _, g1 := range (*window)[i].genomes {
