@@ -37,18 +37,11 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
-var kmersCmd = &cobra.Command{
-	Use:   "kmers",
-	Short: "View k-mers captured by the masks",
-	Long: `View k-mers captured by the masks
+var clusterCmd = &cobra.Command{
+	Use:   "cluster",
+	Short: "Cluster genomes in the index",
+	Long: `Cluster genomes in the index
 
-Attention:
-  1. Mask index (column mask) is 1-based.
-  2. Prefix means the length of shared prefix between a k-mer and the mask.
-  3. K-mer positions (column pos) are 1-based.
-     For reference genomes with multiple sequences, the sequences were
-     concatenated to a single sequence with intervals of N's.
-  4. Reversed means if the k-mer is reversed for suffix matching.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -84,10 +77,6 @@ Attention:
 		}
 		outFile := getFlagString(cmd, "out-file")
 
-		mask := getFlagNonNegativeInt(cmd, "mask")
-
-		onlyFwd := getFlagBool(cmd, "only-forward")
-
 		// ---------------------------------------------------------------
 		// checking index
 
@@ -103,10 +92,6 @@ Attention:
 			checkError(err)
 		}
 
-		if mask > len(lh.Masks) {
-			checkError(fmt.Errorf("the index has only %d masks, but %d is given", len(lh.Masks), mask))
-		}
-
 		// info file
 		fileInfo := filepath.Join(dbDir, FileInfo)
 		info, err := readIndexInfo(fileInfo)
@@ -116,12 +101,6 @@ Attention:
 
 		if outputLog {
 			log.Infof("  checking passed")
-		}
-
-		// genomes.map file for mapping index to genome id
-		m, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
-		if err != nil {
-			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}
 
 		// ---------------------------------------------------------------
@@ -136,12 +115,6 @@ Attention:
 			w.Close()
 		}()
 
-		// read and output
-
-		decoder := lexichash.MustDecoder()
-
-		fmt.Fprintf(outfh, "mask\tkmer\tprefix\tnumber\tref\tpos\tstrand\treversed\n")
-
 		// ---------------------------------------------------------------
 
 		// process bar
@@ -151,48 +124,39 @@ Attention:
 		var doneDuration chan int
 		var showProgressBar bool
 
-		var masks []int
-		if mask == 0 {
-			masks = make([]int, len(lh.Masks))
-			for i := range masks {
-				masks[i] = i + 1
-			}
+		if opt.Verbose {
+			showProgressBar = true
 
-			if opt.Verbose {
-				showProgressBar = true
+			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+			bar = pbs.AddBar(int64(len(lh.Masks)),
+				mpb.PrependDecorators(
+					decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
+					decor.Name("", decor.WCSyncSpaceR),
+					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+				),
+				mpb.AppendDecorators(
+					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+					decor.EwmaETA(decor.ET_STYLE_GO, 10),
+					decor.OnComplete(decor.Name(""), ". done"),
+				),
+			)
 
-				pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-				bar = pbs.AddBar(int64(len(lh.Masks)),
-					mpb.PrependDecorators(
-						decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
-						decor.Name("", decor.WCSyncSpaceR),
-						decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
-					),
-					mpb.AppendDecorators(
-						decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-						decor.EwmaETA(decor.ET_STYLE_GO, 10),
-						decor.OnComplete(decor.Name(""), ". done"),
-					),
-				)
-
-				chDuration = make(chan time.Duration, opt.NumCPUs)
-				doneDuration = make(chan int)
-				go func() {
-					for t := range chDuration {
-						bar.EwmaIncrBy(1, t)
-					}
-					doneDuration <- 1
-				}()
-			}
-		} else {
-			masks = []int{mask}
+			chDuration = make(chan time.Duration, opt.NumCPUs)
+			doneDuration = make(chan int)
+			go func() {
+				for t := range chDuration {
+					bar.EwmaIncrBy(1, t)
+				}
+				doneDuration <- 1
+			}()
 		}
+
+		// ----------
 
 		var chunkSize, chunk, iMask int
 		var fileSeeds string
 
 		var startTime time.Time
-		k8 := uint8(lh.K)
 		buf := make([]byte, 64)
 		buf8 := make([]uint8, 8)
 		var ctrlByte byte
@@ -207,28 +171,31 @@ Attention:
 		var lenVal1, lenVal2 uint64
 		var j uint64
 		var v, batchIDAndRefID uint64
-		var pos, rc int
-		var maskCode uint64
-		var rvFlag int
+		_ = batchIDAndRefID
 
 		// compute the chunk
 		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
 
-		for _, mask = range masks {
+		for mask, maskCode := range lh.Masks {
+			_ = maskCode
+
 			startTime = time.Now()
 
-			chunk = (mask - 1) / chunkSize
-			iMask = (mask - 1) % chunkSize
+			chunk = mask / chunkSize
+			iMask = mask % chunkSize
 
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+			_, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
 			}
 
 			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0
+			if !use3BytesForSeedPos {
+				checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
+			}
 
 			bytesPos := 8
 			fUint64 := be.Uint64
@@ -254,8 +221,6 @@ Attention:
 			if err != nil {
 				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))
 			}
-
-			maskCode = lh.Masks[mask-1]
 
 			_offset = 0
 			for {
@@ -335,17 +300,13 @@ Attention:
 					}
 
 					v = fUint64(buf8)
-					// pos, rc = int(v<<34>>35), int(v&1)
-					// batchIDAndRefID = v >> 30
-					rvFlag = int(v & MASK_REVERSE)
-					if onlyFwd && rvFlag == 1 {
+					if v&MASK_REVERSE == 1 {
 						continue
 					}
-					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&MASK_STRAND)
-					batchIDAndRefID = v >> BITS_NONE_IDX
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
-						mask, decoder(kmer1, k), util.MustKmerLongestPrefix(kmer1, maskCode, k8, k8),
-						lenVal1, m[batchIDAndRefID], pos+1, lexichash.Strands[rc], reversedStr[rvFlag])
+					// for genome batch number <= 512, only 9 bits is used to encode batch ID.
+					// so 9 + 17 = 26, which can be stored with an uint32 number.
+					batchIDAndRefID = (v >> BITS_NONE_IDX) & 4294967295
+
 				}
 
 				if lastPair && !hasKmer2 {
@@ -362,17 +323,11 @@ Attention:
 					}
 
 					v = fUint64(buf8)
-					// pos, rc = int(v<<34>>35), int(v&1)
-					// batchIDAndRefID = v >> 30
-					rvFlag = int(v & MASK_REVERSE)
-					if onlyFwd && rvFlag == 1 {
+					if v&MASK_REVERSE == 1 {
 						continue
 					}
-					pos, rc = int(v<<BITS_IDX>>BITS_NONE_POS), int(v>>BITS_REVERSE&MASK_STRAND)
 					batchIDAndRefID = v >> BITS_NONE_IDX
-					fmt.Fprintf(outfh, "%d\t%s\t%d\t%d\t%s\t%d\t%c\t%s\n",
-						mask, decoder(kmer2, k), util.MustKmerLongestPrefix(kmer2, maskCode, k8, k8),
-						lenVal2, m[batchIDAndRefID], pos+1, lexichash.Strands[rc], reversedStr[rvFlag])
+
 				}
 
 				if lastPair {
@@ -398,21 +353,16 @@ Attention:
 }
 
 func init() {
-	utilsCmd.AddCommand(kmersCmd)
+	RootCmd.AddCommand(clusterCmd)
 
-	kmersCmd.Flags().StringP("index", "d", "",
+	clusterCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	kmersCmd.Flags().StringP("out-file", "o", "-",
+	clusterCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
-	kmersCmd.Flags().IntP("mask", "m", 1,
-		formatFlagUsage(`View k-mers captured by Xth mask. (0 for all)`))
+	clusterCmd.SetUsageTemplate(usageTemplate("-d <index path> [-o out.tsv.gz]"))
 
-	kmersCmd.Flags().BoolP("only-forward", "f", false,
-		formatFlagUsage(`Only output forward k-mers.`))
-
-	kmersCmd.SetUsageTemplate(usageTemplate("-d <index path> [-m <mask index>] [-o out.tsv.gz]"))
+	clusterCmd.Flags().IntP("min-prefix", "p", 21,
+		formatFlagUsage(`Minimum prefix length between k-mers captured by a mask.`))
 }
-
-var reversedStr = []string{"no", "yes"}
