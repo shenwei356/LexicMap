@@ -23,6 +23,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/bits"
 	"os"
 	"path/filepath"
@@ -80,6 +81,8 @@ var clusterCmd = &cobra.Command{
 		}
 		outFile := getFlagString(cmd, "out-file")
 		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
+		minMaskFraction := getFlagNonNegativeFloat64(cmd, "min-mask-fraction")
+		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
 
 		// ---------------------------------------------------------------
 		// checking index
@@ -158,6 +161,9 @@ var clusterCmd = &cobra.Command{
 
 		// ---------------------------------------------------------------
 
+		// Active pairs tracking for probabilistic pruning
+		activePairs := make(map[uint64]int, 10240) // pair -> number of matches
+
 		// Global statistics across all masks - accumulate prefix length sums
 		globalCounts := make(map[uint64]uint32, 10240) // gid1<<32|gid2 -> sum of prefix lengths
 
@@ -168,11 +174,19 @@ var clusterCmd = &cobra.Command{
 		threshold := uint64(1) << ((k - minPrefix) * 2)
 		minPrefixU8 := uint8(minPrefix) // convert to uint8 for comparison
 
+		totalMasks := len(lh.Masks)
+		requiredMatches := int(minMaskFraction * float64(totalMasks))
+
+		if outputLog {
+			log.Infof("  total masks: %d, required matches: %d (%.1f%%)", totalMasks, requiredMatches, minMaskFraction*100)
+		}
+
 		// Reusable genome slice to reduce allocations
 		genomes := make([]uint32, 0, 4096)
 
 		// Sliding window for all-to-all comparison
 		window := make([]*KmerRecord, 0, 4096)
+		// Per-mask tracking: which genomes appear in this mask
 		maskCounts := make(map[uint64]uint8, 4096) // local counts for this mask (max prefix per pair)
 
 		var chunkSize, chunk int
@@ -397,9 +411,55 @@ var clusterCmd = &cobra.Command{
 
 			// -------------------------------------------------------------------------
 
-			// Merge mask results into global counts (accumulate across masks)
+			// Update active pairs and perform probabilistic pruning
+			processedMasks := mask + 1 // mask is 0-indexed
+
+			// First, update match counts for pairs that matched in this mask
+			// Following Onika's approach: check probability before adding new pairs
+			for pair := range maskCounts {
+				matches, exists := activePairs[pair]
+				if !exists {
+					// New pair (or previously pruned pair treated as new)
+					// Check if count=1 passes the probability threshold
+					remaining := totalMasks - processedMasks
+					if 1+remaining >= requiredMatches {
+						// Has potential to reach threshold
+						if probThreshold <= 0 || processedMasks >= totalMasks {
+							// No pruning or last mask, add it
+							activePairs[pair] = 1
+						} else {
+							// Check probability for count=1
+							if shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold) {
+								activePairs[pair] = 1
+							}
+							// else: don't add, probability too low
+						}
+					}
+					// else: impossible to reach threshold, don't add
+				} else {
+					// Existing pair: increment count
+					activePairs[pair] = matches + 1
+				}
+			}
+
+			// Probabilistic pruning: check all active pairs
+			// Only prune if we haven't processed all masks yet
+			if probThreshold > 0 && processedMasks < totalMasks {
+				for pair, matches := range activePairs {
+					// Check if this pair can still reach the required threshold
+					shouldKeep := shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold)
+					if !shouldKeep {
+						delete(activePairs, pair)
+						delete(globalCounts, pair)
+					}
+				}
+			}
+
+			// Merge mask results into global counts (only for active pairs)
 			for pair, prefixLen := range maskCounts {
-				globalCounts[pair] += uint32(prefixLen)
+				if _, active := activePairs[pair]; active {
+					globalCounts[pair] += uint32(prefixLen)
+				}
 			}
 
 			// Reset for next mask to reuse memory
@@ -427,6 +487,12 @@ var clusterCmd = &cobra.Command{
 			pbs.Wait()
 		}
 
+		if outputLog {
+			log.Info()
+			log.Infof("active pairs after pruning: %d", len(activePairs))
+			log.Infof("pairs passing threshold: %d", len(globalCounts))
+		}
+
 		// ---------------------------------------------------------------
 		// Output results
 
@@ -443,22 +509,27 @@ var clusterCmd = &cobra.Command{
 		// Collect results into slice for sorting
 		type PairResult struct {
 			pair      uint64
+			nMasks    int
 			sumPrefix uint32
 		}
 		results := make([]PairResult, 0, len(globalCounts))
 		for pair, sumPrefix := range globalCounts {
 			results = append(results, PairResult{
 				pair:      pair,
+				nMasks:    activePairs[pair], // number of masks matched
 				sumPrefix: sumPrefix,
 			})
 		}
-		// Sort by sumPrefix in descending order
+		// Sort by nMasks (then sumPrefix) in descending order
 		sort.Slice(results, func(i, j int) bool {
+			if results[i].nMasks != results[j].nMasks {
+				return results[i].nMasks > results[j].nMasks
+			}
 			return results[i].sumPrefix > results[j].sumPrefix
 		})
 
 		// Write header
-		outfh.WriteString("genome1\tgenome2\tsumPrefix\n")
+		outfh.WriteString("genome1\tgenome2\tnMasks\tfracMasks\tsumPrefix\n")
 
 		// Write sorted results
 		var gid1, gid2 uint64
@@ -466,7 +537,9 @@ var clusterCmd = &cobra.Command{
 			gid1 = result.pair >> 32
 			gid2 = result.pair & 0xFFFFFFFF
 
-			fmt.Fprintf(outfh, "%s\t%s\t%d\n", id2name[gid1], id2name[gid2], result.sumPrefix)
+			fracMasks := float64(result.nMasks) / float64(totalMasks)
+			fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\n",
+				id2name[gid1], id2name[gid2], result.nMasks, fracMasks, result.sumPrefix)
 		}
 
 	},
@@ -485,12 +558,88 @@ func init() {
 
 	clusterCmd.Flags().IntP("min-prefix", "p", 21,
 		formatFlagUsage(`Minimum prefix length between k-mers captured by a mask.`))
+
+	clusterCmd.Flags().Float64P("min-mask-fraction", "f", 0.25,
+		formatFlagUsage(`Minimum fraction of masks that must match for a genome pair to be reported.`))
+
+	clusterCmd.Flags().Float64P("prob-threshold", "s", 0.001,
+		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning).`))
 }
 
 // KmerRecord stores a k-mer code and its associated genome IDs
 type KmerRecord struct {
 	code    uint64
 	genomes []uint32
+}
+
+// computeProbabilityUpperBound computes the upper bound of P(X >= t*S | X = k, n partitions processed)
+// using the Agievich bound approximation from the Onika paper
+// (https://doi.org/10.1101/2025.11.21.689685, Section 2.3.1).
+// Returns true if the probability is above the threshold.
+// n: number of partitions processed so far
+// k: number of matches observed
+// t: minimum similarity threshold (minMaskFraction)
+// S: total number of partitions (masks)
+// probThreshold: minimum probability threshold
+func shouldKeepPair(n, k int, t float64, S int, probThreshold float64) bool {
+	// We want to estimate if the pair can reach t*S matches in the remaining partitions
+	requiredMatches := int(t * float64(S))
+
+	// If already reached the threshold, keep the pair
+	if k >= requiredMatches {
+		return true
+	}
+
+	// If impossible to reach even if all remaining partitions match
+	remaining := S - n
+	if k+remaining < requiredMatches {
+		return false
+	}
+
+	if n == 0 || n < k {
+		return true
+	}
+
+	// If no probability threshold, keep it
+	if probThreshold <= 0.0 {
+		return true
+	}
+
+	// Estimate the probability using the binomial approximation
+	// Following Onika's implementation: use log space to avoid overflow
+	fn := float64(n)
+	fk := float64(k)
+
+	// Use the observed rate or threshold, whichever is higher
+	p := t
+	if n > 0 {
+		observedRate := fk / fn
+		if observedRate > p {
+			p = observedRate
+		}
+	}
+
+	// Clamp p to avoid log(0)
+	p = math.Max(1e-12, math.Min(1.0-1e-12, p))
+	q := 1.0 - p
+
+	// Compute log probability using Agievich approximation
+	diff := fk - 0.5*fn
+
+	// Log coefficient: n*ln(2) - 0.5*ln(pi*n/2) - 2*diff^2/n + 23/(18n)
+	logCoeff := fn*math.Ln2 - 0.5*math.Log(math.Pi*fn/2.0) - 2.0*diff*diff/fn + 23.0/(18.0*fn)
+
+	// Log mass: logCoeff + k*ln(p) + (n-k)*ln(q)
+	logMass := logCoeff + fk*math.Log(p) + (fn-fk)*math.Log(q)
+
+	// Clamp to 0 if positive (probability can't exceed 1)
+	if logMass > 0.0 {
+		return true
+	}
+
+	// Compare in log space
+	logThreshold := math.Log(probThreshold)
+	return logMass >= logThreshold
 }
 
 // Pool for reusing KmerRecord objects
@@ -508,7 +657,9 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 
 	// Clean up window: remove k-mers that are too far away
 	windowStart := 0
+	removedCount := 0
 	for windowStart < len(*window) && currentCode-(*window)[windowStart].code >= threshold {
+		removedCount++
 		// Return KmerRecord to pool
 		(*window)[windowStart].genomes = (*window)[windowStart].genomes[:0]
 		kmerRecordPool.Put((*window)[windowStart])
@@ -553,6 +704,25 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 				}
 
 				// Keep maximum prefix length within this mask
+				if prefixLen > counts[key] {
+					counts[key] = prefixLen
+				}
+			}
+		}
+	}
+
+	// Also handle pairs within currentGenomes (same k-mer code, prefix = k)
+	// This handles cases where multiple genomes share the exact same k-mer
+	if len(*currentGenomes) > 1 {
+		prefixLen := uint8(kMinus32 + 32) // full k-mer length
+		for i := 0; i < len(*currentGenomes); i++ {
+			for j := i + 1; j < len(*currentGenomes); j++ {
+				g1, g2 := (*currentGenomes)[i], (*currentGenomes)[j]
+				if g1 < g2 {
+					key = uint64(g1)<<32 | uint64(g2)
+				} else {
+					key = uint64(g2)<<32 | uint64(g1)
+				}
 				if prefixLen > counts[key] {
 					counts[key] = prefixLen
 				}
