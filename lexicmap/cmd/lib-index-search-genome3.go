@@ -25,7 +25,6 @@ import (
 	"cmp"
 	"fmt"
 	"os"
-	"regexp"
 	"slices"
 	"sync"
 	"time"
@@ -40,7 +39,6 @@ import (
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/wfa"
 )
-
 
 // In-memory sketch of a subject genome. We only need it long enough to
 // process all query fragments against this subject, then it is recycled.
@@ -615,7 +613,7 @@ func alignChain(
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
 // sampled fixed-length k-mers instead of LexicHash masking.
-func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	startTime0 := time.Now()
@@ -737,7 +735,6 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		contigInterval = K
 	}
 	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
-	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))
 
 	alignOption := &wfa.Options{GlobalAlignment: true}
 	minPIdent := idx.seqCompareOption.MinIdentity
@@ -949,6 +946,181 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		log.Debugf("%s (%s bp): finished aligning query genome fragments in %.3f seconds",
 			query.id, humanize.Comma(int64(query.genomeSize)), time.Since(startTime).Seconds())
 	}
+
+	return nil
+}
+
+// CompareTwoGenomes compares two genomes directly without using an index.
+// It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
+func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
+	// 1) Cut the query into fragments.
+	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	if len(*qfrags) == 0 {
+		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+	}
+
+	// 2) Sample k-mers from each query fragment.
+	qSeeds := poolQSeeds.Get().(*[]*[]uint64)
+	*qSeeds = (*qSeeds)[:0]
+	if cap(*qSeeds) < len(*qfrags) {
+		*qSeeds = make([]*[]uint64, 0, len(*qfrags))
+	}
+	defer func() {
+		for _, seeds := range *qSeeds {
+			poolKmerAndLocs.Put(seeds)
+		}
+		*qSeeds = (*qSeeds)[:0]
+		poolQSeeds.Put(qSeeds)
+	}()
+
+	for _, qfrag := range *qfrags {
+		seeds, err := sampleQueryFragment(qfrag)
+		if err != nil {
+			return fmt.Errorf("failed to sample query fragment: %w", err)
+		}
+		*qSeeds = append(*qSeeds, seeds)
+	}
+
+	// 3) Build subject genome concatenated sequence.
+	K := gsa3SampledK
+	contigInterval := int(float64(fragLen) * 1.5)
+	if contigInterval < K {
+		contigInterval = K
+	}
+	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
+
+	concat := poolConcat.Get().(*[]byte)
+	*concat = (*concat)[:0]
+	defer func() {
+		*concat = (*concat)[:0]
+		poolConcat.Put(concat)
+	}()
+
+	// Calculate total size: forward + contig intervals + RC interval + RC
+	var forwardSize int
+	for _, s := range subject.seqs {
+		forwardSize += len(*s)
+	}
+	forwardSize += contigInterval * (len(subject.seqs) - 1)
+
+	// Total size = forward + 2*fragLen interval + RC (same as forward)
+	rcInterval := fragLen << 1
+	totalSize := forwardSize<<1 + rcInterval
+
+	// Pre-allocate the full capacity to avoid reallocation
+	if cap(*concat) < totalSize {
+		*concat = make([]byte, 0, totalSize)
+	}
+
+	var skipRegions [][2]int
+	contigBounds := make([][2]int, 0, len(subject.seqs))
+	for i, s := range subject.seqs {
+		if i > 0 {
+			boundary := len(*concat)
+			skipRegions = append(skipRegions, [2]int{boundary, boundary + contigInterval - 1})
+			*concat = append(*concat, nnn...)
+		}
+		cs := len(*concat)
+		*concat = append(*concat, (*s)...)
+		contigBounds = append(contigBounds, [2]int{cs, len(*concat)})
+	}
+
+	// skip gap regions (N's) in forward strand
+	gaps := reGaps.FindAllSubmatchIndex(*concat, -1)
+	for _, gap := range gaps {
+		skipRegions = append(skipRegions, [2]int{gap[0], gap[1] - 1})
+	}
+
+	// Append 2*fragLen interval and reverse complement strand
+	forwardLen := len(*concat)
+	nnnRC := bytes.Repeat([]byte{'N'}, rcInterval)
+
+	// Add interval between forward and RC strands
+	*concat = append(*concat, nnnRC...)
+
+	// Append reverse complement of the forward strand
+	rcStart := len(*concat)
+	*concat = append(*concat, (*concat)[:forwardLen]...)
+	RC((*concat)[rcStart:])
+
+	// Sort skip regions
+	slices.SortFunc(skipRegions, func(a, b [2]int) int {
+		return a[0] - b[0]
+	})
+
+	// 4) Build the subject sketch using sampled k-mers
+	sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, forwardLen, rcStart)
+	if err != nil {
+		return fmt.Errorf("fail to build subject sketch: %s", err)
+	}
+	defer idx.recycleSubjectSketch(sketch)
+
+	// 5) Set up alignment tools
+	alignOption := &wfa.Options{GlobalAlignment: true}
+	minPIdent := idx.seqCompareOption.MinIdentity
+	minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+	extLen := fragLen / 2
+	extLen2 := idx.opt.ExtendLength2
+
+	chainer := idx.poolChainers2.Get().(*Chainer2)
+	defer idx.poolChainers2.Put(chainer)
+
+	algn := wfa.New(wfa.DefaultPenalties, alignOption)
+	algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+	defer wfa.RecycleAligner(algn)
+
+	gr := poolGSearchResult.Get().(*GSearchResult)
+	gr.Reset()
+	gr.BatchGenomeIndex = 0 // Not from index
+	gr.GenomeSize = subject.genomeSize
+	gr.NumSeqs = len(subject.seqs)
+
+	// 6) Align each query fragment to subject
+	fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(subject.genomeSize), 0.625, 0.41)
+
+	for i, qfrag := range *qfrags {
+		matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
+			qfrag, (*qSeeds)[i], sketch, sketch.sampledKmerMap, (*concat),
+			chainer, algn, K, extLen, extLen2,
+			minPIdent, minQcovHSP, idx,
+			&fScoreAndEvalue,
+		)
+		if !ok {
+			continue
+		}
+		gr.AlignedFragments++
+		gr.AlignedLength += alignedLen - gaps
+		gr.AlignedMatches += matched
+		gr.Pidents = append(gr.Pidents, pident)
+	}
+
+	// 7) Calculate ANI / AF on the accumulated alignment
+	if gr.AlignedLength > 0 {
+		sumPident := 0.0
+		for _, p := range gr.Pidents {
+			sumPident += p
+		}
+		gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+	}
+	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+	gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
+	if gr.AFq > 1 {
+		gr.AFq = 1
+	}
+	if gr.AFs > 1 {
+		gr.AFs = 1
+	}
+	gr.Score = gr.ANI
+
+	// 8) Store result
+	rs := poolGSearchResults.Get().(*[]*GSearchResult)
+	*rs = (*rs)[:0]
+	if gr.AFq >= minAF {
+		*rs = append(*rs, gr)
+	} else {
+		poolGSearchResult.Put(gr)
+	}
+	query.result = rs
 
 	return nil
 }

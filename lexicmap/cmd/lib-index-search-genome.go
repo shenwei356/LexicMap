@@ -524,7 +524,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*
 
 // GSearchAlign2 align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	if debug {

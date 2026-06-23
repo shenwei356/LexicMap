@@ -619,9 +619,9 @@ Output format:
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					if orthoANI {
-						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
+						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
 					} else {
-						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery, gcInterval)
+						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
 					}
 
 					checkError(err)
@@ -640,9 +640,10 @@ Output format:
 
 		// -------  final log  -------
 
-		if outputLog {
+		if verbose {
 			fmt.Fprintf(os.Stderr, "\n")
-
+		}
+		if outputLog {
 			speed = float64(total) / time.Since(timeStart1).Minutes()
 			log.Infof("")
 			log.Infof("processed queries: %d, speed: %.3f queries per minute\n", total, speed)

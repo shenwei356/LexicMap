@@ -926,8 +926,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	extractRefName := reRefName != nil
 	filterNames := len(opt.ReSeqExclude) > 0
 
-	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))
-
 	var wg sync.WaitGroup                 // ensure all jobs done
 	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
 
@@ -2334,3 +2332,5 @@ var poolKmerCounter = &sync.Pool{New: func() interface{} {
 }}
 
 var cmpFn = func(x, y int) int { return int(x - y) }
+
+var reGaps = regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))

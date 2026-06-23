@@ -406,7 +406,7 @@ var pairCmd = &cobra.Command{
 
 						for i = range *window {
 							(*window)[i].genomes = (*window)[i].genomes[:0]
-							kmerRecordPool.Put((*window)[i])
+							poolKmerRecord.Put((*window)[i])
 						}
 						*window = (*window)[:0]
 						poolKmerWindow.Put(window)
@@ -542,7 +542,7 @@ var pairCmd = &cobra.Command{
 
 					for i = range *window {
 						(*window)[i].genomes = (*window)[i].genomes[:0]
-						kmerRecordPool.Put((*window)[i])
+						poolKmerRecord.Put((*window)[i])
 					}
 					*window = (*window)[:0]
 					poolKmerWindow.Put(window)
@@ -718,12 +718,11 @@ func shouldKeepPair(n, k int, t float64, S int, probThreshold float64) bool {
 }
 
 // Pool for reusing KmerRecord objects
-var kmerRecordPool = sync.Pool{
-	New: func() interface{} {
-		return &KmerRecord{
-			genomes: make([]uint32, 0, 128),
-		}
-	},
+var poolKmerRecord = &sync.Pool{New: func() interface{} {
+	return &KmerRecord{
+		genomes: make([]uint32, 0, 128),
+	}
+},
 }
 
 var poolGenomes = &sync.Pool{New: func() interface{} {
@@ -753,7 +752,7 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	for windowStart < len(*window) && currentCode-(*window)[windowStart].code >= threshold {
 		// Return KmerRecord to pool
 		(*window)[windowStart].genomes = (*window)[windowStart].genomes[:0]
-		kmerRecordPool.Put((*window)[windowStart])
+		poolKmerRecord.Put((*window)[windowStart])
 		windowStart++
 	}
 
@@ -838,7 +837,7 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	}
 
 	// Get a KmerRecord from pool
-	record := kmerRecordPool.Get().(*KmerRecord)
+	record := poolKmerRecord.Get().(*KmerRecord)
 	record.code = currentCode
 	record.genomes = append(record.genomes, (*currentGenomes)...)
 

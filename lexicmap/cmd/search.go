@@ -605,9 +605,10 @@ Result ordering:
 
 		// -------  final log  -------
 
-		if outputLog {
+		if verbose {
 			fmt.Fprintf(os.Stderr, "\n")
-
+		}
+		if outputLog {
 			speed = float64(total) / time.Since(timeStart1).Minutes()
 			log.Infof("")
 			log.Infof("processed queries: %d, speed: %.3f queries per minute\n", total, speed)
