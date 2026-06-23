@@ -125,7 +125,6 @@ var clusterCmd = &cobra.Command{
 		}()
 
 		// -------------------------------------------------------------------------
-
 		// process bar
 		var pbs *mpb.Progress
 		var bar *mpb.Bar
@@ -145,7 +144,7 @@ var clusterCmd = &cobra.Command{
 				),
 				mpb.AppendDecorators(
 					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 10),
+					decor.EwmaETA(decor.ET_STYLE_GO, 64),
 					decor.OnComplete(decor.Name(""), ". done"),
 				),
 			)
@@ -159,6 +158,8 @@ var clusterCmd = &cobra.Command{
 				doneDuration <- 1
 			}()
 		}
+
+		fcpus := float64(opt.NumCPUs)
 
 		// -------------------------------------------------------------------------
 
@@ -183,21 +184,22 @@ var clusterCmd = &cobra.Command{
 		}
 
 		// -------------------------------------------------------------------------
-		// collect couting results
+		// collect counting results
 
 		ch := make(chan *map[uint64]uint8, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
-			var processedMasks int
+			var processedMasks, remaining int
+			remaining = totalMasks
 			for maskCounts := range ch {
+				processedMasks++
+				remaining--
+
 				if len(*maskCounts) == 0 { // no data
 					clear(*maskCounts)
 					poolMaskCounts.Put(maskCounts)
 					continue
 				}
-
-				processedMasks++
-
 				// First, update match counts for pairs that matched in this mask
 				// Following Onika's approach: check probability before adding new pairs
 				for pair := range *maskCounts {
@@ -205,7 +207,6 @@ var clusterCmd = &cobra.Command{
 					if !exists {
 						// New pair (or previously pruned pair treated as new)
 						// Check if count=1 passes the probability threshold
-						remaining := totalMasks - processedMasks
 						if 1+remaining >= requiredMatches {
 							// Has potential to reach threshold
 							if probThreshold <= 0 || processedMasks >= totalMasks {
@@ -248,7 +249,6 @@ var clusterCmd = &cobra.Command{
 
 				clear(*maskCounts)
 				poolMaskCounts.Put(maskCounts)
-
 			}
 			done <- 1
 		}()
@@ -397,7 +397,7 @@ var clusterCmd = &cobra.Command{
 						ch <- maskCounts
 
 						if showProgressBar {
-							chDuration <- time.Duration(float64(time.Since(timeStart)))
+							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 						}
 						continue
 					}
@@ -533,7 +533,7 @@ var clusterCmd = &cobra.Command{
 					ch <- maskCounts
 
 					if showProgressBar {
-						chDuration <- time.Duration(float64(time.Since(timeStart)))
+						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 					}
 				}
 
@@ -713,8 +713,10 @@ var poolGenomes = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
+const WindowInitialSize = 1 << 18
+
 var poolKmerWindow = &sync.Pool{New: func() interface{} {
-	tmp := make([]*KmerRecord, 0, 4096)
+	tmp := make([]*KmerRecord, 0, WindowInitialSize)
 	return &tmp
 }}
 
@@ -725,13 +727,12 @@ var poolMaskCounts = &sync.Pool{New: func() interface{} {
 
 // processKmerWithWindow processes a k-mer against the sliding window
 func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) {
-	const moveThreshold = 512 // only move elements when waste exceeds this threshold
+	// only move elements when waste exceeds this threshold
+	// const moveThreshold = 8
 
 	// Clean up window: remove k-mers that are too far away
 	windowStart := 0
-	removedCount := 0
 	for windowStart < len(*window) && currentCode-(*window)[windowStart].code >= threshold {
-		removedCount++
 		// Return KmerRecord to pool
 		(*window)[windowStart].genomes = (*window)[windowStart].genomes[:0]
 		kmerRecordPool.Put((*window)[windowStart])
@@ -739,12 +740,13 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	}
 
 	// Move valid elements to the front only when waste exceeds threshold
-	if windowStart >= moveThreshold {
-		if windowStart < len(*window) {
-			copy(*window, (*window)[windowStart:])
-		}
-		*window = (*window)[:len(*window)-windowStart]
-	} else if windowStart > 0 {
+	// if windowStart >= moveThreshold {
+	// 	if windowStart < len(*window) {
+	// 		copy(*window, (*window)[windowStart:])
+	// 	}
+	// 	*window = (*window)[:len(*window)-windowStart]
+	// } else
+	if windowStart > 0 {
 		// Just trim the slice without copying
 		*window = (*window)[windowStart:]
 	}
@@ -806,6 +808,16 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	record := kmerRecordPool.Get().(*KmerRecord)
 	record.code = currentCode
 	record.genomes = append(record.genomes, (*currentGenomes)...)
+
+	if cap(*window) == len(*window) { // need to resize
+		if len(*window) == 0 {
+			*window = make([]*KmerRecord, 0, WindowInitialSize)
+		} else {
+			tmp := make([]*KmerRecord, len(*window), WindowInitialSize)
+			copy(tmp, *window)
+			*window = tmp
+		}
+	}
 
 	// Add current k-mer to window
 	*window = append(*window, record)
