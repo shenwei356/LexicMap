@@ -213,7 +213,11 @@ Attention:
 
 		// compute the chunk
 		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
-
+		var preChunk int
+		var k uint8
+		var indexes [][]uint64
+		var config1 uint8
+		preChunk = -1
 		for _, mask = range masks {
 			startTime = time.Now()
 
@@ -223,9 +227,13 @@ Attention:
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+			if chunk != preChunk {
+				k, _, indexes, _, _, config1, err = kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+				}
+
+				preChunk = chunk
 			}
 
 			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0

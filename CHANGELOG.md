@@ -9,6 +9,8 @@
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
     - Faster pseudoalignment for long queries.
+- `lexicmap util kmers`:
+    - Faster speed for printing all seed data (`--mask 0`).
 
 ### v0.9.0 - 2026-03-13
 

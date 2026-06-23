@@ -28,6 +28,7 @@ import (
 	"math/bits"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -186,6 +187,9 @@ var clusterCmd = &cobra.Command{
 		// -------------------------------------------------------------------------
 		// collect counting results
 
+		// Blacklist for pruned pairs (concurrent-safe)
+		blacklist := &sync.Map{}
+
 		ch := make(chan *map[uint64]uint8, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
@@ -203,6 +207,11 @@ var clusterCmd = &cobra.Command{
 				// First, update match counts for pairs that matched in this mask
 				// Following Onika's approach: check probability before adding new pairs
 				for pair := range *maskCounts {
+					// Skip impossible pairs
+					if _, isBlacklisted := blacklist.Load(pair); isBlacklisted {
+						continue
+					}
+
 					matches, exists := activePairs[pair]
 					if !exists {
 						// New pair (or previously pruned pair treated as new)
@@ -236,6 +245,8 @@ var clusterCmd = &cobra.Command{
 						if !shouldKeep {
 							delete(activePairs, pair)
 							delete(globalCounts, pair)
+							// Add to blacklist
+							blacklist.Store(pair, struct{}{})
 						}
 					}
 				}
@@ -249,6 +260,10 @@ var clusterCmd = &cobra.Command{
 
 				clear(*maskCounts)
 				poolMaskCounts.Put(maskCounts)
+
+				if processedMasks&255 == 0 {
+					runtime.GC()
+				}
 			}
 			done <- 1
 		}()
@@ -361,6 +376,8 @@ var clusterCmd = &cobra.Command{
 				var lenVal1, lenVal2 uint64
 				var j uint64
 				var v, batchIDAndRefID uint64
+				var nKmers uint64
+				var i int
 
 				var timeStart time.Time
 
@@ -381,13 +398,13 @@ var clusterCmd = &cobra.Command{
 					if n < 8 {
 						checkError(ErrBrokenFile)
 					}
-					nKmers := be.Uint64(buf[:8])
+					nKmers = be.Uint64(buf[:8])
 
 					if nKmers == 0 { // no k-mers
 						// recycle objects and send result
 						poolGenomes.Put(genomes)
 
-						for i := range *window {
+						for i = range *window {
 							(*window)[i].genomes = (*window)[i].genomes[:0]
 							kmerRecordPool.Put((*window)[i])
 						}
@@ -486,7 +503,7 @@ var clusterCmd = &cobra.Command{
 
 						// Process kmer1 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer1, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8)
+							processKmerWithWindow(kmer1, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8, blacklist)
 						}
 
 						if lastPair && !hasKmer2 {
@@ -512,7 +529,7 @@ var clusterCmd = &cobra.Command{
 
 						// Process kmer2 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer2, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8)
+							processKmerWithWindow(kmer2, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8, blacklist)
 						}
 
 						if lastPair {
@@ -523,7 +540,7 @@ var clusterCmd = &cobra.Command{
 					// recycle objects and send result
 					poolGenomes.Put(genomes)
 
-					for i := range *window {
+					for i = range *window {
 						(*window)[i].genomes = (*window)[i].genomes[:0]
 						kmerRecordPool.Put((*window)[i])
 					}
@@ -726,7 +743,7 @@ var poolMaskCounts = &sync.Pool{New: func() interface{} {
 }}
 
 // processKmerWithWindow processes a k-mer against the sliding window
-func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) {
+func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8, blacklist *sync.Map) {
 	// only move elements when waste exceeds this threshold
 	// const moveThreshold = 8
 
@@ -753,10 +770,13 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 
 	// Compare with all k-mers in the window
 	var key uint64
+	var g1, g2 uint32
+	var ok bool
+	var prefixLen uint8
 	for i := range *window {
 		// Calculate exact prefix length using XOR and leading zeros
 		// prefixLen = (bits.LeadingZeros64(kmer1^kmer2) >> 1) + kMinus32
-		prefixLen := uint8((bits.LeadingZeros64(currentCode^(*window)[i].code) >> 1) + kMinus32)
+		prefixLen = uint8((bits.LeadingZeros64(currentCode^(*window)[i].code) >> 1) + kMinus32)
 
 		// Skip if prefix length is less than minimum
 		if prefixLen < minPrefix {
@@ -764,8 +784,8 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 		}
 
 		// Cartesian product of genome IDs
-		for _, g1 := range (*window)[i].genomes {
-			for _, g2 := range *currentGenomes {
+		for _, g1 = range (*window)[i].genomes {
+			for _, g2 = range *currentGenomes {
 				if g1 == g2 {
 					continue // skip self-comparison
 				}
@@ -775,6 +795,11 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 					key = uint64(g1)<<32 | uint64(g2)
 				} else {
 					key = uint64(g2)<<32 | uint64(g1)
+				}
+
+				// Skip impossible pairs
+				if _, ok = blacklist.Load(key); ok {
+					continue
 				}
 
 				// Keep maximum prefix length within this mask
@@ -787,15 +812,22 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 
 	// Also handle pairs within currentGenomes (same k-mer code, prefix = k)
 	// This handles cases where multiple genomes share the exact same k-mer
-	if len(*currentGenomes) > 1 {
-		prefixLen := uint8(kMinus32 + 32) // full k-mer length
-		for i := 0; i < len(*currentGenomes); i++ {
-			for j := i + 1; j < len(*currentGenomes); j++ {
-				g1, g2 := (*currentGenomes)[i], (*currentGenomes)[j]
+
+	n := len(*currentGenomes)
+	var i, j int
+	if n > 1 {
+		prefixLen = uint8(kMinus32 + 32) // full k-mer length
+		for i = 0; i < n; i++ {
+			for j = i + 1; j < n; j++ {
+				g1, g2 = (*currentGenomes)[i], (*currentGenomes)[j]
 				if g1 < g2 {
 					key = uint64(g1)<<32 | uint64(g2)
 				} else {
 					key = uint64(g2)<<32 | uint64(g1)
+				}
+				// skip impossible pairs
+				if _, ok = blacklist.Load(key); ok {
+					continue
 				}
 				if prefixLen > (*counts)[key] {
 					(*counts)[key] = prefixLen
