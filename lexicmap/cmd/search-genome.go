@@ -40,7 +40,7 @@ import (
 )
 
 var gsearchCmd = &cobra.Command{
-	Use:   "search-genome",
+	Use:   "search",
 	Short: "Search genomes against an index",
 	Long: `Search genomes against an index
 
@@ -447,10 +447,10 @@ Output format:
 		if !onlyGenomeScreening {
 			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
 		} else {
-			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen")
-			// fmt.Fprintf(outfh, "\tq25BestLen\tq50BestLen\tq75BestLen")
+			// fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen")
+			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix")
 			if extra {
-				fmt.Fprintf(outfh, "\tbestLens")
+				fmt.Fprintf(outfh, "\tprefixes")
 			}
 			fmt.Fprintf(outfh, "\n")
 		}
@@ -535,18 +535,18 @@ Output format:
 					if extra {
 						matches2strslice(',')
 
-						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\t%s\n",
+						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
-							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
-							hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)), hitMasks,
+							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
 							gr.Score2, float64(gr.Score2)/float64(hitMasks),
 							matchesS.Bytes(),
 						)
 					} else {
-						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%d\t%.2f\t%d\t%.2f\n",
+						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
-							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)),
-							hitMasks, hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)), hitMasks,
+							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
 							gr.Score2, float64(gr.Score2)/float64(hitMasks),
 						)
 					}
@@ -659,7 +659,7 @@ Output format:
 }
 
 func init() {
-	RootCmd.AddCommand(gsearchCmd)
+	genomeCmd.AddCommand(gsearchCmd)
 
 	// general flags
 
@@ -770,7 +770,7 @@ func init() {
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
-		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap search-genome --help' for details.`))
+		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap genome search --help' for details.`))
 
 	gsearchCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))

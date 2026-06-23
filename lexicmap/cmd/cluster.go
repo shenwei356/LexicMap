@@ -43,10 +43,10 @@ import (
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
-var clusterCmd = &cobra.Command{
-	Use:   "cluster",
-	Short: "Cluster genomes in the index",
-	Long: `Cluster genomes in the index
+var pairCmd = &cobra.Command{
+	Use:   "pair",
+	Short: "Find similar genome pairs in the index",
+	Long: `Find similar genome pairs in the index
 
 
 `,
@@ -603,7 +603,7 @@ var clusterCmd = &cobra.Command{
 		})
 
 		// Write header
-		outfh.WriteString("genome1\tgenome2\tnMasks\tfracMasks\tsumPrefix\n")
+		outfh.WriteString("genome1\tgenome2\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix\n")
 
 		// Write sorted results
 		var gid1, gid2 uint64
@@ -612,31 +612,32 @@ var clusterCmd = &cobra.Command{
 			gid2 = result.pair & 0xFFFFFFFF
 
 			fracMasks := float64(result.nMasks) / float64(totalMasks)
-			fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\n",
-				id2name[gid1], id2name[gid2], result.nMasks, fracMasks, result.sumPrefix)
+			fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
+				id2name[gid1], id2name[gid2], minPrefix, fracMasks, result.nMasks,
+				result.sumPrefix, float64(result.sumPrefix)/float64(result.nMasks))
 		}
 
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(clusterCmd)
+	genomeCmd.AddCommand(pairCmd)
 
-	clusterCmd.Flags().StringP("index", "d", "",
+	pairCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	clusterCmd.Flags().StringP("out-file", "o", "-",
+	pairCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
-	clusterCmd.SetUsageTemplate(usageTemplate("-d <index path> [-o out.tsv.gz]"))
+	pairCmd.SetUsageTemplate(usageTemplate("-d <index path> [-o out.tsv.gz]"))
 
-	clusterCmd.Flags().IntP("min-prefix", "p", 21,
+	pairCmd.Flags().IntP("min-prefix", "p", 21,
 		formatFlagUsage(`Minimum prefix length between k-mers captured by a mask.`))
 
-	clusterCmd.Flags().Float64P("min-mask-fraction", "f", 0.25,
+	pairCmd.Flags().Float64P("min-mask-fraction", "f", 0.25,
 		formatFlagUsage(`Minimum fraction of masks that must match for a genome pair to be reported.`))
 
-	clusterCmd.Flags().Float64P("prob-threshold", "s", 0.001,
+	pairCmd.Flags().Float64P("prob-threshold", "s", 0.001,
 		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning).`))
 }
 

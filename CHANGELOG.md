@@ -3,7 +3,8 @@
 ### v0.10.0 - 2026-xx-xx
 
 - New commands:
-    - **`lexicmap search-genome`: Search genomes against an index, with accurate ANI and AF**.
+    - **`lexicmap genome search`: Search genomes against an index, with accurate ANI and AF**.
+    - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap search`:
