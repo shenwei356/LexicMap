@@ -1124,3 +1124,55 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 
 	return nil
 }
+
+func (idx *Index) ReadGenome(gname2idx *map[string]*[]uint64, refname string) (*GQuery, error) {
+	batchIDAndRefIDs, ok := (*gname2idx)[refname]
+	if !ok {
+		return nil, fmt.Errorf("reference name not found: %s", refname)
+	}
+
+	maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
+
+	q := poolGQuery.Get().(*GQuery)
+	q.Reset()
+
+	for _, batchIDAndRefID := range *batchIDAndRefIDs {
+		genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+		genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
+
+		rdr := <-idx.poolGenomeRdrs[genomeBatch]
+
+		g, err := rdr.Seqs(genomeIdx)
+		if err != nil {
+			RecycleGQuery(q)
+			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			return nil, fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s", genomeBatch, genomeIdx, err)
+		}
+
+		for _, s1 := range g.Seqs {
+			s := poolSeq.Get().(*[]byte)
+			*s = (*s)[:0]
+			*s = append(*s, *s1...)
+			q.seqs = append(q.seqs, s)
+
+			q.genomeSize += len(*s1)
+		}
+
+		if maxSubjectGenomeSize > 0 && q.genomeSize > maxSubjectGenomeSize {
+			log.Warningf("%s (size: %s bp) exceeds the maximum subject genome size which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+				idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+				humanize.Comma(int64(g.GenomeSize)),
+				humanize.Comma(int64(maxSubjectGenomeSize)))
+
+			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			genome.RecycleGenome(g)
+			break
+		}
+
+		idx.poolGenomeRdrs[genomeBatch] <- rdr
+	}
+
+	q.id = []byte(refname)
+
+	return q, nil
+}

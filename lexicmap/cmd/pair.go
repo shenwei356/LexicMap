@@ -188,7 +188,7 @@ var pairCmd = &cobra.Command{
 		// collect counting results
 
 		// Blacklist for pruned pairs (concurrent-safe)
-		blacklist := &sync.Map{}
+		// blacklist := &sync.Map{}
 
 		ch := make(chan *map[uint64]uint8, opt.NumCPUs)
 		done := make(chan int)
@@ -208,9 +208,9 @@ var pairCmd = &cobra.Command{
 				// Following Onika's approach: check probability before adding new pairs
 				for pair := range *maskCounts {
 					// Skip impossible pairs
-					if _, isBlacklisted := blacklist.Load(pair); isBlacklisted {
-						continue
-					}
+					// if _, isBlacklisted := blacklist.Load(pair); isBlacklisted {
+					// 	continue
+					// }
 
 					matches, exists := activePairs[pair]
 					if !exists {
@@ -246,7 +246,7 @@ var pairCmd = &cobra.Command{
 							delete(activePairs, pair)
 							delete(globalCounts, pair)
 							// Add to blacklist
-							blacklist.Store(pair, struct{}{})
+							// blacklist.Store(pair, struct{}{})
 						}
 					}
 				}
@@ -503,7 +503,7 @@ var pairCmd = &cobra.Command{
 
 						// Process kmer1 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer1, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8, blacklist)
+							processKmerWithWindow(kmer1, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8) // , blacklist)
 						}
 
 						if lastPair && !hasKmer2 {
@@ -529,7 +529,7 @@ var pairCmd = &cobra.Command{
 
 						// Process kmer2 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer2, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8, blacklist)
+							processKmerWithWindow(kmer2, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8) // , blacklist)
 						}
 
 						if lastPair {
@@ -743,7 +743,7 @@ var poolMaskCounts = &sync.Pool{New: func() interface{} {
 }}
 
 // processKmerWithWindow processes a k-mer against the sliding window
-func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8, blacklist *sync.Map) {
+func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) { // , blacklist *sync.Map) {
 	// only move elements when waste exceeds this threshold
 	// const moveThreshold = 8
 
@@ -771,7 +771,7 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	// Compare with all k-mers in the window
 	var key uint64
 	var g1, g2 uint32
-	var ok bool
+	// var ok bool
 	var prefixLen uint8
 	for i := range *window {
 		// Calculate exact prefix length using XOR and leading zeros
@@ -797,10 +797,10 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 					key = uint64(g2)<<32 | uint64(g1)
 				}
 
-				// Skip impossible pairs
-				if _, ok = blacklist.Load(key); ok {
-					continue
-				}
+				// // Skip impossible pairs
+				// if _, ok = blacklist.Load(key); ok {
+				// 	continue
+				// }
 
 				// Keep maximum prefix length within this mask
 				if prefixLen > (*counts)[key] {
@@ -820,15 +820,21 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 		for i = 0; i < n; i++ {
 			for j = i + 1; j < n; j++ {
 				g1, g2 = (*currentGenomes)[i], (*currentGenomes)[j]
+				if g1 == g2 {
+					continue // skip self-comparison
+				}
+
 				if g1 < g2 {
 					key = uint64(g1)<<32 | uint64(g2)
 				} else {
 					key = uint64(g2)<<32 | uint64(g1)
 				}
-				// skip impossible pairs
-				if _, ok = blacklist.Load(key); ok {
-					continue
-				}
+
+				// // skip impossible pairs
+				// if _, ok = blacklist.Load(key); ok {
+				// 	continue
+				// }
+
 				if prefixLen > (*counts)[key] {
 					(*counts)[key] = prefixLen
 				}

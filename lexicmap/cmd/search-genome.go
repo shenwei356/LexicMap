@@ -291,7 +291,7 @@ Output format:
 
 		maxQueryConcurrency := getFlagNonNegativeInt(cmd, "max-query-conc")
 		if maxQueryConcurrency == 0 {
-			maxQueryConcurrency = runtime.NumCPU()
+			maxQueryConcurrency = opt.NumCPUs
 		}
 		var threadsPerQuery int
 		if len(files) < maxQueryConcurrency {

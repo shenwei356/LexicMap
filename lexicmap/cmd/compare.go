@@ -21,17 +21,22 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
+	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 var compareCmd = &cobra.Command{
@@ -40,9 +45,9 @@ var compareCmd = &cobra.Command{
 	Long: `Compare genome pairs
 
 Input:
-  - 
-  - 
- 
+  - Two-column tab-delimited file, with a genome id in each column.
+    The file can be the output of 'lexicmap genome pair'.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -116,15 +121,14 @@ Input:
 			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
 		}
 		// minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
-		// minAF := 0
+		minAF := 0.0
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 
-		// maxSubjectGenomeSize := getFlagNonNegativeInt(cmd, "max-subject-genome-size") * 1000 * 1000
-		maxSubjectGenomeSize := 1 << 30
+		maxSubjectGenomeSize := getFlagNonNegativeInt(cmd, "max-subject-genome-size") * 1000 * 1000
 
 		samplingScale := getFlagPositiveInt(cmd, "kmer-scale")
 		if samplingScale != 2 && samplingScale != 4 && samplingScale != 8 {
@@ -168,6 +172,10 @@ Input:
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
+		hasHeaderLine := getFlagBool(cmd, "skip-header-line")
+
+		debug := getFlagBool(cmd, "debug")
+
 		// ---------------------------------------------------------------
 
 		if outputLog {
@@ -202,17 +210,6 @@ Input:
 			if !isStdin(file) && filepath.Clean(file) == outFileClean {
 				checkError(fmt.Errorf("out file should not be one of the input file"))
 			}
-		}
-
-		maxQueryConcurrency := getFlagNonNegativeInt(cmd, "max-query-conc")
-		if maxQueryConcurrency == 0 {
-			maxQueryConcurrency = runtime.NumCPU()
-		}
-		var threadsPerQuery int
-		if len(files) < maxQueryConcurrency {
-			threadsPerQuery = opt.NumCPUs / len(files)
-		} else {
-			threadsPerQuery = opt.NumCPUs / maxQueryConcurrency
 		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
@@ -316,8 +313,7 @@ Input:
 			log.Infof("  maximum evalue: %.2e", maxEvalue)
 
 			if gc {
-				log.Infof("  maximum number of concurrent comparing: %d, force garbage collection for every %d genome pairs", maxQueryConcurrency, gcInterval)
-				log.Infof("  threads per query: %d", threadsPerQuery)
+				log.Infof("  force garbage collection for every %d genome pairs", gcInterval)
 			}
 
 		}
@@ -344,12 +340,177 @@ Input:
 
 		// -------  output function -------
 
-		// gcIntervalMinus1 := gcInterval - 1
+		gcIntervalMinus1 := gcInterval - 1
+
+		fmt.Fprintf(outfh, "genome1\tgenome2\tANI1\tANI2\tAF1\tAF2\tcontigs1\tsize1\tcontigs2\tsize2\n")
+
+		printResult := func(q *GPair) {
+			total++
+
+			if verbose {
+				if (total < 15) || total&15 == 0 {
+					speed = float64(total) / time.Since(timeStart1).Minutes()
+					fmt.Fprintf(os.Stderr, "processed genome pairs: %d, speed: %.3f pairs per minute\r", total, speed)
+				}
+			}
+
+			// ------------------------------
+
+			g1, g2 := q.g1, q.g2
+			gr1, gr2 := (*g1.result)[0], (*g2.result)[0]
+
+			fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+				g1.id, g2.id,
+				gr1.ANI*100, gr2.ANI*100,
+				gr1.AFq*100, gr2.AFq*100,
+				len(g1.seqs), g1.genomeSize,
+				len(g2.seqs), g2.genomeSize,
+			)
+
+			// ------------------------------
+
+			outfh.Flush()
+			RecycleGPair(q)
+
+			if gc && total&gcIntervalMinus1 == 0 {
+				runtime.GC()
+			}
+		}
+
+		ch := make(chan *GPair, opt.NumCPUs)
+		done := make(chan int)
+		go func() {
+			for r := range ch {
+				printResult(r)
+			}
+
+			done <- 1
+		}()
 
 		// ------- input -------
-		// for _, file := range files {
 
-		// }
+		// genomes.map file for mapping index to genome id
+		gname2idx, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
+		if err != nil {
+			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
+		}
+
+		var wg sync.WaitGroup
+		tokens := make(chan int, opt.NumCPUs/2) // cause each pair use 2 threads
+		fcpus := float64(idx.opt.NumCPUs / 2)
+
+		for _, file := range files {
+			pairs, err := readPairs(file, hasHeaderLine)
+			if err != nil {
+				checkError(fmt.Errorf("failed to parse input, two-column tab-delimited input needed: %s\n", err))
+			}
+
+			nPairs := len(pairs) >> 1
+			if outputLog {
+				log.Infof("%d genome pairs loaded from %s", nPairs, file)
+			}
+
+			// -----------------------------------------------------------
+			// process bar
+			var pbs *mpb.Progress
+			var bar *mpb.Bar
+			var chDuration chan time.Duration
+			var doneDuration chan int
+			if debug {
+				pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+				bar = pbs.AddBar(int64(nPairs),
+					mpb.PrependDecorators(
+						decor.Name("compared genome pairs: ", decor.WC{W: len("compared genome pairs: "), C: decor.DindentRight}),
+						decor.Name("", decor.WCSyncSpaceR),
+						decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+					),
+					mpb.AppendDecorators(
+						decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+						decor.EwmaETA(decor.ET_STYLE_GO, 1024),
+						decor.OnComplete(decor.Name(""), ". done"),
+					),
+				)
+
+				chDuration = make(chan time.Duration, idx.opt.NumCPUs)
+				doneDuration = make(chan int)
+				go func() {
+					for t := range chDuration {
+						bar.EwmaIncrBy(1, t)
+					}
+					doneDuration <- 1
+				}()
+			}
+
+			// -----------------------------------------------------------
+
+			for i := 0; i < len(pairs); i += 2 {
+				wg.Add(1)
+				tokens <- 1
+
+				go func(genome1, genome2 string) {
+					timeStart := time.Now()
+					defer func() {
+						wg.Done()
+						<-tokens
+
+						if debug {
+							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+						}
+					}()
+
+					q := poolGPair.Get().(*GPair)
+
+					var _wg sync.WaitGroup
+
+					// read genome sequences
+					_wg.Add(2)
+					go func() {
+						q.g1, err = idx.ReadGenome(&gname2idx, genome1)
+						checkError(err)
+						_wg.Done()
+					}()
+					go func() {
+						q.g2, err = idx.ReadGenome(&gname2idx, genome2)
+						checkError(err)
+						_wg.Done()
+					}()
+					_wg.Wait()
+
+					// compre genomes
+					_wg.Add(2)
+					go func() {
+						err = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minAlignLen, minAF)
+						if err != nil {
+							checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, err))
+						}
+						_wg.Done()
+					}()
+					go func() {
+						err = idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minAlignLen, minAF)
+						if err != nil {
+							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, err))
+						}
+						_wg.Done()
+					}()
+					_wg.Wait()
+
+					ch <- q
+
+				}(pairs[i], pairs[i+1])
+			}
+
+			wg.Wait()
+
+			// -----------------------------------------------------------
+			if debug {
+				close(chDuration)
+				<-doneDuration
+				pbs.Wait()
+			}
+		}
+
+		close(ch)
+		<-done
 
 		// -------  final log  -------
 
@@ -373,6 +534,9 @@ Input:
 func init() {
 	genomeCmd.AddCommand(compareCmd)
 
+	compareCmd.Flags().BoolP("skip-header-line", "H", false,
+		formatFlagUsage(`Skip the header line in the input file.`))
+
 	// general flags
 
 	compareCmd.Flags().StringP("index", "d", "",
@@ -387,7 +551,7 @@ func init() {
 	compareCmd.Flags().IntP("max-query-conc", "J", 4,
 		formatFlagUsage(`Maximum number of concurrent queries.`))
 
-	compareCmd.Flags().IntP("gc-interval", "", 4,
+	compareCmd.Flags().IntP("gc-interval", "", 128,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
 
 	// genome filtering/screening
@@ -402,6 +566,9 @@ func init() {
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
 	compareCmd.Flags().IntP("min-frag-size", "", 100,
 		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
+
+	compareCmd.Flags().IntP("max-subject-genome-size", "", 20,
+		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))
 
 	// alignment
 
@@ -439,4 +606,71 @@ func init() {
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
 
+}
+
+func readPairs(file string, hasHeaderLine bool) ([]string, error) {
+	fh, err := xopen.Ropen(file)
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]string, 0, 4096)
+
+	items := make([]string, 2)
+	scanner := bufio.NewScanner(fh)
+	var line string
+	var i int
+	for scanner.Scan() {
+		line = strings.TrimRight(scanner.Text(), "\r\n")
+		if line == "" {
+			continue
+		}
+
+		if hasHeaderLine {
+			hasHeaderLine = false
+			continue
+		}
+
+		stringSplitNByByte(line, '\t', 2, &items)
+		if len(items) < 2 {
+			continue
+		}
+
+		if i = strings.IndexByte(items[1], '\t'); i > 0 { // a\tb\tc
+			list = append(list, items[0])
+			list = append(list, items[1][:i])
+		} else if i == 0 { // a\t\tc
+			continue
+		} else { // a\tb
+			list = append(list, items[0])
+			list = append(list, items[1])
+		}
+	}
+	if err = scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return list, fh.Close()
+}
+
+type GPair struct {
+	g1, g2 *GQuery
+}
+
+var poolGPair = &sync.Pool{
+	New: func() interface{} {
+		return &GPair{}
+	},
+}
+
+func (q *GPair) Reset() {
+	q.g1 = nil
+	q.g2 = nil
+}
+
+func RecycleGPair(q *GPair) {
+	RecycleGQuery(q.g1)
+	RecycleGQuery(q.g2)
+	q.Reset()
+	poolGPair.Put(q)
 }
