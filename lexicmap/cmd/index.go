@@ -535,7 +535,7 @@ func init() {
 	indexCmd.Flags().IntP("min-seq-len", "l", -1,
 		formatFlagUsage(`Maximum sequence length to index. The value would be k for values <= 0.`))
 
-	indexCmd.Flags().IntP("max-genome", "g", 15000000,
+	indexCmd.Flags().IntP("max-genome", "g", 20000000,
 		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Genomes with any single contig larger than the threshold will be skipped, while fragmented (with many contigs) genomes larger than the threshold will be split into chunks and alignments from these chunks will be merged in "lexicmap search". The value needs to be smaller than the maximum supported genome size: %d.`, MAX_GENOME_SIZE)))
 
 	// indexCmd.Flags().StringP("ref-name-info", "", ``,

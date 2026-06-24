@@ -8,6 +8,9 @@
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
+- `lexicmap index`:
+    - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
+      as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
     - Faster pseudoalignment for long queries.

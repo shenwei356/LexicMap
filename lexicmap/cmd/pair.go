@@ -98,6 +98,14 @@ Output format:
 		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
 
 		// -------------------------------------------------------------------------
+
+		if outputLog {
+			log.Infof("LexicMap v%s", VERSION)
+			log.Info("  https://github.com/shenwei356/LexicMap")
+			log.Info()
+		}
+
+		// -------------------------------------------------------------------------
 		// checking index
 
 		if outputLog {

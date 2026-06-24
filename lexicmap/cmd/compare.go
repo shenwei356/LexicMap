@@ -464,6 +464,7 @@ Output format:
 		nPairs := len(pairs) >> 1
 
 		if outputLog {
+			log.Info()
 			log.Infof("%d genome pairs loaded from %d file(s)", nPairs, len(files))
 		}
 

@@ -36,6 +36,8 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/util/pathutil"
 	"github.com/spf13/cobra"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 var genomeDetailsCmd = &cobra.Command{
@@ -240,6 +242,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 	// ---------------------------------------------------------------
 	// genomes.map file for mapping index to genome id
+	if opt.Verbose {
+		log.Infof("  reading genomes.map file and genome data")
+	}
+
 	fh, err := os.Open(filepath.Join(dbDir, FileGenomeIndex))
 	if err != nil {
 		checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
@@ -271,7 +277,43 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	be.PutUint64(buf, flags)
 	bw.Write(buf)
 
+	// -----------------------------------------------------------
+	// process bar
+	var pbs *mpb.Progress
+	var bar *mpb.Bar
+	var chDuration chan time.Duration
+	var doneDuration chan int
+	if opt.Verbose {
+		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
+		bar = pbs.AddBar(int64(info.InputGenomes),
+			mpb.PrependDecorators(
+				decor.Name("processed genomes: ", decor.WC{W: len("processed genomes: "), C: decor.DindentRight}),
+				decor.Name("", decor.WCSyncSpaceR),
+				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
+			),
+			mpb.AppendDecorators(
+				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
+				decor.EwmaETA(decor.ET_STYLE_GO, 1024),
+				decor.OnComplete(decor.Name(""), ". done"),
+			),
+		)
+
+		chDuration = make(chan time.Duration, opt.NumCPUs)
+		doneDuration = make(chan int)
+		go func() {
+			for t := range chDuration {
+				bar.EwmaIncrBy(1, t)
+			}
+			doneDuration <- 1
+		}()
+	}
+	// fcpus := float64(opt.NumCPUs)
+	// -----------------------------------------------------------
+
+	var timeStart time.Time
 	for {
+		timeStart = time.Now()
+
 		n, err = io.ReadFull(r, buf[:2])
 		if err != nil {
 			if err == io.EOF {
@@ -402,6 +444,14 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 			genome.RecycleGenome(g) // do not forget to recycle it.
 		}
+
+		chDuration <- time.Since(timeStart)
+	}
+
+	if opt.Verbose {
+		close(chDuration)
+		<-doneDuration
+		pbs.Wait()
 	}
 
 	bw.Flush()
