@@ -102,10 +102,10 @@ func RecycleGQuery(q *GQuery) {
 
 // --------------------------------------------------------------
 
+// GenomeReader is only for `lexicmap genome search`
 type GenomeReader struct {
 	k         int            // kmer size
 	nnn       []byte         // Ns
-	reGaps    *regexp.Regexp // for finding gap regions
 	reRefName *regexp.Regexp // for extracting genome id from the file name
 }
 
@@ -114,7 +114,6 @@ func NewGenomeReader(k int, reRefName *regexp.Regexp) *GenomeReader {
 	return &GenomeReader{
 		k:         k,
 		nnn:       bytes.Repeat([]byte{'N'}, k),
-		reGaps:    regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5)),
 		reRefName: reRefName,
 	}
 }
@@ -181,7 +180,7 @@ func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*
 		return nil, nil
 	}
 
-	gaps := gr.reGaps.FindAllSubmatchIndex(q.bigSeq, -1)
+	gaps := reGaps.FindAllSubmatchIndex(q.bigSeq, -1)
 	if gaps != nil {
 		for _, gap := range gaps {
 			q.skipRegions = append(q.skipRegions, [2]int{gap[0], gap[1] - 1})

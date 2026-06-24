@@ -99,6 +99,9 @@ type IndexSearchingOptions struct {
 
 	// For searching genomes
 	MaxSubjectGenomeSize int
+
+	// Only for comparing genomes from sequence files
+	NoIndex bool
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
@@ -228,6 +231,41 @@ func (idx *Index) SetFragmentCompareOptions(fco *FragmentComparatorOptions) {
 
 // NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
+	if opt.NoIndex {
+		idx := &Index{path: outDir, opt: opt}
+
+		// for genome searching
+		idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
+			return &GSearchScreenResultDetail{
+				// Hits: make([]uint8, len(idx.lh.Masks)),
+			}
+		}}
+		idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
+			tmp := make(map[uint64]*GSearchScreenResultDetail, 1024)
+			return &tmp
+		}}
+		idx.poolGSearchDetailResults = &sync.Pool{New: func() interface{} {
+			tmp := make([]*GSearchScreenResultDetail, 0, 1024)
+			return &tmp
+		}}
+
+		// other resources
+		co := &ChainingOptions{
+			MaxGap:   float32(opt.MaxGap),
+			MinLen:   opt.MinSinglePrefix,
+			MinScore: seedWeight(float32(opt.MinSinglePrefix)),
+			// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
+			MaxDistance: float32(opt.MaxDistance),
+			TopChains:   opt.TopNChains,
+		}
+		idx.chainingOptions = co
+		idx.poolChainers = &sync.Pool{New: func() interface{} {
+			return NewChainer(co)
+		}}
+
+		return idx, nil
+	}
+
 	ok, err := pathutil.DirExists(outDir)
 	if err != nil {
 		return nil, err
@@ -489,6 +527,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	for i := range idx.searcherTokens {
 		idx.searcherTokens[i] = make(chan int, 1)
 	}
+
 	idx.poolKmers = &sync.Pool{New: func() interface{} {
 		tmp := make([]*[]uint64, len(idx.lh.Masks))
 		for i := range tmp {

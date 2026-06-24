@@ -213,7 +213,11 @@ Attention:
 
 		// compute the chunk
 		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
-
+		var preChunk int
+		var k uint8
+		var indexes [][]uint64
+		var config1 uint8
+		preChunk = -1
 		for _, mask = range masks {
 			startTime = time.Now()
 
@@ -223,9 +227,13 @@ Attention:
 			fileSeeds = filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
 			// kv-data index file
-			k, _, indexes, _, _, config1, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+			if chunk != preChunk {
+				k, _, indexes, _, _, config1, err = kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+				}
+
+				preChunk = chunk
 			}
 
 			use3BytesForSeedPos := config1&kv.MaskUse3BytesForSeedPos > 0
@@ -337,7 +345,7 @@ Attention:
 					v = fUint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
-					rvFlag = int(v & BITS_REVERSE)
+					rvFlag = int(v & MASK_REVERSE)
 					if onlyFwd && rvFlag == 1 {
 						continue
 					}
@@ -364,7 +372,7 @@ Attention:
 					v = fUint64(buf8)
 					// pos, rc = int(v<<34>>35), int(v&1)
 					// batchIDAndRefID = v >> 30
-					rvFlag = int(v & BITS_REVERSE)
+					rvFlag = int(v & MASK_REVERSE)
 					if onlyFwd && rvFlag == 1 {
 						continue
 					}

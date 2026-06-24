@@ -3,12 +3,16 @@
 ### v0.10.0 - 2026-xx-xx
 
 - New commands:
-    - **`lexicmap search-genome`: Search genomes against an index, with accurate ANI and AF**.
+    - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
+    - **`lexicmap genome pair`: Find similar genome pairs in the index**.
+    - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
     - Faster pseudoalignment for long queries.
+- `lexicmap util kmers`:
+    - Faster speed for printing all seed data (`--mask 0`).
 
 ### v0.9.0 - 2026-03-13
 

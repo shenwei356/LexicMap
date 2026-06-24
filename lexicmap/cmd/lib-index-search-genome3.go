@@ -24,7 +24,9 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sync"
@@ -37,6 +39,7 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/wfa"
 )
@@ -74,6 +77,19 @@ var poolKmerMap = &sync.Pool{New: func() interface{} {
 // poolQSeeds is for reusing query seed slices
 var poolQSeeds = &sync.Pool{New: func() interface{} {
 	s := make([]*[]uint64, 0, 10240)
+	return &s
+}}
+
+// kmerLookup stores the result of a k-mer map lookup for batch processing
+type kmerLookup struct {
+	qk    uint64
+	qloc  int
+	slocs []uint32
+}
+
+// poolKmerLookups is for reusing kmerLookup slices in batch processing
+var poolKmerLookups = &sync.Pool{New: func() interface{} {
+	s := make([]kmerLookup, 0, 64) // pre-allocate for batch processing
 	return &s
 }}
 
@@ -147,10 +163,17 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 			}
 
 			// Store k-mer in forward part
+			if _, exists := (*kmerMap)[kmer]; !exists {
+				// Pre-allocate with reasonable capacity to reduce reallocations
+				(*kmerMap)[kmer] = make([]uint32, 0, 4)
+			}
 			(*kmerMap)[kmer] = append((*kmerMap)[kmer], uint32(pos))
 
 			// Mirror to RC part: the RC position is rcStart + (forwardLen - pos - k)
 			rcPos := rcStart + (forwardLen - pos - k)
+			if _, exists := (*kmerMap)[kmerRC]; !exists {
+				(*kmerMap)[kmerRC] = make([]uint32, 0, 4)
+			}
 			(*kmerMap)[kmerRC] = append((*kmerMap)[kmerRC], uint32(rcPos))
 
 			pos++
@@ -320,19 +343,46 @@ func alignQueryFragToSubjectSampled(
 
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
+	// Use batching to improve cache locality and reduce map lookup overhead
 	const maxMatchesPerKmer = 100
-	for i := 0; i+1 < len(qKmers); i += 2 {
-		qk := qKmers[i]
-		qloc := int(qKmers[i+1])
+	const batchSize = 8 // Process multiple k-mers in a batch
 
-		if slocs, found := (*sKmerMap)[qk]; found {
-			maxN := len(slocs)
+	// Get lookups slice from pool and reuse it
+	lookups := poolKmerLookups.Get().(*[]kmerLookup)
+	defer func() {
+		*lookups = (*lookups)[:0]
+		poolKmerLookups.Put(lookups)
+	}()
+
+	// Pre-fetch map entries in batches to improve cache hit rate
+	for batchStart := 0; batchStart+1 < len(qKmers); batchStart += batchSize * 2 {
+		batchEnd := batchStart + batchSize*2
+		if batchEnd > len(qKmers) {
+			batchEnd = len(qKmers)
+		}
+
+		// First pass: lookup all k-mers in the batch to warm up cache
+		*lookups = (*lookups)[:0]
+
+		for i := batchStart; i+1 < batchEnd; i += 2 {
+			qk := qKmers[i]
+			qloc := int(qKmers[i+1])
+
+			if slocs, found := (*sKmerMap)[qk]; found {
+				*lookups = append(*lookups, kmerLookup{qk, qloc, slocs})
+			}
+		}
+
+		// Second pass: process all matches in the batch
+		for _, lookup := range *lookups {
+			maxN := len(lookup.slocs)
 			if maxN > maxMatchesPerKmer {
 				maxN = maxMatchesPerKmer
 			}
+
 			for j := 0; j < maxN; j++ {
-				sloc := int(slocs[j])
-				qpos := qloc
+				sloc := int(lookup.slocs[j])
+				qpos := lookup.qloc
 				spos := sloc
 
 				// Create anchor directly without strand consideration
@@ -561,7 +611,7 @@ func alignChain(
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
 // sampled fixed-length k-mers instead of LexicHash masking.
-func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int, gcInterval uint64) error {
+func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	startTime0 := time.Now()
@@ -683,7 +733,6 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		contigInterval = K
 	}
 	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
-	reGaps := regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))
 
 	alignOption := &wfa.Options{GlobalAlignment: true}
 	minPIdent := idx.seqCompareOption.MinIdentity
@@ -897,4 +946,277 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	}
 
 	return nil
+}
+
+// CompareTwoGenomes compares two genomes directly without using an index.
+// It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
+func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
+	// 1) Cut the query into fragments.
+	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	if len(*qfrags) == 0 {
+		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+	}
+
+	// 2) Sample k-mers from each query fragment.
+	qSeeds := poolQSeeds.Get().(*[]*[]uint64)
+	*qSeeds = (*qSeeds)[:0]
+	if cap(*qSeeds) < len(*qfrags) {
+		*qSeeds = make([]*[]uint64, 0, len(*qfrags))
+	}
+	defer func() {
+		for _, seeds := range *qSeeds {
+			poolKmerAndLocs.Put(seeds)
+		}
+		*qSeeds = (*qSeeds)[:0]
+		poolQSeeds.Put(qSeeds)
+	}()
+
+	for _, qfrag := range *qfrags {
+		seeds, err := sampleQueryFragment(qfrag)
+		if err != nil {
+			return fmt.Errorf("failed to sample query fragment: %w", err)
+		}
+		*qSeeds = append(*qSeeds, seeds)
+	}
+
+	// 3) Build subject genome concatenated sequence.
+	K := gsa3SampledK
+	contigInterval := int(float64(fragLen) * 1.5)
+	if contigInterval < K {
+		contigInterval = K
+	}
+	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
+
+	concat := poolConcat.Get().(*[]byte)
+	*concat = (*concat)[:0]
+	defer func() {
+		*concat = (*concat)[:0]
+		poolConcat.Put(concat)
+	}()
+
+	// Calculate total size: forward + contig intervals + RC interval + RC
+	var forwardSize int
+	for _, s := range subject.seqs {
+		forwardSize += len(*s)
+	}
+	forwardSize += contigInterval * (len(subject.seqs) - 1)
+
+	// Total size = forward + 2*fragLen interval + RC (same as forward)
+	rcInterval := fragLen << 1
+	totalSize := forwardSize<<1 + rcInterval
+
+	// Pre-allocate the full capacity to avoid reallocation
+	if cap(*concat) < totalSize {
+		*concat = make([]byte, 0, totalSize)
+	}
+
+	var skipRegions [][2]int
+	contigBounds := make([][2]int, 0, len(subject.seqs))
+	for i, s := range subject.seqs {
+		if i > 0 {
+			boundary := len(*concat)
+			skipRegions = append(skipRegions, [2]int{boundary, boundary + contigInterval - 1})
+			*concat = append(*concat, nnn...)
+		}
+		cs := len(*concat)
+		*concat = append(*concat, (*s)...)
+		contigBounds = append(contigBounds, [2]int{cs, len(*concat)})
+	}
+
+	// skip gap regions (N's) in forward strand
+	gaps := reGaps.FindAllSubmatchIndex(*concat, -1)
+	for _, gap := range gaps {
+		skipRegions = append(skipRegions, [2]int{gap[0], gap[1] - 1})
+	}
+
+	// Append 2*fragLen interval and reverse complement strand
+	forwardLen := len(*concat)
+	nnnRC := bytes.Repeat([]byte{'N'}, rcInterval)
+
+	// Add interval between forward and RC strands
+	*concat = append(*concat, nnnRC...)
+
+	// Append reverse complement of the forward strand
+	rcStart := len(*concat)
+	*concat = append(*concat, (*concat)[:forwardLen]...)
+	RC((*concat)[rcStart:])
+
+	// Sort skip regions
+	slices.SortFunc(skipRegions, func(a, b [2]int) int {
+		return a[0] - b[0]
+	})
+
+	// 4) Build the subject sketch using sampled k-mers
+	sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, forwardLen, rcStart)
+	if err != nil {
+		return fmt.Errorf("fail to build subject sketch: %s", err)
+	}
+	defer idx.recycleSubjectSketch(sketch)
+
+	// 5) Set up alignment tools
+	alignOption := &wfa.Options{GlobalAlignment: true}
+	minPIdent := idx.seqCompareOption.MinIdentity
+	minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+	extLen := fragLen / 2
+	extLen2 := idx.opt.ExtendLength2
+
+	chainer := idx.poolChainers2.Get().(*Chainer2)
+	defer idx.poolChainers2.Put(chainer)
+
+	algn := wfa.New(wfa.DefaultPenalties, alignOption)
+	algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+	defer wfa.RecycleAligner(algn)
+
+	gr := poolGSearchResult.Get().(*GSearchResult)
+	gr.Reset()
+	gr.BatchGenomeIndex = 0 // Not from index
+	gr.GenomeSize = subject.genomeSize
+	gr.NumSeqs = len(subject.seqs)
+
+	// 6) Align each query fragment to subject
+	fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(subject.genomeSize), 0.625, 0.41)
+
+	for i, qfrag := range *qfrags {
+		matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
+			qfrag, (*qSeeds)[i], sketch, sketch.sampledKmerMap, (*concat),
+			chainer, algn, K, extLen, extLen2,
+			minPIdent, minQcovHSP, idx,
+			&fScoreAndEvalue,
+		)
+		if !ok {
+			continue
+		}
+		gr.AlignedFragments++
+		gr.AlignedLength += alignedLen - gaps
+		gr.AlignedMatches += matched
+		gr.Pidents = append(gr.Pidents, pident)
+	}
+
+	// 7) Calculate ANI / AF on the accumulated alignment
+	if gr.AlignedLength > 0 {
+		sumPident := 0.0
+		for _, p := range gr.Pidents {
+			sumPident += p
+		}
+		gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+	}
+	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+	gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
+	if gr.AFq > 1 {
+		gr.AFq = 1
+	}
+	if gr.AFs > 1 {
+		gr.AFs = 1
+	}
+	gr.Score = gr.ANI
+
+	// 8) Store result
+	rs := poolGSearchResults.Get().(*[]*GSearchResult)
+	*rs = (*rs)[:0]
+	if gr.AFq >= minAF {
+		*rs = append(*rs, gr)
+	} else {
+		poolGSearchResult.Put(gr)
+	}
+	query.result = rs
+
+	return nil
+}
+
+// ReadGenome reads a genome from the index
+func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
+
+	maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
+
+	q := poolGQuery.Get().(*GQuery)
+	q.Reset()
+
+	for _, batchIDAndRefID := range *batchIDAndRefIDs {
+		genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
+		genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
+
+		rdr := <-idx.poolGenomeRdrs[genomeBatch]
+
+		g, err := rdr.Seqs(genomeIdx)
+		if err != nil {
+			RecycleGQuery(q)
+			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			return nil, fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s", genomeBatch, genomeIdx, err)
+		}
+
+		for _, s1 := range g.Seqs {
+			s := poolSeq.Get().(*[]byte)
+			*s = (*s)[:0]
+			*s = append(*s, *s1...)
+			q.seqs = append(q.seqs, s)
+
+			q.genomeSize += len(*s1)
+		}
+
+		if maxSubjectGenomeSize > 0 && q.genomeSize > maxSubjectGenomeSize {
+			log.Warningf("%s (size: %s bp) exceeds the maximum subject genome size which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+				idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
+				humanize.Comma(int64(g.GenomeSize)),
+				humanize.Comma(int64(maxSubjectGenomeSize)))
+
+			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			genome.RecycleGenome(g)
+			break
+		}
+
+		idx.poolGenomeRdrs[genomeBatch] <- rdr
+	}
+
+	return q, nil
+}
+
+// ReadGenome reads a genome from a sequence file
+func ReadGenomeFromFile(file string, reRefName *regexp.Regexp) (*GQuery, error) {
+	fastxReader, err := fastx.NewDefaultReader(file)
+	if err != nil {
+		return nil, err
+	}
+
+	q := poolGQuery.Get().(*GQuery)
+	q.Reset()
+
+	var record *fastx.Record
+
+	for {
+		record, err = fastxReader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			RecycleGQuery(q)
+			return nil, fmt.Errorf("read seq in %s: %s", file, err)
+		}
+
+		s := poolSeq.Get().(*[]byte)
+		*s = (*s)[:0]
+		*s = append(*s, record.Seq.Seq...)
+		q.seqs = append(q.seqs, s)
+
+		q.genomeSize += len(record.Seq.Seq)
+	}
+
+	if q.genomeSize == 0 { // no sequence
+		RecycleGQuery(q)
+		return nil, nil
+	}
+
+	baseFile := filepath.Base(file)
+	var genomeID string
+	if reRefName != nil {
+		if reRefName.MatchString(baseFile) {
+			genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
+		} else {
+			genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+		}
+	} else {
+		genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+	}
+	q.id = append(q.id, []byte(genomeID)...)
+
+	return q, nil
 }

@@ -332,5 +332,5 @@ func roundup32(x uint32) uint32 {
 	x |= x >> 4
 	x |= x >> 8
 	x |= x >> 16
-	return (x | x>>32) + 1
+	return x + 1
 }

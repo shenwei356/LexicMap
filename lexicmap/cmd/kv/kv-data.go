@@ -804,6 +804,71 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 	return k, iFirstMask, nMasks, maskPrefix, anchorPrefix, nil
 }
 
+// ReadKVDataHeader reads only the header information from kv-data file.
+func ReadKVDataHeader(file string) (uint8, int, int, uint8, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return 0, -1, 0, 0, err
+	}
+	defer fh.Close()
+
+	buf := make([]byte, 8)
+	var n int
+
+	// check the magic number
+	n, err = io.ReadFull(fh, buf)
+	if err != nil {
+		return 0, -1, 0, 0, err
+	}
+	if n < 8 {
+		return 0, -1, 0, 0, ErrBrokenFile
+	}
+	same := true
+	for i := 0; i < 8; i++ {
+		if Magic[i] != buf[i] {
+			same = false
+			break
+		}
+	}
+	if !same {
+		return 0, -1, 0, 0, ErrInvalidFileFormat
+	}
+
+	// read version information
+	n, err = io.ReadFull(fh, buf)
+	if err != nil {
+		return 0, -1, 0, 0, err
+	}
+	if n < 8 {
+		return 0, -1, 0, 0, ErrBrokenFile
+	}
+	// check compatibility
+	if MainVersion != buf[0] {
+		return 0, -1, 0, 0, ErrVersionMismatch
+	}
+
+	k := buf[2]      // k-mer size
+	config1 := buf[3]
+
+	// index of the first mask in current chunk.
+	var iFirstMask int
+	_, err = io.ReadFull(fh, buf)
+	if err != nil {
+		return 0, -1, 0, 0, err
+	}
+	iFirstMask = int(be.Uint64(buf))
+
+	// mask chunk size
+	var nMasks int
+	_, err = io.ReadFull(fh, buf)
+	if err != nil {
+		return 0, -1, 0, 0, err
+	}
+	nMasks = int(be.Uint64(buf))
+
+	return k, iFirstMask, nMasks, config1, nil
+}
+
 var poolBytesBuffer = &sync.Pool{New: func() interface{} {
 	return &bytes.Buffer{}
 }}
