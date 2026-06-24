@@ -102,6 +102,7 @@ func RecycleGQuery(q *GQuery) {
 
 // --------------------------------------------------------------
 
+// GenomeReader is only for `lexicmap genome search`
 type GenomeReader struct {
 	k         int            // kmer size
 	nnn       []byte         // Ns

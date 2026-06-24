@@ -41,8 +41,8 @@ import (
 
 var gsearchCmd = &cobra.Command{
 	Use:   "search",
-	Short: "Search genomes against an index",
-	Long: `Search genomes against an index
+	Short: "Search genomes against an index, with ANI and AF computed",
+	Long: `Search genomes against an index, with ANI and AF computed
 
 Algorithm:
   1. Genome screening: candidate genomes are screened by the total length of shared seeds
@@ -688,7 +688,7 @@ func init() {
 		formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))
 
 	gsearchCmd.Flags().IntP("windows", "", 1,
-		formatFlagUsage(`The number of windows in lexichash masking, for genome screening.`))
+		formatFlagUsage(`The number of windows in lexichash masking, for genome screening (1 is sufficient).`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
 	gsearchCmd.Flags().IntP("min-frag-size", "", 100,

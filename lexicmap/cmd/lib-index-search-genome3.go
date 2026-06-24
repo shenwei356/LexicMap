@@ -24,7 +24,10 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"sync"
 	"time"
@@ -36,6 +39,7 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/wfa"
 )
@@ -68,12 +72,6 @@ var poolConcat = &sync.Pool{New: func() interface{} {
 var poolKmerMap = &sync.Pool{New: func() interface{} {
 	m := make(map[uint64][]uint32, 10240) // pre-allocate for ~10k k-mers
 	return &m
-}}
-
-// poolKmerSlice is for reusing position slices to reduce allocations
-var poolKmerSlice = &sync.Pool{New: func() interface{} {
-	s := make([]uint32, 0, 8) // pre-allocate for typical k-mer frequency
-	return &s
 }}
 
 // poolQSeeds is for reusing query seed slices
@@ -1125,11 +1123,8 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	return nil
 }
 
-func (idx *Index) ReadGenome(gname2idx *map[string]*[]uint64, refname string) (*GQuery, error) {
-	batchIDAndRefIDs, ok := (*gname2idx)[refname]
-	if !ok {
-		return nil, fmt.Errorf("reference name not found: %s", refname)
-	}
+// ReadGenome reads a genome from the index
+func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 
 	maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
 
@@ -1172,7 +1167,56 @@ func (idx *Index) ReadGenome(gname2idx *map[string]*[]uint64, refname string) (*
 		idx.poolGenomeRdrs[genomeBatch] <- rdr
 	}
 
-	q.id = []byte(refname)
+	return q, nil
+}
+
+// ReadGenome reads a genome from a sequence file
+func ReadGenomeFromFile(file string, reRefName *regexp.Regexp) (*GQuery, error) {
+	fastxReader, err := fastx.NewDefaultReader(file)
+	if err != nil {
+		return nil, err
+	}
+
+	q := poolGQuery.Get().(*GQuery)
+	q.Reset()
+
+	var record *fastx.Record
+
+	for {
+		record, err = fastxReader.Read()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			RecycleGQuery(q)
+			return nil, fmt.Errorf("read seq in %s: %s", file, err)
+		}
+
+		s := poolSeq.Get().(*[]byte)
+		*s = (*s)[:0]
+		*s = append(*s, record.Seq.Seq...)
+		q.seqs = append(q.seqs, s)
+
+		q.genomeSize += len(record.Seq.Seq)
+	}
+
+	if q.genomeSize == 0 { // no sequence
+		RecycleGQuery(q)
+		return nil, nil
+	}
+
+	baseFile := filepath.Base(file)
+	var genomeID string
+	if reRefName != nil {
+		if reRefName.MatchString(baseFile) {
+			genomeID = reRefName.FindAllStringSubmatch(baseFile, 1)[0][1]
+		} else {
+			genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+		}
+	} else {
+		genomeID, _, _ = filepathTrimExtension(baseFile, nil)
+	}
+	q.id = append(q.id, []byte(genomeID)...)
 
 	return q, nil
 }

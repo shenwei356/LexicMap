@@ -48,6 +48,17 @@ var pairCmd = &cobra.Command{
 	Short: "Find similar genome pairs in the index",
 	Long: `Find similar genome pairs in the index
 
+Output format:
+  Tab-delimited format with 7 columns.
+
+    1.  genome1,    Genome 1.
+    2.  genome2,    Genome 2.
+    3.  minPrefix,  Minimum common prefix length between two seeds (-p/--min-prefix).
+    4.  fracMasks,  Fraction of masks with seeds sharing a common prefix >= minPrefix.
+    5.  nMasks,     Number   of masks with seeds sharing a common prefix >= minPrefix.
+    6.  sumPrefix,  Total length of common prefixes, with only the best seed pair
+                    (with the longest common prefix) considered for each mask.
+    7.  avgPrefix,  Average prefix length (sumPrefix / nMasks).
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

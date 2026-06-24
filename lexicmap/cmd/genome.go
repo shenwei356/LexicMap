@@ -26,8 +26,8 @@ import (
 
 var genomeCmd = &cobra.Command{
 	Use:   "genome",
-	Short: "commands for genome searching, prefilter, and comparison",
-	Long: `commands for genome searching, prefilter, and comparison
+	Short: "Commands for genome searching, prefilter, and comparison",
+	Long: `Commands for genome searching, prefilter, and comparison
 `,
 }
 
