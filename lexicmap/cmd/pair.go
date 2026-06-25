@@ -97,6 +97,11 @@ Output format:
 		minMaskFraction := getFlagNonNegativeFloat64(cmd, "min-mask-fraction")
 		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
 
+		nMasks := getFlagNonNegativeInt(cmd, "masks")
+		if !(nMasks == 0 || isPowerOf4(nMasks)) {
+			checkError(fmt.Errorf("the value of -m/--masks should be 0 (for all masks in the index) or power of 4 (needs to be >= 1024, e.g., 1024, 4096, 16384)"))
+		}
+
 		// -------------------------------------------------------------------------
 
 		if outputLog {
@@ -120,6 +125,10 @@ Output format:
 			checkError(err)
 		}
 
+		if nMasks > len(lh.Masks) {
+			checkError(fmt.Errorf("the value of -m/--mask (%d) is bigger than the number of masks in the index (%d)", nMasks, len(lh.Masks)))
+		}
+
 		// info file
 		fileInfo := filepath.Join(dbDir, FileInfo)
 		info, err := readIndexInfo(fileInfo)
@@ -131,6 +140,8 @@ Output format:
 			log.Infof("  checking passed")
 			log.Infof("reading seed data of all masks...")
 		}
+
+		// -------------------------------------------------------------------------
 
 		// -------------------------------------------------------------------------
 		// output file handler
@@ -145,6 +156,27 @@ Output format:
 		}()
 
 		// -------------------------------------------------------------------------
+		// choose masks
+		var maskPrefix int
+		masks := make(map[uint64]struct{}, len(lh.Masks))
+		if nMasks == 0 {
+			for _, mask := range lh.Masks {
+				masks[mask] = struct{}{}
+			}
+		} else {
+			maskPrefix = int(math.Log2(float64(nMasks)) / 2)
+			m := make(map[uint64]struct{}, maskPrefix)
+			for _, mask := range lh.Masks {
+				prefix := mask >> (uint64(lh.K-maskPrefix) << 1)
+				if _, ok := m[prefix]; !ok {
+					masks[mask] = struct{}{}
+
+					m[prefix] = struct{}{}
+				}
+			}
+		}
+
+		// -------------------------------------------------------------------------
 		// process bar
 		var pbs *mpb.Progress
 		var bar *mpb.Bar
@@ -156,7 +188,7 @@ Output format:
 			showProgressBar = true
 
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(len(lh.Masks)),
+			bar = pbs.AddBar(int64(len(masks)),
 				mpb.PrependDecorators(
 					decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
 					decor.Name("", decor.WCSyncSpaceR),
@@ -196,7 +228,7 @@ Output format:
 		threshold := uint64(1) << ((k - minPrefix) * 2)
 		minPrefixU8 := uint8(minPrefix) // convert to uint8 for comparison
 
-		totalMasks := len(lh.Masks)
+		totalMasks := len(masks) // len(lh.Masks)
 		requiredMatches := int(minMaskFraction * float64(totalMasks))
 
 		if outputLog {
@@ -321,7 +353,7 @@ Output format:
 				}
 				defer fh.Close()
 
-				r := bufio.NewReaderSize(fh, BufferSize) // 64k
+				r := bufio.NewReaderSize(fh, 4096)
 
 				var n int
 
@@ -358,7 +390,7 @@ Output format:
 				if n < 8 {
 					checkError(ErrBrokenFile)
 				}
-				// iFirstMask := int(be.Uint64(buf8))
+				iFirstMask := int(be.Uint64(buf8))
 
 				// mask chunk size
 				n, err = io.ReadFull(r, buf8)
@@ -379,6 +411,12 @@ Output format:
 					fUint64 = kv.Uint64ThreeBytes
 				}
 
+				// kv-data index file
+				_, _, indexes, _, _, _, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+				if err != nil {
+					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
+				}
+
 				// -------------------------------
 				// data of all masks
 
@@ -395,13 +433,29 @@ Output format:
 				var lenVal1, lenVal2 uint64
 				var j uint64
 				var v, batchIDAndRefID uint64
-				var nKmers uint64
 				var i int
 
 				var timeStart time.Time
 
-				for imask := 0; imask < nMasks; imask++ {
+				var mask uint64
+
+				for iMask := 0; iMask < nMasks; iMask++ {
 					timeStart = time.Now()
+
+					if len(indexes[iMask]) == 0 { // no k-mers
+						if showProgressBar {
+							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+						}
+						continue
+					}
+
+					mask = lh.Masks[iFirstMask+iMask]
+					if _, ok := masks[mask]; !ok { // not wanted
+						if showProgressBar {
+							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+						}
+						continue
+					}
 
 					// genome id list
 					genomes := poolGenomes.Get().(*[]uint32)
@@ -413,30 +467,13 @@ Output format:
 					// local counts for this mask (max prefix per pair)
 					maskCounts := poolMaskCounts.Get().(*map[uint64]uint8)
 
-					n, err = io.ReadFull(r, buf[:8])
-					if n < 8 {
-						checkError(ErrBrokenFile)
+					// seek
+					_, err = fh.Seek(int64(indexes[iMask][1])>>1, 0)
+					if err != nil {
+						checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
 					}
-					nKmers = be.Uint64(buf[:8])
 
-					if nKmers == 0 { // no k-mers
-						// recycle objects and send result
-						poolGenomes.Put(genomes)
-
-						for i = range *window {
-							(*window)[i].genomes = (*window)[i].genomes[:0]
-							poolKmerRecord.Put((*window)[i])
-						}
-						*window = (*window)[:0]
-						poolKmerWindow.Put(window)
-
-						ch <- maskCounts
-
-						if showProgressBar {
-							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
-						}
-						continue
-					}
+					r.Reset(fh) // use buffer
 
 					// -------------------------------
 					// read data of a mask
@@ -471,7 +508,7 @@ Output format:
 						}
 
 						if first {
-							kmer1 = v1 // the first kmer is stored as absolute value
+							kmer1 = indexes[iMask][0] // from the index
 							first = false
 						} else {
 							kmer1 = v1 + _offset
@@ -645,6 +682,9 @@ func init() {
 	pairCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
+	pairCmd.Flags().IntP("masks", "m", 0,
+		formatFlagUsage(`Number of LexicHash masks to use. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 1024, e.g., 1024, 4096, 16384).`))
+
 	pairCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
 
@@ -658,6 +698,7 @@ func init() {
 
 	pairCmd.Flags().Float64P("prob-threshold", "s", 0.001,
 		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning).`))
+
 }
 
 // KmerRecord stores a k-mer code and its associated genome IDs

@@ -118,6 +118,11 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
+//
+// The first pair of data is different
+//
+//	k-mer: nAnchors
+//	offset: offset of the first k-mer
 func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
@@ -562,21 +567,21 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	// save index
 
 	var kmer uint64
-	var nAnchors uint64
+	var nRecords uint64
 	e := len(*p2o) >> 1
 	for i := 0; i < e; i++ {
 		offset = (*p2o)[i<<1+1]
 		if offset > 0 {
-			nAnchors++
+			nRecords++
 		}
 	}
-	// 8-byte the number of anchors
-	err = binary.Write(wi, be, nAnchors) // including the extra 1
+	// 8-byte the number of anchors + 1
+	err = binary.Write(wi, be, nRecords)
 	if err != nil {
 		return err
 	}
 
-	(*p2o)[0] = nAnchors // might be useful
+	(*p2o)[0] = nRecords // might be useful
 
 	// k-mer and offset
 	for i := 0; i < e; i++ {
@@ -600,10 +605,14 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 //
 // Returned:
 //
-//	k-mer size
-//	Index (0-based) of the first Mask in current chunk.
-//	Index data of masks saved in a list, the list size equals to the number of masks.
-//	error
+//   - k-mer size
+//   - Index (0-based) of the first Mask in current chunk.
+//   - Index data ([][]uint64) of masks saved in a list, the list size equals to the number of masks.
+//     Each element list contains interleaved the first kmer of a anchor and the file offset.
+//   - maskPrefix length
+//   - anchorPrefix length
+//   - config byte
+//   - error
 //
 // A list of k-mer and offset pairs are intermittently saved in a []uint64.
 // e.g., [k1, o1, k2, o2].
@@ -678,8 +687,8 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 	}
 	nMasks = int(be.Uint64(buf))
 
-	// the number of anchors
-	var nAnchors int
+	// the number of anchors + 1
+	var nRecords int
 
 	// ---------------------------------------------
 
@@ -697,16 +706,15 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		if err != nil {
 			return 0, -1, nil, 0, 0, 0, err
 		}
-		nAnchors = int(be.Uint64(buf))
+		nRecords = int(be.Uint64(buf))
 
-		if nAnchors == 0 { // this hapens when no captured k-mer for a mask
+		if nRecords == 0 { // this hapens when no captured k-mer for a mask
 			data[i] = make([]uint64, 0)
 			continue
 		}
 
-		// index := make([]uint64, 0, nAnchors<<1)
 		index := make([]uint64, indexSize)
-		for j = 0; j < nAnchors; j++ {
+		for j = 0; j < nRecords; j++ {
 			_, err = io.ReadFull(r, buf16)
 			if err != nil {
 				return 0, -1, nil, 0, 0, 0, err
@@ -722,7 +730,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 			// index = append(index, kmer)
 			// index = append(index, offset)
 			if j == 0 {
-				_j = 0
+				_j = 0 // the first special records
 			} else {
 				prefix = getAnchor(kmer)
 				_j = prefix<<1 + 2
@@ -847,7 +855,7 @@ func ReadKVDataHeader(file string) (uint8, int, int, uint8, error) {
 		return 0, -1, 0, 0, ErrVersionMismatch
 	}
 
-	k := buf[2]      // k-mer size
+	k := buf[2] // k-mer size
 	config1 := buf[3]
 
 	// index of the first mask in current chunk.
@@ -1241,22 +1249,22 @@ func CreateKVIndex(file string, nAnchors int) error {
 		// save index
 
 		var kmer uint64
-		var nAnchors uint64
+		var nRecords uint64
 		var offset2 uint64
 		e := len(p2o) >> 1
 		for i := 0; i < e; i++ {
 			offset2 = p2o[i<<1+1]
 			if offset2 > 0 {
-				nAnchors++
+				nRecords++
 			}
 		}
 		// 8-byte the number of anchors
-		err = binary.Write(wi, be, nAnchors) // including the extra 1
+		err = binary.Write(wi, be, nRecords) // including the extra 1
 		if err != nil {
 			return err
 		}
 
-		p2o[0] = nAnchors // might be useful
+		p2o[0] = nRecords // might be useful
 
 		// k-mer and offset
 		for i := 0; i < e; i++ {

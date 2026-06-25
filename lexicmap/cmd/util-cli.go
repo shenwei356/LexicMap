@@ -334,3 +334,7 @@ func roundup32(x uint32) uint32 {
 	x |= x >> 16
 	return x + 1
 }
+
+func isPowerOf4(x int) bool {
+	return x > 0 && x&(x-1) == 0 && x%3 == 1
+}

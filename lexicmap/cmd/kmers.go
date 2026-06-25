@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -196,7 +197,6 @@ Attention:
 		buf := make([]byte, 64)
 		buf8 := make([]uint8, 8)
 		var ctrlByte byte
-		var first bool     // the first kmer has a different way to comput the value
 		var lastPair bool  // check if this is the last pair
 		var hasKmer2 bool  // check if there's a kmer2
 		var _offset uint64 // offset of kmer
@@ -218,6 +218,9 @@ Attention:
 		var indexes [][]uint64
 		var config1 uint8
 		preChunk = -1
+
+		r := bufio.NewReaderSize(nil, 4096)
+
 		for _, mask = range masks {
 			startTime = time.Now()
 
@@ -253,15 +256,17 @@ Attention:
 			}
 
 			// kv-data file
-			r, err := os.Open(fileSeeds)
+			fh, err := os.Open(fileSeeds)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
-			_, err = r.Seek(int64(indexes[iMask][1])>>1, 0)
+			_, err = fh.Seek(int64(indexes[iMask][1])>>1, 0)
 			if err != nil {
-				checkError(fmt.Errorf("failed to seed kv-data file: %s", err))
+				checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
 			}
+
+			r.Reset(fh) // use buffer
 
 			maskCode = lh.Masks[mask-1]
 
@@ -296,12 +301,7 @@ Attention:
 					checkError(kv.ErrBrokenFile)
 				}
 
-				if first {
-					kmer1 = indexes[iMask][0] // from the index
-					first = false
-				} else {
-					kmer1 = v1 + _offset
-				}
+				kmer1 = v1 + _offset
 				kmer2 = kmer1 + v2
 				_offset = kmer2
 
@@ -389,7 +389,7 @@ Attention:
 
 			}
 
-			r.Close()
+			fh.Close()
 
 			if showProgressBar {
 				chDuration <- time.Duration(float64(time.Since(startTime)))

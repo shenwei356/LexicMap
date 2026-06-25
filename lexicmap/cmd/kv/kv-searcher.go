@@ -304,7 +304,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		// 	offset = index[i+1]
 		// }
 
-		i = int(getAnchor(leftBound)<<1) + 2
+		i = int(getAnchor(leftBound)<<1) + 2 // as the firt two elements are special
 		offset = index[i+1]
 		is2ndKmer = offset&1 == 1
 		offset >>= 1
@@ -744,7 +744,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 			// 	offset = index[i+1]
 			// }
 
-			i = int(getAnchor(leftBound)<<1) + 2
+			i = int(getAnchor(leftBound)<<1) + 2 // as the firt two elements are special
 			offset = index[i+1]
 			is2ndKmer = offset&1 == 1
 			offset >>= 1
