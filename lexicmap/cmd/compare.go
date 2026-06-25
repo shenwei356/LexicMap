@@ -142,8 +142,7 @@ Output format:
 		if minFragLen < 100 {
 			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
 		}
-		// minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
-		minAF := 0.0
+		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 
 		// minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		// if minPrefix > 32 || minPrefix < 5 {
@@ -670,9 +669,12 @@ func init() {
 	compareCmd.Flags().BoolP("debug", "", false,
 		formatFlagUsage(`Print debug information, including a progress bar. (recommended when searching with one query).`))
 
-	compareCmd.SetUsageTemplate(usageTemplate("-d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]"))
+	compareCmd.SetUsageTemplate(usageTemplate(""))
 
 	// ani-af related filtering
+
+	compareCmd.Flags().Float64P("min-af", "", 15.0,
+		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage).`))
 
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))

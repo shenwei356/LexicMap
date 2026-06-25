@@ -140,7 +140,7 @@ func init() {
 	genomeDetailsCmd.Flags().BoolP("extra", "e", false,
 		formatFlagUsage(`Show extra columns, including seqsizes and seqids.`))
 
-	genomeDetailsCmd.SetUsageTemplate(usageTemplate(""))
+	genomeDetailsCmd.SetUsageTemplate(usageTemplate("-d <index path> [-o out.tsv.gz]"))
 }
 
 // FileGenomeDetails store lists of genome details.
