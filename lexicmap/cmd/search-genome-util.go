@@ -60,7 +60,7 @@ var poolGQuery = &sync.Pool{New: func() interface{} {
 
 var poolSeq = &sync.Pool{
 	New: func() interface{} {
-		tmp := make([]byte, 0, 5<<20) // 5M
+		tmp := make([]byte, 0, 10<<10) // 10K
 		return &tmp
 	},
 }

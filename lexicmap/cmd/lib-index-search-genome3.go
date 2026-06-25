@@ -64,7 +64,7 @@ var poolSubjectSketch = &sync.Pool{New: func() interface{} {
 
 // poolConcat is for reusing large byte slices for concatenated genome sequences
 var poolConcat = &sync.Pool{New: func() interface{} {
-	tmp := make([]byte, 0, 20<<20) // 10MB initial capacity
+	tmp := make([]byte, 0, 10<<20) // 10MB initial capacity
 	return &tmp
 }}
 
@@ -165,14 +165,14 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 			// Store k-mer in forward part
 			if _, exists := (*kmerMap)[kmer]; !exists {
 				// Pre-allocate with reasonable capacity to reduce reallocations
-				(*kmerMap)[kmer] = make([]uint32, 0, 4)
+				(*kmerMap)[kmer] = make([]uint32, 0, 1)
 			}
 			(*kmerMap)[kmer] = append((*kmerMap)[kmer], uint32(pos))
 
 			// Mirror to RC part: the RC position is rcStart + (forwardLen - pos - k)
 			rcPos := rcStart + (forwardLen - pos - k)
 			if _, exists := (*kmerMap)[kmerRC]; !exists {
-				(*kmerMap)[kmerRC] = make([]uint32, 0, 4)
+				(*kmerMap)[kmerRC] = make([]uint32, 0, 1)
 			}
 			(*kmerMap)[kmerRC] = append((*kmerMap)[kmerRC], uint32(rcPos))
 
@@ -1165,6 +1165,7 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 		}
 
 		idx.poolGenomeRdrs[genomeBatch] <- rdr
+		genome.RecycleGenome(g)
 	}
 
 	return q, nil

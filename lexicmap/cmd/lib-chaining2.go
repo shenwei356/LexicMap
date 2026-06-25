@@ -216,6 +216,9 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	maxGap := float64(ce.options.MaxGap)
 	// maxDistance := float64(ce.options.MaxDistance)
 	// (*scores)[0] = (*subs)[0].Len
+	var aQBegin, aTBegin, bQBegin, bTBegin int32
+	var qDiff, tDiff int32
+
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor
 		// k = band * i   // index of current seed in the score matrix
@@ -223,6 +226,9 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		// just initialize the max score, which comes from the current seed
 		m, mj = float64(a.Len), i
 		// (*scores)[k] = m
+
+		// Cache frequently accessed fields to reduce memory access overhead
+		aQBegin, aTBegin = a.QBegin, a.TBegin
 
 		// this old one can't handle some frequent k-mers properly, which have many hits in other place.
 		// for _b = 1; _b <= band; _b++ { // check previous $band seeds
@@ -238,15 +244,17 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			b = (*subs)[j] // previous seed/anchor
 			// k++            // index of previous seed in the score matrix
 
+			bQBegin, bTBegin = b.QBegin, b.TBegin
+
 			// no need to compare
 			// filter out messed/crossed anchors
-			if b.QBegin == a.QBegin || b.TBegin > a.TBegin {
+			if bQBegin == aQBegin || bTBegin > aTBegin {
 				continue
 			}
 
 			_bCount++
 
-			_bBase = a.QBegin - b.QBegin - int32(b.Len)
+			_bBase = aQBegin - bQBegin - int32(b.Len)
 			// fmt.Printf("  b: %d, j: %d, %s\n", _b, j, b.String())
 			if !(_bBase <= bandBase || _bCount <= bandCount) {
 				break
@@ -257,7 +265,23 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			// 	continue
 			// }
 
-			g = gap2(a, b)
+			// g = gap2(a, b)
+			// Inline gap2() using integer arithmetic, convert once at the end
+			qDiff = aQBegin - bQBegin
+			tDiff = aTBegin - bTBegin
+			if qDiff < 0 {
+				qDiff = -qDiff
+			}
+			if tDiff < 0 {
+				tDiff = -tDiff
+			}
+			// Compute absolute difference without converting to float twice
+			if qDiff > tDiff {
+				g = float64(qDiff - tDiff)
+			} else {
+				g = float64(tDiff - qDiff)
+			}
+
 			if g > maxGap { // limit the gap. necessary?
 				continue
 			}
