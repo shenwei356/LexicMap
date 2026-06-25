@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -39,6 +38,7 @@ import (
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
 	"github.com/spf13/cobra"
+	"github.com/twotwotwo/sorts"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -636,12 +636,6 @@ Output format:
 			log.Infof("total genome pairs: %d", len(globalCounts))
 		}
 
-		// Collect results into slice for sorting
-		type PairResult struct {
-			pair      uint64
-			nMasks    int
-			sumPrefix uint32
-		}
 		results := make([]PairResult, 0, len(globalCounts))
 		for pair, sumPrefix := range globalCounts {
 			results = append(results, PairResult{
@@ -650,13 +644,9 @@ Output format:
 				sumPrefix: sumPrefix,
 			})
 		}
+
 		// Sort by nMasks (then sumPrefix) in descending order
-		sort.Slice(results, func(i, j int) bool {
-			if results[i].nMasks != results[j].nMasks {
-				return results[i].nMasks > results[j].nMasks
-			}
-			return results[i].sumPrefix > results[j].sumPrefix
-		})
+		sorts.Quicksort(PairResults(results))
 
 		// Write header
 		outfh.WriteString("genome1\tgenome2\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix\n")
@@ -682,7 +672,7 @@ func init() {
 	pairCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	pairCmd.Flags().IntP("masks", "m", 0,
+	pairCmd.Flags().IntP("masks", "m", 4096,
 		formatFlagUsage(`Number of LexicHash masks to use. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 1024, e.g., 1024, 4096, 16384).`))
 
 	pairCmd.Flags().StringP("out-file", "o", "-",
@@ -895,9 +885,9 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 				// 	continue
 				// }
 
-				if prefixLen > (*counts)[key] {
-					(*counts)[key] = prefixLen
-				}
+				// if prefixLen > (*counts)[key] {
+				(*counts)[key] = prefixLen // it's definitely the longest
+				// }
 			}
 		}
 	}
@@ -920,3 +910,21 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	// Add current k-mer to window
 	*window = append(*window, record)
 }
+
+// Collect results into slice for sorting
+type PairResult struct {
+	pair      uint64
+	nMasks    int
+	sumPrefix uint32
+}
+
+type PairResults []PairResult
+
+func (s PairResults) Len() int { return len(s) }
+func (s PairResults) Less(i, j int) bool {
+	if s[i].nMasks != s[j].nMasks {
+		return s[i].nMasks > s[j].nMasks
+	}
+	return s[i].sumPrefix > s[j].sumPrefix
+}
+func (s PairResults) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
