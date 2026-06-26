@@ -240,31 +240,58 @@ Output format:
 
 		// Blacklist for pruned pairs (concurrent-safe)
 		// blacklist := &sync.Map{}
+		blacklist := make(map[uint64]struct{}, 4096)
 
-		ch := make(chan *map[uint64]uint8, opt.NumCPUs)
+		type Result struct {
+			Counts    *map[uint64]uint8
+			StartTime time.Time
+		}
+
+		ch := make(chan *Result, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
 			var processedMasks, remaining int
 			remaining = totalMasks
-			for maskCounts := range ch {
+			var pair uint64
+			var ok bool
+			var matches int
+			var prefixLen uint8
+
+			for result := range ch {
+				maskCounts := result.Counts
+
 				processedMasks++
 				remaining--
 
-				if len(*maskCounts) == 0 { // no data
-					clear(*maskCounts)
-					poolMaskCounts.Put(maskCounts)
+				if maskCounts == nil { // no k-mers
+					if showProgressBar {
+						chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
+					}
 					continue
 				}
+
+				if len(*maskCounts) == 0 { // no data
+					poolMaskCounts.Put(maskCounts)
+
+					if showProgressBar {
+						chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
+					}
+					continue
+				}
+
 				// First, update match counts for pairs that matched in this mask
 				// Following Onika's approach: check probability before adding new pairs
-				for pair := range *maskCounts {
+				for pair = range *maskCounts {
 					// Skip impossible pairs
-					// if _, isBlacklisted := blacklist.Load(pair); isBlacklisted {
+					// if _, ok = blacklist.Load(pair); ok {
 					// 	continue
 					// }
+					if _, ok = blacklist[pair]; ok {
+						continue
+					}
 
-					matches, exists := activePairs[pair]
-					if !exists {
+					matches, ok = activePairs[pair]
+					if !ok {
 						// New pair (or previously pruned pair treated as new)
 						// Check if count=1 passes the probability threshold
 						if 1+remaining >= requiredMatches {
@@ -290,21 +317,23 @@ Output format:
 				// Probabilistic pruning: check all active pairs
 				// Only prune if we haven't processed all masks yet
 				if probThreshold > 0 && processedMasks < totalMasks {
-					for pair, matches := range activePairs {
+					for pair, matches = range activePairs {
 						// Check if this pair can still reach the required threshold
 						shouldKeep := shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold)
 						if !shouldKeep {
 							delete(activePairs, pair)
 							delete(globalCounts, pair)
+
 							// Add to blacklist
 							// blacklist.Store(pair, struct{}{})
+							blacklist[pair] = struct{}{}
 						}
 					}
 				}
 
 				// Merge mask results into global counts (only for active pairs)
-				for pair, prefixLen := range *maskCounts {
-					if _, active := activePairs[pair]; active {
+				for pair, prefixLen = range *maskCounts {
+					if _, ok = activePairs[pair]; ok {
 						globalCounts[pair] += uint32(prefixLen)
 					}
 				}
@@ -312,9 +341,14 @@ Output format:
 				clear(*maskCounts)
 				poolMaskCounts.Put(maskCounts)
 
+				if showProgressBar {
+					chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
+				}
+
 				if processedMasks&255 == 0 {
 					runtime.GC()
 				}
+
 			}
 			done <- 1
 		}()
@@ -435,24 +469,20 @@ Output format:
 				var v, batchIDAndRefID uint64
 				var i int
 
-				var timeStart time.Time
-
 				var mask uint64
 
 				for iMask := 0; iMask < nMasks; iMask++ {
-					timeStart = time.Now()
-
-					if len(indexes[iMask]) == 0 { // no k-mers
-						if showProgressBar {
-							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
-						}
+					mask = lh.Masks[iFirstMask+iMask]
+					if _, ok := masks[mask]; !ok { // not wanted
 						continue
 					}
 
-					mask = lh.Masks[iFirstMask+iMask]
-					if _, ok := masks[mask]; !ok { // not wanted
-						if showProgressBar {
-							chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+					timeStart := time.Now()
+
+					if len(indexes[iMask]) == 0 { // no k-mers
+						ch <- &Result{
+							Counts:    nil,
+							StartTime: timeStart,
 						}
 						continue
 					}
@@ -603,10 +633,9 @@ Output format:
 					*window = (*window)[:0]
 					poolKmerWindow.Put(window)
 
-					ch <- maskCounts
-
-					if showProgressBar {
-						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
+					ch <- &Result{
+						Counts:    maskCounts,
+						StartTime: timeStart,
 					}
 				}
 
@@ -626,14 +655,14 @@ Output format:
 		// ---------------------------------------------------------------
 		// Output results
 
-		id2name, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
-		if err != nil {
-			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
-		}
-
 		if outputLog {
 			log.Info()
 			log.Infof("total genome pairs: %d", len(globalCounts))
+		}
+
+		id2name, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
+		if err != nil {
+			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
 		}
 
 		results := make([]PairResult, 0, len(globalCounts))
@@ -661,6 +690,10 @@ Output format:
 			fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
 				id2name[gid1], id2name[gid2], minPrefix, fracMasks, result.nMasks,
 				result.sumPrefix, float64(result.sumPrefix)/float64(result.nMasks))
+		}
+
+		if outputLog && outFile != "-" {
+			log.Infof("results saved to: %s", outFile)
 		}
 
 	},
@@ -922,9 +955,13 @@ type PairResults []PairResult
 
 func (s PairResults) Len() int { return len(s) }
 func (s PairResults) Less(i, j int) bool {
-	if s[i].nMasks != s[j].nMasks {
-		return s[i].nMasks > s[j].nMasks
+	if s[i].nMasks == s[j].nMasks { // 1. number of matched masks
+		if s[i].sumPrefix == s[j].sumPrefix { // 2. total matched bases
+			return s[i].pair < s[j].pair // 3. the order in the index, just to keep the order stable
+		}
+		return s[i].sumPrefix > s[j].sumPrefix
 	}
-	return s[i].sumPrefix > s[j].sumPrefix
+
+	return s[i].nMasks > s[j].nMasks
 }
 func (s PairResults) Swap(i, j int) { s[i], s[j] = s[j], s[i] }

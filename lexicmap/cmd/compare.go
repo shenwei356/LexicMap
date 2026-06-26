@@ -465,6 +465,7 @@ Output format:
 		if outputLog {
 			log.Info()
 			log.Infof("%d genome pairs loaded from %d file(s)", nPairs, len(files))
+			log.Info("started comparing genomes...")
 		}
 
 		// -----------------------------------------------------------
