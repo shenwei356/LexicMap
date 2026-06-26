@@ -142,8 +142,6 @@ Output format:
 		}
 
 		// -------------------------------------------------------------------------
-
-		// -------------------------------------------------------------------------
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
@@ -238,10 +236,6 @@ Output format:
 		// -------------------------------------------------------------------------
 		// collect counting results
 
-		// Blacklist for pruned pairs (concurrent-safe)
-		// blacklist := &sync.Map{}
-		blacklist := make(map[uint64]struct{}, 4096)
-
 		type Result struct {
 			Counts    *map[uint64]uint8
 			StartTime time.Time
@@ -253,7 +247,7 @@ Output format:
 			var processedMasks, remaining int
 			remaining = totalMasks
 			var pair uint64
-			var ok bool
+			var ok, shouldAddNewPair bool
 			var matches int
 			var prefixLen uint8
 
@@ -279,62 +273,45 @@ Output format:
 					continue
 				}
 
-				// First, update match counts for pairs that matched in this mask
-				// Following Onika's approach: check probability before adding new pairs
-				for pair = range *maskCounts {
-					// Skip impossible pairs
-					// if _, ok = blacklist.Load(pair); ok {
-					// 	continue
-					// }
-					if _, ok = blacklist[pair]; ok {
-						continue
+				if probThreshold == 0 { //  no pruning
+					// Simply accumulate all pairs
+					for pair, prefixLen = range *maskCounts {
+						activePairs[pair]++
+						globalCounts[pair] += uint32(prefixLen)
 					}
 
-					matches, ok = activePairs[pair]
-					if !ok {
-						// New pair (or previously pruned pair treated as new)
-						// Check if count=1 passes the probability threshold
-						if 1+remaining >= requiredMatches {
-							// Has potential to reach threshold
-							if probThreshold <= 0 || processedMasks >= totalMasks {
-								// No pruning or last mask, add it
+				} else {
+
+					// Check if new pairs can still reach the threshold
+					if 1+remaining >= requiredMatches {
+						// Pre-compute probability check for new pairs (count=1)
+						shouldAddNewPair = shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold)
+					}
+
+					// Update match counts for pairs that matched in this mask
+					for pair, prefixLen = range *maskCounts {
+						matches, ok = activePairs[pair]
+						if !ok {
+							// New pair: check if it passes probability check
+							if shouldAddNewPair {
 								activePairs[pair] = 1
-							} else {
-								// Check probability for count=1
-								if shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold) {
-									activePairs[pair] = 1
-								}
-								// else: don't add, probability too low
+								globalCounts[pair] += uint32(prefixLen)
+							}
+						} else {
+							// Existing pair: increment count
+							activePairs[pair] = matches + 1
+							globalCounts[pair] += uint32(prefixLen)
+						}
+					}
+
+					// Probabilistic pruning: check all active pairs to remove impossible ones early
+					if processedMasks < totalMasks {
+						for pair, matches = range activePairs {
+							if matches > 1 && !shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold) {
+								delete(activePairs, pair)
+								delete(globalCounts, pair)
 							}
 						}
-						// else: impossible to reach threshold, don't add
-					} else {
-						// Existing pair: increment count
-						activePairs[pair] = matches + 1
-					}
-				}
-
-				// Probabilistic pruning: check all active pairs
-				// Only prune if we haven't processed all masks yet
-				if probThreshold > 0 && processedMasks < totalMasks {
-					for pair, matches = range activePairs {
-						// Check if this pair can still reach the required threshold
-						shouldKeep := shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold)
-						if !shouldKeep {
-							delete(activePairs, pair)
-							delete(globalCounts, pair)
-
-							// Add to blacklist
-							// blacklist.Store(pair, struct{}{})
-							blacklist[pair] = struct{}{}
-						}
-					}
-				}
-
-				// Merge mask results into global counts (only for active pairs)
-				for pair, prefixLen = range *maskCounts {
-					if _, ok = activePairs[pair]; ok {
-						globalCounts[pair] += uint32(prefixLen)
 					}
 				}
 
@@ -345,11 +322,12 @@ Output format:
 					chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
 				}
 
-				if processedMasks&255 == 0 {
+				if processedMasks&127 == 0 {
 					runtime.GC()
 				}
 
 			}
+
 			done <- 1
 		}()
 
@@ -655,23 +633,27 @@ Output format:
 		// ---------------------------------------------------------------
 		// Output results
 
-		if outputLog {
-			log.Info()
-			log.Infof("total genome pairs: %d", len(globalCounts))
-		}
-
 		id2name, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
 		if err != nil {
 			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
 		}
 
 		results := make([]PairResult, 0, len(globalCounts))
+		var matchedMasks int
 		for pair, sumPrefix := range globalCounts {
-			results = append(results, PairResult{
-				pair:      pair,
-				nMasks:    activePairs[pair], // number of masks matched
-				sumPrefix: sumPrefix,
-			})
+			// Only output pairs that meet the required threshold
+			matchedMasks = activePairs[pair]
+			if matchedMasks >= requiredMatches {
+				results = append(results, PairResult{
+					pair:      pair,
+					nMasks:    matchedMasks,
+					sumPrefix: sumPrefix,
+				})
+			}
+		}
+		if outputLog {
+			log.Info()
+			log.Infof("total genome pairs: %d", len(results))
 		}
 
 		// Sort by nMasks (then sumPrefix) in descending order
@@ -720,7 +702,7 @@ func init() {
 		formatFlagUsage(`Minimum fraction of masks that must match for a genome pair to be reported.`))
 
 	pairCmd.Flags().Float64P("prob-threshold", "s", 0.001,
-		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning).`))
+		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning， 0 = disable pruning).`))
 
 }
 
@@ -740,6 +722,15 @@ type KmerRecord struct {
 // S: total number of partitions (masks)
 // probThreshold: minimum probability threshold
 func shouldKeepPair(n, k int, t float64, S int, probThreshold float64) bool {
+	// If no probability threshold, keep it
+	// if probThreshold <= 0.0 {
+	// 	return true
+	// }
+
+	// if n == 0 || n < k {
+	// 	return true
+	// }
+
 	// We want to estimate if the pair can reach t*S matches in the remaining partitions
 	requiredMatches := int(t * float64(S))
 
@@ -752,15 +743,6 @@ func shouldKeepPair(n, k int, t float64, S int, probThreshold float64) bool {
 	remaining := S - n
 	if k+remaining < requiredMatches {
 		return false
-	}
-
-	if n == 0 || n < k {
-		return true
-	}
-
-	// If no probability threshold, keep it
-	if probThreshold <= 0.0 {
-		return true
 	}
 
 	// Estimate the probability using the binomial approximation
