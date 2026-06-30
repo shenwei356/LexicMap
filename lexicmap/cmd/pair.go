@@ -60,6 +60,9 @@ Output format:
                     (with the longest common prefix) considered for each mask.
     7.  avgPrefix,  Average prefix length (sumPrefix / nMasks).
 
+Limitations:
+  1. Genomes stored in multiple chunks are not evaluated as a whole.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -114,7 +117,6 @@ Output format:
 		// checking index
 
 		if outputLog {
-			log.Info()
 			log.Infof("checking index: %s", dbDir)
 		}
 
@@ -230,6 +232,7 @@ Output format:
 		requiredMatches := int(minMaskFraction * float64(totalMasks))
 
 		if outputLog {
+			log.Infof("  minimum prefix length between k-mers captured by a mask: %d", minPrefix)
 			log.Infof("  total masks: %d, required matches: %d (%.1f%%)", totalMasks, requiredMatches, minMaskFraction*100)
 		}
 
