@@ -98,8 +98,8 @@ Output format:
 		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
 
 		nMasks := getFlagNonNegativeInt(cmd, "masks")
-		if !(nMasks == 0 || isPowerOf4(nMasks)) {
-			checkError(fmt.Errorf("the value of -m/--masks should be 0 (for all masks in the index) or power of 4 (needs to be >= 1024, e.g., 1024, 4096, 16384)"))
+		if !(nMasks == 0 || (isPowerOf4(nMasks) && nMasks >= 64)) {
+			checkError(fmt.Errorf("the value of -m/--masks should be 0 (for all masks in the index) or power of 4 (needs to be >= 64, e.g., 64, 256, 1024, 4096, 16384)"))
 		}
 
 		// -------------------------------------------------------------------------
@@ -305,7 +305,7 @@ Output format:
 					}
 
 					// Probabilistic pruning: check all active pairs to remove impossible ones early
-					if processedMasks < totalMasks {
+					if processedMasks < totalMasks && processedMasks&7 == 0 {
 						for pair, matches = range activePairs {
 							if matches > 1 && !shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold) {
 								delete(activePairs, pair)
@@ -322,7 +322,7 @@ Output format:
 					chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
 				}
 
-				if processedMasks&127 == 0 {
+				if processedMasks&63 == 0 {
 					runtime.GC()
 				}
 
@@ -687,8 +687,8 @@ func init() {
 	pairCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	pairCmd.Flags().IntP("masks", "m", 4096,
-		formatFlagUsage(`Number of LexicHash masks to use. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 1024, e.g., 1024, 4096, 16384).`))
+	pairCmd.Flags().IntP("masks", "m", 1024,
+		formatFlagUsage(`Number of LexicHash masks to use. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 64, e.g., 64, 256, 1024, 4096, 16384).`))
 
 	pairCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
@@ -900,9 +900,9 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 				// 	continue
 				// }
 
-				// if prefixLen > (*counts)[key] {
-				(*counts)[key] = prefixLen // it's definitely the longest
-				// }
+				if prefixLen > (*counts)[key] { // it's definitely the longest
+					(*counts)[key] = prefixLen
+				}
 			}
 		}
 	}
