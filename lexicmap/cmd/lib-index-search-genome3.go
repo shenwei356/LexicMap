@@ -1171,6 +1171,297 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 	return q, nil
 }
 
+// CompareTwoGenomesOrthoANI compares two genomes using the OrthoANI algorithm.
+// This method cuts both query and subject genomes into fragments and only uses
+// orthologous fragment pairs (reciprocal best hits) for ANI/AF calculation.
+// Based on GSearchAlign2 from lib-index-search-genome.go.
+func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
+	// 1) Cut both query and subject into fragments
+	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	if len(*qfrags) == 0 {
+		return fmt.Errorf("no query fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+	}
+
+	sfrags, sfragLens := seqs2fragments(&subject.seqs, fragLen, minFragLen)
+	if len(*sfrags) == 0 {
+		return fmt.Errorf("no subject fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+	}
+
+	// 2) Pre-compute query-side k-mer entries once
+	indexer := idx.poolFragmentComparator.Get().(*FragmentComparator)
+	entriesA, err := indexer.IndexA(qfrags)
+	if err != nil {
+		idx.poolFragmentComparator.Put(indexer)
+		return err
+	}
+	defer idx.poolFragmentComparator.Put(indexer)
+
+	// 3) Find similar fragment pairs
+	fcpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
+	pairs, err := fcpr.CompareWithIndexedA(entriesA, sfrags)
+	if err != nil {
+		idx.poolFragmentComparator.Put(fcpr)
+		return fmt.Errorf("fail to find similar fragments: %s", err)
+	}
+	defer RecycleFragmentCompareResult(pairs)
+	defer idx.poolFragmentComparator.Put(fcpr)
+
+	// Sort pairs for better cache locality
+	slices.Sort(*pairs)
+
+	// 4) Prepare reverse complement fragments for subject
+	sfragsRC := poolFragments.Get().(*[][]byte)
+	n := len(*sfrags)
+	if cap(*sfragsRC) >= n {
+		*sfragsRC = (*sfragsRC)[:n]
+		clear(*sfragsRC)
+	} else {
+		*sfragsRC = (*sfragsRC)[:cap(*sfragsRC)]
+		clear(*sfragsRC)
+		for len(*sfragsRC) < n {
+			*sfragsRC = append(*sfragsRC, nil)
+		}
+	}
+	defer recycleFragments(sfragsRC)
+
+	// 5) Set up alignment tools
+	alignOption := &wfa.Options{GlobalAlignment: true}
+	fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(subject.genomeSize), 0.625, 0.41)
+	maxEvalue := idx.opt.MaxEvalue
+
+	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+	defer idx.poolSeqComparator.Put(cpr)
+
+	algn := wfa.New(wfa.DefaultPenalties, alignOption)
+	algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+	defer wfa.RecycleAligner(algn)
+
+	minQcovHSP := idx.seqCompareOption.MinAlignedFraction
+	minPIdent := idx.seqCompareOption.MinIdentity
+
+	// 6) Maps to store alignment results for each fragment
+	ma := poolFragAlignResultMap.Get().(*map[uint32]*[]*Chain2Result)
+	mb := poolFragAlignResultMap.Get().(*map[uint32]*[]*Chain2Result)
+	defer func() {
+		for _, ls := range *ma {
+			for _, c := range *ls {
+				poolChain2.Put(c)
+			}
+			*ls = (*ls)[:0]
+			poolChains2.Put(ls)
+		}
+		clear(*ma)
+		poolFragAlignResultMap.Put(ma)
+
+		for _, ls := range *mb {
+			*ls = (*ls)[:0]
+			poolChains2.Put(ls)
+		}
+		clear(*mb)
+		poolFragAlignResultMap.Put(mb)
+	}()
+
+	// 7) Align fragment pairs
+	var a, b, b2 []byte
+	var ia, ib uint64
+	var cr, cr2 *SeqComparatorResult
+	var ls *[]*Chain2Result
+	var ok bool
+	var c *Chain2Result
+
+	for _, p := range *pairs {
+		ia, ib = p>>32, p&4294967295
+		a = (*qfrags)[ia]
+		b = (*sfrags)[ib]
+
+		// a) pseudo alignment
+		cpr.RecycleIndex()
+		err = cpr.Index(a)
+		if err != nil {
+			return fmt.Errorf("fail to index query fragment: %s", err)
+		}
+
+		// positive strand
+		cr, err = cpr.Compare(0, uint32(len(a)), b, len(a))
+		if err != nil {
+			return fmt.Errorf("fail to compare query fragment and subject fragment: %s", err)
+		}
+
+		// negative strand
+		b2 = (*sfragsRC)[ib]
+		if b2 == nil {
+			b2 = make([]byte, len(b))
+			copy(b2, b)
+			RC(b2)
+			(*sfragsRC)[ib] = b2
+		}
+		cr2, err = cpr.Compare(0, uint32(len(a)), b2, len(a))
+		if err != nil {
+			return fmt.Errorf("fail to compare query fragment and rc subject fragment: %s", err)
+		}
+
+		if cr == nil && cr2 == nil {
+			continue
+		}
+
+		if cr != nil && cr2 != nil { // both strands have hits
+			// choose the strand with the longer aligned length, if tie, choose the positive strand
+			if (*cr.Chains)[0].QEnd-(*cr.Chains)[0].QBegin < (*cr2.Chains)[0].QEnd-(*cr2.Chains)[0].QBegin {
+				RecycleSeqComparatorResult(cr)
+				cr = cr2
+				b = b2
+			} else {
+				RecycleSeqComparatorResult(cr2)
+			}
+		} else if cr == nil { // only has hit in the negative strand
+			cr = cr2
+			b = b2
+		} // only has hit in the positive strand
+
+		// b) base-level alignment
+		c = (*cr.Chains)[0]   // choose the first chain with the highest chaining score
+		(*cr.Chains)[0] = nil // avoid being recycled before we finish processing c
+
+		_qseq, _tseq, _, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
+		if err != nil {
+			RecycleSeqComparatorResult(cr)
+			return fmt.Errorf("fail to extend aligned region: %s", err)
+		}
+
+		cigar, err := algn.Align(_qseq, _tseq)
+		if err != nil {
+			RecycleSeqComparatorResult(cr)
+			return fmt.Errorf("fail to align sequences: %s", err)
+		}
+
+		_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
+		if evalue > maxEvalue {
+			poolChain2.Put(c)
+			wfa.RecycleAlignmentResult(cigar)
+			RecycleSeqComparatorResult(cr)
+			continue
+		}
+
+		c.AlignedBasesQ = cigar.QEnd - cigar.QBegin + 1
+		c.AlignedLength = int(cigar.AlignLen)
+		c.MatchedBases = int(cigar.Matches)
+		c.Gaps = int(cigar.Gaps)
+		c.AlignedFraction = float64(c.AlignedBasesQ) / float64(cr.QueryLen) * 100
+		if c.AlignedFraction > 100 {
+			c.AlignedFraction = 100
+		}
+		c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+
+		c.Evalue = c.AlignedFraction * c.PIdent // just for sorting, not the real e-value
+
+		// c) filter and store the result
+		if c.PIdent >= minPIdent && c.AlignedFraction >= minQcovHSP {
+			if ls, ok = (*ma)[uint32(ia)]; !ok {
+				ls = poolChains2.Get().(*[]*Chain2Result)
+				*ls = (*ls)[:0]
+				(*ma)[uint32(ia)] = ls
+			}
+			*ls = append(*ls, c)
+
+			c.Score = int(ia)    // for finding the corresponding subject fragment in the reciprocal comparison
+			c.BitScore = int(ib) // for finding the corresponding subject fragment in the reciprocal comparison
+
+			if ls, ok = (*mb)[uint32(ib)]; !ok {
+				ls = poolChains2.Get().(*[]*Chain2Result)
+				*ls = (*ls)[:0]
+				(*mb)[uint32(ib)] = ls
+			}
+			*ls = append(*ls, c)
+		} else {
+			poolChain2.Put(c)
+		}
+
+		wfa.RecycleAlignmentResult(cigar)
+		RecycleSeqComparatorResult(cr)
+	}
+
+	// 8) Identify orthologous fragments (reciprocal best hits)
+	fsort := func(a, b *Chain2Result) int {
+		if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
+			return d
+		}
+		if d := cmp.Compare(a.Score, b.Score); d != 0 {
+			return d
+		}
+		return cmp.Compare(a.BitScore, b.BitScore)
+	}
+
+	for _, ls = range *ma {
+		if len(*ls) > 1 {
+			slices.SortFunc(*ls, fsort)
+		}
+	}
+
+	for _, ls = range *mb {
+		if len(*ls) > 1 {
+			slices.SortFunc(*ls, fsort)
+		}
+	}
+
+	// 9) Calculate ANI result from reciprocal best hits
+	gr := poolGSearchResult.Get().(*GSearchResult)
+	gr.Reset()
+	gr.BatchGenomeIndex = 0 // Not from index
+	gr.GenomeSize = subject.genomeSize
+	gr.NumSeqs = len(subject.seqs)
+
+	var _ia, _ib uint32
+	var ls2 *[]*Chain2Result
+	for _ia, ls = range *ma {
+		_ib = uint32((*ls)[0].BitScore)
+
+		if ls2, ok = (*mb)[_ib]; !ok {
+			continue
+		}
+		if (*ls2)[0].Score != int(_ia) {
+			continue
+		}
+
+		// reciprocal best hit
+		c = (*ls)[0]
+
+		gr.AlignedFragments++
+		gr.AlignedLength += c.AlignedLength - c.Gaps
+		gr.AlignedMatches += c.MatchedBases
+		gr.Pidents = append(gr.Pidents, c.PIdent)
+	}
+
+	// 10) Calculate final ANI / AF
+	if gr.AlignedLength > 0 {
+		sumPident := 0.0
+		for _, p := range gr.Pidents {
+			sumPident += p
+		}
+		gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+	}
+	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+	gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
+	if gr.AFq > 1 {
+		gr.AFq = 1
+	}
+	if gr.AFs > 1 {
+		gr.AFs = 1
+	}
+	gr.Score = gr.ANI
+
+	// 11) Store result
+	rs := poolGSearchResults.Get().(*[]*GSearchResult)
+	*rs = (*rs)[:0]
+	if gr.AFq >= minAF {
+		*rs = append(*rs, gr)
+	} else {
+		poolGSearchResult.Put(gr)
+	}
+	query.result = rs
+
+	return nil
+}
+
 // ReadGenome reads a genome from a sequence file
 func ReadGenomeFromFile(file string, reRefName *regexp.Regexp) (*GQuery, error) {
 	fastxReader, err := fastx.NewDefaultReader(file)

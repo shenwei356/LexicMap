@@ -133,6 +133,8 @@ Output format:
 			}
 		}
 
+		orthoANI := getFlagBool(cmd, "OrthoANI")
+
 		fragSize := getFlagPositiveInt(cmd, "frag-size")
 		if fragSize < 100 {
 			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
@@ -191,6 +193,13 @@ Output format:
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
 			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
+		}
+		if orthoANI {
+			minQcovChain /= 2
+			minFragLen = fragSize
+			if outputLog {
+				log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%d)", minQcovChain, fragSize)
+			}
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -341,6 +350,9 @@ Output format:
 
 		if outputLog {
 			log.Infof("compare with %d threads...", opt.NumCPUs)
+			if orthoANI {
+				log.Infof("  using OrthoANI mode")
+			}
 			log.Infof("  minimum query coverage per HSP: %.2f%%", minQcovChain)
 			log.Infof("  minimum base identity in a HSP segment: %.2f%%", minIdent)
 			log.Infof("  maximum evalue: %.2e", maxEvalue)
@@ -390,13 +402,30 @@ Output format:
 			// ------------------------------
 
 			g1, g2 := q.g1, q.g2
-			gr1, gr2 := (*g1.result)[0], (*g2.result)[0]
+			gr1 := (*g1.result)[0]
+
+			var gr2 *GSearchResult
+			var tani, ani1, af1, ani2, af2 float64
+
+			ani1 = gr1.ANI * 100
+			af1 = gr1.AFq * 100
+
+			if !orthoANI {
+				gr2 = (*g2.result)[0]
+				ani2 = gr2.ANI * 100
+				af2 = gr2.AFq * 100
+				tani = float64(gr1.AlignedMatches+gr2.AlignedMatches) / float64(g1.genomeSize+g2.genomeSize) * 100
+			} else {
+				ani2 = ani1
+				af2 = gr1.AFs * 100
+				tani = float64(gr1.AlignedMatches+gr1.AlignedMatches) / float64(g1.genomeSize+g2.genomeSize) * 100
+			}
 
 			fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
 				g1.id, g2.id,
-				float64(gr1.AlignedMatches+gr2.AlignedMatches)/float64(g1.genomeSize+g2.genomeSize)*100,
-				gr1.ANI*100, gr2.ANI*100,
-				gr1.AFq*100, gr2.AFq*100,
+				tani,
+				ani1, ani2,
+				af1, af2,
 				len(g1.seqs), g1.genomeSize,
 				len(g2.seqs), g2.genomeSize,
 			)
@@ -424,8 +453,14 @@ Output format:
 		// ------- input -------
 
 		var wg sync.WaitGroup
-		tokens := make(chan int, opt.NumCPUs/2) // cause each pair use 2 threads
-		fcpus := float64(idx.opt.NumCPUs / 2)
+		var threads int
+		if orthoANI {
+			threads = opt.NumCPUs
+		} else {
+			threads = opt.NumCPUs / 2
+		}
+		tokens := make(chan int, threads) // cause each pair use 2 threads
+		fcpus := float64(threads)
 
 		var gname2idx map[string]*[]uint64
 
@@ -556,10 +591,14 @@ Output format:
 				}()
 				_wg.Wait()
 
-				// compre genomes
+				// compare genomes
 				_wg.Add(2)
 				go func() {
-					err = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minAlignLen, minAF)
+					if orthoANI {
+						err = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF)
+					} else {
+						err = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF)
+					}
 					if err != nil {
 						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, err))
 					}
@@ -567,11 +606,16 @@ Output format:
 					_wg.Done()
 				}()
 				go func() {
-					err = idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minAlignLen, minAF)
-					if err != nil {
-						checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, err))
-					}
+					if orthoANI {
+						// unnecessary
+						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF)
+					} else {
+						err = idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF)
+						if err != nil {
+							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, err))
+						}
 
+					}
 					_wg.Done()
 				}()
 				_wg.Wait()
@@ -679,6 +723,10 @@ func init() {
 
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
+
+	// OrthoANI
+	compareCmd.Flags().BoolP("OrthoANI", "", false,
+		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs.`))
 
 }
 

@@ -771,7 +771,7 @@ func init() {
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
-		formatFlagUsage(`Compute OrthoANI. Type 'lexicmap genome search --help' for details.`))
+		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs. Type 'lexicmap genome search --help' for details.`))
 
 	gsearchCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
