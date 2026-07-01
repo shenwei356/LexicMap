@@ -770,7 +770,7 @@ func init() {
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage).`))
 
 	// OrthoANI
-	gsearchCmd.Flags().BoolP("OrthoANI", "", false,
+	gsearchCmd.Flags().BoolP("OrthoANI", "O", false,
 		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs. Type 'lexicmap genome search --help' for details.`))
 
 	gsearchCmd.Flags().IntP("kmer-scale", "", 4,

@@ -103,7 +103,7 @@ func (cpr *FragmentComparator) Compare(fragsA, fragsB *[][]byte) (*[]uint64, err
 }
 
 var poolBatchEntries = &sync.Pool{New: func() interface{} {
-	return make([]rtree.BatchEntry, 0, 10<<20)
+	return make([]rtree.BatchEntry, 0, 1<<20)
 }}
 
 // IndexA pre-computes canonical k-mer entries for fragsA, sorted by Key, so

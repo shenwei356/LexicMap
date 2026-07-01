@@ -725,7 +725,7 @@ func init() {
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
 
 	// OrthoANI
-	compareCmd.Flags().BoolP("OrthoANI", "", false,
+	compareCmd.Flags().BoolP("OrthoANI", "O", false,
 		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs.`))
 
 }

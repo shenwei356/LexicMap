@@ -1178,11 +1178,13 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
 	// 1) Cut both query and subject into fragments
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	defer recycleFragments(qfrags)
 	if len(*qfrags) == 0 {
 		return fmt.Errorf("no query fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
 	}
 
 	sfrags, sfragLens := seqs2fragments(&subject.seqs, fragLen, minFragLen)
+	defer recycleFragments(sfrags)
 	if len(*sfrags) == 0 {
 		return fmt.Errorf("no subject fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
 	}
@@ -1203,8 +1205,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		idx.poolFragmentComparator.Put(fcpr)
 		return fmt.Errorf("fail to find similar fragments: %s", err)
 	}
-	defer RecycleFragmentCompareResult(pairs)
-	defer idx.poolFragmentComparator.Put(fcpr)
+	RecycleResultOfIndexA(entriesA)
 
 	// Sort pairs for better cache locality
 	slices.Sort(*pairs)
@@ -1379,6 +1380,8 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		wfa.RecycleAlignmentResult(cigar)
 		RecycleSeqComparatorResult(cr)
 	}
+	RecycleFragmentCompareResult(pairs)
+	idx.poolFragmentComparator.Put(fcpr)
 
 	// 8) Identify orthologous fragments (reciprocal best hits)
 	fsort := func(a, b *Chain2Result) int {
