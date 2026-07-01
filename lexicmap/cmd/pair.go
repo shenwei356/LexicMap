@@ -61,7 +61,10 @@ Output format:
     7.  avgPrefix,  Average prefix length (sumPrefix / nMasks).
 
 Limitations:
-  1. Genomes stored in multiple chunks are not evaluated as a whole.
+  1. Not suitable for very large genome sets (e.g., > 1 million genomes) due to memory constraints.
+  2. Genome sets with many highly similar genomes may result in a large number of genome pairs, 
+     and it can be slow and needs lot of memory.
+  3. Genomes stored in multiple chunks are not evaluated as a whole.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {

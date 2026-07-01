@@ -50,6 +50,7 @@ Input:
     Two or more FASTA files. All combinations of 2 genomes will be compared.
   - Option 2: 
     Tab-delimited file(s), with genome IDs in the first two columns.
+    Genomes will be read from the LexicMap index given by '-d/--index'.
     The file can be the output of 'lexicmap genome pair', and the flag '-H' is needed
     to skip the header line.
 
