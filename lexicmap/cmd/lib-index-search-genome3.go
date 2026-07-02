@@ -718,7 +718,10 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
 				return d
 			}
-			return cmp.Compare(b.AFs, a.AFs)
+			if d := cmp.Compare(b.AFs, a.AFs); d != 0 {
+				return d
+			}
+			return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex)
 		})
 
 		query.result = rs
