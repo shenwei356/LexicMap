@@ -109,7 +109,7 @@ func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 }
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
-func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
+func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, maskIndexes map[int]struct{}) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
 	if windows < 1 {
 		return nil, nil, fmt.Errorf("window size needs to be > 0")
 	}
@@ -190,6 +190,17 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*
 		}
 
 		idx.lh.RecycleMaskResult(_kmers, locses)
+	}
+
+	// ------------------------------------------------------
+	// use a subset of masks if specified
+	if len(maskIndexes) > 0 {
+		var ok bool
+		for i := range *_kmersW {
+			if _, ok = maskIndexes[i]; !ok {
+				*(*_kmersW)[i] = (*(*_kmersW)[i])[:0]
+			}
+		}
 	}
 
 	// ------------------------------------------------------
@@ -522,9 +533,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool) (*
 	return whiteList, rs, nil
 }
 
-// GSearchAlign2 align fragments of a query to candidates genomes.
+// GSearchAlignOrthoANI align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlign2(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
+func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	if debug {

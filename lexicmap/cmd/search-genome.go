@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -134,6 +135,11 @@ Output format:
 		dbDir := getFlagString(cmd, "index")
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
+		}
+
+		nMasks := getFlagNonNegativeInt(cmd, "masks")
+		if !(nMasks == 0 || (isPowerOf4(nMasks) && nMasks >= 256)) {
+			checkError(fmt.Errorf("the value of -m/--masks should be 0 (for all masks in the index) or power of 4 (needs to be >= 256, e.g., 256, 1024, 4096, 16384)"))
 		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
@@ -356,6 +362,34 @@ Output format:
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
 
+		if nMasks > len(idx.lh.Masks) {
+			checkError(fmt.Errorf("the value of -m/--mask (%d) is bigger than the number of masks in the index (%d)", nMasks, len(idx.lh.Masks)))
+		}
+
+		// -------------------------------------------------------------------------
+		// choose masks
+
+		lh := idx.lh
+		_nMasks := len(lh.Masks)
+
+		var maskPrefix int
+		maskIndexes := make(map[int]struct{}, len(lh.Masks))
+		if nMasks > 0 {
+			maskPrefix = int(math.Log2(float64(nMasks)) / 2)
+			m := make(map[uint64]struct{}, maskPrefix)
+			for i, mask := range lh.Masks {
+				prefix := mask >> (uint64(lh.K-maskPrefix) << 1)
+				if _, ok := m[prefix]; !ok {
+					maskIndexes[i] = struct{}{}
+
+					m[prefix] = struct{}{}
+				}
+			}
+
+			_nMasks = nMasks
+		}
+		// -------------------------------------------------------------------------
+
 		idx.SetSeqCompareOptions(&SeqComparatorOptions{
 			K:         uint8(31),
 			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
@@ -396,8 +430,13 @@ Output format:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
+			if nMasks > 0 {
+				log.Infof("  screen genomes with seed data of %d masks", _nMasks)
+			} else {
+				log.Infof("  screen genomes with seed data of all the %d masks", _nMasks)
+			}
 			if sopt.TopN > 0 {
-				log.Infof("  keep the top %d genomes", sopt.TopN)
+				log.Infof("    keep the top %d genomes", sopt.TopN)
 			}
 			// if sopt.TopNChains > 0 {
 			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
@@ -537,7 +576,7 @@ Output format:
 
 						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
-							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)), hitMasks,
+							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
 							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
 							gr.Score2, float64(gr.Score2)/float64(hitMasks),
 							matchesS.Bytes(),
@@ -545,7 +584,7 @@ Output format:
 					} else {
 						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
-							minPrefix, float64(hitMasks)/float64(len(idx.lh.Masks)), hitMasks,
+							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
 							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
 							gr.Score2, float64(gr.Score2)/float64(hitMasks),
 						)
@@ -604,7 +643,7 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening)
+				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening, maskIndexes)
 				checkError(err)
 
 				if onlyGenomeScreening {
@@ -619,7 +658,7 @@ Output format:
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
 					if orthoANI {
-						err = idx.GSearchAlign2(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
+						err = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
 					} else {
 						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
 					}
@@ -666,6 +705,9 @@ func init() {
 
 	gsearchCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
+
+	gsearchCmd.Flags().IntP("masks", "m", 1024,
+		formatFlagUsage(`Only use seed data of N masks for genome prefiltering/screening. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 256, e.g., 256, 1024, 4096, 16384).`))
 
 	gsearchCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))

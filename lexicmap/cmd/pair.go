@@ -694,7 +694,7 @@ func init() {
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
 	pairCmd.Flags().IntP("masks", "m", 1024,
-		formatFlagUsage(`Number of LexicHash masks to use. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 64, e.g., 64, 256, 1024, 4096, 16384).`))
+		formatFlagUsage(`Only use seed data of N masks. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 64, e.g., 64, 256, 1024, 4096, 16384).`))
 
 	pairCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports and recommends a ".gz" suffix ("-" for stdout).`))
