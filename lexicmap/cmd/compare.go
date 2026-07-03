@@ -403,6 +403,17 @@ Output format:
 			// ------------------------------
 
 			g1, g2 := q.g1, q.g2
+
+			if g1.result == nil || len(*g1.result) == 0 {
+				RecycleGPair(q)
+
+				if gc && total&gcIntervalMinus1 == 0 {
+					runtime.GC()
+				}
+
+				return
+			}
+
 			gr1 := (*g1.result)[0]
 
 			var gr2 *GSearchResult
@@ -434,6 +445,7 @@ Output format:
 			// ------------------------------
 
 			outfh.Flush()
+
 			RecycleGPair(q)
 
 			if gc && total&gcIntervalMinus1 == 0 {

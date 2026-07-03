@@ -1120,9 +1120,11 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 		*rs = append(*rs, gr)
 	} else {
 		poolGSearchResult.Put(gr)
+		RecycleGSearchResults(rs)
+		return nil
 	}
-	query.result = rs
 
+	query.result = rs
 	return nil
 }
 
@@ -1462,9 +1464,11 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		*rs = append(*rs, gr)
 	} else {
 		poolGSearchResult.Put(gr)
+		RecycleGSearchResults(rs)
+		return nil
 	}
-	query.result = rs
 
+	query.result = rs
 	return nil
 }
 
