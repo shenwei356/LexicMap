@@ -145,6 +145,10 @@ Tips:
 			if len(id2) == 0 {
 				checkError(fmt.Errorf("genome ID is rename to empty: %s", id))
 			}
+			if len(id2) > 65535 {
+				log.Warningf("genome id longer than 65,535 will be truncated: %s", string(id2))
+				id2 = id2[:65535]
+			}
 
 			N++
 			if !bytes.Equal(id, id2) {

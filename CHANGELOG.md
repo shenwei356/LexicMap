@@ -11,6 +11,8 @@
 - `lexicmap index`:
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
+- `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
+    - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
     - Faster pseudoalignment for long queries.

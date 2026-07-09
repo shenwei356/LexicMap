@@ -224,6 +224,10 @@ func (w *Writer) Write(s *Genome) error {
 	buf0 := w.bBuf
 	buf0.Reset()
 
+	if len(s.ID) > 65535 { // truncate super-long genome ID
+		s.ID = s.ID[:65535]
+	}
+
 	// ID length
 	be.PutUint16(buf[:2], uint16(len(s.ID)))
 	buf0.Write(buf[:2])
@@ -245,6 +249,9 @@ func (w *Writer) Write(s *Genome) error {
 
 		// seq ids
 		seqid = *s.SeqIDs[i]
+		if len(seqid) > 65535 { // clip super-long sequence ID
+			seqid = s.ID[:65535]
+		}
 		be.PutUint16(buf[:2], uint16(len(seqid))) // length of id
 		buf0.Write(buf[:2])
 		buf0.Write(seqid)
@@ -365,7 +372,7 @@ type Reader struct {
 
 var poolReader = &sync.Pool{New: func() interface{} {
 	return &Reader{
-		buf: make([]byte, 10<<10), // 10K
+		buf: make([]byte, 10<<10), // 10K, will be used to read various data and bit-packed DNA (might be long)
 	}
 }}
 
@@ -567,13 +574,19 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	offset += 2
 
 	// ID
-	n, _ = io.ReadFull(br, buf[:idLen])
+	if len(g.ID) >= int(idLen) {
+		g.ID = g.ID[:idLen]
+	} else {
+		nappend := int(idLen) - len(g.ID)
+		for j := 0; j < nappend; j++ {
+			g.ID = append(g.ID, 0)
+		}
+	}
+	n, _ = io.ReadFull(br, g.ID)
 	if n < int(idLen) {
 		RecycleGenome(g)
 		return nil, ErrBrokenFile
 	}
-	g.ID = g.ID[:0]
-	g.ID = append(g.ID, buf[:idLen]...)
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
@@ -736,13 +749,19 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	offset += 2
 
 	// ID
-	n, _ = io.ReadFull(br, buf[:idLen])
+	if len(g.ID) >= int(idLen) {
+		g.ID = g.ID[:idLen]
+	} else {
+		nappend := int(idLen) - len(g.ID)
+		for j := 0; j < nappend; j++ {
+			g.ID = append(g.ID, 0)
+		}
+	}
+	n, _ = io.ReadFull(br, g.ID)
 	if n < int(idLen) {
 		RecycleGenome(g)
 		return nil, ErrBrokenFile
 	}
-	g.ID = g.ID[:0]
-	g.ID = append(g.ID, buf[:idLen]...)
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs
@@ -957,12 +976,6 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 
 		// ID
 		br.Discard(int(idLen)) // ID is not used since v0.8.0
-		// n, _ = io.ReadFull(br, buf[:idLen])
-		// if n < int(idLen) {
-		// 	return nil, ErrBrokenFile
-		// }
-		// g.ID = g.ID[:0]
-		// g.ID = append(g.ID, buf[:idLen]...)
 
 		offset += int64(idLen)
 
@@ -1203,13 +1216,19 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	offset += 2
 
 	// ID
-	n, _ = io.ReadFull(br, buf[:idLen])
+	if len(g.ID) >= int(idLen) {
+		g.ID = g.ID[:idLen]
+	} else {
+		nappend := int(idLen) - len(g.ID)
+		for j := 0; j < nappend; j++ {
+			g.ID = append(g.ID, 0)
+		}
+	}
+	n, _ = io.ReadFull(br, g.ID)
 	if n < int(idLen) {
 		RecycleGenome(g)
 		return nil, -1, ErrBrokenFile
 	}
-	g.ID = g.ID[:0]
-	g.ID = append(g.ID, buf[:idLen]...)
 	offset += int64(idLen)
 
 	// genome size, Len of concatenated seqs, NumSeqs

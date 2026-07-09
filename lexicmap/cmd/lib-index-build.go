@@ -1625,6 +1625,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					}
 
 					refseq.ID = []byte(genomeID)
+					if len(refseq.ID) > 65535 {
+						log.Warningf("genome id longer than 65,535 will be truncated: %s", genomeID)
+						refseq.ID = refseq.ID[:65535]
+					}
 
 					if debug {
 						log.Debugf("batch: %d, file #%d: %s, send split genome: %s", batch, iFile, file, genomeID)
@@ -1664,6 +1668,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				refseq.SeqSizes = append(refseq.SeqSizes, len(record.Seq.Seq))
 				// ids of all contigs
 				seqid := []byte(string(record.ID))
+				if len(seqid) > 65535 {
+					log.Warningf("sequence id longer than 65,535 will be truncated: %s...", record.ID[:32])
+					seqid = seqid[:65535]
+				}
 				refseq.SeqIDs = append(refseq.SeqIDs, &seqid)
 				refseq.GenomeSize += len(record.Seq.Seq)
 

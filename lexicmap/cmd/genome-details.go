@@ -145,12 +145,22 @@ func init() {
 
 // FileGenomeDetails store lists of genome details.
 //
-//	genome id:
-//	    chunk 1:
-//	       gsize
-//	       n_seqs
-//	           size 1, len_seqid1, seqid1
-//	           ...
+// Format:
+//
+//	flag (8 bytes)
+//	len(genome id, 2 bytes), n_genome_chunks (4 bytes), genome id (X bytes)
+//	# genome chunk 1:
+//	    batch+ref index (8 bytes)
+//	    gsize (4 bytes)
+//	    n_seqs (4 bytes)
+//	    # sequence size of each sequence:
+//	        size 1 (4 bytes)
+//	        size 2 (4 bytes)
+//	        ...
+//	    # sequence id of each sequence (optional, the flag is in FLAG_SAVE_SEQIDS):
+//	        len_seqid1 (2 bytes), seqid1 (X bytes)
+//	        len_seqid1 (2 bytes), seqid1 (X bytes)
+//	        ...
 const FileGenomeDetails = "genomes.details.bin"
 const FLAG_SAVE_SEQIDS = 1
 
@@ -327,18 +337,12 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 		lenID = int(be.Uint16(buf[:2]))
 		id := make([]byte, lenID)
 
-		n, err = io.ReadFull(r, id)
-		if err != nil {
-			checkError(fmt.Errorf("broken genome map file"))
-		}
+		n, _ = io.ReadFull(r, id)
 		if n < lenID {
 			checkError(fmt.Errorf("broken genome map file"))
 		}
 
-		n, err = io.ReadFull(r, buf)
-		if err != nil {
-			checkError(fmt.Errorf("broken genome map file"))
-		}
+		n, _ = io.ReadFull(r, buf)
 		if n < 8 {
 			checkError(fmt.Errorf("broken genome map file"))
 		}
@@ -429,6 +433,9 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 				if saveSeqIDs {
 					// seq id
 					seqid = *g.SeqIDs[i]
+					if len(seqid) > 65535 { // truncate super-long sequence ID
+						seqid = seqid[:65535]
+					}
 					be.PutUint16(buf[:2], uint16(len(seqid))) // length of id
 					buf1.Write(buf[:2])
 					buf1.Write(seqid)
@@ -487,9 +494,11 @@ var ErrBrokenFile = errors.New("genome chunk detail data: broken file")
 func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool) error {
 	fh, err := os.Open(fileGenomeDetails)
 	checkError(err)
+	defer fh.Close()
+
 	br := bufio.NewReader(fh)
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 1<<16) // 64K
 	var n int
 	var batchIDAndRefID uint64
 	var l16 uint16
@@ -555,8 +564,8 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 			batchIDAndRefID = be.Uint64(buf[:8]) // batch+ref index
 			batchIDAndRefIDs = append(batchIDAndRefIDs, batchIDAndRefID)
-			genomeSize = be.Uint32(buf[8:12]) // genome size
-			genomeSizes = append(genomeSizes, genomeSize)
+			genomeSize = be.Uint32(buf[8:12])             // genome size
+			genomeSizes = append(genomeSizes, genomeSize) // genome sizes
 
 			nSeqs = be.Uint32(buf[12:16]) // number of sequences
 
