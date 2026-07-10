@@ -574,7 +574,7 @@ Output format:
 					if loadIndex {
 						batchIDAndRefIDs, ok := gname2idx[genome1]
 						if !ok {
-							checkError(fmt.Errorf("reference name not found: %s, you might need use '-H' to skip the header line", genome1))
+							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome1))
 						}
 						q.g1, err = idx.ReadGenome(batchIDAndRefIDs)
 						checkError(err)
@@ -590,7 +590,7 @@ Output format:
 					if loadIndex {
 						batchIDAndRefIDs, ok := gname2idx[genome2]
 						if !ok {
-							checkError(fmt.Errorf("reference name not found: %s, you might need use '-H' to skip the header line", genome2))
+							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome2))
 						}
 						q.g2, err = idx.ReadGenome(batchIDAndRefIDs)
 						checkError(err)
