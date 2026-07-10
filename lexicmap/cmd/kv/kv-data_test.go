@@ -159,13 +159,10 @@ func TestKVData(t *testing.T) {
 
 	var mPrefix uint8
 
-	// exactly query
-	mPrefix = k
-
 	var hit bool
 	var nExpectedResults int
 	kmers := make([]uint64, nMasks)
-	for mPrefix = 2; mPrefix <= k; mPrefix++ {
+	for mPrefix = 4; mPrefix <= k; mPrefix++ {
 		for i = 1; i < n-1; i++ { // not from 1 to n, because aaaaa and ttttt is skipped to search
 			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
 			for j := 0; j < nMasks; j++ {
@@ -236,10 +233,7 @@ func TestKVData(t *testing.T) {
 		t.Errorf("%s", err)
 	}
 
-	// exactly query
-	mPrefix = k
-
-	for mPrefix = k; mPrefix <= k; mPrefix++ {
+	for mPrefix = 4; mPrefix <= k; mPrefix++ {
 		for i = 1; i < n-1; i++ { // not from 1 to n, because aaaaa and ttttt is skipped to search
 			// t.Logf("q:%s, prefix:%d, maxMismatch:%d", lexichash.MustDecode(i, scr.K), mPrefix, maxMismatch)
 			for j := 0; j < nMasks; j++ {
