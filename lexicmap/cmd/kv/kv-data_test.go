@@ -152,7 +152,7 @@ func TestKVData(t *testing.T) {
 	// -------------------------------------------------------------------
 	// searcher
 
-	scr, err := NewSearcher(file)
+	scr, err := NewSearcher(file, 1)
 	if err != nil {
 		t.Errorf("%s", err)
 	}

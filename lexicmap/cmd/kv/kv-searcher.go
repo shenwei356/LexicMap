@@ -44,8 +44,6 @@ type Searcher struct {
 	ChunkIndex int   // index of the first mask in this chunk
 	ChunkSize  int   // the number of masks in this chunk
 
-	fh *os.File // file handler of the kv-data file
-
 	maskPrefix   uint8 // length of mask prefix
 	anchorPrefix uint8 // length of anchor prefix
 
@@ -54,26 +52,31 @@ type Searcher struct {
 	Indexes   [][]uint64
 	getAnchor func(uint64) uint64
 
-	maxKmer uint64
-	buf     []byte
-	// buf8    []uint8
-	buf2048 []uint8 // for parsing seed data
-
-	r *bufio.Reader
+	maxKmer uint64 // not used
 
 	Use3BytesForSeedPos bool
+
+	searchKits chan *SearchKit
+	nWorkers   int
+}
+
+// SearchKit contains a group of variables for calling Search() in parallel.
+type SearchKit struct {
+	fh      *os.File // file handler of the kv-data file
+	r       *bufio.Reader
+	buf     []byte
+	buf2048 []uint8 // for parsing seed data
 }
 
 // NewSearcher creates a new Searcher for the given kv-data file.
-func NewSearcher(file string) (*Searcher, error) {
+func NewSearcher(file string, nWorkers int) (*Searcher, error) {
+	if nWorkers < 1 {
+		nWorkers = 1
+	}
+
 	k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data index file")
-	}
-
-	fh, err := os.Open(file)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
 
 	scr := &Searcher{
@@ -82,20 +85,33 @@ func NewSearcher(file string) (*Searcher, error) {
 		ChunkSize:  len(indexes),
 		Indexes:    indexes,
 		getAnchor:  AnchorExtracter(k, maskPrefix, anchorPrefix),
-		fh:         fh,
 
 		maskPrefix:   maskPrefix,
 		anchorPrefix: anchorPrefix,
 
 		maxKmer: 1<<(k<<1) - 1,
-		buf:     make([]byte, 64),
-		// buf8:    make([]uint8, 8),
-		buf2048: make([]uint8, seedPosBatchSize<<3), // 256*8
-
-		r: bufio.NewReaderSize(nil, 4096),
 
 		Use3BytesForSeedPos: config1&MaskUse3BytesForSeedPos > 0,
+
+		searchKits: make(chan *SearchKit, nWorkers),
+
+		nWorkers: nWorkers,
 	}
+
+	for i := 0; i < nWorkers; i++ {
+		fh, err := os.Open(file)
+		if err != nil {
+			return nil, errors.Wrapf(err, "reading kv-data file")
+		}
+
+		scr.searchKits <- &SearchKit{
+			fh:      fh,
+			buf:     make([]byte, 64),
+			buf2048: make([]uint8, seedPosBatchSize<<3), // 256*8
+			r:       bufio.NewReaderSize(nil, 4096),
+		}
+	}
+
 	return scr, nil
 }
 
@@ -204,9 +220,16 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
-	// buf8 := scr.buf8
-	buf := scr.buf
-	buf2048 := scr.buf2048
+
+	spack := <-scr.searchKits
+	defer func() {
+		scr.searchKits <- spack
+	}()
+	buf := spack.buf
+	buf2048 := spack.buf2048
+	fh := spack.fh
+	r := spack.r
+
 	var n uint64
 
 	var nSeedPosBytes uint64 = 8
@@ -235,7 +258,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 	// r := bufio.NewReader(nil)
 	// r := poolBufReader.Get().(*bufio.Reader)
-	r := scr.r
+	// r := scr.r
 
 	suffix2 = (k - p) << 1
 	mask = (1 << suffix2) - 1 // 1111
@@ -321,9 +344,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 		// r := scr.fh
 
-		scr.fh.Seek(int64(offset), 0)
+		fh.Seek(int64(offset), 0)
 
-		r.Reset(scr.fh)
+		r.Reset(fh)
 
 		first = true
 		found = false
@@ -644,9 +667,16 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var kmer1, kmer2 uint64
 	var lenVal, lenVal1, lenVal2 uint64
 	var j uint64
-	// buf8 := scr.buf8
-	buf := scr.buf
-	buf2048 := scr.buf2048
+
+	spack := <-scr.searchKits
+	defer func() {
+		scr.searchKits <- spack
+	}()
+	buf := spack.buf
+	buf2048 := spack.buf2048
+	fh := spack.fh
+	r := spack.r
+
 	var n uint64
 
 	var nSeedPosBytes uint64 = 8
@@ -676,7 +706,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	var is2ndKmer bool
 
 	// r := bufio.NewReader(nil)
-	r := scr.r
+	// r := scr.r
 
 	suffix2 = (k - p) << 1
 	mask = (1 << suffix2) - 1 // 1111
@@ -759,9 +789,9 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 			// r := scr.fh
 
-			scr.fh.Seek(int64(offset), 0)
+			fh.Seek(int64(offset), 0)
 
-			r.Reset(scr.fh)
+			r.Reset(fh)
 
 			first = true
 			found = false
@@ -1040,7 +1070,15 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 
 // Close closes the searcher.
 func (scr *Searcher) Close() error {
-	return scr.fh.Close()
+	var err error
+	for i := 0; i < scr.nWorkers; i++ {
+		spack := <-scr.searchKits
+		_err := spack.fh.Close()
+		if _err != nil {
+			err = _err
+		}
+	}
+	return err
 }
 
 // func kmerValueString(v uint64) string {

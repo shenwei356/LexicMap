@@ -299,6 +299,12 @@ Output format:
 		if maxQueryConcurrency == 0 {
 			maxQueryConcurrency = opt.NumCPUs
 		}
+		// maxSeedSearchingConcurrency := getFlagPositiveInt(cmd, "max-seed-matching-conc")
+		maxSeedSearchingConcurrency := maxQueryConcurrency / 2
+		if maxSeedSearchingConcurrency < 2 {
+			maxSeedSearchingConcurrency = 2
+		}
+
 		var threadsPerQuery int
 		if len(files) < maxQueryConcurrency {
 			threadsPerQuery = opt.NumCPUs / len(files)
@@ -330,6 +336,8 @@ Output format:
 			Verbose:      opt.Verbose,
 			Log2File:     opt.Log2File,
 			MaxOpenFiles: maxOpenFiles,
+
+			MaxSeedSearchingConcurrency: maxSeedSearchingConcurrency,
 
 			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),

@@ -278,6 +278,11 @@ Result ordering:
 		if maxQueryConcurrency == 0 {
 			maxQueryConcurrency = runtime.NumCPU()
 		}
+		// maxSeedSearchingConcurrency := getFlagPositiveInt(cmd, "max-seed-matching-conc")
+		maxSeedSearchingConcurrency := maxQueryConcurrency / 2
+		if maxSeedSearchingConcurrency < 2 {
+			maxSeedSearchingConcurrency = 2
+		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
 		gcInterval := uint64(_gcInterval)
@@ -289,11 +294,6 @@ Result ordering:
 		}
 
 		gc := gcInterval > 0
-
-		// maxSeedingConcurrency := getFlagNonNegativeInt(cmd, "max-seed-conc")
-		// if maxSeedingConcurrency == 0 {
-		// 	maxSeedingConcurrency = runtime.NumCPU()
-		// }
 
 		// ---------------------------------------------------------------
 		// loading index
@@ -309,7 +309,7 @@ Result ordering:
 			Log2File:     opt.Log2File,
 			MaxOpenFiles: maxOpenFiles,
 
-			// MaxSeedingConcurrency: maxSeedingConcurrency,
+			MaxSeedSearchingConcurrency: maxSeedSearchingConcurrency,
 
 			MinPrefix: uint8(minPrefix),
 			// MaxMismatch:     maxMismatch,
@@ -648,8 +648,8 @@ func init() {
 	mapCmd.Flags().IntP("gc-interval", "", 64,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
 
-	// mapCmd.Flags().IntP("max-seed-conc", "S", 8,
-	// 	formatFlagUsage(`Maximum number of concurrent seed file matching. Bigger values improve seed matching speed in SSD.`))
+	// mapCmd.Flags().IntP("max-seed-matching-conc", "S", 2,
+	// 	formatFlagUsage(`Maximum number of concurrent seed file matching. Bigger values improve seed matching speed in SSD, which improves the searching speed for batch queries.`))
 
 	// seed searching
 

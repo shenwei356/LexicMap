@@ -61,8 +61,8 @@ type IndexSearchingOptions struct {
 	Log2File     bool // log file
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 
-	// seed searching
-	// MaxSeedingConcurrency int
+	// concurrency of searching for each kv searcher
+	MaxSeedSearchingConcurrency int
 
 	InMemorySearch bool  // load the seed/kv data into memory
 	MinPrefix      uint8 // minimum prefix length, e.g., 15
@@ -124,7 +124,7 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	NumCPUs:      runtime.NumCPU(),
 	MaxOpenFiles: 512,
 
-	// MaxSeedingConcurrency: 8,
+	MaxSeedSearchingConcurrency: 1,
 
 	MinPrefix: 15,
 	// MaxMismatch:     -1,
@@ -525,7 +525,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	idx.searcherTokens = make([]chan int, len(fileSeeds))
 	for i := range idx.searcherTokens {
-		idx.searcherTokens[i] = make(chan int, 1)
+		idx.searcherTokens[i] = make(chan int, idx.opt.MaxSeedSearchingConcurrency)
 	}
 
 	idx.poolKmers = &sync.Pool{New: func() interface{} {
@@ -617,6 +617,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		<-tokens
 	}()
 
+	if opt.Verbose || opt.Log2File {
+		log.Infof("  creating searcher pools for %d seed data files, each with %d searchers...",
+			len(fileSeeds), idx.opt.MaxSeedSearchingConcurrency)
+	}
 	for _, file := range fileSeeds {
 		wg.Add(1)
 		tokens <- 1
@@ -629,7 +633,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 				chIM <- scr
 			} else { // just read the index data
-				scr, err := kv.NewSearcher(file)
+				scr, err := kv.NewSearcher(file, idx.opt.MaxSeedSearchingConcurrency)
 				if err != nil {
 					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
 				}
@@ -650,7 +654,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	<-done
 
 	// we can create genome reader pools
-	n := (idx.opt.MaxOpenFiles - len(fileSeeds) - 1) / info.GenomeBatches // 1 is for the output file
+	n := (idx.opt.MaxOpenFiles - len(fileSeeds)*idx.opt.MaxSeedSearchingConcurrency - 1) / info.GenomeBatches // 1 is for the output file
 	if n < 2 {
 	} else {
 		if n > opt.NumCPUs {
@@ -1521,7 +1525,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	}()
 
 	// 2.1) search with multiple searchers
-	// tokensS := make(chan int, idx.opt.MaxSeedingConcurrency)
 	for iS := 0; iS < nSearchers; iS++ {
 		if inMemorySearch {
 			beginM = searchersIM[iS].ChunkIndex
@@ -1532,7 +1535,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		}
 
 		wg.Add(1)
-		// tokensS <- 1
 		go func(iS, beginM, endM int) {
 			var srs *[]*kv.SearchResult
 			var srs2 *[]*kv.SearchResult
