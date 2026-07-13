@@ -655,7 +655,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// we can create genome reader pools
 	n := (idx.opt.MaxOpenFiles - len(fileSeeds)*idx.opt.MaxSeedSearchingConcurrency - 1) / info.GenomeBatches // 1 is for the output file
-	if n < 2 {
+	if n < 1 {
+		idx.hasGenomeRdrs = false
+		log.Warningf("  no reader pools created for %d genome batches, please consider increasing the number of max open files (%d).",
+			info.GenomeBatches, idx.opt.MaxOpenFiles)
 	} else {
 		if n > opt.NumCPUs {
 			n = opt.NumCPUs
