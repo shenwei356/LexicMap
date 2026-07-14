@@ -1580,6 +1580,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					*srs2 = (*srs2)[:0] // important
 				}
 				kv.RecycleSearchResults(srs2)
+
+				<-idx.searcherTokens[iS] // return the access
 			}
 			if err != nil {
 				checkError(err)
@@ -1589,10 +1591,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				kv.RecycleSearchResults(srs)
 			} else {
 				ch <- srs // send result
-			}
-
-			if !inMemorySearch {
-				<-idx.searcherTokens[iS] // return the access
 			}
 
 			wg.Done()
