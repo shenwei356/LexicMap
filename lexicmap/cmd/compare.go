@@ -404,7 +404,7 @@ Output format:
 
 			g1, g2 := q.g1, q.g2
 
-			if g1.result == nil || len(*g1.result) == 0 {
+			if g1.result == nil || len(*g1.result) == 0 || (!orthoANI && (g2.result == nil || len(*g2.result) == 0)) {
 				RecycleGPair(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
@@ -731,8 +731,8 @@ func init() {
 
 	// ani-af related filtering
 
-	compareCmd.Flags().Float64P("min-af", "", 15.0,
-		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage).`))
+	compareCmd.Flags().Float64P("min-af", "", 0,
+		formatFlagUsage(`Only output results where each genome has aligned fraction > than this value (percentage).`))
 
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
