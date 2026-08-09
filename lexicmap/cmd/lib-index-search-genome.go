@@ -944,15 +944,13 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				gr.AlignedFragments++
 				gr.AlignedLength += c.AlignedLength - c.Gaps
 				gr.AlignedMatches += c.MatchedBases
-				gr.Pidents = append(gr.Pidents, c.PIdent)
+				gr.PidentsSum += c.PIdent
 			}
 
 			// gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength) // shouldn't do this
-			sumPident := 0.0
-			for _, p := range gr.Pidents {
-				sumPident += p
+			if gr.AlignedFragments > 0 {
+				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
-			gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
 			if gr.AFq > 1 {
@@ -1045,9 +1043,10 @@ type GSearchResult struct {
 	NumSeqs          int
 
 	AlignedFragments int
-	AlignedLength    int
 	AlignedMatches   int
-	Pidents          []float64
+	PidentsSum       float64
+
+	AlignedLength int
 
 	ANI   float64
 	AFq   float64
@@ -1067,7 +1066,7 @@ func (r *GSearchResult) Reset() {
 	r.AlignedFragments = 0
 	r.AlignedLength = 0
 	r.AlignedMatches = 0
-	r.Pidents = r.Pidents[:0]
+	r.PidentsSum = 0
 
 	r.ANI = 0
 	r.AFq = 0
@@ -1076,9 +1075,7 @@ func (r *GSearchResult) Reset() {
 }
 
 var poolGSearchResult = &sync.Pool{New: func() interface{} {
-	return &GSearchResult{
-		Pidents: make([]float64, 0, 10240),
-	}
+	return &GSearchResult{}
 }}
 
 var poolGSearchResults = &sync.Pool{New: func() interface{} {

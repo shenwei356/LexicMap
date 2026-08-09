@@ -83,8 +83,10 @@ Output format:
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
     3.  ANI,      Average nucleotide identity.
-    4.  qAF,      Align fraction of the query genome.
+    4.  qAF,      Align fraction of the query genome (sum_aligned_length / sum_fragment_length).
     5.  sAF,      Align fraction of the subject genome.
+                  Default mode : sum_aligned_length / sum_fragment_length)
+                  OrthoANI mode: sum_aligned_length / genome size)
     6.  qctgs,    Number of contigs in the query genome.
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.

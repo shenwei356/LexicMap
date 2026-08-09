@@ -895,16 +895,12 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				gr.AlignedFragments++
 				gr.AlignedLength += alignedLen - gaps
 				gr.AlignedMatches += matched
-				gr.Pidents = append(gr.Pidents, pident)
+				gr.PidentsSum += pident
 			}
 
 			// g) ANI / AF on the accumulated alignment.
-			if gr.AlignedLength > 0 {
-				sumPident := 0.0
-				for _, p := range gr.Pidents {
-					sumPident += p
-				}
-				gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+			if gr.AlignedFragments > 0 {
+				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
@@ -1092,16 +1088,12 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 		gr.AlignedFragments++
 		gr.AlignedLength += alignedLen - gaps
 		gr.AlignedMatches += matched
-		gr.Pidents = append(gr.Pidents, pident)
+		gr.PidentsSum += pident
 	}
 
 	// 7) Calculate ANI / AF on the accumulated alignment
-	if gr.AlignedLength > 0 {
-		sumPident := 0.0
-		for _, p := range gr.Pidents {
-			sumPident += p
-		}
-		gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+	if gr.AlignedFragments > 0 {
+		gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 	}
 	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 	gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
@@ -1390,9 +1382,12 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 
 	// 8) Identify orthologous fragments (reciprocal best hits)
 	fsort := func(a, b *Chain2Result) int {
+		// c.Evalue = c.AlignedFraction * c.PIdent // just for sorting, not the real e-value
 		if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
 			return d
 		}
+		// c.Score = int(ia)    // for finding the corresponding subject fragment in the reciprocal comparison
+		// c.BitScore = int(ib) // for finding the corresponding subject fragment in the reciprocal comparison
 		if d := cmp.Compare(a.Score, b.Score); d != 0 {
 			return d
 		}
@@ -1434,18 +1429,14 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		c = (*ls)[0]
 
 		gr.AlignedFragments++
-		gr.AlignedLength += c.AlignedLength - c.Gaps
 		gr.AlignedMatches += c.MatchedBases
-		gr.Pidents = append(gr.Pidents, c.PIdent)
+		gr.PidentsSum += c.PIdent
+		gr.AlignedLength += c.AlignedLength - c.Gaps
 	}
 
 	// 10) Calculate final ANI / AF
-	if gr.AlignedLength > 0 {
-		sumPident := 0.0
-		for _, p := range gr.Pidents {
-			sumPident += p
-		}
-		gr.ANI = sumPident / float64(len(gr.Pidents)) / 100
+	if gr.AlignedFragments > 0 {
+		gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 	}
 	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 	gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)

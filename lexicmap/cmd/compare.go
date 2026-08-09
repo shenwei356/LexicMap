@@ -64,11 +64,11 @@ Output format:
                   by the total genome sizes of two genomes.
     4.  ANI1,     Average nucleotide identity when aligning genome 1 to genome 2.
     5.  ANI2,     Average nucleotide identity when aligning genome 2 to genome 1.
-    6.  AF1,      Align fraction of genome 1.
-    7.  AF2,      Align fraction of genome 2.
-    8.  contigs1, Number of contigs in genome 1.
+    6.  AF1,      Align fraction of genome 1 (sum_aligned_length / sum_fragment_length).
+    7.  AF2,      Align fraction of genome 2 (sum_aligned_length / sum_fragment_length).
+    8.  ctgs1,    Number of contigs in genome 1.
     9.  size1,    Size of the genome 1.
-    10. contigs2, Number of contigs in genome 2.
+    10. ctgs2,    Number of contigs in genome 2.
     11. size2,    Size of the genome 1.
 
 `,
@@ -388,7 +388,7 @@ Output format:
 
 		gcIntervalMinus1 := gcInterval - 1
 
-		fmt.Fprintf(outfh, "genome1\tgenome2\ttANI\tANI1\tANI2\tAF1\tAF2\tcontigs1\tsize1\tcontigs2\tsize2\n")
+		fmt.Fprintf(outfh, "genome1\tgenome2\ttANI\tANI1\tANI2\tAF1\tAF2\tctgs1\tsize1\tctgs2\tsize2\n")
 
 		printResult := func(q *GPair) {
 			total++
