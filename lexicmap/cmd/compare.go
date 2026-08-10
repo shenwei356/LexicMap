@@ -470,7 +470,7 @@ Output format:
 		if orthoANI {
 			threads = opt.NumCPUs
 		} else {
-			threads = opt.NumCPUs / 2
+			threads = max(1, opt.NumCPUs/2)
 		}
 		tokens := make(chan int, threads) // cause each pair use 2 threads
 		fcpus := float64(threads)
