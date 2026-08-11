@@ -28,7 +28,6 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/twotwotwo/sorts"
-	"github.com/twotwotwo/sorts/sortutil"
 )
 
 // FragmentComparatorOptions defines the options for comparing two sets
@@ -245,7 +244,8 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 
 	topNFragments := cpr.options.TopNFragments
 	if topNFragments > 0 {
-		sortutil.Uint64s(*pairs)
+		// sortutil.Uint64s(*pairs)
+		slices.Sort(*pairs)
 
 		ma := poolFragPairMap.Get().(*map[uint64]*[]uint64)
 

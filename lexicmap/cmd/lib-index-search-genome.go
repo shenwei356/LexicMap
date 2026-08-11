@@ -35,7 +35,6 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/wfa"
-	"github.com/twotwotwo/sorts/sortutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
@@ -505,7 +504,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	for _, r := range *rs {
 		tmp := make([]uint64, len(r.BatchGenomeIndex))
 		copy(tmp, r.BatchGenomeIndex)
-		sortutil.Uint64s(tmp)
+		// sortutil.Uint64s(tmp)
+		slices.Sort(tmp)
 		for _, refBatchAndIdxUint64 = range r.BatchGenomeIndex {
 			(*whiteList)[refBatchAndIdxUint64] = &tmp
 		}
@@ -740,7 +740,8 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			if err != nil {
 				checkError(fmt.Errorf("fail to find similar fragments: %s", err))
 			}
-			sortutil.Uint64s(*pairs)
+			// sortutil.Uint64s(*pairs)
+			slices.Sort(*pairs)
 			// fmt.Fprintf(os.Stderr, "%s vs %s: %d pairs\n", query.id, g.ID, len(*pairs))
 
 			// -------------------------------------------------------------
