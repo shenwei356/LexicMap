@@ -33,7 +33,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	itree "github.com/rdleal/intervalst/interval"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
@@ -44,18 +43,20 @@ import (
 	"github.com/shenwei356/wfa"
 )
 
-// In-memory sketch of a subject genome. We only need it long enough to
-// process all query fragments against this subject, then it is recycled.
-// The seed layout mirrors what buildAnIndex writes to disk: primary k-mer
-// per mask plus extra k-mers from desert filling, stored against the same
-// per-mask slot. Positions are encoded as (pos << 1) | strand, matching
-// the convention used by MaskKnownDistinctPrefixes.
 // subjectSketch is an in-memory sketch of a subject genome for sampled k-mer matching.
-// It contains the concatenated sequence (forward + RC) and a k-mer map for fast lookup.
+// It is recycled after all query fragments have been processed against the subject.
 type subjectSketch struct {
-	seqLen         int
-	sampledKmerMap *map[uint64][]uint32 // k-mer -> positions
-	contigBounds   [][2]int             // [start, end) of each contig in forward strand
+	seqLen     int
+	forwardLen int
+	rcStart    int
+
+	// Most sampled k-mers occur only once. Store that common case directly in
+	// the main map and allocate a positions slice only for repeated k-mers.
+	// Values in sampledKmerMap are position+1, leaving zero available as the
+	// map's missing value.
+	sampledKmerMap  *map[uint64]uint32
+	repeatedKmerMap *map[uint64][]uint32
+	contigBounds    [][2]int // [start, end) of each contig in forward strand
 }
 
 var poolSubjectSketch = &sync.Pool{New: func() interface{} {
@@ -70,7 +71,12 @@ var poolConcat = &sync.Pool{New: func() interface{} {
 
 // poolKmerMap is for reusing k-mer maps in sampled mode
 var poolKmerMap = &sync.Pool{New: func() interface{} {
-	m := make(map[uint64][]uint32, 10240) // pre-allocate for ~10k k-mers
+	m := make(map[uint64]uint32, 10240) // pre-allocate for ~10k k-mers
+	return &m
+}}
+
+var poolRepeatedKmerMap = &sync.Pool{New: func() interface{} {
+	m := make(map[uint64][]uint32, 1024)
 	return &m
 }}
 
@@ -80,43 +86,35 @@ var poolQSeeds = &sync.Pool{New: func() interface{} {
 	return &s
 }}
 
-// kmerLookup stores the result of a k-mer map lookup for batch processing
-type kmerLookup struct {
-	qk    uint64
-	qloc  int
-	slocs []uint32
-}
+func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64][]uint32, kmer uint64, pos uint32) {
+	first, ok := (*kmers)[kmer]
+	if !ok {
+		(*kmers)[kmer] = pos + 1
+		return
+	}
 
-// poolKmerLookups is for reusing kmerLookup slices in batch processing
-var poolKmerLookups = &sync.Pool{New: func() interface{} {
-	s := make([]kmerLookup, 0, 64) // pre-allocate for batch processing
-	return &s
-}}
+	positions, ok := (*repeated)[kmer]
+	if !ok {
+		positions = make([]uint32, 1, 4)
+		positions[0] = first - 1
+	}
+	(*repeated)[kmer] = append(positions, pos)
+}
 
 // Sampling parameters for the simplified seeding strategy.
 var gsa3SampledK = 13     // fixed k-mer length for sampling
 var gsa3SamplingScale = 4 // sampling rate: keep if hash(kmer) % scale == 0
 
-// buildSubjectSketchSampledOptimized is the optimized version that accepts forwardLen and rcStart.
-// When forwardLen and rcStart are provided (> 0), it only processes the forward part and
-// mirrors k-mers to the RC part, avoiding redundant scanning (approximately 50% speedup).
+// buildSubjectSketchSampledOptimized scans the forward sequence once and records
+// enough strand information to address both the forward and RC concatenated copies.
 func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][2]int, contigBounds [][2]int, forwardLen int, rcStart int) (*subjectSketch, error) {
 	k := gsa3SampledK
 	k8 := uint8(k)
 	scale := uint64(gsa3SamplingScale)
 	scaleM1 := scale - 1
 
-	if len(seq) < k {
-		return nil, fmt.Errorf("sequence too short for k=%d", k)
-	}
-
-	// Get k-mer map from pool and clear it
-	kmerMap := poolKmerMap.Get().(*map[uint64][]uint32)
-
-	// Build interval tree for skip regions
-	tree := itree.NewSearchTree[uint8, int](cmpFn)
-	for _, r := range skipRegions {
-		tree.Insert(r[0]-k+1, r[1], 1)
+	if len(seq) < k || forwardLen < k || rcStart <= forwardLen || rcStart >= len(seq) {
+		return nil, fmt.Errorf("invalid forward/RC sequence layout for k=%d", k)
 	}
 
 	// Low-complexity k-mer values
@@ -124,109 +122,59 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 	ggg := util.Ns(0b10, k8)
 	ttt := (uint64(1) << (k << 1)) - 1
 
-	if forwardLen > 0 && rcStart > 0 && rcStart < len(seq) {
-		// Optimized path: only process forward part, then mirror to RC part
-		iter, err := iterator.NewKmerIterator(seq[:forwardLen], k)
-		if err != nil {
-			return nil, err
+	// Only scan the forward strand. A sampled occurrence is encoded as
+	// (position << 1) | canonical-strand and converted to its forward or RC
+	// coordinate during lookup.
+	iter, err := iterator.NewKmerIterator(seq[:forwardLen], k)
+	if err != nil {
+		return nil, err
+	}
+
+	kmerMap := poolKmerMap.Get().(*map[uint64]uint32)
+	repeatedKmerMap := poolRepeatedKmerMap.Get().(*map[uint64][]uint32)
+
+	region := 0
+	var canonical uint64
+	var canonicalRC uint32
+	for pos := 0; ; pos++ {
+		kmer, kmerRC, ok, _ := iter.NextKmer()
+		if !ok {
+			break
 		}
 
-		pos := 0
-		for {
-			kmer, kmerRC, ok, _ := iter.NextKmer()
-			if !ok {
-				break
-			}
-
-			// Skip if in a skip region
-			if _, inGap := tree.AnyIntersection(pos, pos); inGap {
-				pos++
-				continue
-			}
-
-			// Use canonical k-mer for sampling decision
-			canonical := kmer
-			if kmerRC < kmer {
-				canonical = kmerRC
-			}
-
-			// Sample using hash modulo
-			if util.Hash64(canonical)&scaleM1 != 0 {
-				pos++
-				continue
-			}
-
-			// Skip low-complexity k-mers
-			if kmer == ccc || kmer == ggg || kmer == ttt || util.IsLowComplexityDust(kmer, k8) {
-				pos++
-				continue
-			}
-
-			// Store k-mer in forward part
-			if _, exists := (*kmerMap)[kmer]; !exists {
-				// Pre-allocate with reasonable capacity to reduce reallocations
-				(*kmerMap)[kmer] = make([]uint32, 0, 1)
-			}
-			(*kmerMap)[kmer] = append((*kmerMap)[kmer], uint32(pos))
-
-			// Mirror to RC part: the RC position is rcStart + (forwardLen - pos - k)
-			rcPos := rcStart + (forwardLen - pos - k)
-			if _, exists := (*kmerMap)[kmerRC]; !exists {
-				(*kmerMap)[kmerRC] = make([]uint32, 0, 1)
-			}
-			(*kmerMap)[kmerRC] = append((*kmerMap)[kmerRC], uint32(rcPos))
-
-			pos++
+		// skipRegions is sorted by start. Expand each interval to the left by
+		// k-1 so no retained k-mer crosses a gap.
+		for region < len(skipRegions) && pos > skipRegions[region][1] {
+			region++
 		}
-	} else {
-		// Fallback: process entire sequence (original behavior)
-		iter, err := iterator.NewKmerIterator(seq, k)
-		if err != nil {
-			return nil, err
+		if region < len(skipRegions) && pos >= skipRegions[region][0]-k+1 {
+			continue
 		}
 
-		pos := 0
-		for {
-			kmer, kmerRC, ok, _ := iter.NextKmer()
-			if !ok {
-				break
-			}
-
-			// Skip if in a skip region
-			if _, inGap := tree.AnyIntersection(pos, pos); inGap {
-				pos++
-				continue
-			}
-
-			// Use canonical k-mer for sampling decision
-			canonical := kmer
-			if kmerRC < kmer {
-				canonical = kmerRC
-			}
-
-			// Sample using hash modulo
-			if util.Hash64(canonical)&scaleM1 != 0 {
-				pos++
-				continue
-			}
-
-			// Skip low-complexity k-mers
-			if kmer == ccc || kmer == ggg || kmer == ttt || util.IsLowComplexityDust(kmer, k8) {
-				pos++
-				continue
-			}
-
-			// Store both forward and reverse k-mers
-			(*kmerMap)[kmer] = append((*kmerMap)[kmer], uint32(pos<<1))
-			(*kmerMap)[kmerRC] = append((*kmerMap)[kmerRC], uint32(pos<<1|1))
-
-			pos++
+		canonical = kmer
+		canonicalRC = 0
+		if kmerRC < kmer {
+			canonical = kmerRC
+			canonicalRC = 1
 		}
+
+		if util.Hash64(canonical)&scaleM1 != 0 {
+			continue
+		}
+
+		if kmer == ccc || kmer == ggg || kmer == ttt || util.IsLowComplexityDust(kmer, k8) {
+			continue
+		}
+
+		addSampledKmerPosition(kmerMap, repeatedKmerMap, canonical, uint32(pos)<<1|canonicalRC)
 	}
 
 	s := poolSubjectSketch.Get().(*subjectSketch)
 	s.seqLen = len(seq)
+	s.forwardLen = forwardLen
+	s.rcStart = rcStart
 	s.sampledKmerMap = kmerMap
+	s.repeatedKmerMap = repeatedKmerMap
 	s.contigBounds = contigBounds
 
 	return s, nil
@@ -242,12 +190,15 @@ func (idx *Index) recycleSubjectSketch(s *subjectSketch) {
 		poolKmerMap.Put(s.sampledKmerMap)
 		s.sampledKmerMap = nil
 	}
+	if s.repeatedKmerMap != nil {
+		clear(*s.repeatedKmerMap)
+		poolRepeatedKmerMap.Put(s.repeatedKmerMap)
+		s.repeatedKmerMap = nil
+	}
 	poolSubjectSketch.Put(s)
 }
 
-// qFragSeedsSampled holds sampled k-mers for a query fragment in the simplified seeding mode.
 // sampleQueryFragment samples fixed-length k-mers from a query fragment.
-// Modified to only extract forward strand k-mers.
 func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 	k := gsa3SampledK
 	k8 := uint8(k)
@@ -268,20 +219,27 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 
 	iter, err := iterator.NewKmerIterator(frag, k)
 	if err != nil {
+		*sampledKmers = (*sampledKmers)[:0]
+		poolKmerAndLocs.Put(sampledKmers)
 		return nil, err
 	}
 
 	pos := 0
+	var canonical uint64
+	var canonicalRC uint64
 	for {
 		kmer, kmerRC, ok, _ := iter.NextKmer()
 		if !ok {
 			break
 		}
 
-		// Use canonical k-mer for sampling decision
-		canonical := kmer
+		// Use canonical k-mer for sampling and lookup. Store the query
+		// canonical strand in the low bit of the position.
+		canonical = kmer
+		canonicalRC = 0
 		if kmerRC < kmer {
 			canonical = kmerRC
+			canonicalRC = 1
 		}
 
 		// Sample using hash modulo (fast bitwise AND since scale is power of 2)
@@ -296,8 +254,7 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 			continue
 		}
 
-		// Store only forward strand k-mers
-		*sampledKmers = append(*sampledKmers, kmer, uint64(pos))
+		*sampledKmers = append(*sampledKmers, canonical, uint64(pos)<<1|canonicalRC)
 
 		pos++
 	}
@@ -305,19 +262,11 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 	return sampledKmers, nil
 }
 
-// addAnchor emits one SubstrPair from a (qLoc, sLoc) match. The two locs are
-// (pos << 1) | strand_bit; relative strand tells us whether the alignment
-// is forward (both strands the same) or reverse (different strands). For
-// reverse anchors we re-express the subject position in RC-subject
-// coordinates so the chainer can treat both groups uniformly.
 // alignQueryFragToSubjectSampled matches a query fragment against a sampled subject sketch.
-// The sKmerMap should be pre-built once for all fragments to avoid repeated construction.
-// Modified version: query only has forward strand k-mers, subject is forward + RC concatenated.
 func alignQueryFragToSubjectSampled(
 	qfrag []byte,
 	qSeeds *[]uint64,
 	sketch *subjectSketch,
-	sKmerMap *map[uint64][]uint32,
 	concat []byte,
 	chainer *Chainer2,
 	algn *wfa.Aligner,
@@ -335,65 +284,60 @@ func alignQueryFragToSubjectSampled(
 	*allSubs = (*allSubs)[:0]
 	defer RecycleSubstrPairs(poolSub, poolSubsLong, allSubs)
 
-	if sKmerMap == nil || len(*sKmerMap) == 0 {
+	if sketch.sampledKmerMap == nil || len(*sketch.sampledKmerMap) == 0 {
 		return 0, 0, 0, 0, false
 	}
 
 	qKmers := *qSeeds
+	sKmerMap := sketch.sampledKmerMap
+	repeatedKmerMap := sketch.repeatedKmerMap
 
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
-	// Use batching to improve cache locality and reduce map lookup overhead
 	const maxMatchesPerKmer = 100
-	const batchSize = 8 // Process multiple k-mers in a batch
 
-	// Get lookups slice from pool and reuse it
-	lookups := poolKmerLookups.Get().(*[]kmerLookup)
-	defer func() {
-		*lookups = (*lookups)[:0]
-		poolKmerLookups.Put(lookups)
-	}()
-
-	// Pre-fetch map entries in batches to improve cache hit rate
-	for batchStart := 0; batchStart+1 < len(qKmers); batchStart += batchSize * 2 {
-		batchEnd := batchStart + batchSize*2
-		if batchEnd > len(qKmers) {
-			batchEnd = len(qKmers)
+	for i := 0; i+1 < len(qKmers); i += 2 {
+		qk := qKmers[i]
+		first, found := (*sKmerMap)[qk]
+		if !found {
+			continue
 		}
 
-		// First pass: lookup all k-mers in the batch to warm up cache
-		*lookups = (*lookups)[:0]
-
-		for i := batchStart; i+1 < batchEnd; i += 2 {
-			qk := qKmers[i]
-			qloc := int(qKmers[i+1])
-
-			if slocs, found := (*sKmerMap)[qk]; found {
-				*lookups = append(*lookups, kmerLookup{qk, qloc, slocs})
+		qposAndStrand := qKmers[i+1]
+		qpos := int32(qposAndStrand >> 1)
+		qCanonicalRC := uint32(qposAndStrand & 1)
+		positions, repeated := (*repeatedKmerMap)[qk]
+		if !repeated {
+			sub := poolSub.Get().(*SubstrPair)
+			sub.Len = uint8(K)
+			sub.QBegin = qpos
+			sposAndStrand := first - 1
+			spos := int(sposAndStrand >> 1)
+			if sposAndStrand&1 != qCanonicalRC {
+				spos = sketch.rcStart + sketch.forwardLen - spos - K
 			}
+			sub.TBegin = int32(spos)
+			sub.QRC = false
+			sub.TRC = false
+			*allSubs = append(*allSubs, sub)
+			continue
 		}
 
-		// Second pass: process all matches in the batch
-		for _, lookup := range *lookups {
-			maxN := len(lookup.slocs)
-			if maxN > maxMatchesPerKmer {
-				maxN = maxMatchesPerKmer
+		if len(positions) > maxMatchesPerKmer {
+			positions = positions[:maxMatchesPerKmer]
+		}
+		for _, posAndStrand := range positions {
+			spos := int(posAndStrand >> 1)
+			if posAndStrand&1 != qCanonicalRC {
+				spos = sketch.rcStart + sketch.forwardLen - spos - K
 			}
-
-			for j := 0; j < maxN; j++ {
-				sloc := int(lookup.slocs[j])
-				qpos := lookup.qloc
-				spos := sloc
-
-				// Create anchor directly without strand consideration
-				sub := poolSub.Get().(*SubstrPair)
-				sub.Len = uint8(K)
-				sub.QBegin = int32(qpos)
-				sub.TBegin = int32(spos)
-				sub.QRC = false
-				sub.TRC = false
-				*allSubs = append(*allSubs, sub)
-			}
+			sub := poolSub.Get().(*SubstrPair)
+			sub.Len = uint8(K)
+			sub.QBegin = qpos
+			sub.TBegin = int32(spos)
+			sub.QRC = false
+			sub.TRC = false
+			*allSubs = append(*allSubs, sub)
 		}
 	}
 
@@ -622,6 +566,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 
 	// 1) Cut the query into fragments.
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	defer recycleFragments(qfrags)
 	if len(*qfrags) == 0 {
 		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
 	}
@@ -883,7 +828,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 
 			for i, qfrag := range *qfrags {
 				matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
-					qfrag, (*qSeeds)[i], sketch, sketch.sampledKmerMap, (*concat),
+					qfrag, (*qSeeds)[i], sketch, (*concat),
 					chainer, algn, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
 					&fScoreAndEvalue,
@@ -952,6 +897,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
 	// 1) Cut the query into fragments.
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	defer recycleFragments(qfrags)
 	if len(*qfrags) == 0 {
 		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
 	}
@@ -1077,7 +1023,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 
 	for i, qfrag := range *qfrags {
 		matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
-			qfrag, (*qSeeds)[i], sketch, sketch.sampledKmerMap, (*concat),
+			qfrag, (*qSeeds)[i], sketch, (*concat),
 			chainer, algn, K, extLen, extLen2,
 			minPIdent, minQcovHSP, idx,
 			&fScoreAndEvalue,
@@ -1465,7 +1411,10 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 
 // ReadGenome reads a genome from a sequence file
 func ReadGenomeFromFile(file string, reRefName *regexp.Regexp) (*GQuery, error) {
-	fastxReader, err := fastx.NewDefaultReader(file)
+	// NewDefaultReader writes a package-global flag on every construction,
+	// which races when compare reads both genomes concurrently. We do not use
+	// record IDs here, so a non-default ID regexp avoids that shared write.
+	fastxReader, err := fastx.NewReader(nil, file, `^(.+)$`)
 	if err != nil {
 		return nil, err
 	}

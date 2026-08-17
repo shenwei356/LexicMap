@@ -571,33 +571,35 @@ Output format:
 				// read genome sequences
 				_wg.Add(2)
 				go func() {
+					var readErr error
 					if loadIndex {
 						batchIDAndRefIDs, ok := gname2idx[genome1]
 						if !ok {
 							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome1))
 						}
-						q.g1, err = idx.ReadGenome(batchIDAndRefIDs)
-						checkError(err)
+						q.g1, readErr = idx.ReadGenome(batchIDAndRefIDs)
+						checkError(readErr)
 						q.g1.id = append(q.g1.id, []byte(genome1)...)
 					} else {
-						q.g1, err = ReadGenomeFromFile(genome1, reRefName)
-						checkError(err)
+						q.g1, readErr = ReadGenomeFromFile(genome1, reRefName)
+						checkError(readErr)
 					}
 
 					_wg.Done()
 				}()
 				go func() {
+					var readErr error
 					if loadIndex {
 						batchIDAndRefIDs, ok := gname2idx[genome2]
 						if !ok {
 							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome2))
 						}
-						q.g2, err = idx.ReadGenome(batchIDAndRefIDs)
-						checkError(err)
+						q.g2, readErr = idx.ReadGenome(batchIDAndRefIDs)
+						checkError(readErr)
 						q.g2.id = append(q.g2.id, []byte(genome2)...)
 					} else {
-						q.g2, err = ReadGenomeFromFile(genome2, reRefName)
-						checkError(err)
+						q.g2, readErr = ReadGenomeFromFile(genome2, reRefName)
+						checkError(readErr)
 					}
 
 					_wg.Done()
@@ -607,13 +609,14 @@ Output format:
 				// compare genomes
 				_wg.Add(2)
 				go func() {
+					var compareErr error
 					if orthoANI {
-						err = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF)
+						compareErr = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF)
 					} else {
-						err = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF)
+						compareErr = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF)
 					}
-					if err != nil {
-						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, err))
+					if compareErr != nil {
+						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, compareErr))
 					}
 
 					_wg.Done()
@@ -623,9 +626,9 @@ Output format:
 						// unnecessary
 						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF)
 					} else {
-						err = idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF)
-						if err != nil {
-							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, err))
+						compareErr := idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF)
+						if compareErr != nil {
+							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, compareErr))
 						}
 
 					}

@@ -152,6 +152,8 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 	k := cpr.options.K
 	scaled := uint64(cpr.options.Scaled)
 	useSketching := scaled > 1
+	useScaleMask := useSketching && scaled&(scaled-1) == 0 // could be faster
+	scaleMask := scaled - 1
 
 	ccc := cpr.ccc
 	ggg := cpr.ggg
@@ -175,14 +177,23 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 				break
 			}
 
-			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
-				util.IsLowComplexityDust(kmer, k) {
-				continue
-			}
-
 			canon = min(kmer, kmerRC)
 
-			if useSketching && util.Hash64(canon)%scaled != 0 {
+			if useSketching {
+				hash := util.Hash64(canon)
+				if useScaleMask {
+					if hash&scaleMask != 0 {
+						continue
+					}
+				} else if hash%scaled != 0 {
+					continue
+				}
+			}
+
+			// DUST is relatively expensive. Apply it only after sampling; the
+			// two independent filters commute and produce the same entries.
+			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
+				util.IsLowComplexityDust(kmer, k) {
 				continue
 			}
 
