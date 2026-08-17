@@ -161,20 +161,24 @@ Limitations:
 		// -------------------------------------------------------------------------
 		// choose masks
 		var maskPrefix int
-		masks := make(map[uint64]struct{}, len(lh.Masks))
+		selectedMasks := make([]bool, len(lh.Masks))
+		totalMasks := 0
 		if nMasks == 0 {
-			for _, mask := range lh.Masks {
-				masks[mask] = struct{}{}
+			for i := range selectedMasks {
+				selectedMasks[i] = true
 			}
+			totalMasks = len(selectedMasks)
 		} else {
-			maskPrefix = int(math.Log2(float64(nMasks)) / 2)
-			m := make(map[uint64]struct{}, maskPrefix)
-			for _, mask := range lh.Masks {
-				prefix := mask >> (uint64(lh.K-maskPrefix) << 1)
-				if _, ok := m[prefix]; !ok {
-					masks[mask] = struct{}{}
-
-					m[prefix] = struct{}{}
+			// maskPrefix = int(math.Log2(float64(nMasks)) / 2)
+			maskPrefix = bits.TrailingZeros(uint(nMasks)) / 2
+			seenPrefixes := make(map[uint64]struct{}, nMasks)
+			shift := uint64(lh.K-maskPrefix) << 1
+			for i, mask := range lh.Masks {
+				prefix := mask >> shift
+				if _, ok := seenPrefixes[prefix]; !ok {
+					selectedMasks[i] = true
+					totalMasks++
+					seenPrefixes[prefix] = struct{}{}
 				}
 			}
 		}
@@ -191,7 +195,7 @@ Limitations:
 			showProgressBar = true
 
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(len(masks)),
+			bar = pbs.AddBar(int64(totalMasks),
 				mpb.PrependDecorators(
 					decor.Name("processed masks: ", decor.WC{W: len("processed masks: "), C: decor.DindentRight}),
 					decor.Name("", decor.WCSyncSpaceR),
@@ -218,11 +222,9 @@ Limitations:
 
 		// -------------------------------------------------------------------------
 
-		// Active pairs tracking for probabilistic pruning
-		activePairs := make(map[uint64]int, 10240) // pair -> number of matches
-
-		// Global statistics across all masks - accumulate prefix length sums
-		globalCounts := make(map[uint64]uint32, 10240) // gid1<<32|gid2 -> sum of prefix lengths
+		// Keep match count and prefix sum in one map to avoid storing and hashing
+		// every pair key twice.
+		pairStats := make(map[uint64]PairStats, 10240)
 
 		// Calculate threshold for minimum prefix length
 		// threshold = 1 << ((k - minPrefix) * 2)
@@ -231,7 +233,6 @@ Limitations:
 		threshold := uint64(1) << ((k - minPrefix) * 2)
 		minPrefixU8 := uint8(minPrefix) // convert to uint8 for comparison
 
-		totalMasks := len(masks) // len(lh.Masks)
 		requiredMatches := int(minMaskFraction * float64(totalMasks))
 
 		if outputLog {
@@ -247,15 +248,16 @@ Limitations:
 			StartTime time.Time
 		}
 
-		ch := make(chan *Result, opt.NumCPUs)
+		ch := make(chan Result, opt.NumCPUs)
 		done := make(chan int)
 		go func() {
 			var processedMasks, remaining int
 			remaining = totalMasks
 			var pair uint64
 			var ok, shouldAddNewPair bool
-			var matches int
+			var stats PairStats
 			var prefixLen uint8
+			var pruneDecisions []int8
 
 			for result := range ch {
 				maskCounts := result.Counts
@@ -282,13 +284,16 @@ Limitations:
 				if probThreshold == 0 { //  no pruning
 					// Simply accumulate all pairs
 					for pair, prefixLen = range *maskCounts {
-						activePairs[pair]++
-						globalCounts[pair] += uint32(prefixLen)
+						stats = pairStats[pair]
+						stats.matches++
+						stats.sumPrefix += uint32(prefixLen)
+						pairStats[pair] = stats
 					}
 
 				} else {
 
 					// Check if new pairs can still reach the threshold
+					shouldAddNewPair = false
 					if 1+remaining >= requiredMatches {
 						// Pre-compute probability check for new pairs (count=1)
 						shouldAddNewPair = shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold)
@@ -296,26 +301,43 @@ Limitations:
 
 					// Update match counts for pairs that matched in this mask
 					for pair, prefixLen = range *maskCounts {
-						matches, ok = activePairs[pair]
+						stats, ok = pairStats[pair]
 						if !ok {
 							// New pair: check if it passes probability check
 							if shouldAddNewPair {
-								activePairs[pair] = 1
-								globalCounts[pair] += uint32(prefixLen)
+								pairStats[pair] = PairStats{matches: 1, sumPrefix: uint32(prefixLen)}
 							}
 						} else {
 							// Existing pair: increment count
-							activePairs[pair] = matches + 1
-							globalCounts[pair] += uint32(prefixLen)
+							stats.matches++
+							stats.sumPrefix += uint32(prefixLen)
+							pairStats[pair] = stats
 						}
 					}
 
 					// Probabilistic pruning: check all active pairs to remove impossible ones early
 					if processedMasks < totalMasks && processedMasks&7 == 0 {
-						for pair, matches = range activePairs {
-							if matches > 1 && !shouldKeepPair(processedMasks, matches, minMaskFraction, totalMasks, probThreshold) {
-								delete(activePairs, pair)
-								delete(globalCounts, pair)
+						if cap(pruneDecisions) <= processedMasks {
+							pruneDecisions = make([]int8, processedMasks+1)
+						} else {
+							pruneDecisions = pruneDecisions[:processedMasks+1]
+							clear(pruneDecisions)
+						}
+						for pair, stats = range pairStats {
+							if stats.matches <= 1 {
+								continue
+							}
+							decision := pruneDecisions[stats.matches]
+							if decision == 0 {
+								if shouldKeepPair(processedMasks, int(stats.matches), minMaskFraction, totalMasks, probThreshold) {
+									decision = 1
+								} else {
+									decision = -1
+								}
+								pruneDecisions[stats.matches] = decision
+							}
+							if decision < 0 {
+								delete(pairStats, pair)
 							}
 						}
 					}
@@ -371,7 +393,7 @@ Limitations:
 				}
 				defer fh.Close()
 
-				r := bufio.NewReaderSize(fh, 4096)
+				r := bufio.NewReaderSize(fh, 64<<10)
 
 				var n int
 
@@ -421,7 +443,6 @@ Limitations:
 				if !use3BytesForSeedPos {
 					checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
 				}
-
 				bytesPos = 8
 				fUint64 = be.Uint64
 				if use3BytesForSeedPos {
@@ -430,7 +451,7 @@ Limitations:
 				}
 
 				// kv-data index file
-				_, _, indexes, _, _, _, err := kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
+				indexes, err := kv.ReadKVIndexStarts(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
 				if err != nil {
 					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
 				}
@@ -439,6 +460,7 @@ Limitations:
 				// data of all masks
 
 				buf := make([]byte, 64)
+				valueBuf := make([]byte, 0, 4096)
 				var ctrlByte byte
 				var first bool     // the first kmer has a different way to compute the value
 				var lastPair bool  // check if this is the last pair
@@ -451,22 +473,25 @@ Limitations:
 				var lenVal1, lenVal2 uint64
 				var j uint64
 				var v, batchIDAndRefID uint64
-				var i int
-
-				var mask uint64
+				var i, valueOffset, nValueBytes int
+				var lastGenome uint32
+				var hasLastGenome bool
 
 				for iMask := 0; iMask < nMasks; iMask++ {
-					mask = lh.Masks[iFirstMask+iMask]
-					if _, ok := masks[mask]; !ok { // not wanted
+					maskIndex := iFirstMask + iMask
+					if !selectedMasks[maskIndex] {
 						continue
 					}
 
-					timeStart := time.Now()
+					var maskStart time.Time
+					if showProgressBar {
+						maskStart = time.Now()
+					}
 
-					if len(indexes[iMask]) == 0 { // no k-mers
-						ch <- &Result{
+					if indexes[iMask][1] == 0 { // no k-mers
+						ch <- Result{
 							Counts:    nil,
-							StartTime: timeStart,
+							StartTime: maskStart,
 						}
 						continue
 					}
@@ -475,7 +500,7 @@ Limitations:
 					genomes := poolGenomes.Get().(*[]uint32)
 
 					// Sliding window for all-to-all comparison
-					window := poolKmerWindow.Get().(*[]*KmerRecord)
+					window := poolKmerWindow.Get().(*KmerWindow)
 
 					// Per-mask tracking: which genomes appear in this mask
 					// local counts for this mask (max prefix per pair)
@@ -553,22 +578,46 @@ Limitations:
 							checkError(kv.ErrBrokenFile)
 						}
 
+						// Values of the two k-mers are contiguous in the file. Read
+						// them in one operation instead of one io.ReadFull call per
+						// encoded value.
+						nValues := lenVal1
+						if hasKmer2 {
+							nValues += lenVal2
+						}
+						nValueBytes = int(nValues) * bytesPos
+						if cap(valueBuf) < nValueBytes {
+							valueBuf = make([]byte, nValueBytes)
+						} else {
+							valueBuf = valueBuf[:nValueBytes]
+						}
+						if nValueBytes > 0 {
+							nReaded, err = io.ReadFull(r, valueBuf)
+							if nReaded < nValueBytes || err != nil {
+								checkError(kv.ErrBrokenFile)
+							}
+						}
+						valueOffset = 0
+
 						// ------------------ values for kmer1 -------------------
 
 						*genomes = (*genomes)[:0] // reuse slice
+						hasLastGenome = false
 						for j = 0; j < lenVal1; j++ {
-							nReaded, err = io.ReadFull(r, buf[:bytesPos])
-							if nReaded < bytesPos {
-								checkError(kv.ErrBrokenFile)
-							}
-
-							v = fUint64(buf[:bytesPos])
+							v = fUint64(valueBuf[valueOffset : valueOffset+bytesPos])
+							valueOffset += bytesPos
 							if v&MASK_REVERSE == 1 {
 								continue // skip reverse complement
 							}
 							// Extract genome ID (batchID + refID)
 							batchIDAndRefID = (v >> BITS_NONE_IDX) & 4294967295
-							*genomes = append(*genomes, uint32(batchIDAndRefID))
+							genome := uint32(batchIDAndRefID)
+							if hasLastGenome && genome == lastGenome {
+								continue
+							}
+							*genomes = append(*genomes, genome)
+							lastGenome = genome
+							hasLastGenome = true
 						}
 
 						// Process kmer1 with sliding window
@@ -583,18 +632,21 @@ Limitations:
 						// ------------------ values for kmer2 -------------------
 
 						*genomes = (*genomes)[:0] // reuse slice
+						hasLastGenome = false
 						for j = 0; j < lenVal2; j++ {
-							nReaded, err = io.ReadFull(r, buf[:bytesPos])
-							if nReaded < bytesPos {
-								checkError(kv.ErrBrokenFile)
-							}
-
-							v = fUint64(buf[:bytesPos])
+							v = fUint64(valueBuf[valueOffset : valueOffset+bytesPos])
+							valueOffset += bytesPos
 							if v&MASK_REVERSE == 1 {
 								continue // skip reverse complement
 							}
 							batchIDAndRefID = (v >> BITS_NONE_IDX) & 4294967295
-							*genomes = append(*genomes, uint32(batchIDAndRefID))
+							genome := uint32(batchIDAndRefID)
+							if hasLastGenome && genome == lastGenome {
+								continue
+							}
+							*genomes = append(*genomes, genome)
+							lastGenome = genome
+							hasLastGenome = true
 						}
 
 						// Process kmer2 with sliding window
@@ -610,16 +662,18 @@ Limitations:
 					// recycle objects and send result
 					poolGenomes.Put(genomes)
 
-					for i = range *window {
-						(*window)[i].genomes = (*window)[i].genomes[:0]
-						poolKmerRecord.Put((*window)[i])
+					for i = window.head; i < len(window.records); i++ {
+						window.records[i].genomes = window.records[i].genomes[:0]
+						poolKmerRecord.Put(window.records[i])
 					}
-					*window = (*window)[:0]
+					clear(window.records)
+					window.records = window.records[:0]
+					window.head = 0
 					poolKmerWindow.Put(window)
 
-					ch <- &Result{
+					ch <- Result{
 						Counts:    maskCounts,
-						StartTime: timeStart,
+						StartTime: maskStart,
 					}
 				}
 
@@ -644,16 +698,14 @@ Limitations:
 			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
 		}
 
-		results := make([]PairResult, 0, len(globalCounts))
-		var matchedMasks int
-		for pair, sumPrefix := range globalCounts {
+		results := make([]PairResult, 0, len(pairStats))
+		for pair, stats := range pairStats {
 			// Only output pairs that meet the required threshold
-			matchedMasks = activePairs[pair]
-			if matchedMasks >= requiredMatches {
+			if int(stats.matches) >= requiredMatches {
 				results = append(results, PairResult{
 					pair:      pair,
-					nMasks:    matchedMasks,
-					sumPrefix: sumPrefix,
+					nMasks:    int(stats.matches),
+					sumPrefix: stats.sumPrefix,
 				})
 			}
 		}
@@ -803,9 +855,13 @@ var poolGenomes = &sync.Pool{New: func() interface{} {
 
 const WindowInitialSize = 1 << 18
 
+type KmerWindow struct {
+	records []*KmerRecord
+	head    int
+}
+
 var poolKmerWindow = &sync.Pool{New: func() interface{} {
-	tmp := make([]*KmerRecord, 0, WindowInitialSize)
-	return &tmp
+	return &KmerWindow{records: make([]*KmerRecord, 0, WindowInitialSize)}
 }}
 
 var poolMaskCounts = &sync.Pool{New: func() interface{} {
@@ -814,29 +870,26 @@ var poolMaskCounts = &sync.Pool{New: func() interface{} {
 }}
 
 // processKmerWithWindow processes a k-mer against the sliding window
-func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *[]*KmerRecord, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) { // , blacklist *sync.Map) {
-	// only move elements when waste exceeds this threshold
-	// const moveThreshold = 8
+func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *KmerWindow, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) { // , blacklist *sync.Map) {
+	records := window.records
+	head := window.head
 
 	// Clean up window: remove k-mers that are too far away
-	windowStart := 0
-	for windowStart < len(*window) && currentCode-(*window)[windowStart].code >= threshold {
+	for head < len(records) && currentCode-records[head].code >= threshold {
 		// Return KmerRecord to pool
-		(*window)[windowStart].genomes = (*window)[windowStart].genomes[:0]
-		poolKmerRecord.Put((*window)[windowStart])
-		windowStart++
+		records[head].genomes = records[head].genomes[:0]
+		poolKmerRecord.Put(records[head])
+		records[head] = nil
+		head++
 	}
 
-	// Move valid elements to the front only when waste exceeds threshold
-	// if windowStart >= moveThreshold {
-	// 	if windowStart < len(*window) {
-	// 		copy(*window, (*window)[windowStart:])
-	// 	}
-	// 	*window = (*window)[:len(*window)-windowStart]
-	// } else
-	if windowStart > 0 {
-		// Just trim the slice without copying
-		*window = (*window)[windowStart:]
+	// Compact occasionally. Keeping a head index avoids copying on every k-mer
+	// while retaining the full backing slice for the next mask.
+	if head >= 4096 && head >= len(records)/2 {
+		n := copy(records, records[head:])
+		clear(records[n:])
+		records = records[:n]
+		head = 0
 	}
 
 	// Compare with all k-mers in the window
@@ -844,10 +897,10 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	var g1, g2 uint32
 	// var ok bool
 	var prefixLen uint8
-	for i := range *window {
+	for i := head; i < len(records); i++ {
 		// Calculate exact prefix length using XOR and leading zeros
 		// prefixLen = (bits.LeadingZeros64(kmer1^kmer2) >> 1) + kMinus32
-		prefixLen = uint8((bits.LeadingZeros64(currentCode^(*window)[i].code) >> 1) + kMinus32)
+		prefixLen = uint8((bits.LeadingZeros64(currentCode^records[i].code) >> 1) + kMinus32)
 
 		// Skip if prefix length is less than minimum
 		if prefixLen < minPrefix {
@@ -855,7 +908,7 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 		}
 
 		// Cartesian product of genome IDs
-		for _, g1 = range (*window)[i].genomes {
+		for _, g1 = range records[i].genomes {
 			for _, g2 = range *currentGenomes {
 				if g1 == g2 {
 					continue // skip self-comparison
@@ -918,18 +971,15 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	record.code = currentCode
 	record.genomes = append(record.genomes, (*currentGenomes)...)
 
-	if cap(*window) == len(*window) { // need to resize
-		if len(*window) == 0 {
-			*window = make([]*KmerRecord, 0, WindowInitialSize)
-		} else {
-			tmp := make([]*KmerRecord, len(*window), WindowInitialSize)
-			copy(tmp, *window)
-			*window = tmp
-		}
-	}
-
 	// Add current k-mer to window
-	*window = append(*window, record)
+	records = append(records, record)
+	window.records = records
+	window.head = head
+}
+
+type PairStats struct {
+	matches   uint32
+	sumPrefix uint32
 }
 
 // Collect results into slice for sorting

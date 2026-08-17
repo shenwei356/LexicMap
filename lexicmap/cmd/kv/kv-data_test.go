@@ -63,6 +63,32 @@ func TestKVData(t *testing.T) {
 		return
 	}
 
+	// The lightweight index reader used by genome pair must return the same
+	// first k-mer and offset as the full anchor index.
+	fileIdx := filepath.Clean(file) + KVIndexFileExt
+	_, _, fullIndexes, _, _, _, err := ReadKVIndex(fileIdx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	starts, err := ReadKVIndexStarts(fileIdx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(starts) != len(fullIndexes) {
+		t.Fatalf("index mask count mismatch: %d != %d", len(starts), len(fullIndexes))
+	}
+	for i := range starts {
+		if len(fullIndexes[i]) == 0 {
+			if starts[i] != [2]uint64{} {
+				t.Fatalf("unexpected start for empty mask %d: %v", i, starts[i])
+			}
+			continue
+		}
+		if starts[i][0] != fullIndexes[i][0] || starts[i][1] != fullIndexes[i][1] {
+			t.Fatalf("index start mismatch for mask %d: %v != %v", i, starts[i], fullIndexes[i][:2])
+		}
+	}
+
 	// -------------------------------------------------------------------
 	// reader
 	rdr, err := NewReader(file)
@@ -303,7 +329,6 @@ func TestKVData(t *testing.T) {
 		t.Errorf("failed to remove the kv-data file: %s", file)
 		return
 	}
-	fileIdx := filepath.Clean(file) + KVIndexFileExt
 	if os.RemoveAll(fileIdx) != nil {
 		t.Errorf("failed to remove the kv-data file: %s", fileIdx)
 		return

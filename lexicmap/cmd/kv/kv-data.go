@@ -621,6 +621,7 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 	if err != nil {
 		return 0, -1, nil, 0, 0, 0, err
 	}
+	defer fh.Close()
 	r := bufio.NewReaderSize(fh, 16<<10)
 	// r := poolBufReader.Get().(*bufio.Reader)
 	// r.Reset(fh)
@@ -742,6 +743,69 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 	}
 
 	return k, iFirstMask, data, maskPrefix, anchorPrefix, config1, nil
+}
+
+// ReadKVIndexStarts reads only the first k-mer and data offset of each mask.
+// It is intended for sequential mask scans that do not use the anchor lookup
+// table, avoiding the large per-mask allocations made by ReadKVIndex.
+func ReadKVIndexStarts(file string) ([][2]uint64, error) {
+	fh, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	r := bufio.NewReaderSize(fh, 16<<10)
+	buf8 := make([]byte, 8)
+	buf16 := make([]byte, 16)
+
+	if _, err = io.ReadFull(r, buf8); err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(MagicIdx[:], buf8) {
+		return nil, ErrInvalidFileFormat
+	}
+
+	if _, err = io.ReadFull(r, buf8); err != nil {
+		return nil, err
+	}
+	if MainVersion != buf8[0] {
+		return nil, ErrVersionMismatch
+	}
+
+	// Skip first-mask index and read mask count.
+	if _, err = io.ReadFull(r, buf8); err != nil {
+		return nil, err
+	}
+	if _, err = io.ReadFull(r, buf8); err != nil {
+		return nil, err
+	}
+	nMasks := int(be.Uint64(buf8))
+	starts := make([][2]uint64, nMasks)
+
+	for i := range starts {
+		if _, err = io.ReadFull(r, buf8); err != nil {
+			return nil, err
+		}
+		nRecords := be.Uint64(buf8)
+		if nRecords == 0 {
+			continue
+		}
+
+		if _, err = io.ReadFull(r, buf16); err != nil {
+			return nil, err
+		}
+		starts[i][0] = be.Uint64(buf16[:8])
+		starts[i][1] = be.Uint64(buf16[8:])
+
+		if nRecords > 1 {
+			if _, err = io.CopyN(io.Discard, r, int64(nRecords-1)*16); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return starts, nil
 }
 
 // ReadKVIndexInfo read the information.
