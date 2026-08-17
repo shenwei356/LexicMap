@@ -617,6 +617,18 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 // A list of k-mer and offset pairs are intermittently saved in a []uint64.
 // e.g., [k1, o1, k2, o2].
 func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
+	return readKVIndex(file, nil)
+}
+
+// ReadKVIndexSelected parses the k-mer-value index file, but only materializes
+// anchor tables for selected global mask indexes. The returned outer slice
+// still has one element per mask in the chunk so it can be used directly by a
+// Searcher; unselected masks have nil index data.
+func ReadKVIndexSelected(file string, selectedMasks []bool) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
+	return readKVIndex(file, selectedMasks)
+}
+
+func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		return 0, -1, nil, 0, 0, 0, err
@@ -687,6 +699,9 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		return 0, -1, nil, 0, 0, 0, err
 	}
 	nMasks = int(be.Uint64(buf))
+	if len(selectedMasks) > 0 && iFirstMask+nMasks > len(selectedMasks) {
+		return 0, -1, nil, 0, 0, 0, fmt.Errorf("mask selection has %d entries, but index chunk requires %d", len(selectedMasks), iFirstMask+nMasks)
+	}
 
 	// the number of anchors + 1
 	var nRecords int
@@ -709,6 +724,14 @@ func ReadKVIndex(file string) (uint8, int, [][]uint64, uint8, uint8, uint8, erro
 		}
 		nRecords = int(be.Uint64(buf))
 
+		if len(selectedMasks) > 0 && !selectedMasks[iFirstMask+i] {
+			if nRecords > 0 {
+				if _, err = io.CopyN(io.Discard, r, int64(nRecords)*16); err != nil {
+					return 0, -1, nil, 0, 0, 0, err
+				}
+			}
+			continue
+		}
 		if nRecords == 0 { // this hapens when no captured k-mer for a mask
 			data[i] = make([]uint64, 0)
 			continue

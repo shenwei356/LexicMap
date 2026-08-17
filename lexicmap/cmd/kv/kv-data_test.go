@@ -89,6 +89,31 @@ func TestKVData(t *testing.T) {
 		}
 	}
 
+	selectedMasks := make([]bool, nMasks)
+	for i := range selectedMasks {
+		selectedMasks[i] = i&1 == 0
+	}
+	_, firstMask, selectedIndexes, _, _, _, err := ReadKVIndexSelected(fileIdx, selectedMasks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range selectedIndexes {
+		if !selectedMasks[firstMask+i] {
+			if selectedIndexes[i] != nil {
+				t.Fatalf("unexpected anchor index for unselected mask %d", firstMask+i)
+			}
+			continue
+		}
+		if len(selectedIndexes[i]) != len(fullIndexes[i]) {
+			t.Fatalf("selected index length mismatch for mask %d: %d != %d", firstMask+i, len(selectedIndexes[i]), len(fullIndexes[i]))
+		}
+		for j := range selectedIndexes[i] {
+			if selectedIndexes[i][j] != fullIndexes[i][j] {
+				t.Fatalf("selected index mismatch for mask %d at position %d: %d != %d", firstMask+i, j, selectedIndexes[i][j], fullIndexes[i][j])
+			}
+		}
+	}
+
 	// -------------------------------------------------------------------
 	// reader
 	rdr, err := NewReader(file)

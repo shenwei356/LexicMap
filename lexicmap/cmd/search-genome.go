@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -313,6 +312,9 @@ Output format:
 		} else {
 			threadsPerQuery = opt.NumCPUs / maxQueryConcurrency
 		}
+		if threadsPerQuery < 1 {
+			threadsPerQuery = 1
+		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
 		gcInterval := uint64(_gcInterval)
@@ -367,38 +369,16 @@ Output format:
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
 
 			MaxSubjectGenomeSize: maxSubjectGenomeSize,
+			SearchMaskCount:      nMasks,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
 		checkError(err)
 
-		if nMasks > len(idx.lh.Masks) {
-			checkError(fmt.Errorf("the value of -m/--mask (%d) is bigger than the number of masks in the index (%d)", nMasks, len(idx.lh.Masks)))
-		}
-
-		// -------------------------------------------------------------------------
-		// choose masks
-
-		lh := idx.lh
-		_nMasks := len(lh.Masks)
-
-		var maskPrefix int
-		maskIndexes := make(map[int]struct{}, len(lh.Masks))
+		_nMasks := len(idx.lh.Masks)
 		if nMasks > 0 {
-			maskPrefix = int(math.Log2(float64(nMasks)) / 2)
-			m := make(map[uint64]struct{}, maskPrefix)
-			for i, mask := range lh.Masks {
-				prefix := mask >> (uint64(lh.K-maskPrefix) << 1)
-				if _, ok := m[prefix]; !ok {
-					maskIndexes[i] = struct{}{}
-
-					m[prefix] = struct{}{}
-				}
-			}
-
 			_nMasks = nMasks
 		}
-		// -------------------------------------------------------------------------
 
 		idx.SetSeqCompareOptions(&SeqComparatorOptions{
 			K:         uint8(31),
@@ -530,15 +510,23 @@ Output format:
 			}
 
 			for _, v := range matches[1:] {
-				matchesS.WriteString(fmt.Sprintf("%c%d", sep, v))
+				matchesS.WriteByte(sep)
+				matchesS.WriteString(strconv.Itoa(int(v)))
 			}
+		}
+		recycleQuery := func(q *GQuery) {
+			if q.screenDetails != nil {
+				idx.RecycleGSearchScreenDetailResults(q.screenDetails)
+				q.screenDetails = nil
+			}
+			RecycleGQuery(q)
 		}
 
 		printResult := func(q *GQuery) {
 			total++
 			if !((q.result != nil && len(*q.result) != 0) ||
 				(q.screenDetails != nil && len(*q.screenDetails) != 0)) { // seqs shorter than K or queries without matches.
-				RecycleGQuery(q)
+				recycleQuery(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
 					runtime.GC()
@@ -602,8 +590,10 @@ Output format:
 				}
 			}
 
-			RecycleGQuery(q)
-			outfh.Flush()
+			recycleQuery(q)
+			if total&63 == 0 {
+				outfh.Flush()
+			}
 
 			if gc && total&gcIntervalMinus1 == 0 {
 				runtime.GC()
@@ -653,7 +643,7 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening, maskIndexes)
+				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening, nil)
 				checkError(err)
 
 				if onlyGenomeScreening {

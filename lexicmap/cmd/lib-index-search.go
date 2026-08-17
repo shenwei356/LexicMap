@@ -28,6 +28,7 @@ import (
 	"io"
 	"io/fs"
 	"math"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -99,6 +100,7 @@ type IndexSearchingOptions struct {
 
 	// For searching genomes
 	MaxSubjectGenomeSize int
+	SearchMaskCount      int // 0 uses all masks; otherwise it must be a power of 4
 
 	// Only for comparing genomes from sequence files
 	NoIndex bool
@@ -153,8 +155,9 @@ type Index struct {
 	k8 uint8
 	k  int
 
-	maskPrefix   uint8 // length of mask prefix
-	anchorPrefix uint8 // length of anchor prefix
+	maskPrefix    uint8  // length of mask prefix
+	anchorPrefix  uint8  // length of anchor prefix
+	maskSelection []bool // nil means all masks
 
 	// k-mer-value searchers
 	Searchers         []*kv.Searcher
@@ -426,6 +429,37 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		return nil, err
 	}
 
+	if opt.SearchMaskCount > 0 {
+		n := opt.SearchMaskCount
+		if n > len(idx.lh.Masks) {
+			return nil, fmt.Errorf("number of selected masks (%d) is bigger than the number of masks in the index (%d)", n, len(idx.lh.Masks))
+		}
+		exponent := bits.TrailingZeros(uint(n))
+		if n != 1<<exponent || exponent&1 != 0 {
+			return nil, fmt.Errorf("number of selected masks (%d) is not a power of 4", n)
+		}
+		if n < len(idx.lh.Masks) {
+			selection := make([]bool, len(idx.lh.Masks))
+			prefixLen := exponent / 2
+			shift := uint64(idx.lh.K-prefixLen) << 1
+			seenPrefixes := make(map[uint64]struct{}, n)
+			selected := 0
+			for i, mask := range idx.lh.Masks {
+				prefix := mask >> shift
+				if _, ok := seenPrefixes[prefix]; ok {
+					continue
+				}
+				seenPrefixes[prefix] = struct{}{}
+				selection[i] = true
+				selected++
+			}
+			if selected != n {
+				return nil, fmt.Errorf("selected %d masks with distinct %d-base prefixes, expected %d", selected, prefixLen, n)
+			}
+			idx.maskSelection = selection
+		}
+	}
+
 	// create a lookup table for faster masking
 	maskPrefix := max(int(math.Log2(float64(len(idx.lh.Masks)))/2), 1)
 	idx.maskPrefix = uint8(maskPrefix)
@@ -633,7 +667,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 				chIM <- scr
 			} else { // just read the index data
-				scr, err := kv.NewSearcher(file, idx.opt.MaxSeedSearchingConcurrency)
+				scr, err := kv.NewSearcherWithMaskSelection(file, idx.opt.MaxSeedSearchingConcurrency, idx.maskSelection)
 				if err != nil {
 					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
 				}

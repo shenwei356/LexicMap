@@ -70,11 +70,30 @@ type SearchKit struct {
 
 // NewSearcher creates a new Searcher for the given kv-data file.
 func NewSearcher(file string, nWorkers int) (*Searcher, error) {
+	return newSearcher(file, nWorkers, nil)
+}
+
+// NewSearcherWithMaskSelection creates a Searcher whose anchor tables are only
+// materialized for selected global mask indexes.
+func NewSearcherWithMaskSelection(file string, nWorkers int, selectedMasks []bool) (*Searcher, error) {
+	return newSearcher(file, nWorkers, selectedMasks)
+}
+
+func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, error) {
 	if nWorkers < 1 {
 		nWorkers = 1
 	}
 
-	k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err := ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
+	var k uint8
+	var chunkIndex int
+	var indexes [][]uint64
+	var maskPrefix, anchorPrefix, config1 uint8
+	var err error
+	if len(selectedMasks) == 0 {
+		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
+	} else {
+		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndexSelected(filepath.Clean(file)+KVIndexFileExt, selectedMasks)
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data index file")
 	}

@@ -73,6 +73,7 @@ func (q *GQuery) Reset() {
 	q.genomeSize = 0
 
 	q.result = nil
+	q.screenDetails = nil
 }
 
 func RecycleGQuery(q *GQuery) {
@@ -94,6 +95,7 @@ func RecycleGQuery(q *GQuery) {
 		RecycleGSearchResults(q.result)
 		q.result = nil
 	}
+	q.screenDetails = nil
 
 	poolGQuery.Put(q)
 }
@@ -125,10 +127,15 @@ func (gr *GenomeReader) Recycle(q *GQuery) {
 
 // Read reads a genome from a file or stdin
 func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*GQuery, error) {
-	fastxReader, err := fastx.NewDefaultReader(file)
+	// NewDefaultReader writes package-global parser state in fastx, which races
+	// when multiple query files are opened concurrently. Genome IDs here come
+	// from file names, so an explicit equivalent record-ID regexp avoids that
+	// global write without changing search results.
+	fastxReader, err := fastx.NewReader(nil, file, `^(\S+)`)
 	if err != nil {
 		return nil, err
 	}
+	defer fastxReader.Close()
 
 	q := poolGQuery.Get().(*GQuery)
 	q.Reset()

@@ -53,6 +53,7 @@ type GSearchScreenResultDetail struct {
 func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.Score = 0
+	r.Score2 = 0
 	if r.Hits != nil {
 		clear(r.Hits)
 	}
@@ -67,6 +68,7 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
+		r.Score2 = 0
 		if r.Hits != nil {
 			clear(r.Hits)
 		}
@@ -84,6 +86,7 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 		r.Score = 0
+		r.Score2 = 0
 		if r.Hits != nil {
 			clear(r.Hits)
 		}
@@ -159,6 +162,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 
 	var start, end, j int
 	var kmer uint64
+	maskSelection := idx.maskSelection
+	useMaskIndexes := len(maskIndexes) > 0
 	for i := 0; i < windows; i++ {
 		start = i * step
 		if i == windows-1 {
@@ -174,6 +179,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 		}
 
 		for j, kmer = range *_kmers {
+			if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
+				continue
+			}
 			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
 				util.IsLowComplexityDust(kmer, k8) {
 				continue
@@ -184,22 +192,14 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 
 		if i == windows-1 && windows > 1 { // sort k-mers and remove duplicates
 			for j = range *_kmers {
+				if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
+					continue
+				}
 				util.UniqUint64s((*_kmersW)[j])
 			}
 		}
 
 		idx.lh.RecycleMaskResult(_kmers, locses)
-	}
-
-	// ------------------------------------------------------
-	// use a subset of masks if specified
-	if len(maskIndexes) > 0 {
-		var ok bool
-		for i := range *_kmersW {
-			if _, ok = maskIndexes[i]; !ok {
-				*(*_kmersW)[i] = (*(*_kmersW)[i])[:0]
-			}
-		}
 	}
 
 	// ------------------------------------------------------
@@ -400,6 +400,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 
 	if len(*m) == 0 { // no results
 		idx.RecycleGSearchScreenDetailResultsMap(m)
+		poolUint64ToUint64SliceMap.Put(whiteList)
 		return nil, nil, nil
 	}
 
@@ -496,6 +497,10 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 		return cmp.Compare(b.Score, a.Score)
 	})
 	if topN > 0 && len(*rs) > topN {
+		for _, r := range (*rs)[topN:] {
+			idx.RecycleGSearchScreenDetailResult(r)
+		}
+		clear((*rs)[topN:])
 		*rs = (*rs)[:topN]
 	}
 
@@ -531,6 +536,11 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	// idx.RecycleGSearchScreenDetailResults(rs)
 
 	return whiteList, rs, nil
+}
+
+func maskIndexSelected(maskIndexes map[int]struct{}, index int) bool {
+	_, ok := maskIndexes[index]
+	return ok
 }
 
 // GSearchAlignOrthoANI align fragments of a query to candidates genomes.
