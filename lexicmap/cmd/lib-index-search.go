@@ -51,7 +51,6 @@ import (
 	"github.com/shenwei356/wfa"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
-	"github.com/zeebo/wyhash"
 )
 
 // IndexSearchingOptions contains all options for searching
@@ -1793,6 +1792,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		// 	// do not forget to recycle the filtered result
 		// 	idx.RecycleSearchResult(r) // recylcing too many substring pairs resulting in a high memory load.
 		// }
+		clear((*rs)[topN:])
 		*rs = (*rs)[:topN]
 	}
 
@@ -1877,6 +1877,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	fcpus := float64(idx.opt.NumCPUs)
 
 	falin := func(r *SearchResult) { // for a reference genome
+		var err error
 		timeStart := time.Now()
 		defer func() {
 			<-tokens
@@ -1949,8 +1950,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 		// for remove duplicated alignments
 		var duplicated bool
-		hashes := poolUint64Map.Get().(*map[uint64]struct{})
-		var hash uint64
+		alignmentKeys := poolAlignmentKeyMap.Get().(*map[alignmentKey]struct{})
+		var key alignmentKey
 
 		var tSeq *genome.Genome
 
@@ -2391,14 +2392,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						// ------------------------------------------------------------
 						// remove duplicated alignments
 
-						hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
-						if _, duplicated = (*hashes)[hash]; duplicated {
+						key = alignmentKey{c.QBegin, c.QEnd, c.TBegin, c.TEnd, iSeq, rc}
+						if _, duplicated = (*alignmentKeys)[key]; duplicated {
 							// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
 							poolChain2.Put(c)
 							(*cr.Chains)[_i] = nil
 						} else {
 							*crChains2 = append(*crChains2, c)
-							(*hashes)[hash] = struct{}{}
+							(*alignmentKeys)[key] = struct{}{}
 						}
 
 						iSeq = iSeq0
@@ -2448,14 +2449,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				// ------------------------------------------------------------
 				// remove duplicated alignments
 
-				hash = wyhash.HashString(fmt.Sprintf("[%d, %d] vs [%d, %d], %v, %d", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq), 0)
-				if _, duplicated = (*hashes)[hash]; duplicated {
+				key = alignmentKey{c.QBegin, c.QEnd, c.TBegin, c.TEnd, iSeq, rc}
+				if _, duplicated = (*alignmentKeys)[key]; duplicated {
 					// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
 					poolChain2.Put(c)
 					(*cr.Chains)[_i] = nil
 				} else {
 					*crChains2 = append(*crChains2, c)
-					(*hashes)[hash] = struct{}{}
+					(*alignmentKeys)[key] = struct{}{}
 				}
 			}
 
@@ -2668,8 +2669,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 		genome.RecycleGenome(tSeq)
 
-		clear(*hashes)
-		poolUint64Map.Put(hashes)
+		clear(*alignmentKeys)
+		poolAlignmentKeyMap.Put(alignmentKeys)
 		wfa.RecycleAligner(algn)
 
 		if len(*sds) == 0 { // no valid alignments
@@ -2966,8 +2967,15 @@ var poolBounds = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-var poolUint64Map = &sync.Pool{New: func() interface{} {
-	tmp := make(map[uint64]struct{}, 128)
+type alignmentKey struct {
+	qBegin, qEnd int
+	tBegin, tEnd int
+	seq          int
+	rc           bool
+}
+
+var poolAlignmentKeyMap = &sync.Pool{New: func() interface{} {
+	tmp := make(map[alignmentKey]struct{}, 128)
 	return &tmp
 }}
 

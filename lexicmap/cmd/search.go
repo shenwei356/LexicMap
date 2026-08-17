@@ -21,7 +21,6 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -276,7 +275,7 @@ Result ordering:
 
 		maxQueryConcurrency := getFlagNonNegativeInt(cmd, "max-query-conc")
 		if maxQueryConcurrency == 0 {
-			maxQueryConcurrency = runtime.NumCPU()
+			maxQueryConcurrency = opt.NumCPUs
 		}
 		// maxSeedSearchingConcurrency := getFlagPositiveInt(cmd, "max-seed-matching-conc")
 		maxSeedSearchingConcurrency := maxQueryConcurrency / 2
@@ -580,7 +579,13 @@ Result ordering:
 				wg.Add(1)
 
 				query.seqID = append(query.seqID, record.ID...)
-				query.seq = append(query.seq, bytes.ToUpper(record.Seq.Seq)...)
+				query.seq = append(query.seq, record.Seq.Seq...)
+				d := byte('a' - 'A')
+				for i, b := range query.seq {
+					if b >= 'a' && b <= 'z' {
+						query.seq[i] = b - d
+					}
+				}
 
 				go func(query *Query) {
 					defer func() {
