@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -308,12 +309,14 @@ Output format:
 
 		var threadsPerQuery int
 		if len(files) < maxQueryConcurrency {
-			threadsPerQuery = opt.NumCPUs / len(files)
+			threadsPerQuery = int(math.Ceil(float64(opt.NumCPUs) * 1.5 / float64(len(files))))
 		} else {
-			threadsPerQuery = opt.NumCPUs / maxQueryConcurrency
+			threadsPerQuery = int(math.Ceil(float64(opt.NumCPUs) * 1.5 / float64(maxQueryConcurrency)))
 		}
 		if threadsPerQuery < 1 {
 			threadsPerQuery = 1
+		} else if threadsPerQuery > opt.NumCPUs {
+			threadsPerQuery = opt.NumCPUs
 		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")
@@ -591,9 +594,7 @@ Output format:
 			}
 
 			recycleQuery(q)
-			if total&63 == 0 {
-				outfh.Flush()
-			}
+			outfh.Flush()
 
 			if gc && total&gcIntervalMinus1 == 0 {
 				runtime.GC()
@@ -715,7 +716,7 @@ func init() {
 	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
-	gsearchCmd.Flags().IntP("max-query-conc", "J", 4,
+	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries.`))
 
 	gsearchCmd.Flags().IntP("gc-interval", "", 4,
