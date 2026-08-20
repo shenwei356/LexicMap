@@ -376,6 +376,13 @@ var poolReader = &sync.Pool{New: func() interface{} {
 	}
 }}
 
+func resizeByteSlice(s []byte, n int) []byte {
+	if cap(s) < n {
+		return make([]byte, n)
+	}
+	return s[:n]
+}
+
 // NewReader returns a reader from a genome file.
 // The reader is recycled after calling Close().
 func NewReader(file string) (*Reader, error) {
@@ -831,16 +838,10 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 
 	nBytes := end>>2 - start>>2 + 1
 
-	// prepair the buf
-	if nBytes <= len(r.buf) {
-		buf = r.buf[:nBytes]
-	} else {
-		n := nBytes - len(r.buf)
-		for i := 0; i < n; i++ {
-			r.buf = append(r.buf, 0)
-		}
-		buf = r.buf
-	}
+	// Grow directly to the known final size. Appending from the small reader
+	// buffer would retain several obsolete backing arrays until the next GC.
+	r.buf = resizeByteSlice(r.buf, nBytes)
+	buf = r.buf
 	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		RecycleGenome(g)
@@ -852,7 +853,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	// initialize with l+4 blank values, because if there less than 4 bases
 	// to extract, code below would panic.
 	s := &g.Seq
-	*s = (*s)[:4]
+	*s = resizeByteSlice(*s, max(l, 4))[:4]
 
 	// -- first byte --
 	b := buf[0]
@@ -1054,16 +1055,10 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 
 	nBytes := end>>2 - start>>2 + 1
 
-	// prepair the buf
-	if nBytes <= len(r.buf) {
-		buf = r.buf[:nBytes]
-	} else {
-		n := nBytes - len(r.buf)
-		for i := 0; i < n; i++ {
-			r.buf = append(r.buf, 0)
-		}
-		buf = r.buf
-	}
+	// Grow directly to the known final size. Appending from the small reader
+	// buffer would retain several obsolete backing arrays until the next GC.
+	r.buf = resizeByteSlice(r.buf, nBytes)
+	buf = r.buf
 	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		RecycleGenome(g)
@@ -1075,7 +1070,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 	// initialize with l+4 blank values, because if there less than 4 bases
 	// to extract, code below would panic.
 	s := &g.Seq
-	*s = (*s)[:4]
+	*s = resizeByteSlice(*s, max(l, 4))[:4]
 
 	// -- first byte --
 	b := buf[0]
@@ -1342,16 +1337,10 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 
 	nBytes := (end >> 2) - (start >> 2) + 1
 
-	// prepair the buf
-	if nBytes <= len(r.buf) {
-		buf = r.buf[:nBytes]
-	} else {
-		n := nBytes - len(r.buf)
-		for i := 0; i < n; i++ {
-			r.buf = append(r.buf, 0)
-		}
-		buf = r.buf
-	}
+	// Grow directly to the known final size. Appending from the small reader
+	// buffer would retain several obsolete backing arrays until the next GC.
+	r.buf = resizeByteSlice(r.buf, nBytes)
+	buf = r.buf
 	n, _ = io.ReadFull(br, buf)
 	if n < nBytes {
 		RecycleGenome(g)
@@ -1363,7 +1352,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	// initialize with l+4 blank values, because if there less than 4 bases
 	// to extract, code below would panic.
 	s := &g.Seq
-	*s = (*s)[:4]
+	*s = resizeByteSlice(*s, max(l, 4))[:4]
 
 	// -- first byte --
 	b := buf[0]

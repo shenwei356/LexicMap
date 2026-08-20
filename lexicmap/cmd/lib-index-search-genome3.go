@@ -51,12 +51,18 @@ type subjectSketch struct {
 	rcStart    int
 
 	// Most sampled k-mers occur only once. Store that common case directly in
-	// the main map and allocate a positions slice only for repeated k-mers.
-	// Values in sampledKmerMap are position+1, leaving zero available as the
-	// map's missing value.
-	sampledKmerMap  *map[uint64]uint32
-	repeatedKmerMap *map[uint64][]uint32
-	contigBounds    [][2]int // [start, end) of each contig in forward strand
+	// the main map, and keep repeated positions in one shared arena. Values in
+	// sampledKmerMap are position+1, leaving zero available as the map's missing
+	// value.
+	sampledKmerMap        *map[uint64]uint32
+	repeatedKmerMap       *map[uint64]uint64
+	repeatedKmerPositions *[]repeatedKmerPosition
+	contigBounds          [][2]int // [start, end) of each contig in forward strand
+}
+
+type repeatedKmerPosition struct {
+	position uint32
+	next     uint32 // index+1; zero marks the end of the list
 }
 
 var poolSubjectSketch = &sync.Pool{New: func() interface{} {
@@ -65,20 +71,18 @@ var poolSubjectSketch = &sync.Pool{New: func() interface{} {
 
 // poolConcat is for reusing large byte slices for concatenated genome sequences
 var poolConcat = &sync.Pool{New: func() interface{} {
-	tmp := make([]byte, 0, 10<<20) // 10MB initial capacity
+	// The required size is known before use and varies with the subject genome.
+	// Start empty so small genomes do not each reserve a fixed 10 MiB buffer.
+	tmp := make([]byte, 0)
 	return &tmp
 }}
 
-// poolKmerMap is for reusing k-mer maps in sampled mode
-var poolKmerMap = &sync.Pool{New: func() interface{} {
-	m := make(map[uint64]uint32, 10240) // pre-allocate for ~10k k-mers
-	return &m
-}}
-
-var poolRepeatedKmerMap = &sync.Pool{New: func() interface{} {
-	m := make(map[uint64][]uint32, 1024)
-	return &m
-}}
+// These pools intentionally have no fixed-size New function. When a pool is
+// empty, allocate from the known subject size instead of using one capacity for
+// both short search candidates and whole bacterial genomes.
+var poolKmerMap = &sync.Pool{}
+var poolRepeatedKmerMap = &sync.Pool{}
+var poolRepeatedKmerPositions = &sync.Pool{}
 
 // poolQSeeds is for reusing query seed slices
 var poolQSeeds = &sync.Pool{New: func() interface{} {
@@ -86,19 +90,62 @@ var poolQSeeds = &sync.Pool{New: func() interface{} {
 	return &s
 }}
 
-func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64][]uint32, kmer uint64, pos uint32) {
-	first, ok := (*kmers)[kmer]
+func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64]uint64, repeatedPositions *[]repeatedKmerPosition, kmer uint64, pos uint32) {
+	_, ok := (*kmers)[kmer]
 	if !ok {
 		(*kmers)[kmer] = pos + 1
 		return
 	}
 
-	positions, ok := (*repeated)[kmer]
-	if !ok {
-		positions = make([]uint32, 1, 4)
-		positions[0] = first - 1
+	// The first position is stored inline in kmers. Store subsequent positions
+	// in one contiguous arena instead of allocating one slice per repeated k-mer.
+	// The map value packs head and tail indexes (+1) to preserve insertion order.
+	list := (*repeated)[kmer]
+	head, tail := uint32(list>>32), uint32(list)
+	*repeatedPositions = append(*repeatedPositions, repeatedKmerPosition{position: pos})
+	index := uint32(len(*repeatedPositions))
+	if head == 0 {
+		head = index
+	} else {
+		(*repeatedPositions)[tail-1].next = index
 	}
-	(*repeated)[kmer] = append(positions, pos)
+	(*repeated)[kmer] = uint64(head)<<32 | uint64(index)
+}
+
+func sampledKmerMapCapacity(genomeSize int, scale int) int {
+	return (genomeSize + scale - 1) / scale
+}
+
+func acquireSampledKmerMaps(capacity int) (*map[uint64]uint32, *map[uint64]uint64, *[]repeatedKmerPosition) {
+	var kmers *map[uint64]uint32
+	if v := poolKmerMap.Get(); v != nil {
+		kmers = v.(*map[uint64]uint32)
+	} else {
+		m := make(map[uint64]uint32, capacity)
+		kmers = &m
+	}
+
+	repeatedCapacity := capacity / 16
+	var repeated *map[uint64]uint64
+	if v := poolRepeatedKmerMap.Get(); v != nil {
+		repeated = v.(*map[uint64]uint64)
+	} else {
+		// Repeated canonical 13-mers are normally a small fraction of all
+		// sampled k-mers. This hint avoids early map growth without reserving
+		// the full primary-map size twice.
+		m := make(map[uint64]uint64, repeatedCapacity)
+		repeated = &m
+	}
+
+	var repeatedPositions *[]repeatedKmerPosition
+	if v := poolRepeatedKmerPositions.Get(); v != nil {
+		repeatedPositions = v.(*[]repeatedKmerPosition)
+	} else {
+		positions := make([]repeatedKmerPosition, 0, repeatedCapacity)
+		repeatedPositions = &positions
+	}
+
+	return kmers, repeated, repeatedPositions
 }
 
 // Sampling parameters for the simplified seeding strategy.
@@ -107,7 +154,7 @@ var gsa3SamplingScale = 4 // sampling rate: keep if hash(kmer) % scale == 0
 
 // buildSubjectSketchSampledOptimized scans the forward sequence once and records
 // enough strand information to address both the forward and RC concatenated copies.
-func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][2]int, contigBounds [][2]int, forwardLen int, rcStart int) (*subjectSketch, error) {
+func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][2]int, contigBounds [][2]int, genomeSize int, forwardLen int, rcStart int) (*subjectSketch, error) {
 	k := gsa3SampledK
 	k8 := uint8(k)
 	scale := uint64(gsa3SamplingScale)
@@ -130,8 +177,8 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 		return nil, err
 	}
 
-	kmerMap := poolKmerMap.Get().(*map[uint64]uint32)
-	repeatedKmerMap := poolRepeatedKmerMap.Get().(*map[uint64][]uint32)
+	mapCapacity := sampledKmerMapCapacity(genomeSize, int(scale))
+	kmerMap, repeatedKmerMap, repeatedKmerPositions := acquireSampledKmerMaps(mapCapacity)
 
 	region := 0
 	var canonical uint64
@@ -166,7 +213,7 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 			continue
 		}
 
-		addSampledKmerPosition(kmerMap, repeatedKmerMap, canonical, uint32(pos)<<1|canonicalRC)
+		addSampledKmerPosition(kmerMap, repeatedKmerMap, repeatedKmerPositions, canonical, uint32(pos)<<1|canonicalRC)
 	}
 
 	s := poolSubjectSketch.Get().(*subjectSketch)
@@ -175,6 +222,7 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 	s.rcStart = rcStart
 	s.sampledKmerMap = kmerMap
 	s.repeatedKmerMap = repeatedKmerMap
+	s.repeatedKmerPositions = repeatedKmerPositions
 	s.contigBounds = contigBounds
 
 	return s, nil
@@ -194,6 +242,11 @@ func (idx *Index) recycleSubjectSketch(s *subjectSketch) {
 		clear(*s.repeatedKmerMap)
 		poolRepeatedKmerMap.Put(s.repeatedKmerMap)
 		s.repeatedKmerMap = nil
+	}
+	if s.repeatedKmerPositions != nil {
+		*s.repeatedKmerPositions = (*s.repeatedKmerPositions)[:0]
+		poolRepeatedKmerPositions.Put(s.repeatedKmerPositions)
+		s.repeatedKmerPositions = nil
 	}
 	poolSubjectSketch.Put(s)
 }
@@ -291,6 +344,7 @@ func alignQueryFragToSubjectSampled(
 	qKmers := *qSeeds
 	sKmerMap := sketch.sampledKmerMap
 	repeatedKmerMap := sketch.repeatedKmerMap
+	repeatedKmerPositions := *sketch.repeatedKmerPositions
 
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
@@ -306,27 +360,26 @@ func alignQueryFragToSubjectSampled(
 		qposAndStrand := qKmers[i+1]
 		qpos := int32(qposAndStrand >> 1)
 		qCanonicalRC := uint32(qposAndStrand & 1)
-		positions, repeated := (*repeatedKmerMap)[qk]
-		if !repeated {
-			sub := poolSub.Get().(*SubstrPair)
-			sub.Len = uint8(K)
-			sub.QBegin = qpos
-			sposAndStrand := first - 1
-			spos := int(sposAndStrand >> 1)
-			if sposAndStrand&1 != qCanonicalRC {
-				spos = sketch.rcStart + sketch.forwardLen - spos - K
-			}
-			sub.TBegin = int32(spos)
-			sub.QRC = false
-			sub.TRC = false
-			*allSubs = append(*allSubs, sub)
-			continue
+		// The first occurrence is stored inline in the primary map.
+		sub := poolSub.Get().(*SubstrPair)
+		sub.Len = uint8(K)
+		sub.QBegin = qpos
+		sposAndStrand := first - 1
+		spos := int(sposAndStrand >> 1)
+		if sposAndStrand&1 != qCanonicalRC {
+			spos = sketch.rcStart + sketch.forwardLen - spos - K
 		}
+		sub.TBegin = int32(spos)
+		sub.QRC = false
+		sub.TRC = false
+		*allSubs = append(*allSubs, sub)
 
-		if len(positions) > maxMatchesPerKmer {
-			positions = positions[:maxMatchesPerKmer]
-		}
-		for _, posAndStrand := range positions {
+		// Leave one slot for the inline first occurrence. Additional positions
+		// are linked in insertion order in the shared position arena.
+		positionIndex := uint32((*repeatedKmerMap)[qk] >> 32)
+		for matches := 1; positionIndex != 0 && matches < maxMatchesPerKmer; matches++ {
+			position := repeatedKmerPositions[positionIndex-1]
+			posAndStrand := position.position
 			spos := int(posAndStrand >> 1)
 			if posAndStrand&1 != qCanonicalRC {
 				spos = sketch.rcStart + sketch.forwardLen - spos - K
@@ -338,6 +391,7 @@ func alignQueryFragToSubjectSampled(
 			sub.QRC = false
 			sub.TRC = false
 			*allSubs = append(*allSubs, sub)
+			positionIndex = position.next
 		}
 	}
 
@@ -807,7 +861,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 
 			// d) Build the subject sketch using sampled k-mers on the combined sequence
 			// Pass forwardLen and rcStart for optimized k-mer extraction
-			sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, forwardLen, rcStart)
+			sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, g.GenomeSize, forwardLen, rcStart)
 			if err != nil {
 				checkError(fmt.Errorf("fail to build subject sketch: %s", err))
 			}
@@ -848,6 +902,9 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			if gr.AFq > 1 {
+				gr.AFq = 1
+			}
 
 			if gr.AFq < minAF || gr.ANI < minANI {
 				poolGSearchResult.Put(gr)
@@ -856,9 +913,6 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			}
 
 			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
-			if gr.AFq > 1 {
-				gr.AFq = 1
-			}
 			if gr.AFs > 1 {
 				gr.AFs = 1
 			}
@@ -993,7 +1047,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	})
 
 	// 4) Build the subject sketch using sampled k-mers
-	sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, forwardLen, rcStart)
+	sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, subject.genomeSize, forwardLen, rcStart)
 	if err != nil {
 		return fmt.Errorf("fail to build subject sketch: %s", err)
 	}

@@ -963,6 +963,9 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			if gr.AFq > 1 {
+				gr.AFq = 1
+			}
 
 			if gr.AFq < minAF || gr.ANI < minANI {
 				poolGSearchResult.Put(gr)
@@ -971,9 +974,6 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			}
 
 			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
-			if gr.AFq > 1 {
-				gr.AFq = 1
-			}
 			if gr.AFs > 1 {
 				gr.AFs = 1
 			}

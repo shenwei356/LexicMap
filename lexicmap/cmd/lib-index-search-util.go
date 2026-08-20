@@ -192,8 +192,9 @@ func _extendRight(s1, s2 []byte) (int, int) {
 
 	if chain != nil {
 		// fmt.Printf("q: %d-%d, t: %d-%d\n", chain.QBegin, chain.QEnd, chain.TBegin, chain.TEnd)
+		qEnd, tEnd := chain.QEnd, chain.TEnd
 		poolChain3.Put(chain)
-		return chain.QEnd + 1, chain.TEnd + 1
+		return qEnd + 1, tEnd + 1
 	}
 
 	return 0, 0

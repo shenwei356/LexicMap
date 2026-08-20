@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"cmp"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -309,9 +308,9 @@ Output format:
 
 		var threadsPerQuery int
 		if len(files) < maxQueryConcurrency {
-			threadsPerQuery = int(math.Ceil(float64(opt.NumCPUs) * 1.5 / float64(len(files))))
+			threadsPerQuery = int(float64(opt.NumCPUs) * 1.2 / float64(len(files)))
 		} else {
-			threadsPerQuery = int(math.Ceil(float64(opt.NumCPUs) * 1.5 / float64(maxQueryConcurrency)))
+			threadsPerQuery = int(float64(opt.NumCPUs) * 1.2 / float64(maxQueryConcurrency))
 		}
 		if threadsPerQuery < 1 {
 			threadsPerQuery = 1
