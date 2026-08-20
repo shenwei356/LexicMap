@@ -66,57 +66,57 @@ Overview
 ## Building an index
 
     $ lexicmap index -I refs -O demo.lmi
-    10:13:25.668 [INFO] LexicMap v0.9.0
-    10:13:25.668 [INFO]   https://github.com/shenwei356/LexicMap
-    10:13:25.668 [INFO] 
-    10:13:25.668 [INFO] checking input files ...
-    10:13:25.668 [INFO]   scanning files from directory: refs
-    10:13:25.669 [INFO]   15 input file(s) given
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] --------------------- [ main parameters ] ---------------------
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] input and output:
-    10:13:25.669 [INFO]   input directory: refs
-    10:13:25.669 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    10:13:25.669 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    10:13:25.669 [INFO]     *regular expressions for filtering out sequences: []
-    10:13:25.669 [INFO]   min sequence length: 31
-    10:13:25.669 [INFO]   max genome size: 15000000
-    10:13:25.669 [INFO]   output directory: demo.lmi
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] mask generation:
-    10:13:25.669 [INFO]   k-mer size: 31
-    10:13:25.669 [INFO]   number of masks: 20000
-    10:13:25.669 [INFO]   rand seed: 1
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] seed data:
-    10:13:25.669 [INFO]   maximum sketching desert length: 100
-    10:13:25.669 [INFO]   distance of k-mers to fill deserts: 50
-    10:13:25.669 [INFO]   seeds data chunks: 16
-    10:13:25.669 [INFO]   seeds data indexing partitions: 4096
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] general:
-    10:13:25.669 [INFO]   genome batch size: 5000
-    10:13:25.669 [INFO]   threads: 16
-    10:13:25.669 [INFO]   batch merge threads: 8
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] 
-    10:13:25.669 [INFO] --------------------- [ generating masks ] ---------------------
-    10:13:25.676 [INFO] 
-    10:13:25.676 [INFO] --------------------- [ building index ] ---------------------
-    10:13:25.806 [INFO] 
-    10:13:25.806 [INFO]   ------------------------[ batch 1/1 ]------------------------
-    10:13:25.806 [INFO]   building index for batch 1 with 15 files...
+    20:29:54.272 [INFO] LexicMap v0.10.0
+    20:29:54.272 [INFO]   https://github.com/shenwei356/LexicMap
+    20:29:54.272 [INFO] 
+    20:29:54.272 [INFO] checking input files ...
+    20:29:54.272 [INFO]   scanning files from directory: refs
+    20:29:54.272 [INFO]   15 input file(s) given
+    20:29:54.272 [INFO] 
+    20:29:54.272 [INFO] --------------------- [ main parameters ] ---------------------
+    20:29:54.272 [INFO] 
+    20:29:54.272 [INFO] input and output:
+    20:29:54.272 [INFO]   input directory: refs
+    20:29:54.272 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    20:29:54.272 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    20:29:54.272 [INFO]     *regular expressions for filtering out sequences: []
+    20:29:54.272 [INFO]   min sequence length: 31
+    20:29:54.272 [INFO]   max genome size: 20000000
+    20:29:54.272 [INFO]   output directory: demo.lmi
+    20:29:54.272 [INFO] 
+    20:29:54.272 [INFO] mask generation:
+    20:29:54.273 [INFO]   k-mer size: 31
+    20:29:54.273 [INFO]   number of masks: 20000
+    20:29:54.273 [INFO]   rand seed: 1
+    20:29:54.273 [INFO] 
+    20:29:54.273 [INFO] seed data:
+    20:29:54.273 [INFO]   maximum sketching desert length: 100
+    20:29:54.273 [INFO]   distance of k-mers to fill deserts: 50
+    20:29:54.273 [INFO]   seeds data chunks: 16
+    20:29:54.273 [INFO]   seeds data indexing partitions: 4096
+    20:29:54.273 [INFO] 
+    20:29:54.273 [INFO] general:
+    20:29:54.273 [INFO]   genome batch size: 5000
+    20:29:54.273 [INFO]   threads: 16
+    20:29:54.273 [INFO]   batch merge threads: 8
+    20:29:54.273 [INFO] 
+    20:29:54.273 [INFO] 
+    20:29:54.273 [INFO] --------------------- [ generating masks ] ---------------------
+    20:29:54.276 [INFO] 
+    20:29:54.276 [INFO] --------------------- [ building index ] ---------------------
+    20:29:54.426 [INFO] 
+    20:29:54.426 [INFO]   ------------------------[ batch 1/1 ]------------------------
+    20:29:54.426 [INFO]   building index for batch 1 with 15 files...
     processed files:  15 / 15 [======================================] ETA: 0s. done
-    10:13:29.904 [INFO]   writing seeds...
-    10:13:30.041 [INFO]   finished writing seeds in 136.916815ms
-    10:13:30.041 [INFO]   finished building index for batch 1 in: 4.234422002s
-    10:13:30.041 [INFO] 
-    10:13:30.041 [INFO] finished building LexicMap index from 15 files with 20000 masks in 4.3728622s
-    10:13:30.041 [INFO] LexicMap index saved: demo.lmi
-    10:13:30.041 [INFO] 
-    10:13:30.041 [INFO] elapsed time: 4.372896073s
-    10:13:30.041 [INFO]
+    20:29:57.753 [INFO]   writing seeds...
+    20:29:57.884 [INFO]   finished writing seeds in 131.291591ms
+    20:29:57.884 [INFO]   finished building index for batch 1 in: 3.458382406s
+    20:29:57.885 [INFO] 
+    20:29:57.885 [INFO] finished building LexicMap index from 15 files with 20000 masks in 3.612751685s
+    20:29:57.885 [INFO] LexicMap index saved: demo.lmi
+    20:29:57.885 [INFO] 
+    20:29:57.885 [INFO] elapsed time: 3.612782485s
+    20:29:57.885 [INFO]
 
 Overview of index files:
 
@@ -138,8 +138,8 @@ Overview of index files:
 
 
     $ dirsize demo.lmi/
-    demo.lmi/: 78.36 MiB (82,165,590)
-     65.26 MiB      seeds
+    demo.lmi/: 78.18 MiB (81,974,001)
+     65.08 MiB      seeds
      12.94 MiB      genomes
     156.28 KiB      masks.bin
          921 B      info.toml
@@ -151,29 +151,30 @@ Overview of index files:
 ### A 16S rRNA gene sequence
 
     $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
-    10:14:18.863 [INFO] LexicMap v0.9.0
-    10:14:18.863 [INFO]   https://github.com/shenwei356/LexicMap
-    10:14:18.863 [INFO] 
-    10:14:18.863 [INFO] checking input files ...
-    10:14:18.863 [INFO]   1 input file given: q.gene.fasta
-    10:14:18.863 [INFO] 
-    10:14:18.863 [INFO] loading index: demo.lmi/
-    10:14:18.863 [INFO]   reading masks...
-    10:14:18.866 [INFO]   reading indexes of seeds (k-mer-value) data...
-    10:14:19.783 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-    10:14:19.783 [INFO] index loaded in 919.989011ms
-    10:14:19.783 [INFO] 
-    10:14:19.783 [INFO] searching with 16 threads...
-    10:14:19.783 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
+    20:31:41.402 [INFO] LexicMap v0.10.0
+    20:31:41.402 [INFO]   https://github.com/shenwei356/LexicMap
+    20:31:41.402 [INFO] 
+    20:31:41.402 [INFO] checking input files ...
+    20:31:41.402 [INFO]   1 input file given: q.gene.fasta
+    20:31:41.402 [INFO] 
+    20:31:41.402 [INFO] loading index: demo.lmi/
+    20:31:41.402 [INFO]   reading masks...
+    20:31:41.403 [INFO]   reading indexes of seeds (k-mer-value) data...
+    20:31:41.403 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+    20:31:42.235 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    20:31:42.235 [INFO] index loaded in 833.328476ms
+    20:31:42.235 [INFO] 
+    20:31:42.235 [INFO] searching with 16 threads...
+    20:31:42.235 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
 
-    10:14:19.818 [INFO] 
-    10:14:19.818 [INFO] processed queries: 1, speed: 1715.120 queries per minute
-    10:14:19.818 [INFO] 100.0000% (1/1) queries matched
-    10:14:19.818 [INFO] done searching
-    10:14:19.818 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    10:14:19.818 [INFO] 
-    10:14:19.818 [INFO] elapsed time: 955.286541ms
-    10:14:19.818 [INFO]
+    20:31:42.282 [INFO] 
+    20:31:42.282 [INFO] processed queries: 1, speed: 1296.848 queries per minute
+    20:31:42.282 [INFO] 100.0000% (1/1) queries matched
+    20:31:42.282 [INFO] done searching
+    20:31:42.282 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    20:31:42.282 [INFO] 
+    20:31:42.282 [INFO] elapsed time: 880.042449ms
+    20:31:42.282 [INFO]
 
 Result preview.
 Here we create a `species` column from the genome ID column (`sgenome`) and replace the assemby accessions with species names.
@@ -345,14 +346,15 @@ Sbjct  460059  CAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA  460100
 
     query         qlen    hits   sgenome           sseqid          qcovGnm   cls   hsp   qcovHSP   alenHSP   pident   gaps   qstart   qend    sstart    send      sstr   slen      evalue      bitscore   species             
     -----------   -----   ----   ---------------   -------------   -------   ---   ---   -------   -------   ------   ----   ------   -----   -------   -------   ----   -------   ---------   --------   --------------------
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     1     27.890    9371      97.716   2      1        9369    1864411   1873781   +      4903501   0.00e+00    15953      Escherichia coli    
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    1     2     0.301     101       98.020   0      10308    10408   1873846   1873946   +      4903501   1.72e-43    174        Escherichia coli    
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    2     3     20.665    6942      96.528   4      17441    24382   1882011   1888948   +      4903501   0.00e+00    11459      Escherichia coli    
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    3     4     17.685    5941      97.980   0      24355    30295   1853098   1859038   +      4903501   0.00e+00    10174      Escherichia coli    
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    4     5     8.993     3021      91.526   0      10308    13328   1873846   1876866   +      4903501   0.00e+00    4295       Escherichia coli    
-    NC_001895.1   33593   2      GCF_003697165.2   NZ_CP033092.2   77.588    5     6     2.438     820       84.390   1      14540    15358   1878798   1879617   +      4903501   1.29e-264   911        Escherichia coli    
-    NC_001895.1   33593   2      GCF_002949675.1   NZ_CP026774.1   0.976     1     1     0.976     331       85.801   3      13919    14246   3704319   3704649   -      4395762   6.35e-112   403        Shigella dysenteriae
-
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    1     1     27.890    9371      97.716   2      1        9369    1864411   1873781   +      4903501   0.00e+00    15928      Escherichia coli    
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    1     2     0.301     101       98.020   0      10308    10408   1873846   1873946   +      4903501   1.72e-43    174        Escherichia coli    
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    2     3     20.665    6942      96.528   4      17441    24382   1882011   1888948   +      4903501   0.00e+00    11427      Escherichia coli    
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    3     4     17.685    5941      97.980   0      24355    30295   1853098   1859038   +      4903501   0.00e+00    10174      Escherichia coli    
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    4     5     8.880     2983      91.720   0      10308    13290   1873846   1876828   +      4903501   0.00e+00    4266       Escherichia coli    
+    NC_001895.1   33593   3      GCF_003697165.2   NZ_CP033092.2   77.474    5     6     2.438     820       84.390   1      14540    15358   1878798   1879617   +      4903501   8.15e-261   899        Escherichia coli    
+    NC_001895.1   33593   3      GCF_002949675.1   NZ_CP026774.1   0.976     1     1     0.976     331       85.801   3      13919    14246   3704319   3704649   -      4395762   5.95e-106   383        Shigella dysenteriae
+    NC_001895.1   33593   3      GCF_002950215.1   NZ_CP026788.1   0.185     1     1     0.185     64        85.938   4      14837    14898   71092     71153     +      4659463   3.94e-11    66         Shigella flexneri   
+    NC_001895.1   33593   3      GCF_002950215.1   NZ_CP026788.1   0.185     2     2     0.185     64        85.938   4      14837    14898   4261071   4261132   +      4659463   3.94e-11    66         Shigella flexneri  
 
 ### Simulated Oxford Nanopore R10.4.1 long-reads
 
@@ -365,34 +367,35 @@ Here we accelerate searching by
             --top-n-genomes 5 \
             --top-n-chains 1
             
-        10:20:12.093 [INFO] LexicMap v0.9.0
-        10:20:12.093 [INFO]   https://github.com/shenwei356/LexicMap
-        10:20:12.093 [INFO] 
-        10:20:12.093 [INFO] checking input files ...
-        10:20:12.093 [INFO]   1 input file given: q.long-reads.fasta.gz
-        10:20:12.094 [INFO] 
-        10:20:12.094 [INFO] loading index: demo.lmi/
-        10:20:12.094 [INFO]   reading masks...
-        10:20:12.096 [INFO]   reading indexes of seeds (k-mer-value) data...
-        10:20:13.032 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-        10:20:13.032 [INFO] index loaded in 938.664634ms
-        10:20:13.032 [INFO] 
-        10:20:13.032 [INFO] searching with 16 threads...
-        10:20:13.032 [INFO]   keep the top 5 genomes
-        10:20:13.032 [INFO]   keep the top 1 chains
-        10:20:13.032 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
-        processed queries: 3328, speed: 5193.299 queries per minute
-        10:20:55.744 [INFO] 
-        10:20:55.744 [INFO] processed queries: 3692, speed: 5186.401 queries per minute
-        10:20:55.744 [INFO] 76.1918% (2813/3692) queries matched
-        10:20:55.744 [INFO] done searching
-        10:20:55.744 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
-        10:20:55.749 [INFO] 
-        10:20:55.749 [INFO] elapsed time: 43.655945295s
-        10:20:55.749 [INFO] 
+        20:34:54.561 [INFO] LexicMap v0.10.0
+        20:34:54.561 [INFO]   https://github.com/shenwei356/LexicMap
+        20:34:54.561 [INFO] 
+        20:34:54.561 [INFO] checking input files ...
+        20:34:54.561 [INFO]   1 input file given: q.long-reads.fasta.gz
+        20:34:54.561 [INFO] 
+        20:34:54.561 [INFO] loading index: demo.lmi/
+        20:34:54.561 [INFO]   reading masks...
+        20:34:54.562 [INFO]   reading indexes of seeds (k-mer-value) data...
+        20:34:54.562 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+        20:34:55.451 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+        20:34:55.451 [INFO] index loaded in 890.621095ms
+        20:34:55.451 [INFO] 
+        20:34:55.451 [INFO] searching with 16 threads...
+        20:34:55.451 [INFO]   keep the top 5 genomes
+        20:34:55.451 [INFO]   keep the top 1 chains
+        20:34:55.451 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
+        processed queries: 3456, speed: 8016.462 queries per minute
+        20:35:23.102 [INFO] 
+        20:35:23.102 [INFO] processed queries: 3692, speed: 8011.316 queries per minute
+        20:35:23.102 [INFO] 76.2459% (2815/3692) queries matched
+        20:35:23.102 [INFO] done searching
+        20:35:23.102 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
+        20:35:23.108 [INFO] 
+        20:35:23.108 [INFO] elapsed time: 28.547171534s
+        20:35:23.108 [INFO] 
 
-        elapsed time: 43.795s
-        peak rss: 2.99 GB
+        elapsed time: 28.785s
+        peak rss: 3.64 GB
 
 
 Result overview:
@@ -406,13 +409,13 @@ Result overview:
     --------------------   -----   ----   ---------------   -------------   -------   ---   ---   -------   -------   ------   ----   ------   -----   -------   -------   ----   -------   --------   --------   --------------------------
     GCF_900638025.1_r28    6375    1      GCF_900638025.1   NZ_LR134481.1   99.953    1     1     99.953    6542      92.831   261    3        6374    137490    143940    -      2062405   0.00e+00   8982       Haemophilus parainfluenzae
     GCF_002949675.1_r183   8176    1      GCF_002949675.1   NZ_CP026774.1   99.682    1     1     99.682    8188      98.107   82     27       8176    4194298   4202441   +      4395762   0.00e+00   13876      Shigella dysenteriae      
-    GCF_000017205.1_r183   14521   1      GCF_000017205.1   NC_009656.1     99.910    1     1     99.910    14685     96.765   269    14       14521   3874715   3889307   +      6588339   0.00e+00   23596      Pseudomonas aeruginosa    
     GCF_003697165.2_r46    2169    1      GCF_003697165.2   NZ_CP033092.2   93.177    1     1     93.177    2101      90.243   111    12       2032    4489774   4491843   +      4903501   0.00e+00   2632       Escherichia coli          
+    GCF_000017205.1_r183   14521   1      GCF_000017205.1   NC_009656.1     99.910    1     1     99.910    14685     96.765   269    14       14521   3874715   3889307   +      6588339   0.00e+00   23596      Pseudomonas aeruginosa    
     GCF_000006945.2_r8     7258    1      GCF_000006945.2   NC_003197.2     99.724    1     1     99.724    7301      97.630   91     20       7257    4618964   4626236   +      4857450   0.00e+00   12130      Salmonella enterica       
-    GCF_001027105.1_r148   20294   1      GCF_001027105.1   NZ_CP011526.1   99.921    1     1     99.921    20481     97.100   307    16       20293   2352020   2372396   +      2755072   0.00e+00   33358      Staphylococcus aureus     
     GCF_009759685.1_r164   3132    1      GCF_009759685.1   NZ_CP046654.1   99.042    1     1     99.042    3152      94.670   86     20       3121    1768740   1771855   +      3980848   0.00e+00   4735       Acinetobacter baumannii   
     GCF_000006945.2_r109   3788    2      GCF_000006945.2   NC_003197.2     99.393    1     1     99.393    3799      97.026   67     10       3774    4633318   4637083   -      4857450   0.00e+00   6145       Salmonella enterica       
-    GCF_000006945.2_r109   3788    2      GCF_002949675.1   NZ_CP026774.1   74.815    1     1     74.815    2871      81.435   64     852      3685    2156464   2159307   +      4395762   0.00e+00   2621       Shigella dysenteriae      
+    GCF_000006945.2_r109   3788    2      GCF_002950215.1   NZ_CP026788.1   70.301    1     1     70.301    2700      82.296   60     840      3502    2488829   2491505   -      4659463   0.00e+00   2565       Shigella flexneri         
+    GCF_001027105.1_r148   20294   1      GCF_001027105.1   NZ_CP011526.1   99.921    1     1     99.921    20481     97.100   307    16       20293   2352020   2372396   +      2755072   0.00e+00   33358      Staphylococcus aureus     
     GCF_002950215.1_r182   1718    1      GCF_002950215.1   NZ_CP026790.1   99.593    1     1     99.593    1781      89.163   95     5        1715    134666    136421    +      165702    0.00e+00   2089       Shigella flexneri         
 
 Blast-style format:

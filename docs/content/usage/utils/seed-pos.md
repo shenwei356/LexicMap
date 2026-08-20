@@ -82,14 +82,14 @@ Global Flags:
         ref               seqid         pos_gnm   pos_seq   strand   distance
         ---------------   -----------   -------   -------   ------   --------
         GCF_000017205.1   NC_009656.1   90        90        -        89      
-        GCF_000017205.1   NC_009656.1   122       122       -        32      
-        GCF_000017205.1   NC_009656.1   160       160       -        38      
+        GCF_000017205.1   NC_009656.1   160       160       -        70      
         GCF_000017205.1   NC_009656.1   209       209       -        49      
         GCF_000017205.1   NC_009656.1   259       259       -        50      
         GCF_000017205.1   NC_009656.1   309       309       +        50      
         GCF_000017205.1   NC_009656.1   357       357       +        48      
         GCF_000017205.1   NC_009656.1   360       360       +        3       
-        GCF_000017205.1   NC_009656.1   387       387       -        27      
+        GCF_000017205.1   NC_009656.1   410       410       -        50      
+        GCF_000017205.1   NC_009656.1   460       460       -        50      
 
     Check the biggest seed distances.
 
@@ -101,14 +101,14 @@ Global Flags:
         distance   frequency
         --------   ---------
         126        1        
-        99         32       
-        98         36       
-        97         40       
-        96         36       
-        95         40       
-        94         37       
-        93         48       
-        92         62       
+        99         36       
+        98         41       
+        97         38       
+        96         38       
+        95         47       
+        94         36       
+        93         46       
+        92         65       
 
     Or only list records with seed distances longer than a threshold.
 
@@ -133,8 +133,8 @@ Global Flags:
         ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
         ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
         GCF_000017205.1   NC_009656.1   90        90        -        89         9         TTAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGC...
-        GCF_000017205.1   NC_009656.1   122       122       -        32         3         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTC        
-        GCF_000017205.1   NC_009656.1   160       160       -        38         3         TTGGTTGGACCGGTTTCTGTGTATAACTCATTGAAAGC  
+        GCF_000017205.1   NC_009656.1   160       160       -        70         6         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTCTTGGT...
+        GCF_000017205.1   NC_009656.1   209       209       -        49         5         CATTAGGGGCGGGCATTTCCCATGGGCAAAAGGTTGT...
 
     Or only list records with seed distance longer than a threshold.
 
@@ -194,21 +194,21 @@ Global Flags:
         $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
         ref               frequency
         ---------------   ---------
-        GCF_000017205.1   143165   
-        GCF_000742135.1   120758   
-        GCF_003697165.2   110132   
-        GCF_000006945.2   108387   
-        GCF_002950215.1   108272   
-        GCF_002949675.1   101098   
-        GCF_009759685.1   88632    
-        GCF_000392875.1   65403    
-        GCF_001027105.1   64176    
-        GCF_001544255.1   57167    
-        GCF_006742205.1   57086    
-        GCF_001096185.1   49482    
-        GCF_900638025.1   48959    
-        GCF_001457655.1   45771    
-        GCF_000148585.2   44752    
+        GCF_000017205.1   142999   
+        GCF_000742135.1   120743   
+        GCF_003697165.2   110146   
+        GCF_000006945.2   108338   
+        GCF_002950215.1   108332   
+        GCF_002949675.1   101026   
+        GCF_009759685.1   88531    
+        GCF_000392875.1   65422    
+        GCF_001027105.1   64216    
+        GCF_001544255.1   57247    
+        GCF_006742205.1   57050    
+        GCF_001096185.1   49582    
+        GCF_900638025.1   48887    
+        GCF_001457655.1   45853    
+        GCF_000148585.2   44731    
 
     Plot the histograms of distances between seeds for all genomes.
 
