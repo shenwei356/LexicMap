@@ -555,7 +555,7 @@ func alignChain(
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
 // sampled fixed-length k-mers instead of LexicHash masking.
-func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
+func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	startTime0 := time.Now()
@@ -848,6 +848,13 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+
+			if gr.AFq < minAF || gr.ANI < minANI {
+				poolGSearchResult.Put(gr)
+			} else {
+				ch <- gr
+			}
+
 			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
 			if gr.AFq > 1 {
 				gr.AFq = 1
@@ -856,12 +863,6 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				gr.AFs = 1
 			}
 			gr.Score = gr.ANI
-
-			if gr.AFq < minAF {
-				poolGSearchResult.Put(gr)
-			} else {
-				ch <- gr
-			}
 
 			// h) Cleanup.
 			wfa.RecycleAligner(algn)
@@ -894,7 +895,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 
 // CompareTwoGenomes compares two genomes directly without using an index.
 // It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
-func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
+func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
 	// 1) Cut the query into fragments.
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
 	defer recycleFragments(qfrags)
@@ -1054,7 +1055,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	// 8) Store result
 	rs := poolGSearchResults.Get().(*[]*GSearchResult)
 	*rs = (*rs)[:0]
-	if gr.AFq >= minAF {
+	if gr.AFq >= minAF && gr.ANI >= minANI {
 		*rs = append(*rs, gr)
 	} else {
 		poolGSearchResult.Put(gr)
@@ -1118,7 +1119,7 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 // This method cuts both query and subject genomes into fragments and only uses
 // orthologous fragment pairs (reciprocal best hits) for ANI/AF calculation.
 // Based on GSearchAlign2 from lib-index-search-genome.go.
-func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF float64) error {
+func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
 	// 1) Cut both query and subject into fragments
 	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
 	defer recycleFragments(qfrags)
@@ -1397,7 +1398,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 	// 11) Store result
 	rs := poolGSearchResults.Get().(*[]*GSearchResult)
 	*rs = (*rs)[:0]
-	if gr.AFq >= minAF {
+	if gr.AFq >= minAF && gr.ANI >= minANI {
 		*rs = append(*rs, gr)
 	} else {
 		poolGSearchResult.Put(gr)

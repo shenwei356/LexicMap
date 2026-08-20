@@ -545,7 +545,7 @@ func maskIndexSelected(maskIndexes map[int]struct{}, index int) bool {
 
 // GSearchAlignOrthoANI align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF float64, maxQueryConcurrency int) error {
+func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	if debug {
@@ -963,6 +963,13 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+
+			if gr.AFq < minAF || gr.ANI < minANI {
+				poolGSearchResult.Put(gr)
+			} else {
+				ch <- gr
+			}
+
 			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
 			if gr.AFq > 1 {
 				gr.AFq = 1
@@ -971,12 +978,6 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				gr.AFs = 1
 			}
 			gr.Score = gr.ANI // * gr.AF
-
-			if gr.AFq < minAF {
-				poolGSearchResult.Put(gr)
-			} else {
-				ch <- gr
-			}
 
 			// manually recycle ma and mb
 			for _, ls = range *ma {

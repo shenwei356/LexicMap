@@ -146,6 +146,7 @@ Output format:
 			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
 		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
+		minANI := getFlagNonNegativeFloat64(cmd, "min-ani") / 100
 
 		// minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		// if minPrefix > 32 || minPrefix < 5 {
@@ -611,9 +612,9 @@ Output format:
 				go func() {
 					var compareErr error
 					if orthoANI {
-						compareErr = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF)
+						compareErr = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF, minANI)
 					} else {
-						compareErr = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF)
+						compareErr = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF, minANI)
 					}
 					if compareErr != nil {
 						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, compareErr))
@@ -624,9 +625,9 @@ Output format:
 				go func() {
 					if orthoANI {
 						// unnecessary
-						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF)
+						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF, minANI)
 					} else {
-						compareErr := idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF)
+						compareErr := idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF, minANI)
 						if compareErr != nil {
 							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, compareErr))
 						}
@@ -734,8 +735,11 @@ func init() {
 
 	// ani-af related filtering
 
-	compareCmd.Flags().Float64P("min-af", "", 0,
+	compareCmd.Flags().Float64P("min-af", "F", 0,
 		formatFlagUsage(`Only output results where each genome has aligned fraction > than this value (percentage).`))
+
+	compareCmd.Flags().Float64P("min-ani", "I", 70,
+		formatFlagUsage(`Only output results where one genome has ANI > than this value (percentage).`))
 
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))

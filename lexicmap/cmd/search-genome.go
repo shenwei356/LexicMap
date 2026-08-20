@@ -170,6 +170,7 @@ Output format:
 			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
 		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
+		minANI := getFlagNonNegativeFloat64(cmd, "min-ani") / 100
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
@@ -207,7 +208,6 @@ Output format:
 		// topNChains := 5 // not used in this command
 
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
-
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < 20 {
 			checkError(fmt.Errorf("the value of flag -l/--align-min-match-len (%d) should be >= 20", minAlignLen))
@@ -656,11 +656,11 @@ Output format:
 
 				if genomeIds != nil {
 					// 3. search fragments for the query
-					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, maxQueryConcurrency, gcInterval)
+					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, minANI, maxQueryConcurrency, gcInterval)
 					if orthoANI {
-						err = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
+						err = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
 					} else {
-						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, threadsPerQuery)
+						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
 					}
 
 					checkError(err)
@@ -808,8 +808,11 @@ func init() {
 
 	// ani-af related filtering
 
-	gsearchCmd.Flags().Float64P("min-af", "", 15.0,
+	gsearchCmd.Flags().Float64P("min-af", "F", 15.0,
 		formatFlagUsage(`Only output results where one genome has aligned fraction > than this value (percentage).`))
+
+	gsearchCmd.Flags().Float64P("min-ani", "I", 70,
+		formatFlagUsage(`Only output results where one genome has ANI > than this value (percentage).`))
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "O", false,
