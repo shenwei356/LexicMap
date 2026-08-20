@@ -1,6 +1,6 @@
 module github.com/shenwei356/LexicMap
 
-go 1.25.5
+go 1.27.0
 
 // replace github.com/shenwei356/lexichash => /home/shenwei/go/src/github.com/shenwei356/lexichash/
 // replace github.com/shenwei356/wfa => /home/shenwei/go/src/github.com/shenwei356/wfa/
@@ -17,7 +17,7 @@ require (
 	github.com/shenwei356/bio v0.15.0
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
 	github.com/shenwei356/kmers v0.1.0
-	github.com/shenwei356/lexichash v0.5.3
+	github.com/shenwei356/lexichash v0.5.4
 	github.com/shenwei356/util v0.5.6
 	github.com/shenwei356/wfa v0.4.3
 	github.com/shenwei356/xopen v0.4.0
@@ -53,7 +53,7 @@ require (
 	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
-	golang.org/x/image v0.44.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/image v0.45.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )

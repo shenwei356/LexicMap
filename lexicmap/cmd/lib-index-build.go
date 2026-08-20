@@ -56,7 +56,7 @@ var be = binary.BigEndian
 var MainVersion uint8 = 3
 
 // MinorVersion is less important
-var MinorVersion uint8 = 4
+var MinorVersion uint8 = 5
 
 // ExtTmpDir is the path extension for temporary files
 const ExtTmpDir = ".tmp"

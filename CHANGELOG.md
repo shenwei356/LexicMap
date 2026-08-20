@@ -2,6 +2,8 @@
 
 ### v0.10.0 - 2026-xx-xx
 
+There is a small change in the seed computation, but re-indexing is unnecessary.
+
 - New commands:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
@@ -9,6 +11,12 @@
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
+    - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during
+      the first round of probe capture (k-mer masking)**.
+      This caused more k-mers to be captured on the positive strand, but had a negligible effect
+      on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
+      when rebuilding an index.
+    - **Faster speed by optimizing seed computation**.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
