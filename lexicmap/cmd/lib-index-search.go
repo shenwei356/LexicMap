@@ -147,6 +147,8 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 type Index struct {
 	path string
 
+	info *IndexInfo // index info
+
 	openFileTokens chan int // control the max open files
 
 	// lexichash
@@ -302,6 +304,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		info.InputBases = totalBases
 	}
 	idx.totalBases = info.InputBases
+
+	idx.info = info
 
 	if idx.opt.MaxOpenFiles < info.Chunks+2 {
 		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
@@ -1205,7 +1209,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	// _kmers, _locses, err := idx.lh.Mask(s, nil)
 	// _kmers, _locses, err := idx.lh.MaskKnownPrefixes(s, nil)
-	_kmers, _locses, err := idx.lh.MaskKnownDistinctPrefixes(s, nil, true)
+	funcMask := idx.lh.MaskKnownDistinctPrefixes
+	if idx.info.MainVersion == 3 && idx.info.MinorVersion < 5 { // for backward compatibility
+		funcMask = idx.lh.MaskKnownDistinctPrefixesWithStrandBias
+	}
+	_kmers, _locses, err := funcMask(s, nil, true)
 	if err != nil {
 		return nil, err
 	}

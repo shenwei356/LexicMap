@@ -173,7 +173,11 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 		}
 		// fmt.Printf("window #%d: %d-%d\n", i+1, start+1, end)
 
-		_kmers, locses, err := idx.lh.MaskKnownDistinctPrefixes(query.bigSeq[start:end], query.skipRegions, true)
+		funcMask := idx.lh.MaskKnownDistinctPrefixes
+		if idx.info.MainVersion == 3 && idx.info.MinorVersion < 5 { // for backward compatibility
+			funcMask = idx.lh.MaskKnownDistinctPrefixesWithStrandBias
+		}
+		_kmers, locses, err := funcMask(query.bigSeq[start:end], query.skipRegions, true)
 		if err != nil {
 			panic(err)
 		}
