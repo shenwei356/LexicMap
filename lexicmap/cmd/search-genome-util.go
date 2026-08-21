@@ -187,11 +187,13 @@ func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*
 		return nil, nil
 	}
 
-	gaps := reGaps.FindAllSubmatchIndex(q.bigSeq, -1)
+	gaps := findGapRegions(q.bigSeq)
 	if gaps != nil {
-		for _, gap := range gaps {
-			q.skipRegions = append(q.skipRegions, [2]int{gap[0], gap[1] - 1})
+		for _, gap := range *gaps {
+			start, end := unpackGapRegion(gap)
+			q.skipRegions = append(q.skipRegions, [2]int{start, end - 1})
 		}
+		recycleGapRegions(gaps)
 
 		slices.SortFunc(q.skipRegions, func(a, b [2]int) int {
 			return a[0] - b[0]

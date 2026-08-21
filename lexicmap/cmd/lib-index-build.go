@@ -990,18 +990,20 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				}
 
 				// skip gap regions (N's)
-				gaps := reGaps.FindAllSubmatchIndex(refseq.Seq, -1)
+				gaps := findGapRegions(refseq.Seq)
 				if gaps != nil {
 					if _skipRegions == nil { // only one contig is available
 						skipRegions = poolSkipRegions.Get().(*[][2]int)
 						*skipRegions = (*skipRegions)[:0]
 					}
 
-					for _, gap := range gaps {
-						*skipRegions = append(*skipRegions, [2]int{gap[0], gap[1] - 1})
+					for _, gap := range *gaps {
+						start, end := unpackGapRegion(gap)
+						*skipRegions = append(*skipRegions, [2]int{start, end - 1})
 
-						_itree.Insert(gap[0]-k+1, gap[1]-1, 1)
+						_itree.Insert(start-k+1, end-1, 1)
 					}
+					recycleGapRegions(gaps)
 
 					// sort.Slice(*skipRegions, func(i, j int) bool {
 					// 	return (*skipRegions)[i][0] < (*skipRegions)[j][0]
@@ -2340,5 +2342,3 @@ var poolKmerCounter = &sync.Pool{New: func() interface{} {
 }}
 
 var cmpFn = func(x, y int) int { return int(x - y) }
-
-var reGaps = regexp.MustCompile(fmt.Sprintf(`[Nn]{%d,}`, 5))

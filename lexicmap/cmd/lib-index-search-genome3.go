@@ -836,9 +836,13 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			}
 
 			// skip gap regions (N's) in forward strand
-			gaps := reGaps.FindAllSubmatchIndex(*concat, -1)
-			for _, gap := range gaps {
-				skipRegions = append(skipRegions, [2]int{gap[0], gap[1] - 1})
+			gaps := findGapRegions(*concat)
+			if gaps != nil {
+				for _, gap := range *gaps {
+					start, end := unpackGapRegion(gap)
+					skipRegions = append(skipRegions, [2]int{start, end - 1})
+				}
+				recycleGapRegions(gaps)
 			}
 
 			// c) Append 2*fragLen interval and reverse complement strand
@@ -1024,9 +1028,13 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	}
 
 	// skip gap regions (N's) in forward strand
-	gaps := reGaps.FindAllSubmatchIndex(*concat, -1)
-	for _, gap := range gaps {
-		skipRegions = append(skipRegions, [2]int{gap[0], gap[1] - 1})
+	gaps := findGapRegions(*concat)
+	if gaps != nil {
+		for _, gap := range *gaps {
+			start, end := unpackGapRegion(gap)
+			skipRegions = append(skipRegions, [2]int{start, end - 1})
+		}
+		recycleGapRegions(gaps)
 	}
 
 	// Append 2*fragLen interval and reverse complement strand
