@@ -23,7 +23,10 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
-    - **Fix a data race bug in extension of pseudoalignment region**.
+    - **Fixed a data race bug in extension of pseudoalignment region**.
+    - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
+      This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
+      In limited testing, the resulting alignments tended to be slightly shorter and contain fewer gaps.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
     - Faster pseudoalignment for long queries.
 - `lexicmap util kmers`:
