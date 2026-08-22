@@ -674,11 +674,11 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 		go func(batchIDAndRefIDs *[]uint64) {
 			timeStart := time.Now()
 			defer func() {
-				<-tokens
-				wg.Done()
 				if debug {
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 				}
+				<-tokens
+				wg.Done()
 			}()
 
 			// -------------------------------------------------------------
@@ -970,18 +970,17 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			if gr.AFq > 1 {
 				gr.AFq = 1
 			}
+			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
+			if gr.AFs > 1 {
+				gr.AFs = 1
+			}
+			gr.Score = gr.ANI // * gr.AF
 
 			if gr.AFq < minAF || gr.ANI < minANI {
 				poolGSearchResult.Put(gr)
 			} else {
 				ch <- gr
 			}
-
-			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
-			if gr.AFs > 1 {
-				gr.AFs = 1
-			}
-			gr.Score = gr.ANI // * gr.AF
 
 			// manually recycle ma and mb
 			for _, ls = range *ma {

@@ -521,7 +521,6 @@ Result ordering:
 					}
 					_c++
 				}
-				outfh.Flush()
 			}
 			idx.RecycleSearchResults(q.result)
 

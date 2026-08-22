@@ -753,12 +753,11 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			timeStart := time.Now()
 
 			defer func() {
-				wg.Done()
-				<-tokens
-
 				if debug {
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 				}
+				<-tokens
+				wg.Done()
 			}()
 
 			var g *genome.Genome
@@ -909,18 +908,17 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			if gr.AFq > 1 {
 				gr.AFq = 1
 			}
+			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
+			if gr.AFs > 1 {
+				gr.AFs = 1
+			}
+			gr.Score = gr.ANI
 
 			if gr.AFq < minAF || gr.ANI < minANI {
 				poolGSearchResult.Put(gr)
 			} else {
 				ch <- gr
 			}
-
-			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
-			if gr.AFs > 1 {
-				gr.AFs = 1
-			}
-			gr.Score = gr.ANI
 
 			// h) Cleanup.
 			wfa.RecycleAligner(algn)

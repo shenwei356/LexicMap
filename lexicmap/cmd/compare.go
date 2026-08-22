@@ -557,12 +557,11 @@ Output format:
 			go func(genome1, genome2 string) {
 				timeStart := time.Now()
 				defer func() {
-					wg.Done()
-					<-tokens
-
 					if debug {
 						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 					}
+					<-tokens
+					wg.Done()
 				}()
 
 				q := poolGPair.Get().(*GPair)
