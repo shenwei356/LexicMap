@@ -37,6 +37,7 @@ var Strands = [2]byte{'+', '-'}
 type Query struct {
 	seqID  []byte
 	seq    []byte
+	qual   []byte
 	result *[]*SearchResult
 }
 
@@ -44,6 +45,7 @@ type Query struct {
 func (q *Query) Reset() {
 	q.seqID = q.seqID[:0]
 	q.seq = q.seq[:0]
+	q.qual = q.qual[:0]
 	q.result = nil
 }
 
@@ -51,6 +53,7 @@ var poolQuery = &sync.Pool{New: func() interface{} {
 	return &Query{
 		seqID: make([]byte, 0, 128),     // the id should be not too long
 		seq:   make([]byte, 0, 100<<10), // initialize with 100K
+		qual:  make([]byte, 0, 100<<10), // initialize with 100K
 	}
 }}
 

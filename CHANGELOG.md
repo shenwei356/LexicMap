@@ -27,7 +27,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited testing, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject sequence index prefixes to sseqid values.
+    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
+    - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
     - Faster pseudoalignment for long queries.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).

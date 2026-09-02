@@ -166,6 +166,7 @@ Result ordering:
 		}
 		moreColumns := getFlagBool(cmd, "all")
 		showSseqIdx := getFlagBool(cmd, "show-sseq-idx")
+		showAvgQual := getFlagBool(cmd, "show-avg-qual")
 
 		// maxMismatch := getFlagInt(cmd, "seed-max-mismatch")
 		minSinglePrefix := getFlagPositiveInt(cmd, "seed-min-single-prefix")
@@ -465,6 +466,13 @@ Result ordering:
 
 			var strand byte
 			var _c, j int
+			var vSseqid string
+			var vAlenHSP string
+			var _seq *seq.Seq
+			if showAvgQual {
+				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
+				checkError(err)
+			}
 			for _, r := range *q.result { // each genome
 				_c = 1
 				j = 1
@@ -489,28 +497,28 @@ Result ordering:
 						}
 
 						if showSseqIdx {
-							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\tc%d/%d:s%d/%d:%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-								queryID, len(q.seq),
-								targets, id2name[r.BatchGenomeIndex], sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID, r.AlignedFraction,
-								_c,
-								j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
-								c.QBegin+1, c.QEnd+1,
-								c.TBegin+1, c.TEnd+1,
-								strand, sd.SeqLen,
-								c.Evalue, c.BitScore,
-							)
+							vSseqid = fmt.Sprintf("c%d/%d:s%d/%d:%s", sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID)
 						} else {
-							fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%d\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-								queryID, len(q.seq),
-								targets, id2name[r.BatchGenomeIndex], sd.SeqID, r.AlignedFraction,
-								_c,
-								j, c.AlignedFraction, c.AlignedLength, c.PIdent, c.Gaps,
-								c.QBegin+1, c.QEnd+1,
-								c.TBegin+1, c.TEnd+1,
-								strand, sd.SeqLen,
-								c.Evalue, c.BitScore,
-							)
+							vSseqid = string(sd.SeqID)
 						}
+
+						if showAvgQual {
+							vAlenHSP = fmt.Sprintf("%d:%.1f", c.AlignedLength, _seq.AvgQualOfRegion(33, c.QBegin+1, c.QEnd+1))
+						} else {
+							vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
+						}
+
+						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%s\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
+							queryID, len(q.seq),
+							targets, id2name[r.BatchGenomeIndex], vSseqid, r.AlignedFraction,
+							_c,
+							j, c.AlignedFraction, vAlenHSP, c.PIdent, c.Gaps,
+							c.QBegin+1, c.QEnd+1,
+							c.TBegin+1, c.TEnd+1,
+							strand, sd.SeqLen,
+							c.Evalue, c.BitScore,
+						)
+
 						if moreColumns {
 							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
 						}
@@ -579,6 +587,7 @@ Result ordering:
 
 				query.seqID = append(query.seqID, record.ID...)
 				query.seq = append(query.seq, record.Seq.Seq...)
+				query.qual = append(query.qual, record.Seq.Qual...)
 				d := byte('a' - 'A')
 				for i, b := range query.seq {
 					if b >= 'a' && b <= 'z' {
@@ -639,9 +648,6 @@ func init() {
 
 	mapCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
-
-	mapCmd.Flags().BoolP("show-sseq-idx", "", false,
-		formatFlagUsage(`Add 1-based genome chunk and subject sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 means chunk 2 of 3 and s1/10 means sequence 1 of 10.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
@@ -728,4 +734,10 @@ func init() {
 	mapCmd.Flags().StringP("taxid-file", "", "",
 		formatFlagUsage(`TaxIds from a file for filtering results, where the taxids are equal to or are the children of the given taxids. Negative values are allowed as a black list.`))
 
+	// extra information
+
+	mapCmd.Flags().BoolP("show-sseq-idx", "", false,
+		formatFlagUsage(`Add 1-based genome chunk and subject-sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 denotes chunk 2 of 3 and s1/10 denotes sequence 1 of 10.`))
+	mapCmd.Flags().BoolP("show-avg-qual", "", false,
+		formatFlagUsage(`Add average quality of the aligned region as a suffix to alenHSP field, e.g., 128:21.6, where 21.6 is the average quality of the aligned region.`))
 }

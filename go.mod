@@ -14,7 +14,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pkg/errors v0.9.1
 	github.com/rdleal/intervalst v1.5.0
-	github.com/shenwei356/bio v0.15.0
+	github.com/shenwei356/bio v0.15.1
 	github.com/shenwei356/go-logging v0.0.0-20171012171522-c6b9702d88ba
 	github.com/shenwei356/kmers v0.1.0
 	github.com/shenwei356/lexichash v0.5.5
@@ -23,36 +23,35 @@ require (
 	github.com/shenwei356/xopen v0.4.0
 	github.com/spf13/cobra v1.10.2
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
-	github.com/vbauerster/mpb/v8 v8.12.1
+	github.com/vbauerster/mpb/v8 v8.16.1
 	gonum.org/v1/gonum v0.17.0
-	gonum.org/v1/plot v0.16.0
+	gonum.org/v1/plot v0.17.0
 )
 
 require (
-	codeberg.org/go-fonts/liberation v0.5.0 // indirect
-	codeberg.org/go-latex/latex v0.1.0 // indirect
-	codeberg.org/go-pdf/fpdf v0.10.0 // indirect
-	git.sr.ht/~sbinet/gg v0.6.0 // indirect
+	codeberg.org/go-fonts/liberation v0.6.0 // indirect
+	codeberg.org/go-latex/latex v0.3.0 // indirect
+	codeberg.org/go-pdf/fpdf v0.12.0 // indirect
+	git.sr.ht/~sbinet/gg v0.8.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
-	github.com/campoy/embedmd v1.0.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
-	github.com/elliotwutingfeng/asciiset v0.0.0-20230602022725-51bbb787efab // indirect
+	github.com/elliotwutingfeng/asciiset v0.0.0-20260801111138-45c5fff54b41 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.19.0 // indirect
-	github.com/mattn/go-isatty v0.0.22 // indirect
-	github.com/mattn/go-runewidth v0.0.24 // indirect
-	github.com/pierrec/lz4/v4 v4.1.27 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/mattn/go-isatty v0.0.24 // indirect
+	github.com/mattn/go-runewidth v0.0.28 // indirect
+	github.com/pierrec/lz4/v4 v4.1.29 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/shenwei356/breader v0.3.2 // indirect
-	github.com/shenwei356/natsort v0.0.0-20190418160752-600d539c017d // indirect
-	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/ulikunitz/xz v0.5.15 // indirect
+	github.com/shenwei356/natsort v0.0.0-20220117010048-580176ad49fb // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/ulikunitz/xz v0.5.16 // indirect
+	github.com/vbauerster/cupwriter v0.0.4 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
