@@ -967,52 +967,39 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// interval tree of 1000-bp interval regions, used in filling deserts
 				_itree := itree.NewSearchTree[uint8, int](cmpFn)
 
-				// because lh.Mask accepts a list, while when skipRegions is nil, *skipRegions is illegal.
-				var _skipRegions [][2]int
-				var skipRegions *[][2]int
+				// Flat list of 0-based start/end pairs.
+				skipRegions := poolMaskSkipRegions.Get().(*[]int)
+				*skipRegions = (*skipRegions)[:0]
 				var interval int = opt.ContigInterval
 				if len(refseq.SeqSizes) > 1 {
-					skipRegions = poolSkipRegions.Get().(*[][2]int)
-					*skipRegions = (*skipRegions)[:0]
 					var n int // len of concatenated seqs
 					for i, s := range refseq.SeqSizes {
 						if i > 0 {
 							// 0-based region. [n, n+interval-1]
-							*skipRegions = append(*skipRegions, [2]int{n, n + interval - 1})
+							*skipRegions = append(*skipRegions, n, n+interval-1)
 
+							// including the sequence's last k-1 bases
 							_itree.Insert(n-k+1, n+interval-1, 1)
 
 							n += interval
 						}
 						n += s
 					}
-					_skipRegions = *skipRegions
 				}
 
 				// skip gap regions (N's)
-				gaps := findGapRegions(refseq.Seq)
+				gaps := findGapRegions(refseq.Seq, 5)
 				if gaps != nil {
-					if _skipRegions == nil { // only one contig is available
-						skipRegions = poolSkipRegions.Get().(*[][2]int)
-						*skipRegions = (*skipRegions)[:0]
-					}
-
 					for _, gap := range *gaps {
 						start, end := unpackGapRegion(gap)
-						*skipRegions = append(*skipRegions, [2]int{start, end - 1})
+						*skipRegions = append(*skipRegions, start, end-1)
 
+						// including the sequence's last k-1 bases
 						_itree.Insert(start-k+1, end-1, 1)
 					}
 					recycleGapRegions(gaps)
 
-					// sort.Slice(*skipRegions, func(i, j int) bool {
-					// 	return (*skipRegions)[i][0] < (*skipRegions)[j][0]
-					// })
-					slices.SortFunc(*skipRegions, func(a, b [2]int) int {
-						return a[0] - b[0]
-					})
-
-					_skipRegions = *skipRegions
+					lexichash.SortSkipRegions(*skipRegions)
 				}
 				//
 
@@ -1020,12 +1007,12 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				var locses *[][]int
 
 				// if len(lh.Masks) > 1024 && len(refseq.Seq) > 1048576 {
-				// 	_kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, _skipRegions)
+				// 	_kmers, locses, err = lh.MaskLongSeqs(refseq.Seq, *skipRegions)
 				// } else {
-				// 	_kmers, locses, err = lh.Mask(refseq.Seq, _skipRegions)
+				// 	_kmers, locses, err = lh.Mask(refseq.Seq, *skipRegions)
 				// }
-				// _kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, _skipRegions)
-				_kmers, locses, err = lh.MaskKnownDistinctPrefixes(refseq.Seq, _skipRegions, true)
+				// _kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, *skipRegions)
+				_kmers, locses, err = lh.MaskKnownDistinctPrefixes(refseq.Seq, *skipRegions, true)
 				if err != nil { // E.g., some sequences contain invalid sequences.
 					checkError(fmt.Errorf("failed to compute LexicHash for %s: %s", refseq.ID, err))
 				}
@@ -1419,14 +1406,14 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					// add an extra flag so we can skip these seed pairs accrossing interval regions.
 
 					var nRegions int
-					checkRegion := skipRegions != nil
+					checkRegion := len(*skipRegions) > 0
 					var _i, _j, _ri, _rs int
 					var _loc uint32
 					if checkRegion {
-						nRegions = len(*skipRegions)
+						nRegions = len(*skipRegions) >> 1
 
 						_ri = 0
-						_rs = (*skipRegions)[_ri][1] // end position of a interval region
+						_rs = (*skipRegions)[(_ri<<1)+1] // end position of a interval region
 					}
 
 					if !checkRegion {
@@ -1442,13 +1429,13 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 							if checkRegion && _j >= _rs { // this is the first pos after an interval region
 								(*locs)[_i] = _loc<<1 | 1 // add a flag
 
-								// fmt.Printf("  the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[_ri][1])
+								// fmt.Printf("  the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[(_ri<<1)+1])
 
 								_ri++
 
 								// some short contigs might do not have seeds
-								for _ri+1 < nRegions && _j > (*skipRegions)[_ri+1][1] {
-									_rs += (*skipRegions)[_ri+1][1]
+								for _ri+1 < nRegions && _j > (*skipRegions)[((_ri+1)<<1)+1] {
+									_rs += (*skipRegions)[((_ri+1)<<1)+1]
 									_ri++
 									if _ri == nRegions-1 {
 										checkRegion = false
@@ -1459,7 +1446,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								if _ri == nRegions { // this is already the last one
 									checkRegion = false
 								} else {
-									_rs = (*skipRegions)[_ri][1]
+									_rs = (*skipRegions)[(_ri<<1)+1]
 								}
 							} else {
 								(*locs)[_i] = _loc << 1
@@ -1478,9 +1465,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				}
 
 				// recycle
-				if skipRegions != nil {
-					poolSkipRegions.Put(skipRegions)
-				}
+				poolMaskSkipRegions.Put(skipRegions)
 
 				// send to collect data
 				genomes <- refseq
@@ -1962,6 +1947,11 @@ func readIndexInfo(file string) (*IndexInfo, error) {
 
 var poolSkipRegions = &sync.Pool{New: func() interface{} {
 	tmp := make([][2]int, 0, 128)
+	return &tmp
+}}
+
+var poolMaskSkipRegions = &sync.Pool{New: func() interface{} {
+	tmp := make([]int, 0, 256)
 	return &tmp
 }}
 

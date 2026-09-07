@@ -835,7 +835,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			}
 
 			// skip gap regions (N's) in forward strand
-			gaps := findGapRegions(*concat)
+			gaps := findGapRegions(*concat, 5)
 			if gaps != nil {
 				for _, gap := range *gaps {
 					start, end := unpackGapRegion(gap)
@@ -1026,7 +1026,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	}
 
 	// skip gap regions (N's) in forward strand
-	gaps := findGapRegions(*concat)
+	gaps := findGapRegions(*concat, 5)
 	if gaps != nil {
 		for _, gap := range *gaps {
 			start, end := unpackGapRegion(gap)

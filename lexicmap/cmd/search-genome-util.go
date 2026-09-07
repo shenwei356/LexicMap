@@ -27,10 +27,10 @@ import (
 	"math"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sync"
 
 	"github.com/shenwei356/bio/seqio/fastx"
+	"github.com/shenwei356/lexichash"
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
@@ -39,7 +39,7 @@ type GQuery struct {
 	id          []byte
 	bigSeq      []byte
 	seqs        []*[]byte
-	skipRegions [][2]int
+	skipRegions []int
 
 	genomeSize int
 
@@ -53,7 +53,7 @@ var poolGQuery = &sync.Pool{New: func() interface{} {
 		id:          make([]byte, 0, 127),
 		bigSeq:      make([]byte, 0, 10<<20), // 10M
 		seqs:        make([]*[]byte, 0, 256),
-		skipRegions: make([][2]int, 0, 256),
+		skipRegions: make([]int, 0, 512),
 		genomeSize:  0,
 	}
 }}
@@ -163,7 +163,7 @@ func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*
 		}
 
 		if i > 0 {
-			q.skipRegions = append(q.skipRegions, [2]int{len(q.bigSeq), len(q.bigSeq) + gr.k - 1})
+			q.skipRegions = append(q.skipRegions, len(q.bigSeq), len(q.bigSeq)+gr.k-1)
 
 			q.bigSeq = append(q.bigSeq, gr.nnn...)
 		}
@@ -187,17 +187,15 @@ func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*
 		return nil, nil
 	}
 
-	gaps := findGapRegions(q.bigSeq)
+	gaps := findGapRegions(q.bigSeq, 5)
 	if gaps != nil {
 		for _, gap := range *gaps {
 			start, end := unpackGapRegion(gap)
-			q.skipRegions = append(q.skipRegions, [2]int{start, end - 1})
+			q.skipRegions = append(q.skipRegions, start, end-1)
 		}
 		recycleGapRegions(gaps)
 
-		slices.SortFunc(q.skipRegions, func(a, b [2]int) int {
-			return a[0] - b[0]
-		})
+		lexichash.SortSkipRegions(q.skipRegions)
 	}
 
 	baseFile := filepath.Base(file)

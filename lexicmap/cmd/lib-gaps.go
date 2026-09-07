@@ -23,7 +23,6 @@ package cmd
 import "sync"
 
 const (
-	minGapSize                  = 5
 	maxPooledGapRegionsCapacity = 4096
 )
 
@@ -35,7 +34,7 @@ var poolGapRegions = &sync.Pool{New: func() any {
 // findGapRegions returns half-open intervals of N/n runs at least minGapSize
 // bases long, matching the former regular expression [Nn]{5,}. Each interval
 // packs its start in the high 32 bits and its end in the low 32 bits.
-func findGapRegions(seq []byte) *[]uint64 {
+func findGapRegions(seq []byte, minGapSize int) *[]uint64 {
 	var gaps *[]uint64
 	for i := 0; i < len(seq); {
 		if seq[i] != 'N' && seq[i] != 'n' {

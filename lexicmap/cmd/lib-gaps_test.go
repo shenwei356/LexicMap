@@ -40,7 +40,7 @@ func TestFindGapRegions(t *testing.T) {
 		for _, gap := range want0 {
 			want = append(want, [2]int{gap[0], gap[1]})
 		}
-		got0 := findGapRegions(seq)
+		got0 := findGapRegions(seq, 5)
 		var got [][2]int
 		if got0 != nil {
 			for _, gap := range *got0 {
@@ -69,7 +69,7 @@ func BenchmarkFindGapRegionsPacked(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gaps := findGapRegions(seq)
+		gaps := findGapRegions(seq, 5)
 		recycleGapRegions(gaps)
 	}
 }

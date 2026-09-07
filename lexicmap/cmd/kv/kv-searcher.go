@@ -469,6 +469,9 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						return nil, ErrBrokenFile
 					}
 
+					// Here we only check the reverse flag of the first seed data,
+					// because 31-mers have high specificity, in our overvation,
+					// all seed data of a k-mer have the same flag.
 					if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
 						saveKmer = false
 
