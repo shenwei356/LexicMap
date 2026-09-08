@@ -36,9 +36,17 @@ import (
 
 var reindexSeedsCmd = &cobra.Command{
 	Use:   "reindex-seeds",
-	Short: "Recreate indexes of k-mer-value (seeds) data",
-	Long: `Recreate indexes of k-mer-value (seeds) data
+	Short: "Recreate primary indexes of seeds data",
+	Long: `Recreate the primary indexes of seeds data.
 
+The seeds files are not changed. Different seeds files are processed in
+parallel using -j/--threads, and --partitions controls the number of anchor
+partitions in each primary index.
+
+This command writes single-level .idx files. Searches will not use existing
+.idx15 files afterward. Use "lexicmap utils reindex-seeds2" to create adaptive
+two-level indexes that can reduce seed-matching time for large primary-prefix
+blocks.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -81,12 +89,13 @@ var reindexSeedsCmd = &cobra.Command{
 
 		// process bar
 		var pbs *mpb.Progress
-		var bar *mpb.Bar
+		var chunksBar *mpb.Bar
 		var chDuration chan time.Duration
 		var doneDuration chan int
 		if showProgressBar {
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
-			bar = pbs.AddBar(int64(info.Chunks),
+			chunksBar = pbs.AddBar(int64(info.Chunks),
+				mpb.BarPriority(0),
 				mpb.PrependDecorators(
 					decor.Name("processed files: ", decor.WC{W: len("processed files: "), C: decor.DindentRight}),
 					decor.Name("", decor.WCSyncSpaceR),
@@ -103,7 +112,7 @@ var reindexSeedsCmd = &cobra.Command{
 			doneDuration = make(chan int)
 			go func() {
 				for t := range chDuration {
-					bar.EwmaIncrBy(1, t)
+					chunksBar.EwmaIncrBy(1, t)
 				}
 				doneDuration <- 1
 			}()
@@ -112,21 +121,48 @@ var reindexSeedsCmd = &cobra.Command{
 		var wg sync.WaitGroup
 		tokens := make(chan int, opt.NumCPUs)
 		threadsFloat := float64(opt.NumCPUs)
+		// Seeds files are independent and can be reindexed concurrently.
 		for chunk := 0; chunk < info.Chunks; chunk++ {
 			file := filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 			wg.Add(1)
 			tokens <- 1
 
-			go func(file string) {
+			go func(file string, chunk int) {
 				timeStart := time.Now()
-				err := kv.CreateKVIndex(file, partitions)
+				var masksBar *mpb.Bar
+				var progress kv.IndexProgressFunc
+				if showProgressBar {
+					progress = func(processedMasks, totalMasks uint64) {
+						if masksBar == nil {
+							name := fmt.Sprintf("  chunk %03d masks: ", chunk)
+							masksBar = pbs.AddBar(int64(totalMasks),
+								mpb.BarPriority(chunk+1),
+								mpb.BarRemoveOnComplete(),
+								mpb.PrependDecorators(
+									decor.Name(name, decor.WC{W: len(name), C: decor.DindentRight}),
+									decor.CountersNoUnit("%d / %d"),
+								),
+								mpb.AppendDecorators(decor.Percentage()),
+							)
+						}
+						masksBar.SetCurrent(int64(processedMasks))
+					}
+				}
+				err := kv.CreateKVIndexWithProgress(file, partitions, progress)
+				if masksBar != nil {
+					if err != nil {
+						masksBar.Abort(true)
+					} else {
+						masksBar.SetTotal(-1, true)
+					}
+				}
 				checkError(err)
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / threadsFloat)
 				}
 				<-tokens
 				wg.Done()
-			}(file)
+			}(file, chunk)
 		}
 		wg.Wait()
 
@@ -156,7 +192,7 @@ func init() {
 	reindexSeedsCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 	reindexSeedsCmd.Flags().IntP("partitions", "", 4096,
-		formatFlagUsage(`Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
+		formatFlagUsage(`Number of anchor partitions in each primary seed index. The value needs to be a power of 4.`))
 
 	reindexSeedsCmd.SetUsageTemplate(usageTemplate(""))
 }
