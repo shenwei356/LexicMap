@@ -105,7 +105,7 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //	Main and minor versions, 2 bytes.
 //	K size, 1 byte.
 //	Mask prefix length, 1  byte. e.g., 7
-//	Anchor prefix length, 1 byte. e.g., 5
+//	Anchor prefix length, 1 byte. e.g., 6
 //	Config1, 1 byte, including one bit for use3BytesForSeedPos
 //	Blank, 2 bytes.
 //	Mask start index, 8 bytes. The index of the first index.
@@ -118,6 +118,10 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //
 //		k-mer: 8 bytes
 //		offset: 8 bytes
+//
+// Version 2 indexes use bit 63 to tag idx15 offsets. Untagged entries retain
+// the legacy (byte offset << 1 | second-k-mer flag) representation so their
+// checkpoint k-mer still identifies the sparse anchor slot.
 //
 // The first pair of data is different
 //
@@ -207,6 +211,9 @@ func (wtr *Writer) Close() (err error) {
 }
 
 const MaskUse3BytesForSeedPos uint8 = 1
+
+// MaskHasIndex15 marks a version 2 index with tagged idx15 offsets.
+const MaskHasIndex15 uint8 = 1 << 1
 
 // NewWriter returns a new writer
 func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool) (*Writer, error) {
@@ -676,8 +683,11 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
 	// check compatibility
-	if MainVersion != buf[0] {
+	if !validKVIndexVersion(buf[0]) {
 		return 0, -1, nil, 0, 0, 0, ErrVersionMismatch
+	}
+	if !validKVIndexMetadata(buf[0], buf[5]) {
+		return 0, -1, nil, 0, 0, 0, ErrInvalidFileFormat
 	}
 	k := buf[2] // k-mer size
 	maskPrefix := buf[3]
@@ -792,8 +802,13 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 	if _, err = io.ReadFull(r, buf8); err != nil {
 		return nil, err
 	}
-	if MainVersion != buf8[0] {
+	indexVersion := buf8[0]
+	indexConfig := buf8[5]
+	if !validKVIndexVersion(indexVersion) {
 		return nil, ErrVersionMismatch
+	}
+	if !validKVIndexMetadata(indexVersion, indexConfig) {
+		return nil, ErrInvalidFileFormat
 	}
 
 	// Skip first-mask index and read mask count.
@@ -820,6 +835,9 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 		}
 		starts[i][0] = be.Uint64(buf16[:8])
 		starts[i][1] = be.Uint64(buf16[8:])
+		if IsIndex15Offset(starts[i][1]) {
+			return nil, ErrInvalidFileFormat
+		}
 
 		if nRecords > 1 {
 			if _, err = io.CopyN(io.Discard, r, int64(nRecords-1)*16); err != nil {
@@ -873,8 +891,11 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 		return 0, -1, 0, 0, 0, ErrBrokenFile
 	}
 	// check compatibility
-	if MainVersion != buf[0] {
+	if !validKVIndexVersion(buf[0]) {
 		return 0, -1, 0, 0, 0, ErrVersionMismatch
+	}
+	if !validKVIndexMetadata(buf[0], buf[5]) {
+		return 0, -1, 0, 0, 0, ErrInvalidFileFormat
 	}
 	k := buf[2] // k-mer size
 	maskPrefix := buf[3]
@@ -973,12 +994,24 @@ var poolUint64s = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
+// IndexProgressFunc receives the number of completely processed masks and the
+// total number of masks in one seeds chunk. The first call reports zero
+// processed masks after the seeds header has been validated.
+type IndexProgressFunc func(processedMasks, totalMasks uint64)
+
 // CreateKVIndex recreates kv index file for the kv-data file.
 func CreateKVIndex(file string, nAnchors int) error {
+	return CreateKVIndexWithProgress(file, nAnchors, nil)
+}
+
+// CreateKVIndexWithProgress is CreateKVIndex with per-mask progress reporting
+// for one seeds chunk.
+func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgressFunc) error {
 	fh, err := os.Open(file)
 	if err != nil {
 		return errors.Wrapf(err, "reading kv-data file")
 	}
+	defer fh.Close()
 
 	r := bufio.NewReader(fh)
 
@@ -1056,6 +1089,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 	if err != nil {
 		return err
 	}
+	if progress != nil {
+		progress(0, ChunkSize)
+	}
 
 	anchorPrefix := max(int(math.Log2(float64(nAnchors))/2), 1)
 
@@ -1065,6 +1101,7 @@ func CreateKVIndex(file string, nAnchors int) error {
 	if err != nil {
 		return err
 	}
+	defer fhi.Close()
 	wi := bufio.NewWriter(fhi)
 
 	// 8-byte magic number
@@ -1128,6 +1165,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 			err = binary.Write(wi, be, uint64(0))
 			if err != nil {
 				return err
+			}
+			if progress != nil {
+				progress(i+1, ChunkSize)
 			}
 
 			continue
@@ -1365,6 +1405,9 @@ func CreateKVIndex(file string, nAnchors int) error {
 					return err
 				}
 			}
+		}
+		if progress != nil {
+			progress(i+1, ChunkSize)
 		}
 	}
 

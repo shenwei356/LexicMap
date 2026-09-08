@@ -55,6 +55,7 @@ type Searcher struct {
 	maxKmer uint64 // not used
 
 	Use3BytesForSeedPos bool
+	index15             *index15
 
 	searchKits chan *SearchKit
 	nWorkers   int
@@ -89,13 +90,30 @@ func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, er
 	var indexes [][]uint64
 	var maskPrefix, anchorPrefix, config1 uint8
 	var err error
+	indexFile := filepath.Clean(file) + KVIndexFileExt
 	if len(selectedMasks) == 0 {
-		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndex(filepath.Clean(file) + KVIndexFileExt)
+		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndex(indexFile)
 	} else {
-		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndexSelected(filepath.Clean(file)+KVIndexFileExt, selectedMasks)
+		k, chunkIndex, indexes, maskPrefix, anchorPrefix, config1, err = ReadKVIndexSelected(indexFile, selectedMasks)
 	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data index file")
+	}
+
+	var idx15 *index15
+	if config1&MaskHasIndex15 != 0 {
+		buildID, err := readTaggedIndexBuildID(indexFile)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading idx15 build identifier")
+		}
+		fileInfo, err := os.Stat(file)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading seeds file information")
+		}
+		idx15, err = openIndex15(file, k, maskPrefix, anchorPrefix, uint64(chunkIndex), uint64(len(indexes)), uint64(fileInfo.Size()), buildID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "opening second-level seed index: %s", filepath.Clean(file)+KVIndex15FileExt)
+		}
 	}
 
 	scr := &Searcher{
@@ -111,6 +129,7 @@ func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, er
 		maxKmer: 1<<(k<<1) - 1,
 
 		Use3BytesForSeedPos: config1&MaskUse3BytesForSeedPos > 0,
+		index15:             idx15,
 
 		searchKits: make(chan *SearchKit, nWorkers),
 
@@ -120,6 +139,11 @@ func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, er
 	for i := 0; i < nWorkers; i++ {
 		fh, err := os.Open(file)
 		if err != nil {
+			for len(scr.searchKits) > 0 {
+				kit := <-scr.searchKits
+				_ = kit.fh.Close()
+			}
+			_ = idx15.close()
 			return nil, errors.Wrapf(err, "reading kv-data file")
 		}
 
@@ -132,6 +156,17 @@ func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, er
 	}
 
 	return scr, nil
+}
+
+func (scr *Searcher) seedStart(index []uint64, i int, query uint64, prefixLength uint8) (uint64, uint64, bool, bool, error) {
+	checkpoint := index[i]
+	encodedOffset := index[i+1]
+	if scr.index15 != nil && IsIndex15Offset(encodedOffset) {
+		checkpoint, offset, empty, err := scr.index15.lookup(encodedOffset, query, prefixLength)
+		return checkpoint, offset, false, empty, err
+	}
+	isSecond := encodedOffset&1 != 0
+	return checkpoint, encodedOffset >> 1, isSecond, false, nil
 }
 
 // MaskPrefix returns the length of mask prefix
@@ -224,6 +259,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	// var last, begin, middle, end int
 	var i int
 	var offset uint64 // offset in kv-data file
+	var checkpoint uint64
 
 	var first bool    // the first kmer has a different way to comput the value
 	var lastPair bool // check if this is the last pair
@@ -347,9 +383,13 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 		// }
 
 		i = int(getAnchor(leftBound)<<1) + 2 // as the firt two elements are special
-		offset = index[i+1]
-		is2ndKmer = offset&1 == 1
-		offset >>= 1
+		checkpoint, offset, is2ndKmer, found, err = scr.seedStart(index, i, leftBound, p)
+		if err != nil {
+			return nil, err
+		}
+		if found { // the requested 15-bp subprefix is empty
+			continue
+		}
 		if offset == 0 {
 			continue
 		}
@@ -401,11 +441,11 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 				first = false
 
 				if !is2ndKmer {
-					kmer1 = index[i] // from the index
+					kmer1 = checkpoint // from the index
 					kmer2 = kmer1 + v2
 				} else {
 					kmer1 = 0
-					kmer2 = index[i] // from the index
+					kmer2 = checkpoint // from the index
 				}
 			} else {
 				kmer1 = v1 + _offset
@@ -675,6 +715,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 	// var last, begin, middle, end int
 	var i int
 	var offset uint64 // offset in kv-data file
+	var checkpoint uint64
 
 	var first bool    // the first kmer has a different way to comput the value
 	var lastPair bool // check if this is the last pair
@@ -797,9 +838,13 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 			// }
 
 			i = int(getAnchor(leftBound)<<1) + 2 // as the firt two elements are special
-			offset = index[i+1]
-			is2ndKmer = offset&1 == 1
-			offset >>= 1
+			checkpoint, offset, is2ndKmer, found, err = scr.seedStart(index, i, leftBound, p)
+			if err != nil {
+				return nil, err
+			}
+			if found { // the requested 15-bp subprefix is empty
+				continue
+			}
 			if offset == 0 {
 				continue
 			}
@@ -850,11 +895,11 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 					first = false
 
 					if !is2ndKmer {
-						kmer1 = index[i] // from the index
+						kmer1 = checkpoint // from the index
 						kmer2 = kmer1 + v2
 					} else {
 						kmer1 = 0
-						kmer2 = index[i] // from the index
+						kmer2 = checkpoint // from the index
 					}
 				} else {
 					kmer1 = v1 + _offset
@@ -1099,6 +1144,9 @@ func (scr *Searcher) Close() error {
 		if _err != nil {
 			err = _err
 		}
+	}
+	if _err := scr.index15.close(); _err != nil {
+		err = _err
 	}
 	return err
 }

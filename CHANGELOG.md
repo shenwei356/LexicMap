@@ -5,6 +5,7 @@
 There is a small change in the seed computation, but re-indexing is unnecessary.
 
 - New commands:
+    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seeds data, which speeds up seed matching for large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
@@ -32,6 +33,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
+- `lexicmap util reindex-seeds`:
+    - Added progress bars to all seed chunks.
 
 ### v0.9.0 - 2026-03-13
 

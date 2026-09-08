@@ -261,7 +261,12 @@ Attention:
 				checkError(fmt.Errorf("failed to read kv-data file: %s", err))
 			}
 
-			_, err = fh.Seek(int64(indexes[iMask][1])>>1, 0)
+			seedOffset := indexes[iMask][1]
+			if kv.IsIndex15Offset(seedOffset) {
+				checkError(fmt.Errorf("invalid first seed offset in index"))
+			}
+			seedOffset >>= 1
+			_, err = fh.Seek(int64(seedOffset), 0)
 			if err != nil {
 				checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
 			}

@@ -1087,8 +1087,11 @@ func NewIndexReader(file string) (*IndexReader, error) {
 		return nil, ErrBrokenFile
 	}
 	// check compatibility
-	if MainVersion != buf[0] {
+	if !validKVIndexVersion(buf[0]) {
 		return nil, ErrVersionMismatch
+	}
+	if !validKVIndexMetadata(buf[0], buf[5]) {
+		return nil, ErrInvalidFileFormat
 	}
 	rdr.K = buf[2] // k-mer size
 	rdr.Use3BytesForSeedPos = buf[5]&MaskUse3BytesForSeedPos > 0
