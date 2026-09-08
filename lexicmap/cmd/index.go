@@ -136,7 +136,7 @@ Important parameters:
                             with another value of this flag.
                             ► "lexicmap index" currently creates primary seed indexes only. After indexing, run
                             "lexicmap utils reindex-seeds2 -d <index>" to create adaptive idx15 secondary indexes,
-                            which can reduce seed-matching time. A future release may create them by default.
+                            which can reduce seed-matching time.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
                             ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
                             ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.

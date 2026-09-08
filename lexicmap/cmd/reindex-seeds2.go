@@ -47,6 +47,12 @@ primary-prefix blocks receive a secondary index, while smaller blocks retain
 the original linear-scan path. The command rewrites each primary .idx file and
 creates its matching .idx15 file. Different seeds files are processed in
 parallel using -j/--threads.
+
+This index primarily improves seed-matching performance for batch queries with
+"lexicmap search". The end-to-end speedup is most noticeable when
+-n/--top-n-genomes limits the number of candidates passed to downstream
+alignment; searches dominated by alignment, especially single-query searches,
+may see only a small overall gain.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
