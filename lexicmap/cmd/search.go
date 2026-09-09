@@ -238,6 +238,11 @@ Result ordering:
 
 		taxids, negativeTaxids := parseTaxids(taxdumpDir, genome2taxidFile, taxidsStr, taxidFile)
 
+		showTaxName := getFlagBool(cmd, "show-genome-name")
+		if showTaxName && !(taxdumpDir != "" && genome2taxidFile != "") {
+			checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are needed for --show-genome-name"))
+		}
+
 		// ---------------------------------------------------------------
 
 		if outputLog {
@@ -337,6 +342,7 @@ Result ordering:
 			TaxIds:                  taxids,
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
+			LoadTaxName:             showTaxName,
 		}
 
 		// read info file to get the contig interval size
@@ -468,6 +474,7 @@ Result ordering:
 			var _c, j int
 			var vSseqid string
 			var vAlenHSP string
+			var vSgenome string
 			var _seq *seq.Seq
 			if showAvgQual {
 				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
@@ -508,9 +515,15 @@ Result ordering:
 							vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
 						}
 
+						if showTaxName {
+							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
+						} else {
+							vSgenome = string(id2name[r.BatchGenomeIndex])
+						}
+
 						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%s\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
 							queryID, len(q.seq),
-							targets, id2name[r.BatchGenomeIndex], vSseqid, r.AlignedFraction,
+							targets, vSgenome, vSseqid, r.AlignedFraction,
 							_c,
 							j, c.AlignedFraction, vAlenHSP, c.PIdent, c.Gaps,
 							c.QBegin+1, c.QEnd+1,
@@ -740,4 +753,6 @@ func init() {
 		formatFlagUsage(`Add 1-based genome chunk and subject-sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 denotes chunk 2 of 3 and s1/10 denotes sequence 1 of 10.`))
 	mapCmd.Flags().BoolP("show-avg-qual", "", false,
 		formatFlagUsage(`Add average quality of the aligned region as a suffix to alenHSP field, e.g., 128:21.6, where 21.6 is the average quality of the aligned region.`))
+	mapCmd.Flags().BoolP("show-genome-name", "", false,
+		formatFlagUsage(`Add the taxonomic name as a prefix to sgenome fied. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
 }

@@ -77,7 +77,7 @@ Tips:
      There's no need to rebuild the index.
 
 Output format:
-  Tab-delimited format with 9 columns.
+  Tab-delimited format with 10 columns.
 
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
@@ -90,6 +90,7 @@ Output format:
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.
     9.  ssize,    Size of the subject genome.
+	10. sname,    Taxonomic name of the subject name.
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -260,6 +261,11 @@ Output format:
 
 		taxids, negativeTaxids := parseTaxids(taxdumpDir, genome2taxidFile, taxidsStr, taxidFile)
 
+		showTaxName := getFlagBool(cmd, "show-genome-name")
+		if showTaxName && !(taxdumpDir != "" && genome2taxidFile != "") {
+			checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are needed for --show-genome-name"))
+		}
+
 		// ---------------------------------------------------------------
 
 		if outputLog {
@@ -369,6 +375,7 @@ Output format:
 			TaxIds:                  taxids,
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
+			LoadTaxName:             showTaxName,
 
 			MaxSubjectGenomeSize: maxSubjectGenomeSize,
 			SearchMaskCount:      nMasks,
@@ -476,10 +483,10 @@ Output format:
 		var speed float64 // k reads/second
 
 		if !onlyGenomeScreening {
-			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\n")
+			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\tsname\n")
 		} else {
 			// fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen")
-			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix")
+			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix\tsname")
 			if extra {
 				fmt.Fprintf(outfh, "\tprefixes")
 			}
@@ -544,17 +551,30 @@ Output format:
 				}
 			}
 
+			var vSgenome string
+
 			if !onlyGenomeScreening {
 				for _, gr := range *q.result {
-					fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+					if showTaxName {
+						vSgenome = idx.Taxonomy.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex])
+					} else {
+						vSgenome = ""
+					}
+					fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\n",
 						q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
-						len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize)
+						len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome)
 				}
 			} else {
 				var hitKmers, hitMasks uint64
 				var v uint8
 				var i int
 				for _, gr := range *q.screenDetails {
+					if showTaxName {
+						vSgenome = idx.Taxonomy.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
+					} else {
+						vSgenome = ""
+					}
+
 					hitKmers, hitMasks = 0, 0
 					// _stats.Reset()
 					if extra {
@@ -574,19 +594,19 @@ Output format:
 					if extra {
 						matches2strslice(',')
 
+						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\t%s\n",
+							q.id, id2name[gr.BatchGenomeIndex[0]],
+							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
+							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
+							gr.Score2, float64(gr.Score2)/float64(hitMasks), vSgenome,
+							matchesS.Bytes(),
+						)
+					} else {
 						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
 							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
 							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
-							gr.Score2, float64(gr.Score2)/float64(hitMasks),
-							matchesS.Bytes(),
-						)
-					} else {
-						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
-							q.id, id2name[gr.BatchGenomeIndex[0]],
-							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
-							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
-							gr.Score2, float64(gr.Score2)/float64(hitMasks),
+							gr.Score2, float64(gr.Score2)/float64(hitMasks), vSgenome,
 						)
 					}
 				}
@@ -826,4 +846,8 @@ func init() {
 		formatFlagUsage(`Only perform genome screening, no ANI computation.`))
 	gsearchCmd.Flags().BoolP("extra", "", false,
 		formatFlagUsage(`Show extra columns for -S/--only-genome-screening.`))
+
+	// extra info
+	gsearchCmd.Flags().BoolP("show-genome-name", "", false,
+		formatFlagUsage(`Show the taxonomic name of subject genome in field 'sname'. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
 }

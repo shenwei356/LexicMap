@@ -96,6 +96,7 @@ type IndexSearchingOptions struct {
 	TaxIds                  []uint32
 	NegativeTaxIds          []uint32
 	KeepGenomesWithoutTaxId bool
+	LoadTaxName             bool // need to load taxdump files and Genome2TaxIdFile for exporting taxonomic info
 
 	// For searching genomes
 	MaxSubjectGenomeSize int
@@ -319,10 +320,17 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// taxid-related files
 
 	var wgT sync.WaitGroup
-	if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 {
-		idx.filterByTaxId = true
-		idx.filterByPositiveTaxId = len(idx.opt.TaxIds) > 0
-		idx.filterByNegativeTaxId = len(idx.opt.NegativeTaxIds) > 0
+	if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 || idx.opt.LoadTaxName {
+		if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 {
+			idx.filterByTaxId = true
+			idx.filterByPositiveTaxId = len(idx.opt.TaxIds) > 0
+			idx.filterByNegativeTaxId = len(idx.opt.NegativeTaxIds) > 0
+
+			idx.poolTaxIDfilter = &sync.Pool{New: func() interface{} {
+				tmp := make(map[uint64]bool, max(1024, len(idx.genomeIdx2TaxId)/10))
+				return &tmp
+			}}
+		}
 
 		wgT.Add(1)
 		go func() {
@@ -334,9 +342,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			}
 			idx.Taxonomy.CacheLCA()
 
+			if idx.opt.LoadTaxName {
+				if idx.Taxonomy.LoadNamesFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "names.dmp")) != nil {
+					checkError(fmt.Errorf("  failed to load taxonomy names: %s", idx.opt.TaxdumpDir))
+				}
+			}
+
 			if opt.Verbose || opt.Log2File {
 				log.Infof("  taxonomy data loaded from: %s", idx.opt.TaxdumpDir)
 			}
+
 		}()
 
 		wgT.Add(1)
@@ -415,10 +430,6 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			}
 		}()
 
-		idx.poolTaxIDfilter = &sync.Pool{New: func() interface{} {
-			tmp := make(map[uint64]bool, max(1024, len(idx.genomeIdx2TaxId)/10))
-			return &tmp
-		}}
 	}
 
 	// -----------------------------------------------------
@@ -749,7 +760,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		return NewChainer(co)
 	}}
 
-	if idx.filterByTaxId {
+	if idx.filterByTaxId || idx.opt.LoadTaxName {
 		wgT.Wait()
 	}
 
