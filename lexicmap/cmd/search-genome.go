@@ -90,7 +90,7 @@ Output format:
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.
     9.  ssize,    Size of the subject genome.
-	10. sname,    Taxonomic name of the subject name.
+    10. sname,    Taxonomic name of the subject name.
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {

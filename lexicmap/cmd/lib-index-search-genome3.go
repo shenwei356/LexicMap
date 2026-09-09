@@ -1472,10 +1472,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 
 // ReadGenome reads a genome from a sequence file
 func ReadGenomeFromFile(file string, reRefName *regexp.Regexp) (*GQuery, error) {
-	// NewDefaultReader writes a package-global flag on every construction,
-	// which races when compare reads both genomes concurrently. We do not use
-	// record IDs here, so a non-default ID regexp avoids that shared write.
-	fastxReader, err := fastx.NewReader(nil, file, `^(.+)$`)
+	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err
 	}

@@ -127,11 +127,7 @@ func (gr *GenomeReader) Recycle(q *GQuery) {
 
 // Read reads a genome from a file or stdin
 func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*GQuery, error) {
-	// NewDefaultReader writes package-global parser state in fastx, which races
-	// when multiple query files are opened concurrently. Genome IDs here come
-	// from file names, so an explicit equivalent record-ID regexp avoids that
-	// global write without changing search results.
-	fastxReader, err := fastx.NewReader(nil, file, `^(\S+)`)
+	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err
 	}
