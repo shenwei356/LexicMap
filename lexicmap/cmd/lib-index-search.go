@@ -97,6 +97,7 @@ type IndexSearchingOptions struct {
 	NegativeTaxIds          []uint32
 	KeepGenomesWithoutTaxId bool
 	LoadTaxName             bool // need to load taxdump files and Genome2TaxIdFile for exporting taxonomic info
+	LoadTaxRank             bool // need to load rank for outputing species names
 
 	// For searching genomes
 	MaxSubjectGenomeSize int
@@ -320,7 +321,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// taxid-related files
 
 	var wgT sync.WaitGroup
-	if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 || idx.opt.LoadTaxName {
+	if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 || (idx.opt.LoadTaxName || idx.opt.LoadTaxRank) {
 		if len(idx.opt.TaxIds)+len(idx.opt.NegativeTaxIds) > 0 {
 			idx.filterByTaxId = true
 			idx.filterByPositiveTaxId = len(idx.opt.TaxIds) > 0
@@ -336,13 +337,17 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		go func() {
 			defer wgT.Done()
 
-			idx.Taxonomy, err = taxdump.NewTaxonomyFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+			if !idx.opt.LoadTaxRank {
+				idx.Taxonomy, err = taxdump.NewTaxonomyFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+			} else {
+				idx.Taxonomy, err = taxdump.NewTaxonomyWithRankFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+			}
 			if err != nil {
 				checkError(fmt.Errorf("  failed to load taxonomy data: %s", idx.opt.TaxdumpDir))
 			}
 			idx.Taxonomy.CacheLCA()
 
-			if idx.opt.LoadTaxName {
+			if idx.opt.LoadTaxName || idx.opt.LoadTaxRank {
 				if idx.Taxonomy.LoadNamesFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "names.dmp")) != nil {
 					checkError(fmt.Errorf("  failed to load taxonomy names: %s", idx.opt.TaxdumpDir))
 				}
@@ -760,7 +765,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		return NewChainer(co)
 	}}
 
-	if idx.filterByTaxId || idx.opt.LoadTaxName {
+	if idx.filterByTaxId || idx.opt.LoadTaxName || idx.opt.LoadTaxRank {
 		wgT.Wait()
 	}
 

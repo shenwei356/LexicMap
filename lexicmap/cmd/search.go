@@ -239,7 +239,8 @@ Result ordering:
 		taxids, negativeTaxids := parseTaxids(taxdumpDir, genome2taxidFile, taxidsStr, taxidFile)
 
 		showTaxName := getFlagBool(cmd, "show-genome-name")
-		if showTaxName && !(taxdumpDir != "" && genome2taxidFile != "") {
+		showSpeciesName := getFlagBool(cmd, "show-species-name")
+		if (showTaxName || showSpeciesName) && !(taxdumpDir != "" && genome2taxidFile != "") {
 			checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are needed for --show-genome-name"))
 		}
 
@@ -343,6 +344,7 @@ Result ordering:
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
 			LoadTaxName:             showTaxName,
+			LoadTaxRank:             showSpeciesName,
 		}
 
 		// read info file to get the contig interval size
@@ -438,6 +440,7 @@ Result ordering:
 
 		gcIntervalMinus1 := gcInterval - 1
 		id2name := idx.BatchGenomeIndex2GenomeID
+		tax := idx.Taxonomy
 
 		// -------  output function -------
 
@@ -475,6 +478,7 @@ Result ordering:
 			var vSseqid string
 			var vAlenHSP string
 			var vSgenome string
+			var taxid uint32
 			var _seq *seq.Seq
 			if showAvgQual {
 				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
@@ -515,7 +519,15 @@ Result ordering:
 							vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
 						}
 
-						if showTaxName {
+						if showSpeciesName {
+							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
+							for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[r.BatchGenomeIndex]) {
+								if tax.Rank(taxid) == "species" {
+									vSgenome = fmt.Sprintf("%s:%s", tax.Name(taxid), id2name[r.BatchGenomeIndex])
+									break
+								}
+							}
+						} else if showTaxName {
 							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
 						} else {
 							vSgenome = string(id2name[r.BatchGenomeIndex])
@@ -755,4 +767,7 @@ func init() {
 		formatFlagUsage(`Add average quality of the aligned region as a suffix to alenHSP field, e.g., 128:21.6, where 21.6 is the average quality of the aligned region.`))
 	mapCmd.Flags().BoolP("show-genome-name", "", false,
 		formatFlagUsage(`Add the taxonomic name as a prefix to sgenome fied. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
+	mapCmd.Flags().BoolP("show-species-name", "", false,
+		formatFlagUsage(`Add the species name as a prefix to sgenome fied. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
+
 }

@@ -262,7 +262,8 @@ Output format:
 		taxids, negativeTaxids := parseTaxids(taxdumpDir, genome2taxidFile, taxidsStr, taxidFile)
 
 		showTaxName := getFlagBool(cmd, "show-genome-name")
-		if showTaxName && !(taxdumpDir != "" && genome2taxidFile != "") {
+		showSpeciesName := getFlagBool(cmd, "show-species-name")
+		if (showTaxName || showSpeciesName) && !(taxdumpDir != "" && genome2taxidFile != "") {
 			checkError(fmt.Errorf("flags -T/--taxdump and -G/--genome2taxid are needed for --show-genome-name"))
 		}
 
@@ -376,6 +377,7 @@ Output format:
 			NegativeTaxIds:          negativeTaxids,
 			KeepGenomesWithoutTaxId: keepGenomesWithoutTaxId,
 			LoadTaxName:             showTaxName,
+			LoadTaxRank:             showSpeciesName,
 
 			MaxSubjectGenomeSize: maxSubjectGenomeSize,
 			SearchMaskCount:      nMasks,
@@ -497,6 +499,7 @@ Output format:
 
 		gcIntervalMinus1 := gcInterval - 1
 		id2name := idx.BatchGenomeIndex2GenomeID
+		tax := idx.Taxonomy
 
 		matches := make([]uint8, 0, len(idx.lh.Masks))
 		var matchesS bytes.Buffer
@@ -552,11 +555,20 @@ Output format:
 			}
 
 			var vSgenome string
+			var taxid uint32
 
 			if !onlyGenomeScreening {
 				for _, gr := range *q.result {
-					if showTaxName {
-						vSgenome = idx.Taxonomy.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex])
+					if showSpeciesName {
+						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex])
+						for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[gr.BatchGenomeIndex]) {
+							if tax.Rank(taxid) == "species" {
+								vSgenome = tax.Name(taxid)
+								break
+							}
+						}
+					} else if showTaxName {
+						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex])
 					} else {
 						vSgenome = ""
 					}
@@ -569,8 +581,16 @@ Output format:
 				var v uint8
 				var i int
 				for _, gr := range *q.screenDetails {
-					if showTaxName {
-						vSgenome = idx.Taxonomy.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
+					if showSpeciesName {
+						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
+						for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]]) {
+							if tax.Rank(taxid) == "species" {
+								vSgenome = tax.Name(taxid)
+								break
+							}
+						}
+					} else if showTaxName {
+						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
 					} else {
 						vSgenome = ""
 					}
@@ -850,4 +870,6 @@ func init() {
 	// extra info
 	gsearchCmd.Flags().BoolP("show-genome-name", "", false,
 		formatFlagUsage(`Show the taxonomic name of subject genome in field 'sname'. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
+	gsearchCmd.Flags().BoolP("show-species-name", "", false,
+		formatFlagUsage(`Show the species name of subject genome in field 'sname'. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
 }
