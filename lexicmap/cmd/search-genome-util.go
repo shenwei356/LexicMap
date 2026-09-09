@@ -39,6 +39,7 @@ type GQuery struct {
 	id          []byte
 	bigSeq      []byte
 	seqs        []*[]byte
+	quals       []*[]byte
 	skipRegions []int
 
 	genomeSize int
@@ -53,6 +54,7 @@ var poolGQuery = &sync.Pool{New: func() interface{} {
 		id:          make([]byte, 0, 127),
 		bigSeq:      make([]byte, 0, 10<<20), // 10M
 		seqs:        make([]*[]byte, 0, 256),
+		quals:       make([]*[]byte, 0, 256),
 		skipRegions: make([]int, 0, 512),
 		genomeSize:  0,
 	}
@@ -65,10 +67,18 @@ var poolSeq = &sync.Pool{
 	},
 }
 
+var poolQual = &sync.Pool{
+	New: func() interface{} {
+		tmp := make([]byte, 0, 10<<10) // 10K
+		return &tmp
+	},
+}
+
 func (q *GQuery) Reset() {
 	q.id = q.id[:0]
 	q.bigSeq = q.bigSeq[:0]
 	q.seqs = q.seqs[:0]
+	q.quals = q.quals[:0]
 	q.skipRegions = q.skipRegions[:0]
 	q.genomeSize = 0
 
@@ -85,6 +95,13 @@ func RecycleGQuery(q *GQuery) {
 			poolSeq.Put(s)
 		}
 		q.seqs = q.seqs[:0]
+	}
+	if q.quals != nil {
+		for _, qual := range q.quals {
+			*qual = (*qual)[:0]
+			poolQual.Put(qual)
+		}
+		q.quals = q.quals[:0]
 	}
 	if q.skipRegions != nil {
 		q.skipRegions = q.skipRegions[:0]
@@ -127,6 +144,15 @@ func (gr *GenomeReader) Recycle(q *GQuery) {
 
 // Read reads a genome from a file or stdin
 func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*GQuery, error) {
+	return gr.read(file, convertNtoA, softMasking, false)
+}
+
+// ReadWithQual reads a genome and retains its Phred+33 qualities.
+func (gr *GenomeReader) ReadWithQual(file string, convertNtoA bool, softMasking bool) (*GQuery, error) {
+	return gr.read(file, convertNtoA, softMasking, true)
+}
+
+func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, readQual bool) (*GQuery, error) {
 	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err
@@ -167,11 +193,34 @@ func (gr *GenomeReader) Read(file string, convertNtoA bool, softMasking bool) (*
 		if convertNtoA {
 			convertSeq(record.Seq.Seq, table)
 		}
+		if readQual {
+			if !fastxReader.IsFastq || len(record.Seq.Qual) == 0 {
+				RecycleGQuery(q)
+				return nil, fmt.Errorf("quality-based ANI adjustment requires FASTQ input: %s", file)
+			}
+			if len(record.Seq.Qual) != len(record.Seq.Seq) {
+				RecycleGQuery(q)
+				return nil, fmt.Errorf("sequence and quality lengths differ for sequence %d in %s: %d != %d",
+					i+1, file, len(record.Seq.Seq), len(record.Seq.Qual))
+			}
+			for _, v := range record.Seq.Qual {
+				if v < 33 || v > 126 {
+					RecycleGQuery(q)
+					return nil, fmt.Errorf("invalid Phred+33 quality byte %d for sequence %d in %s", v, i+1, file)
+				}
+			}
+		}
 
 		s := poolSeq.Get().(*[]byte)
 		*s = (*s)[:0]
 		*s = append(*s, record.Seq.Seq...)
 		q.seqs = append(q.seqs, s)
+		if readQual {
+			qual := poolQual.Get().(*[]byte)
+			*qual = (*qual)[:0]
+			*qual = append(*qual, record.Seq.Qual...)
+			q.quals = append(q.quals, qual)
+		}
 		q.genomeSize += len(record.Seq.Seq)
 
 		q.bigSeq = append(q.bigSeq, record.Seq.Seq...)
@@ -306,6 +355,94 @@ func seqs2fragments(seqs *[]*[]byte, fragLen int, minFragLen int) (*[][]byte, in
 	}
 
 	return frags, n
+}
+
+// seqs2fragmentsWithQual cuts sequences and their parallel Phred+33 qualities
+// using identical fragment boundaries. qualFrags is nil when quals is empty.
+// The caller must recycle both non-nil fragment slices.
+func seqs2fragmentsWithQual(seqs, quals *[]*[]byte, fragLen int, minFragLen int) (*[][]byte, *[][]byte, int, error) {
+	if quals == nil || len(*quals) == 0 {
+		frags, n := seqs2fragments(seqs, fragLen, minFragLen)
+		return frags, nil, n, nil
+	}
+	if seqs == nil || len(*seqs) != len(*quals) {
+		nSeqs := 0
+		if seqs != nil {
+			nSeqs = len(*seqs)
+		}
+		return nil, nil, 0, fmt.Errorf("sequence and quality record counts differ: %d != %d", nSeqs, len(*quals))
+	}
+
+	frags := poolFragments.Get().(*[][]byte)
+	qualFrags := poolFragments.Get().(*[][]byte)
+	*frags = (*frags)[:0]
+	*qualFrags = (*qualFrags)[:0]
+
+	var n int
+	for i, contig := range *seqs {
+		qual := (*quals)[i]
+		if len(*contig) != len(*qual) {
+			recycleFragments(frags)
+			recycleFragments(qualFrags)
+			return nil, nil, 0, fmt.Errorf("sequence and quality lengths differ for record %d: %d != %d", i+1, len(*contig), len(*qual))
+		}
+
+		end := len(*contig)
+		for s := 0; s < end; s += fragLen {
+			e := min(s+fragLen, end)
+			if e-s < minFragLen {
+				continue
+			}
+			*frags = append(*frags, (*contig)[s:e])
+			*qualFrags = append(*qualFrags, (*qual)[s:e])
+			n += e - s
+		}
+	}
+
+	return frags, qualFrags, n, nil
+}
+
+var phredErrorProbabilities = func() [94]float64 {
+	var probabilities [94]float64
+	for q := range probabilities {
+		probabilities[q] = math.Pow(10, -float64(q)/10)
+	}
+	return probabilities
+}()
+
+// adjustPIdentByQual estimates the identity before sequencing errors under an
+// independent, symmetric substitution-error model. Given the observed identity
+// p and the mean per-base error probability e, the estimate is
+//
+//	p_adjusted = (p - e/3) / (1 - 4e/3).
+//
+// Both p and p_adjusted are fractions in this formula, although pident and the
+// return value are percentages. Qualities are Phred+33, and e is calculated as
+// mean_i(10^(-Q_i/10)) over the aligned query region. This is generally not
+// equal to converting the arithmetic mean of the Phred scores because the
+// conversion is nonlinear. The estimate is clamped to [0, 100]. It does not
+// explicitly model insertion or deletion errors.
+func adjustPIdentByQual(pident float64, qual []byte) float64 {
+	if len(qual) == 0 {
+		return pident
+	}
+
+	var errorSum float64
+	for _, v := range qual {
+		q := int(v) - 33
+		if q < 0 || q >= len(phredErrorProbabilities) {
+			return pident
+		}
+		errorSum += phredErrorProbabilities[q]
+	}
+	meanError := errorSum / float64(len(qual))
+	denominator := 1 - 4*meanError/3
+	if denominator <= 0 {
+		return pident
+	}
+
+	adjusted := (pident/100 - meanError/3) / denominator * 100
+	return min(100, max(0, adjusted))
 }
 
 // --------------------------------------------------------------

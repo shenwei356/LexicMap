@@ -564,10 +564,17 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	// --------------------------------------------------------------------------------
 	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
-	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	qfrags, qqualFrags, qfragLens, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minFragLen)
+	if err != nil {
+		return fmt.Errorf("failed to cut query sequences and qualities into fragments: %w", err)
+	}
 	if len(*qfrags) == 0 {
+		recycleFragments(qfrags)
+		recycleFragments(qqualFrags)
 		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the fragment size?")
 	}
+	defer recycleFragments(qfrags)
+	defer recycleFragments(qqualFrags)
 
 	// Pre-compute query-side k-mer entries once: the same qfrags is compared
 	// against every candidate genome, so collecting its canonical k-mers per
@@ -843,7 +850,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 
 				// fmt.Printf("q[%d,%d]\tt[%d,%d]\t", c.QBegin+1, c.QEnd+1, c.TBegin+1, c.TEnd+1)
 
-				_qseq, _tseq, _, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
+				_qseq, _tseq, qLeftExt, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
 				if err != nil {
 					checkError(fmt.Errorf("fail to extend aligned region: %s", err))
 				}
@@ -870,6 +877,11 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 					c.AlignedFraction = 100
 				}
 				c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
+				var qqual []byte
+				if qqualFrags != nil {
+					qqual = (*qqualFrags)[ia]
+				}
+				c.PIdentAdjusted = adjustedPIdentForAlignment(c.PIdent, qqual, c.QBegin-qLeftExt, cigar)
 
 				c.Evalue = c.AlignedFraction * c.PIdent // just for sorting, not the real e-value
 
@@ -960,11 +972,17 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				gr.AlignedLength += c.AlignedLength - c.Gaps
 				gr.AlignedMatches += c.MatchedBases
 				gr.PidentsSum += c.PIdent
+				if qqualFrags != nil {
+					gr.PidentsAdjustedSum += c.PIdentAdjusted
+				}
 			}
 
 			// gr.ANI = float64(gr.AlignedMatches) / float64(gr.AlignedLength) // shouldn't do this
 			if gr.AlignedFragments > 0 {
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
+				if qqualFrags != nil {
+					gr.ANIAdjusted = gr.PidentsAdjustedSum / float64(gr.AlignedFragments) / 100
+				}
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 			if gr.AFq > 1 {
@@ -1029,7 +1047,6 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	// --------------------------------------------------------------------------------
 	// Step4. align fragments to candidate genomes
 
-	recycleFragments(qfrags)
 	RecycleResultOfIndexA(entriesA)
 
 	return nil
@@ -1061,12 +1078,16 @@ type GSearchResult struct {
 	AlignedMatches   int
 	PidentsSum       float64
 
+	PidentsAdjustedSum float64
+
 	AlignedLength int
 
 	ANI   float64
 	AFq   float64
 	AFs   float64
 	Score float64 // for sorting
+
+	ANIAdjusted float64
 }
 
 // Reset zeros all fields. Call this when (re)obtaining a GSearchResult from
@@ -1082,8 +1103,10 @@ func (r *GSearchResult) Reset() {
 	r.AlignedLength = 0
 	r.AlignedMatches = 0
 	r.PidentsSum = 0
+	r.PidentsAdjustedSum = 0
 
 	r.ANI = 0
+	r.ANIAdjusted = 0
 	r.AFq = 0
 	r.AFs = 0
 	r.Score = 0

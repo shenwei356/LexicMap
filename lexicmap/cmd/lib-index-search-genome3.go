@@ -318,6 +318,7 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 // alignQueryFragToSubjectSampled matches a query fragment against a sampled subject sketch.
 func alignQueryFragToSubjectSampled(
 	qfrag []byte,
+	qqual []byte,
 	qSeeds *[]uint64,
 	sketch *subjectSketch,
 	concat []byte,
@@ -330,7 +331,7 @@ func alignQueryFragToSubjectSampled(
 	minQcov float64,
 	idx *Index,
 	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
-) (int, int, int, float64, bool) {
+) (int, int, int, float64, float64, bool) {
 	// Since we only use forward strand query k-mers and subject is a single concatenated
 	// sequence (forward + RC), we only need one set of anchors for unified chaining.
 	allSubs := poolSubsLong.Get().(*[]*SubstrPair)
@@ -338,7 +339,7 @@ func alignQueryFragToSubjectSampled(
 	defer RecycleSubstrPairs(poolSub, poolSubsLong, allSubs)
 
 	if sketch.sampledKmerMap == nil || len(*sketch.sampledKmerMap) == 0 {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
 	qKmers := *qSeeds
@@ -397,12 +398,12 @@ func alignQueryFragToSubjectSampled(
 
 	chains, chainsOk := chainsFromSubs(allSubs, chainer, K)
 	if !chainsOk {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
 	// Try all chains and pick the best one
 	var bestMatched, bestAligned, bestGaps int
-	var bestPident float64
+	var bestPident, bestPidentAdjusted float64
 	var bestScore int = -1
 	topChains := idx.chainingOptions.TopChains
 	onlyTopChains := topChains > 0
@@ -411,7 +412,7 @@ func alignQueryFragToSubjectSampled(
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	defer idx.poolSeqComparator.Put(cpr)
 	if err := cpr.Index(qfrag); err != nil {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 	defer cpr.RecycleIndex()
 
@@ -424,8 +425,8 @@ func alignQueryFragToSubjectSampled(
 		if onlyTopChains && i > topChains {
 			break
 		}
-		matched, aligned, gaps, pident, ok := alignChain(
-			qfrag, concat, chain, sketch, false, algn, cpr,
+		matched, aligned, gaps, pident, pidentAdjusted, ok := alignChain(
+			qfrag, qqual, concat, chain, sketch, false, algn, cpr,
 			extLen, extLen2, minPIdent, minQcov, idx,
 			fScoreAndEvalue,
 		)
@@ -438,16 +439,29 @@ func alignQueryFragToSubjectSampled(
 				bestAligned = aligned
 				bestGaps = gaps
 				bestPident = pident
+				bestPidentAdjusted = pidentAdjusted
 			}
 		}
 	}
 	RecycleChaining2Result(chains)
 
 	if bestScore <= 0 {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
-	return bestMatched, bestAligned, bestGaps, bestPident, true
+	return bestMatched, bestAligned, bestGaps, bestPident, bestPidentAdjusted, true
+}
+
+func adjustedPIdentForAlignment(pident float64, qqual []byte, extendedQueryStart int, cigar *wfa.AlignmentResult) float64 {
+	if len(qqual) == 0 || cigar == nil {
+		return pident
+	}
+	qStart := extendedQueryStart + cigar.QBegin - 1
+	qEnd := extendedQueryStart + cigar.QEnd
+	if qStart < 0 || qEnd > len(qqual) || qStart >= qEnd {
+		return pident
+	}
+	return adjustPIdentByQual(pident, qqual[qStart:qEnd])
 }
 
 // chainsFromSubs runs the chaining pipeline and returns all chains.
@@ -476,9 +490,10 @@ func chainsFromSubs(subs *[]*SubstrPair, chainer *Chainer2, K int) (*[]*Chain2Re
 }
 
 // alignChain performs SeqComparator pseudo-alignment and WFA on a single chain.
-// Returns (matched, aligned, gaps, true) on success.
+// Returns raw and quality-adjusted identity together with alignment statistics.
 func alignChain(
 	qfrag []byte,
+	qqual []byte,
 	subjectSeq []byte,
 	chain *Chain2Result,
 	sketch *subjectSketch,
@@ -491,10 +506,10 @@ func alignChain(
 	minQcov float64,
 	idx *Index,
 	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
-) (int, int, int, float64, bool) {
+) (int, int, int, float64, float64, bool) {
 	// Guard against degenerate chains.
 	if chain.QEnd < chain.QBegin || chain.TEnd < chain.TBegin {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
 	qLen := len(qfrag)
@@ -534,15 +549,16 @@ func alignChain(
 	// Pseudo-alignment with SeqComparator (already indexed).
 	cr, err := cpr.Compare(uint32(qExpBegin), uint32(qExpEnd), tSubseq, qLen)
 	if err != nil {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 	if cr == nil {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 	defer RecycleSeqComparatorResult(cr)
 
 	// WFA alignment on each sub-chain.
 	var totMatched, totAligned, totGaps int
+	var pidentAdjusted float64
 	maxEvalue := idx.opt.MaxEvalue
 	maxTrials := 2
 
@@ -560,7 +576,7 @@ func alignChain(
 		cTBegin := c.TBegin
 		cMaxExtLen := len(tSubseq) - 1 - c.TEnd
 
-		_qseq, _tseq, _, _, _, _, extErr := extendMatch(
+		_qseq, _tseq, qLeftExt, _, _, _, extErr := extendMatch(
 			qfrag, tSubseq,
 			c.QBegin, c.QEnd+1,
 			c.TBegin, c.TEnd+1,
@@ -585,13 +601,15 @@ func alignChain(
 		totMatched += int(cigar.Matches)
 		totAligned += int(cigar.AlignLen)
 		totGaps += int(cigar.Gaps)
+		pident := float64(cigar.Matches) / float64(cigar.AlignLen) * 100
+		pidentAdjusted = adjustedPIdentForAlignment(pident, qqual, c.QBegin-qLeftExt, cigar)
 		wfa.RecycleAlignmentResult(cigar)
 
 		break // keep the best ONE match
 	}
 
 	if totAligned <= 0 {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
 	pident := float64(totMatched) / float64(totAligned) * 100
@@ -601,10 +619,10 @@ func alignChain(
 		af = 100
 	}
 	if pident < minPIdent || af < minQcov {
-		return 0, 0, 0, 0, false
+		return 0, 0, 0, 0, 0, false
 	}
 
-	return totMatched, totAligned, totGaps, pident, true
+	return totMatched, totAligned, totGaps, pident, pidentAdjusted, true
 }
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
@@ -619,8 +637,12 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	}
 
 	// 1) Cut the query into fragments.
-	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
+	qfrags, qqualFrags, qfragLens, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minFragLen)
+	if err != nil {
+		return fmt.Errorf("failed to cut query sequences and qualities into fragments: %w", err)
+	}
 	defer recycleFragments(qfrags)
+	defer recycleFragments(qqualFrags)
 	if len(*qfrags) == 0 {
 		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
 	}
@@ -884,8 +906,12 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(g.GenomeSize), 0.625, 0.41)
 
 			for i, qfrag := range *qfrags {
-				matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
-					qfrag, (*qSeeds)[i], sketch, (*concat),
+				var qqual []byte
+				if qqualFrags != nil {
+					qqual = (*qqualFrags)[i]
+				}
+				matched, alignedLen, gaps, pident, pidentAdjusted, ok := alignQueryFragToSubjectSampled(
+					qfrag, qqual, (*qSeeds)[i], sketch, (*concat),
 					chainer, algn, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
 					&fScoreAndEvalue,
@@ -898,11 +924,17 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				gr.AlignedLength += alignedLen - gaps
 				gr.AlignedMatches += matched
 				gr.PidentsSum += pident
+				if qqualFrags != nil {
+					gr.PidentsAdjustedSum += pidentAdjusted
+				}
 			}
 
 			// g) ANI / AF on the accumulated alignment.
 			if gr.AlignedFragments > 0 {
 				gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
+				if qqualFrags != nil {
+					gr.ANIAdjusted = gr.PidentsAdjustedSum / float64(gr.AlignedFragments) / 100
+				}
 			}
 			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
 			if gr.AFq > 1 {
@@ -1083,8 +1115,8 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(subject.genomeSize), 0.625, 0.41)
 
 	for i, qfrag := range *qfrags {
-		matched, alignedLen, gaps, pident, ok := alignQueryFragToSubjectSampled(
-			qfrag, (*qSeeds)[i], sketch, (*concat),
+		matched, alignedLen, gaps, pident, _, ok := alignQueryFragToSubjectSampled(
+			qfrag, nil, (*qSeeds)[i], sketch, (*concat),
 			chainer, algn, K, extLen, extLen2,
 			minPIdent, minQcovHSP, idx,
 			&fScoreAndEvalue,

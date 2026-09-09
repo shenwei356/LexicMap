@@ -115,6 +115,8 @@ type Chain2Result struct {
 	AlignedLength int     // Aligned length, might be longer than AlignedBasesQ or AlignedBasesT
 	Gaps          int     // The number of gaps
 
+	PIdentAdjusted float64 // quality-adjusted percentage of identity
+
 	QBegin, QEnd int // Query begin/end position (0-based)
 	TBegin, TEnd int // Target begin/end position (0-based)
 

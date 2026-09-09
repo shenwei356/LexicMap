@@ -58,6 +58,11 @@ Algorithm:
 
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
+     Long-read FASTQ files are also accepted. For these inputs, --adjust-ani-by-quality can
+     be used to estimate ANI corrected for sequencing errors: 
+         e = mean_i(10^(-Q_i/10)) and ANIadj = (ANI - e/3) / (1 - 4e/3),
+     where Q_i are the Phred scores in aligned query regions and ANI is expressed as a
+     fraction. The correction assumes independent, symmetric substitution errors.
   2. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
@@ -77,7 +82,8 @@ Tips:
      There's no need to rebuild the index.
 
 Output format:
-  Tab-delimited format with 10 columns.
+  Tab-delimited format with 10 columns. --adjust-ani-by-quality appends
+  ANIadj as the last column.
 
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
@@ -91,6 +97,7 @@ Output format:
     8.  sctgs,    Number of contigs in the subject genome.
     9.  ssize,    Size of the subject genome.
     10. sname,    Taxonomic name of the subject name.
+    11. ANIadj,   Quality-adjusted ANI (optional).
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -172,6 +179,13 @@ Output format:
 		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 		minANI := getFlagNonNegativeFloat64(cmd, "min-ani") / 100
+		adjustANIByQuality := getFlagBool(cmd, "adjust-ani-by-quality")
+
+		onlyGenomeScreening := getFlagBool(cmd, "only-genome-screening")
+		extra := getFlagBool(cmd, "extra")
+		if adjustANIByQuality && onlyGenomeScreening {
+			checkError(fmt.Errorf("--adjust-ani-by-quality cannot be used with --only-genome-screening"))
+		}
 
 		minPrefix := getFlagPositiveInt(cmd, "seed-min-prefix")
 		if minPrefix > 32 || minPrefix < 5 {
@@ -461,9 +475,6 @@ Output format:
 
 		}
 
-		onlyGenomeScreening := getFlagBool(cmd, "only-genome-screening")
-		extra := getFlagBool(cmd, "extra")
-
 		// ---------------------------------------------------------------
 		// searching
 
@@ -485,7 +496,11 @@ Output format:
 		var speed float64 // k reads/second
 
 		if !onlyGenomeScreening {
-			fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\tsname\n")
+			if adjustANIByQuality {
+				fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\tsname\tANIadj\n")
+			} else {
+				fmt.Fprintf(outfh, "query\tsubject\tANI\tqAF\tsAF\tqcontigs\tqsize\tscontigs\tssize\tsname\n")
+			}
 		} else {
 			// fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tnKmers\tnBases\tavgLen\tnBestBases\tavgBestLen")
 			fmt.Fprintf(outfh, "query\tsubject\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix\tsname")
@@ -572,9 +587,15 @@ Output format:
 					} else {
 						vSgenome = ""
 					}
-					fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\n",
-						q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
-						len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome)
+					if adjustANIByQuality {
+						fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\t%.3f\n",
+							q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
+							len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome, gr.ANIAdjusted*100)
+					} else {
+						fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\n",
+							q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
+							len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome)
+					}
 				}
 			} else {
 				var hitKmers, hitMasks uint64
@@ -668,7 +689,12 @@ Output format:
 				}()
 
 				// 1. read all sequences of the query genome
-				query, err := gr.Read(file, true, idx.softMasking) // N's are converted to A's.
+				var query *GQuery
+				if adjustANIByQuality {
+					query, err = gr.ReadWithQual(file, true, idx.softMasking)
+				} else {
+					query, err = gr.Read(file, true, idx.softMasking)
+				}
 				checkError(err)
 				if query == nil { // no valid sequence
 					log.Warningf("no valid sequences in %s, skipped", file)
@@ -853,6 +879,9 @@ func init() {
 
 	gsearchCmd.Flags().Float64P("min-ani", "I", 70,
 		formatFlagUsage(`Only output results where one genome has ANI > than this value (percentage).`))
+
+	gsearchCmd.Flags().BoolP("adjust-ani-by-quality", "", false,
+		formatFlagUsage(`Estimate ANI corrected for Phred+33 sequencing errors in the aligned query regions and add the ANIAdjusted column. FASTQ input is required. The raw ANI is still used for filtering and sorting.`))
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "O", false,
