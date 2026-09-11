@@ -58,8 +58,8 @@ Algorithm:
 
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
-     Long-read FASTQ files are also accepted. For these inputs, --adjust-ani-by-quality can
-     be used to estimate ANI corrected for sequencing errors: 
+     Experimental feature: Long-read FASTQ files are also accepted. For these inputs,
+     --adjust-ani-by-quality can be used to estimate ANI corrected for sequencing errors:
          e = mean_i(10^(-Q_i/10)) and ANIadj = (ANI - e/3) / (1 - 4e/3),
      where Q_i are the Phred scores in aligned query regions and ANI is expressed as a
      fraction. The correction assumes independent, symmetric substitution errors.
@@ -97,7 +97,7 @@ Output format:
     8.  sctgs,    Number of contigs in the subject genome.
     9.  ssize,    Size of the subject genome.
     10. sname,    Taxonomic name of the subject name.
-    11. ANIadj,   Quality-adjusted ANI (optional).
+    11. ANIadj,   Quality-adjusted ANI (optional, experimental feature).
  
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -881,7 +881,7 @@ func init() {
 		formatFlagUsage(`Only output results where one genome has ANI > than this value (percentage).`))
 
 	gsearchCmd.Flags().BoolP("adjust-ani-by-quality", "", false,
-		formatFlagUsage(`Estimate ANI corrected for Phred+33 sequencing errors in the aligned query regions and add the ANIAdjusted column. FASTQ input is required. The raw ANI is still used for filtering and sorting.`))
+		formatFlagUsage(`(Experimental feature) Estimate ANI corrected for Phred+33 sequencing errors in the aligned query regions and add the ANIAdjusted column. FASTQ input is required. The raw ANI is still used for filtering and sorting.`))
 
 	// OrthoANI
 	gsearchCmd.Flags().BoolP("OrthoANI", "O", false,
