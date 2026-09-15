@@ -371,7 +371,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				checkError(fmt.Errorf("  failed to read genome2taxid file: %s", idx.opt.Genome2TaxIdFile))
 			}
 			if opt.Verbose || opt.Log2File {
-				log.Infof("  %d genome2taxid records loaded", len(genome2taxids))
+				log.Infof("  %d genome2taxid records loaded from: %s", len(genome2taxids), idx.opt.Genome2TaxIdFile)
 			}
 
 			// genomes.map.bin

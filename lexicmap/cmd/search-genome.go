@@ -67,8 +67,18 @@ Attention:
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
 
-Tips:
-  1. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
+Taxonomic operations:
+  1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
+     mapping file (-G/--genome2taxid), are needed for filtering genomes by TaxId(s) and/or
+     showing taxonomic names.
+     
+     Taxdump files can be createted from any taxonomy data with TaxonKit, see
+     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump 
+
+     If -T and -G are not provided, it will try to find them in the index directory,
+     in the subdirectory "taxdump" and the file "taxdump/taxid.map", respectively.
+
+  2. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
      in a similar way with BLAST+ 2.15.0 or later versions.
      Negative values are allowed as a black list.
@@ -76,10 +86,8 @@ Tips:
      For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with
      -t 543,-561.
 
-     Users only need to provide NCBI-format taxdump files (-T/--taxdump, can also create from
-     any taxonomy data with TaxonKit https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump )
-     and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
-     There's no need to rebuild the index.
+  3. Flag --show-genome-name and --show-species-name can be used to show the taxonomic/species
+     name of the subject genome in the output.
 
 Output format:
   Tab-delimited format with 10 columns. --adjust-ani-by-quality appends
@@ -268,7 +276,13 @@ Output format:
 
 		// taxonomy
 		taxdumpDir := getFlagString(cmd, "taxdump")
+		if !cmd.Flags().Lookup("taxdump").Changed {
+			taxdumpDir = filepath.Join(dbDir, "taxdump")
+		}
 		genome2taxidFile := getFlagString(cmd, "genome2taxid")
+		if !cmd.Flags().Lookup("genome2taxid").Changed {
+			genome2taxidFile = filepath.Join(taxdumpDir, "taxid.map")
+		}
 		taxidsStr := getFlagStringSlice(cmd, "taxids")
 		taxidFile := getFlagString(cmd, "taxid-file")
 		keepGenomesWithoutTaxId := getFlagBool(cmd, "keep-genomes-without-taxid")
@@ -862,9 +876,9 @@ func init() {
 	// filter by taxids
 
 	gsearchCmd.Flags().StringP("taxdump", "T", "",
-		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp, etc.), needed for filtering results with TaxIds. For other non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to create taxdump files.`))
+		formatFlagUsage(`Directory containing taxdump files (nodes.dmp, names.dmp, etc.), needed for filtering results with TaxIds. For other non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to create taxdump files. (default: <index path>/taxdump)`))
 	gsearchCmd.Flags().StringP("genome2taxid", "G", "",
-		formatFlagUsage(`Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. Genome IDs in the index can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut"`))
+		formatFlagUsage(`Two-column tabular file for mapping genome ID to TaxId, needed for filtering results with TaxIds. Genome IDs in the index can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk cut -t -f 1 | csvtk uniq -Ut". (default: <taxdump path>/taxid.map)`))
 	gsearchCmd.Flags().BoolP("keep-genomes-without-taxid", "k", false,
 		formatFlagUsage(`Keep genome hits without TaxId, i.e., those without TaxId in the --genome2taxid file.`))
 	gsearchCmd.Flags().StringSliceP("taxids", "t", []string{},
