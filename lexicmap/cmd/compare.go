@@ -279,6 +279,8 @@ Output format:
 			Log2File:     opt.Log2File,
 			MaxOpenFiles: maxOpenFiles,
 
+			MaxSeedSearchingConcurrency: 2,
+
 			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),
 			TopN:            topn,

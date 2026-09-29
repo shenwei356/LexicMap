@@ -556,6 +556,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// read index of seeds
 
 	inMemorySearch := idx.opt.InMemorySearch
+	seedSearchingConcurrency := idx.opt.MaxSeedSearchingConcurrency
+	if seedSearchingConcurrency < 2 {
+		seedSearchingConcurrency = 2
+	}
 
 	threads := opt.NumCPUs
 	dirSeeds := filepath.Join(outDir, DirSeeds)
@@ -578,7 +582,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	idx.searcherTokens = make([]chan int, len(fileSeeds))
 	for i := range idx.searcherTokens {
-		idx.searcherTokens[i] = make(chan int, idx.opt.MaxSeedSearchingConcurrency)
+		idx.searcherTokens[i] = make(chan int, seedSearchingConcurrency)
 	}
 
 	idx.poolKmers = &sync.Pool{New: func() interface{} {
@@ -672,7 +676,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	if opt.Verbose || opt.Log2File {
 		log.Infof("  creating searcher pools for %d seed data files, each with %d searchers...",
-			len(fileSeeds), idx.opt.MaxSeedSearchingConcurrency)
+			len(fileSeeds), seedSearchingConcurrency)
 	}
 	for _, file := range fileSeeds {
 		wg.Add(1)
@@ -686,7 +690,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 				chIM <- scr
 			} else { // just read the index data
-				scr, err := kv.NewSearcherWithMaskSelection(file, idx.opt.MaxSeedSearchingConcurrency, idx.maskSelection)
+				scr, err := kv.NewSearcherWithMaskSelection(file, seedSearchingConcurrency, idx.maskSelection)
 				if err != nil {
 					checkError(fmt.Errorf("failed to create a searcher from file: %s: %s", file, err))
 				}
@@ -707,7 +711,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	<-done
 
 	// we can create genome reader pools
-	n := (idx.opt.MaxOpenFiles - len(fileSeeds)*idx.opt.MaxSeedSearchingConcurrency - 1) / info.GenomeBatches // 1 is for the output file
+	n := (idx.opt.MaxOpenFiles - len(fileSeeds)*seedSearchingConcurrency - 1) / info.GenomeBatches // 1 is for the output file
 	if n < 1 {
 		idx.hasGenomeRdrs = false
 		log.Warningf("  no reader pools created for %d genome batches, please consider increasing the number of max open files (%d).",
