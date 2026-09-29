@@ -49,11 +49,14 @@ func TestMergeGSearchScreenResultDetail(t *testing.T) {
 	}
 }
 
-func TestResetGSearchScreenResultDetailReleasesLongestMatches(t *testing.T) {
+func TestResetGSearchScreenResultDetailRetainsClearedLongestMatches(t *testing.T) {
 	r := &GSearchScreenResultDetail{
 		BatchGenomeIndex: []uint64{1},
 		SumPrefix:        31,
 		LongestMatches:   make([]uint8, 1024),
+	}
+	for i := range r.LongestMatches {
+		r.LongestMatches[i] = 31
 	}
 
 	resetGSearchScreenResultDetail(r)
@@ -61,7 +64,12 @@ func TestResetGSearchScreenResultDetailReleasesLongestMatches(t *testing.T) {
 	if len(r.BatchGenomeIndex) != 0 || r.SumPrefix != 0 {
 		t.Fatalf("result was not reset: %+v", r)
 	}
-	if r.LongestMatches != nil {
-		t.Fatalf("longest matches retained after reset: len=%d cap=%d", len(r.LongestMatches), cap(r.LongestMatches))
+	if len(r.LongestMatches) != 1024 || cap(r.LongestMatches) != 1024 {
+		t.Fatalf("longest matches not retained: len=%d cap=%d", len(r.LongestMatches), cap(r.LongestMatches))
+	}
+	for i, v := range r.LongestMatches {
+		if v != 0 {
+			t.Fatalf("longest match %d not cleared: %d", i, v)
+		}
 	}
 }

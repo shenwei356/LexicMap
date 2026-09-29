@@ -50,7 +50,7 @@ type GSearchScreenResultDetail struct {
 func resetGSearchScreenResultDetail(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.SumPrefix = 0
-	r.LongestMatches = nil
+	clear(r.LongestMatches)
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
