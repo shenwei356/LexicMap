@@ -162,6 +162,9 @@ type Index struct {
 	anchorPrefix  uint8  // length of anchor prefix
 	maskSelection []bool // nil means all masks
 
+	screenMaskSlots []int32 // full mask index -> compact screening mask index; -1 means unselected, nil means identity
+	screenMaskCount int
+
 	// k-mer-value searchers
 	Searchers         []*kv.Searcher
 	InMemorySearchers []*kv.InMemorySearcher
@@ -242,9 +245,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 		// for genome searching
 		idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
-			return &GSearchScreenResultDetail{
-				// Hits: make([]uint8, len(idx.lh.Masks)),
-			}
+			return &GSearchScreenResultDetail{}
 		}}
 		idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
 			tmp := make(map[uint64]*GSearchScreenResultDetail, 1024)
@@ -490,6 +491,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			idx.maskSelection = selection
 		}
 	}
+	idx.screenMaskSlots, idx.screenMaskCount = compactMaskSelection(len(idx.lh.Masks), idx.maskSelection, nil)
 
 	// create a lookup table for faster masking
 	maskPrefix := max(int(math.Log2(float64(len(idx.lh.Masks)))/2), 1)
@@ -514,9 +516,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// for genome searching
 	idx.poolGSearchDetailResult = &sync.Pool{New: func() interface{} {
-		return &GSearchScreenResultDetail{
-			// Hits: make([]uint8, len(idx.lh.Masks)),
-		}
+		return &GSearchScreenResultDetail{}
 	}}
 	idx.poolGSearchDetailResultsMap = &sync.Pool{New: func() interface{} {
 		tmp := make(map[uint64]*GSearchScreenResultDetail, 1024)

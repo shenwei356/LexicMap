@@ -530,7 +530,7 @@ Output format:
 		id2name := idx.BatchGenomeIndex2GenomeID
 		tax := idx.Taxonomy
 
-		matches := make([]uint8, 0, len(idx.lh.Masks))
+		matches := make([]uint8, 0, _nMasks)
 		var matchesS bytes.Buffer
 
 		matches2strslice := func(sep byte) {
@@ -612,9 +612,8 @@ Output format:
 					}
 				}
 			} else {
-				var hitKmers, hitMasks uint64
+				var hitMasks uint64
 				var v uint8
-				var i int
 				for _, gr := range *q.screenDetails {
 					if showSpeciesName {
 						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
@@ -630,18 +629,17 @@ Output format:
 						vSgenome = ""
 					}
 
-					hitKmers, hitMasks = 0, 0
+					hitMasks = 0
 					// _stats.Reset()
 					if extra {
 						matches = matches[:0]
 					}
-					for i, v = range gr.Hits {
+					for _, v = range gr.LongestMatches {
 						if v > 0 {
-							hitKmers += uint64(v)
 							hitMasks++
 
 							if extra {
-								matches = append(matches, gr.LongestMatches[i])
+								matches = append(matches, v)
 							}
 						}
 					}
@@ -721,7 +719,7 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, rs, err := idx.GSearchScreen(query, windows, onlyGenomeScreening, nil)
+				genomeIds, rs, err := idx.GSearchScreen(query, windows, nil)
 				checkError(err)
 
 				if onlyGenomeScreening {

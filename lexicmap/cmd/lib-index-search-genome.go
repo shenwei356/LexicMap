@@ -44,34 +44,25 @@ type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
 	SumPrefix        uint64   // sum of the longest matched prefix length for each mask, used for sorting
 
-	Hits           []uint8 // count how many k-mers are matched for each mask
-	LongestMatches []uint8 // record the longest match for each mask
+	LongestMatches []uint8 // longest match for each selected mask
+}
+
+func resetGSearchScreenResultDetail(r *GSearchScreenResultDetail) {
+	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
+	r.SumPrefix = 0
+	r.LongestMatches = nil
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
-	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-	r.SumPrefix = 0
-	if r.Hits != nil {
-		clear(r.Hits)
-	}
-	if r.LongestMatches != nil {
-		clear(r.LongestMatches)
-	}
+	resetGSearchScreenResultDetail(r)
 	idx.poolGSearchDetailResult.Put(r)
 }
 
 // RecycleGSearchScreenDetailResultsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScreenResultDetail) {
 	for _, r := range *m {
-		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-		r.SumPrefix = 0
-		if r.Hits != nil {
-			clear(r.Hits)
-		}
-		if r.LongestMatches != nil {
-			clear(r.LongestMatches)
-		}
+		resetGSearchScreenResultDetail(r)
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	clear(*m)
@@ -81,14 +72,7 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 // RecycleGSearchScreenDetailResults recycles a list of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDetail) {
 	for _, r := range *rs {
-		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-		r.SumPrefix = 0
-		if r.Hits != nil {
-			clear(r.Hits)
-		}
-		if r.LongestMatches != nil {
-			clear(r.LongestMatches)
-		}
+		resetGSearchScreenResultDetail(r)
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	*rs = (*rs)[:0]
@@ -107,7 +91,7 @@ func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 }
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
-func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, maskIndexes map[int]struct{}) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
+func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]struct{}) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
 	if windows < 1 {
 		return nil, nil, fmt.Errorf("window size needs to be > 0")
 	}
@@ -160,6 +144,11 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	var kmer uint64
 	maskSelection := idx.maskSelection
 	useMaskIndexes := len(maskIndexes) > 0
+	screenMaskSlots := idx.screenMaskSlots
+	screenMaskCount := idx.screenMaskCount
+	if useMaskIndexes {
+		screenMaskSlots, screenMaskCount = compactMaskSelection(len(idx.lh.Masks), maskSelection, maskIndexes)
+	}
 	for i := 0; i < windows; i++ {
 		start = i * step
 		if i == windows-1 {
@@ -230,6 +219,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 		var refpos uint64
 
 		var sr *kv.SearchResult
+		var iMask int
 		var refBatchAndIdxUint64 uint64
 		var ok bool
 
@@ -252,6 +242,13 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 			// different k-mers in subjects,
 			// most of cases, there are more than one
 			for _, sr = range *srs {
+				iMask = sr.IQuery
+				if screenMaskSlots != nil {
+					iMask = int(screenMaskSlots[iMask])
+					if iMask < 0 {
+						continue
+					}
+				}
 
 				// multiple locations for each MATCHED k-mer
 				// but most of cases, there's only one.
@@ -319,19 +316,10 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 					}
 
 					if r.LongestMatches == nil {
-						r.LongestMatches = make([]uint8, len(idx.lh.Masks))
+						r.LongestMatches = make([]uint8, screenMaskCount)
 					}
-					if r.LongestMatches[sr.IQuery] < uint8(sr.Len) { // update longest match
-						r.LongestMatches[sr.IQuery] = uint8(sr.Len)
-					}
-
-					if saveDetails {
-						if r.Hits == nil {
-							r.Hits = make([]uint8, len(idx.lh.Masks))
-						}
-						if r.Hits[sr.IQuery] < 255 { // avoid overflow
-							r.Hits[sr.IQuery]++ // add count to the probe
-						}
+					if r.LongestMatches[iMask] < sr.Len { // update longest match
+						r.LongestMatches[iMask] = sr.Len
 					}
 				}
 			}
@@ -458,7 +446,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 			for _, j = range (*li)[1:] { // merge j -> i
 				r = (*rs)[j]
 
-				mergeGSearchScreenResultDetail(rp, r, saveDetails)
+				mergeGSearchScreenResultDetail(rp, r)
 
 				idx.RecycleGSearchScreenDetailResult(r)
 				(*rs)[j] = nil
@@ -511,14 +499,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 			(*whiteList)[refBatchAndIdxUint64] = &tmp
 		}
 
-		// hitKmers := 0
-		// hitMasks := 0
-		// for _, v := range r.Hits {
-		// 	if v > 0 {
-		// 		hitKmers += int(v)
-		// 		hitMasks++
-		// 	}
-		// }
 	}
 
 	// fmt.Println(whiteList)
@@ -528,7 +508,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	return whiteList, rs, nil
 }
 
-func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail, saveDetails bool) {
+func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail) {
 	dst.BatchGenomeIndex = append(dst.BatchGenomeIndex, src.BatchGenomeIndex...)
 
 	for i, v := range src.LongestMatches {
@@ -538,16 +518,30 @@ func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail, saveDet
 			dst.SumPrefix += uint64(v - previous)
 		}
 	}
+}
 
-	if saveDetails {
-		for i, v := range src.Hits {
-			count := uint16(dst.Hits[i]) + uint16(v)
-			if count > 255 {
-				count = 255
-			}
-			dst.Hits[i] = uint8(count)
-		}
+func compactMaskSelection(nMasks int, selection []bool, maskIndexes map[int]struct{}) ([]int32, int) {
+	if selection == nil && len(maskIndexes) == 0 {
+		return nil, nMasks
 	}
+
+	slots := make([]int32, nMasks)
+	for i := range slots {
+		slots[i] = -1
+	}
+
+	n := 0
+	for i := 0; i < nMasks; i++ {
+		if selection != nil && !selection[i] {
+			continue
+		}
+		if len(maskIndexes) > 0 && !maskIndexSelected(maskIndexes, i) {
+			continue
+		}
+		slots[i] = int32(n)
+		n++
+	}
+	return slots, n
 }
 
 func maskIndexSelected(maskIndexes map[int]struct{}, index int) bool {
