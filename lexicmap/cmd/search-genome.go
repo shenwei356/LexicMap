@@ -652,16 +652,14 @@ Output format:
 						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
 							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
-							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
-							gr.Score2, float64(gr.Score2)/float64(hitMasks), vSgenome,
+							gr.SumPrefix, float64(gr.SumPrefix)/float64(hitMasks), vSgenome,
 							matchesS.Bytes(),
 						)
 					} else {
 						fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex[0]],
 							minPrefix, float64(hitMasks)/float64(_nMasks), hitMasks,
-							// hitKmers, gr.Score, float64(gr.Score)/float64(hitKmers),
-							gr.Score2, float64(gr.Score2)/float64(hitMasks), vSgenome,
+							gr.SumPrefix, float64(gr.SumPrefix)/float64(hitMasks), vSgenome,
 						)
 					}
 				}

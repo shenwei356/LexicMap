@@ -42,8 +42,7 @@ import (
 // GSearchScreenResultDetail is for storing genome search details
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
-	Score            uint64   // score for sorting, total matched bases (masks * unique k-mers * length)
-	Score2           uint64   // score2 for sorting, total matched best k-mers.
+	SumPrefix        uint64   // sum of the longest matched prefix length for each mask, used for sorting
 
 	Hits           []uint8 // count how many k-mers are matched for each mask
 	LongestMatches []uint8 // record the longest match for each mask
@@ -52,8 +51,7 @@ type GSearchScreenResultDetail struct {
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-	r.Score = 0
-	r.Score2 = 0
+	r.SumPrefix = 0
 	if r.Hits != nil {
 		clear(r.Hits)
 	}
@@ -67,8 +65,7 @@ func (idx *Index) RecycleGSearchScreenDetailResult(r *GSearchScreenResultDetail)
 func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScreenResultDetail) {
 	for _, r := range *m {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-		r.Score = 0
-		r.Score2 = 0
+		r.SumPrefix = 0
 		if r.Hits != nil {
 			clear(r.Hits)
 		}
@@ -85,8 +82,7 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDetail) {
 	for _, r := range *rs {
 		r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
-		r.Score = 0
-		r.Score2 = 0
+		r.SumPrefix = 0
 		if r.Hits != nil {
 			clear(r.Hits)
 		}
@@ -322,6 +318,13 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 						(*m)[refBatchAndIdxUint64] = r
 					}
 
+					if r.LongestMatches == nil {
+						r.LongestMatches = make([]uint8, len(idx.lh.Masks))
+					}
+					if r.LongestMatches[sr.IQuery] < uint8(sr.Len) { // update longest match
+						r.LongestMatches[sr.IQuery] = uint8(sr.Len)
+					}
+
 					if saveDetails {
 						if r.Hits == nil {
 							r.Hits = make([]uint8, len(idx.lh.Masks))
@@ -329,15 +332,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 						if r.Hits[sr.IQuery] < 255 { // avoid overflow
 							r.Hits[sr.IQuery]++ // add count to the probe
 						}
-
-						if r.LongestMatches == nil {
-							r.LongestMatches = make([]uint8, len(idx.lh.Masks))
-						}
-						if r.LongestMatches[sr.IQuery] < uint8(sr.Len) { // update longest match
-							r.LongestMatches[sr.IQuery] = uint8(sr.Len)
-						}
 					}
-					r.Score += uint64(sr.Len) // matched length
 				}
 			}
 
@@ -410,13 +405,15 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 
 	// collect and store with a list
 	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchScreenResultDetail)
+
 	for _, r := range *m {
-		r.Score2 = 0
+		r.SumPrefix = 0
 		for _, v := range r.LongestMatches {
-			r.Score2 += uint64(v)
+			r.SumPrefix += uint64(v)
 		}
 		*rs = append(*rs, r)
 	}
+
 	clear(*m)
 	idx.RecycleGSearchScreenDetailResultsMap(m)
 
@@ -461,12 +458,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 			for _, j = range (*li)[1:] { // merge j -> i
 				r = (*rs)[j]
 
-				// merge r into rp
-				rp.BatchGenomeIndex = append(rp.BatchGenomeIndex, r.BatchGenomeIndex...)
-				rp.Score += r.Score
-				// for _i, v = range r.Hits {
-				// 	rp.Hits[_i] += v
-				// }
+				mergeGSearchScreenResultDetail(rp, r, saveDetails)
 
 				idx.RecycleGSearchScreenDetailResult(r)
 				(*rs)[j] = nil
@@ -498,7 +490,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	// 2.4) sort
 	topN := idx.opt.TopN
 	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
-		return cmp.Compare(b.Score, a.Score)
+		return cmp.Compare(b.SumPrefix, a.SumPrefix)
 	})
 	if topN > 0 && len(*rs) > topN {
 		for _, r := range (*rs)[topN:] {
@@ -527,12 +519,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 		// 		hitMasks++
 		// 	}
 		// }
-		// fmt.Printf("%s\t%s\t%d\t%d\t%d\t%.1f\n",
-		// 	query.id,
-		// 	idx.BatchGenomeIndex2GenomeID[r.BatchGenomeIndex[0]], r.Score,
-		// 	hitMasks,
-		// 	hitKmers, float64(r.Score)/float64(hitKmers),
-		// )
 	}
 
 	// fmt.Println(whiteList)
@@ -540,6 +526,28 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, saveDetails bool, ma
 	// idx.RecycleGSearchScreenDetailResults(rs)
 
 	return whiteList, rs, nil
+}
+
+func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail, saveDetails bool) {
+	dst.BatchGenomeIndex = append(dst.BatchGenomeIndex, src.BatchGenomeIndex...)
+
+	for i, v := range src.LongestMatches {
+		previous := dst.LongestMatches[i]
+		if v > previous {
+			dst.LongestMatches[i] = v
+			dst.SumPrefix += uint64(v - previous)
+		}
+	}
+
+	if saveDetails {
+		for i, v := range src.Hits {
+			count := uint16(dst.Hits[i]) + uint16(v)
+			if count > 255 {
+				count = 255
+			}
+			dst.Hits[i] = uint8(count)
+		}
+	}
 }
 
 func maskIndexSelected(maskIndexes map[int]struct{}, index int) bool {

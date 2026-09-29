@@ -317,6 +317,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.contigInterval = info.ContigInterval
 	idx.softMasking = info.SoftMaksing
 
+	verbose := opt.Verbose || opt.Log2File
+
 	// -----------------------------------------------------
 	// taxid-related files
 
@@ -353,7 +355,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				}
 			}
 
-			if opt.Verbose || opt.Log2File {
+			if verbose {
 				log.Infof("  taxonomy data loaded from: %s", idx.opt.TaxdumpDir)
 			}
 
@@ -363,6 +365,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		go func() {
 			defer wgT.Done()
 
+			debug := opt.Debug
+
 			idx.genomeIdx2TaxId = make(map[uint64]uint32, info.Genomes)
 
 			// genome2taxid
@@ -370,7 +374,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			if err != nil {
 				checkError(fmt.Errorf("  failed to read genome2taxid file (%s): %s", idx.opt.Genome2TaxIdFile, err))
 			}
-			if opt.Verbose || opt.Log2File {
+			if verbose {
 				log.Infof("  %d genome2taxid records loaded from: %s", len(genome2taxids), idx.opt.Genome2TaxIdFile)
 			}
 
@@ -388,6 +392,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			var batchIDAndRefID uint64
 			var ok bool
 			var taxid uint32
+
+			var nMissingTaxid uint64
 
 			for {
 				n, err = io.ReadFull(r, buf[:2])
@@ -424,13 +430,19 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				if taxid, ok = genome2taxids[string(genomeId)]; ok {
 					idx.genomeIdx2TaxId[batchIDAndRefID] = taxid
 				} else {
-					if opt.Verbose || opt.Log2File {
-						log.Warningf("  taxid of %s is not given in the genome2taxid file: %s", genomeId, idx.opt.Genome2TaxIdFile)
+					if verbose {
+						nMissingTaxid++
+						if debug {
+							log.Warningf("  taxid of %s is not given in the genome2taxid file: %s", genomeId, idx.opt.Genome2TaxIdFile)
+						}
 					}
 				}
 			}
 
-			if opt.Verbose || opt.Log2File {
+			if verbose {
+				if nMissingTaxid > 0 {
+					log.Warningf("  %d genomes do not have taxids in the genome2taxid file: %s", nMissingTaxid, idx.opt.Genome2TaxIdFile)
+				}
 				log.Infof("  taxid information loaded")
 			}
 		}()
@@ -440,7 +452,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// -----------------------------------------------------
 	// read masks
 	fileMask := filepath.Join(outDir, FileMasks)
-	if opt.Verbose || opt.Log2File {
+	if verbose {
 		log.Infof("  reading masks...")
 	}
 	idx.lh, err = lexichash.NewFromFile(fileMask)
@@ -609,7 +621,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	// read indexes
 
-	if opt.Verbose || opt.Log2File {
+	if verbose {
 		if inMemorySearch {
 			log.Infof("  reading seeds (k-mer-value) data into memory...")
 		} else {
@@ -674,7 +686,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		<-tokens
 	}()
 
-	if opt.Verbose || opt.Log2File {
+	if verbose {
 		log.Infof("  creating searcher pools for %d seed data files, each with %d searchers...",
 			len(fileSeeds), seedSearchingConcurrency)
 	}
@@ -720,7 +732,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		if n > opt.NumCPUs {
 			n = opt.NumCPUs
 		}
-		if opt.Verbose || opt.Log2File {
+		if verbose {
 			log.Infof("  creating reader pools for %d genome batches, each with %d readers...", info.GenomeBatches, n)
 		}
 		idx.poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
