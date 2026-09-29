@@ -366,9 +366,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			idx.genomeIdx2TaxId = make(map[uint64]uint32, info.Genomes)
 
 			// genome2taxid
-			genome2taxids, err := readKVsUint32(idx.opt.Genome2TaxIdFile, false)
+			genome2taxids, err := readKVsUint32(idx.opt.Genome2TaxIdFile, false, true)
 			if err != nil {
-				checkError(fmt.Errorf("  failed to read genome2taxid file: %s", idx.opt.Genome2TaxIdFile))
+				checkError(fmt.Errorf("  failed to read genome2taxid file (%s): %s", idx.opt.Genome2TaxIdFile, err))
 			}
 			if opt.Verbose || opt.Log2File {
 				log.Infof("  %d genome2taxid records loaded from: %s", len(genome2taxids), idx.opt.Genome2TaxIdFile)

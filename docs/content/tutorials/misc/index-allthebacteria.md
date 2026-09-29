@@ -210,7 +210,7 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         
         # Prepare A file mapping assembly accession to TaxId
         # using TaxonKit: https://github.com/shenwei356/taxonkit
-        cat species_calls.tsv.gz | sed 1d | cut -f 1,2 \
+        zcat species_calls.tsv.gz | sed 1d | cut -f 1,2 \
             | taxonkit name2taxid --data-dir taxdump/ -i 2 \
             | cut -f 1,3 \
             > taxid.map

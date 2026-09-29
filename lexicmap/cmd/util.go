@@ -398,7 +398,7 @@ func readKVs(file string, ignoreCase bool) (map[string]string, error) {
 	return m, fh.Close()
 }
 
-func readKVsUint32(file string, ignoreCase bool) (map[string]uint32, error) {
+func readKVsUint32(file string, ignoreCase bool, ignoreEmptyValue bool) (map[string]uint32, error) {
 	fh, err := xopen.Ropen(file)
 	if err != nil {
 		return nil, err
@@ -418,6 +418,10 @@ func readKVsUint32(file string, ignoreCase bool) (map[string]uint32, error) {
 
 		stringSplitNByByte(line, '\t', 2, &items)
 		if len(items) < 2 {
+			continue
+		}
+
+		if ignoreEmptyValue && items[1] == "" {
 			continue
 		}
 
