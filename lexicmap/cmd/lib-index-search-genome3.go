@@ -1132,12 +1132,16 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 		genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
 		genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
 
-		rdr := <-idx.poolGenomeRdrs[genomeBatch]
+		rdr, err := idx.acquireGenomeReader(genomeBatch)
+		if err != nil {
+			RecycleGQuery(q)
+			return nil, err
+		}
 
 		g, err := rdr.Seqs(genomeIdx)
 		if err != nil {
 			RecycleGQuery(q)
-			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			_ = idx.releaseGenomeReader(genomeBatch, rdr)
 			return nil, fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s", genomeBatch, genomeIdx, err)
 		}
 
@@ -1156,12 +1160,20 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 				humanize.Comma(int64(g.GenomeSize)),
 				humanize.Comma(int64(maxSubjectGenomeSize)))
 
-			idx.poolGenomeRdrs[genomeBatch] <- rdr
+			if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
+				RecycleGQuery(q)
+				genome.RecycleGenome(g)
+				return nil, fmt.Errorf("failed to close genome reader: %w", err)
+			}
 			genome.RecycleGenome(g)
 			break
 		}
 
-		idx.poolGenomeRdrs[genomeBatch] <- rdr
+		if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
+			RecycleGQuery(q)
+			genome.RecycleGenome(g)
+			return nil, fmt.Errorf("failed to close genome reader: %w", err)
+		}
 		genome.RecycleGenome(g)
 	}
 

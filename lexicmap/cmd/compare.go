@@ -48,11 +48,13 @@ var compareCmd = &cobra.Command{
 Input:
   - Option 1:
     Two or more FASTA files. All combinations of 2 genomes will be compared.
-  - Option 2: 
-    Tab-delimited file(s), with genome IDs in the first two columns.
-    Genomes will be read from the LexicMap index given by '-d/--index'.
-    The file can be the output of 'lexicmap genome pair', and the flag '-H' is needed
-    to skip the header line.
+  - Option 2:
+    Two or more genome IDs, with the LexicMap index given by '-d/--index'.
+    All combinations of 2 genomes will be compared.
+  - Option 3:
+    One or more tab-delimited files given by '--pair-file', with genome IDs in
+    the first two columns. The files can be the output of 'lexicmap genome pair'.
+    The LexicMap index must be given by '-d/--index', and '-H' skips header lines.
 
 Output format:
   Tab-delimited format with 11 columns.
@@ -114,9 +116,18 @@ Output format:
 		// ---------------------------------------------------------------
 
 		dbDir := getFlagString(cmd, "index")
-		// if dbDir == "" {
-		// 	checkError(fmt.Errorf("flag -d/--index needed"))
-		// }
+		loadIndex := dbDir != ""
+		pairFiles := getFlagStringSlice(cmd, "pair-file")
+		pairFileMode := len(pairFiles) > 0
+		if pairFileMode {
+			if !loadIndex {
+				checkError(fmt.Errorf("flag -d/--index is required with --pair-file"))
+			}
+			if len(args) > 0 || getFlagString(cmd, "infile-list") != "" {
+				checkError(fmt.Errorf("positional genome IDs and -X/--infile-list cannot be combined with --pair-file"))
+			}
+			pairFiles = getFileList(pairFiles, true)
+		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
 		var reRefName *regexp.Regexp
@@ -219,28 +230,45 @@ Output format:
 		}
 
 		// ---------------------------------------------------------------
-		// input files
+		// inputs
 
 		if outputLog {
-			log.Info("checking input files ...")
+			log.Info("checking inputs ...")
 		}
 
-		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+		var inputs []string
+		if !pairFileMode {
+			if loadIndex && len(args) == 0 && getFlagString(cmd, "infile-list") == "" {
+				inputs = nil
+			} else {
+				inputs = getFileListFromArgsAndFile(cmd, args, !loadIndex, "infile-list", !loadIndex)
+			}
+		}
 
 		if outputLog {
-			if len(files) == 1 {
-				if isStdin(files[0]) {
+			if pairFileMode {
+				log.Infof("  %d genome-pair file(s) given", len(pairFiles))
+			} else if loadIndex {
+				log.Infof("  %d genome ID(s) given", len(inputs))
+			} else if len(inputs) == 1 {
+				if isStdin(inputs[0]) {
 					log.Info("  no files given, reading from stdin")
 				} else {
-					log.Infof("  %d input file given: %s", len(files), files[0])
+					log.Infof("  %d input file given: %s", len(inputs), inputs[0])
 				}
 			} else {
-				log.Infof("  %d input file(s) given", len(files))
+				log.Infof("  %d input file(s) given", len(inputs))
 			}
 		}
 
 		outFileClean := filepath.Clean(outFile)
-		for _, file := range files {
+		inputFiles := inputs
+		if pairFileMode {
+			inputFiles = pairFiles
+		} else if loadIndex {
+			inputFiles = nil
+		}
+		for _, file := range inputFiles {
 			if !isStdin(file) && filepath.Clean(file) == outFileClean {
 				checkError(fmt.Errorf("out file should not be one of the input file"))
 			}
@@ -259,12 +287,6 @@ Output format:
 
 		// ---------------------------------------------------------------
 		// loading index
-
-		loadIndex := dbDir != ""
-
-		if !loadIndex && len(files) < 2 {
-			checkError(fmt.Errorf("if no LexicMap index given via '-d', >=2 input sequence files are required"))
-		}
 
 		if outputLog {
 			log.Info()
@@ -488,26 +510,32 @@ Output format:
 				checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 			}
 
-			for _, file := range files {
-				pairs1, err := readPairs(file, hasHeaderLine)
+			if pairFileMode {
+				pairs, err = readPairFiles(pairFiles, hasHeaderLine)
 				if err != nil {
-					checkError(fmt.Errorf("failed to parse input, two-column tab-delimited input needed: %s\n", err))
+					checkError(err)
 				}
-				if pairs == nil {
-					pairs = pairs1
-				} else {
-					pairs = append(pairs, pairs1...)
+			} else {
+				pairs, err = combinationsOfTwo(inputs, "genome IDs")
+				if err != nil {
+					checkError(err)
 				}
-			}
-			if len(pairs)>>1 < 1 {
-				checkError(fmt.Errorf("no valid genome pairs given from %d pair list file(s)", len(files)))
 			}
 		} else {
-			combs := combin.Combinations(len(files), 2)
-			pairs = make([]string, 0, len(combs)<<1)
-			for _, pair := range combs {
-				pairs = append(pairs, files[pair[0]])
-				pairs = append(pairs, files[pair[1]])
+			pairs, err = combinationsOfTwo(inputs, "input sequence files")
+			if err != nil {
+				checkError(err)
+			}
+		}
+		if loadIndex {
+			for _, genomeID := range pairs {
+				if _, ok := gname2idx[genomeID]; !ok {
+					hint := ""
+					if pairFileMode && !hasHeaderLine {
+						hint = "; use -H/--skip-header-line if the pair file contains a header"
+					}
+					checkError(fmt.Errorf("genome ID not found in index: %s%s", genomeID, hint))
+				}
 			}
 		}
 
@@ -515,7 +543,14 @@ Output format:
 
 		if outputLog {
 			log.Info()
-			log.Infof("%d genome pairs loaded from %d file(s)", nPairs, len(files))
+			switch {
+			case pairFileMode:
+				log.Infof("%d genome pairs loaded from %d pair file(s)", nPairs, len(pairFiles))
+			case loadIndex:
+				log.Infof("%d genome pairs generated from %d genome ID(s)", nPairs, len(inputs))
+			default:
+				log.Infof("%d genome pairs generated from %d sequence file(s)", nPairs, len(inputs))
+			}
 			log.Info("started comparing genomes...")
 		}
 
@@ -575,10 +610,7 @@ Output format:
 				go func() {
 					var readErr error
 					if loadIndex {
-						batchIDAndRefIDs, ok := gname2idx[genome1]
-						if !ok {
-							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome1))
-						}
+						batchIDAndRefIDs := gname2idx[genome1]
 						q.g1, readErr = idx.ReadGenome(batchIDAndRefIDs)
 						checkError(readErr)
 						q.g1.id = append(q.g1.id, []byte(genome1)...)
@@ -592,10 +624,7 @@ Output format:
 				go func() {
 					var readErr error
 					if loadIndex {
-						batchIDAndRefIDs, ok := gname2idx[genome2]
-						if !ok {
-							checkError(fmt.Errorf("reference name not found: %s, you might need to use '-H' to skip the header line", genome2))
-						}
+						batchIDAndRefIDs := gname2idx[genome2]
 						q.g2, readErr = idx.ReadGenome(batchIDAndRefIDs)
 						checkError(readErr)
 						q.g2.id = append(q.g2.id, []byte(genome2)...)
@@ -678,12 +707,15 @@ func init() {
 	genomeCmd.AddCommand(compareCmd)
 
 	compareCmd.Flags().BoolP("skip-header-line", "H", false,
-		formatFlagUsage(`Skip the header line in the input file.`))
+		formatFlagUsage(`Skip the header line in every --pair-file.`))
 
 	// general flags
 
 	compareCmd.Flags().StringP("index", "d", "",
-		formatFlagUsage(`Index directory created by "lexicmap index".`))
+		formatFlagUsage(`Index directory created by "lexicmap index". When given, positional arguments are genome IDs.`))
+
+	compareCmd.Flags().StringSliceP("pair-file", "P", []string{},
+		formatFlagUsage(`Tab-delimited file(s) containing genome-ID pairs in the first two columns. Requires -d/--index; can be repeated.`))
 
 	compareCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
@@ -749,6 +781,33 @@ func init() {
 	compareCmd.Flags().BoolP("OrthoANI", "O", false,
 		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs.`))
 
+}
+
+func combinationsOfTwo(items []string, label string) ([]string, error) {
+	if len(items) < 2 {
+		return nil, fmt.Errorf("at least 2 %s are required, got %d", label, len(items))
+	}
+	combs := combin.Combinations(len(items), 2)
+	pairs := make([]string, 0, len(combs)<<1)
+	for _, pair := range combs {
+		pairs = append(pairs, items[pair[0]], items[pair[1]])
+	}
+	return pairs, nil
+}
+
+func readPairFiles(files []string, hasHeaderLine bool) ([]string, error) {
+	pairs := make([]string, 0, len(files)<<1)
+	for _, file := range files {
+		filePairs, err := readPairs(file, hasHeaderLine)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse pair file %s: %w", file, err)
+		}
+		pairs = append(pairs, filePairs...)
+	}
+	if len(pairs) == 0 {
+		return nil, fmt.Errorf("no valid genome pairs found in %d pair file(s)", len(files))
+	}
+	return pairs, nil
 }
 
 func readPairs(file string, hasHeaderLine bool) ([]string, error) {

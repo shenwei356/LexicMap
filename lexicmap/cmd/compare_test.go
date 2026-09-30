@@ -1,0 +1,44 @@
+package cmd
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+)
+
+func TestCombinationsOfTwo(t *testing.T) {
+	got, err := combinationsOfTwo([]string{"a", "b", "c"}, "genome IDs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"a", "b", "a", "c", "b", "c"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("pairs: got %v, want %v", got, want)
+	}
+
+	if _, err := combinationsOfTwo([]string{"a"}, "genome IDs"); err == nil {
+		t.Fatal("expected an error for fewer than two genome IDs")
+	}
+}
+
+func TestReadPairFilesSkipsHeaderInEachFile(t *testing.T) {
+	dir := t.TempDir()
+	file1 := filepath.Join(dir, "pairs1.tsv")
+	file2 := filepath.Join(dir, "pairs2.tsv")
+	if err := os.WriteFile(file1, []byte("genome1\tgenome2\nA\tB\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file2, []byte("genome1\tgenome2\nC\tD\textra\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := readPairFiles([]string{file1, file2}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"A", "B", "C", "D"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("pairs: got %v, want %v", got, want)
+	}
+}
