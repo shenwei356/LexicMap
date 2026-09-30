@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -160,5 +161,52 @@ func TestReadAndWrite(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		return
+	}
+}
+
+func TestReaderRestoresBufferSizeWhenReopened(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := PoolGenome.Get().(*Genome)
+	g.Reset()
+	g.ID = append(g.ID, "genome"...)
+	g.Seq = append(g.Seq, "ACGT"...)
+	g.GenomeSize = len(g.Seq)
+	g.Len = len(g.Seq)
+	g.NumSeqs = 1
+	g.SeqSizes = append(g.SeqSizes, len(g.Seq))
+	seqID := []byte("seq")
+	g.SeqIDs = append(g.SeqIDs, &seqID)
+	if err := w.Write(g); err != nil {
+		RecycleGenome(g)
+		_ = w.Close()
+		t.Fatal(err)
+	}
+	RecycleGenome(g)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.buf = r.buf[:1]
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err = NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.buf) < 24 {
+		t.Fatalf("reader buffer length: got %d, want at least 24", len(r.buf))
+	}
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

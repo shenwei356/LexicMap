@@ -402,6 +402,7 @@ func NewReader(file string) (*Reader, error) {
 	}
 	bfh := bufio.NewReader(fh)
 
+	r.buf = resizeByteSlice(r.buf, 24)
 	buf := r.buf
 
 	// check the magic number

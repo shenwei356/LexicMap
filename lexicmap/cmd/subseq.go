@@ -135,10 +135,6 @@ Attention:
 				checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
 			}
 
-			if maxOpenFiles < info.GenomeBatches {
-				log.Warningf("the value of --max-open-files (%d) should be larger than the number of genome batches (%d)", maxOpenFiles, info.GenomeBatches)
-			}
-
 			// genomes.map file for mapping index to genome id
 			refname2idx, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
 			if err != nil {
@@ -147,39 +143,16 @@ Attention:
 
 			// --------------------------------------------------
 			// genome readers
-			nRdr := maxOpenFiles / info.GenomeBatches // 1 is for the output file
-			if nRdr > opt.NumCPUs {
-				nRdr = opt.NumCPUs
-			}
+			readers, err := newSubseqGenomeReaders(dbDir, info.GenomeBatches, maxOpenFiles, opt.NumCPUs)
+			checkError(err)
 			if outputLog {
-				log.Infof("  creating reader pools for %d genome batches, each with %d readers...", info.GenomeBatches, nRdr)
-			}
-			readers := make([]chan *genome.Reader, info.GenomeBatches)
-			for i := 0; i < info.GenomeBatches; i++ {
-				readers[i] = make(chan *genome.Reader, nRdr)
-			}
-
-			var wg sync.WaitGroup
-			tokens := make(chan int, opt.NumCPUs)
-			for i := 0; i < info.GenomeBatches; i++ {
-				for j := 0; j < nRdr; j++ {
-					tokens <- 1
-					wg.Add(1)
-					go func(i int) {
-						fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
-						rdr, err := genome.NewReader(fileGenomes)
-						if err != nil {
-							checkError(fmt.Errorf("failed to create genome reader: %s", err))
-						}
-
-						readers[i] <- rdr
-
-						wg.Done()
-						<-tokens
-					}(i)
+				if readers.pooled() {
+					log.Infof("  created reader pools for %d genome batches, each with %d readers", info.GenomeBatches, readers.readersPerBatch)
+				} else {
+					log.Infof("  reader pools disabled for %d genome batches; opening at most %d genome files on demand", info.GenomeBatches, maxOpenFiles)
 				}
 			}
-			wg.Wait()
+			var wg sync.WaitGroup
 
 			// --------------------------------------------------
 
@@ -404,7 +377,8 @@ Attention:
 						genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
 						genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
 
-						rdr = <-readers[genomeBatch]
+						rdr, err = readers.acquire(genomeBatch)
+						checkError(err)
 
 						tSeq, __end, err = rdr.SubSeq2(genomeIdx, _sseqid, eStart-1, eEnd-1)
 						__end++ // returned end is 0-based.
@@ -413,7 +387,7 @@ Attention:
 						// 	checkError(fmt.Errorf("unequal end position: %d != %d", send, __end))
 						// }
 
-						readers[genomeBatch] <- rdr
+						checkError(readers.release(genomeBatch, rdr))
 
 						if err == nil && tSeq != nil {
 							found = true
@@ -474,17 +448,7 @@ Attention:
 				log.Warningf("does the input has header row? If not, please switch on -H/--no-header-row")
 			}
 
-			for _, chRdr := range readers {
-				wg.Add(1)
-				go func(chRdr chan *genome.Reader) {
-					close(chRdr)
-					for rdr := range chRdr {
-						checkError(rdr.Close())
-					}
-					wg.Done()
-				}(chRdr)
-			}
-			wg.Wait()
+			checkError(readers.close())
 
 			if outputLog {
 				log.Info()
@@ -640,6 +604,130 @@ Attention:
 		genome.RecycleGenome(tSeq)
 		checkError(rdr.Close())
 	},
+}
+
+type subseqGenomeReaders struct {
+	dbDir           string
+	genomeBatches   int
+	readersPerBatch int
+	pools           []chan *genome.Reader
+	openFileTokens  chan struct{}
+}
+
+func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads int) (*subseqGenomeReaders, error) {
+	if genomeBatches < 1 {
+		return nil, fmt.Errorf("invalid number of genome batches: %d", genomeBatches)
+	}
+	if maxOpenFiles < 1 {
+		return nil, fmt.Errorf("invalid maximum number of open files: %d", maxOpenFiles)
+	}
+	if threads < 1 {
+		return nil, fmt.Errorf("invalid number of threads: %d", threads)
+	}
+
+	r := &subseqGenomeReaders{
+		dbDir:         dbDir,
+		genomeBatches: genomeBatches,
+	}
+	r.readersPerBatch = maxOpenFiles / genomeBatches
+	if r.readersPerBatch < 1 {
+		r.openFileTokens = make(chan struct{}, maxOpenFiles)
+		return r, nil
+	}
+	if r.readersPerBatch > threads {
+		r.readersPerBatch = threads
+	}
+
+	r.pools = make([]chan *genome.Reader, genomeBatches)
+	for batch := range r.pools {
+		r.pools[batch] = make(chan *genome.Reader, r.readersPerBatch)
+	}
+
+	var wg sync.WaitGroup
+	tokens := make(chan struct{}, threads)
+	errCh := make(chan error, 1)
+	for batch := 0; batch < genomeBatches; batch++ {
+		for range r.readersPerBatch {
+			tokens <- struct{}{}
+			wg.Add(1)
+			go func(batch int) {
+				defer wg.Done()
+				defer func() { <-tokens }()
+
+				file := filepath.Join(dbDir, DirGenomes, batchDir(batch), FileGenomes)
+				rdr, err := genome.NewReader(file)
+				if err != nil {
+					select {
+					case errCh <- fmt.Errorf("failed to create genome reader: %w", err):
+					default:
+					}
+					return
+				}
+				r.pools[batch] <- rdr
+			}(batch)
+		}
+	}
+	wg.Wait()
+	select {
+	case err := <-errCh:
+		_ = r.close()
+		return nil, err
+	default:
+		return r, nil
+	}
+}
+
+func (r *subseqGenomeReaders) pooled() bool {
+	return r.pools != nil
+}
+
+func (r *subseqGenomeReaders) acquire(batch int) (*genome.Reader, error) {
+	if batch < 0 || batch >= r.genomeBatches {
+		return nil, fmt.Errorf("invalid genome batch: %d", batch)
+	}
+	if r.pooled() {
+		return <-r.pools[batch], nil
+	}
+
+	r.openFileTokens <- struct{}{}
+	file := filepath.Join(r.dbDir, DirGenomes, batchDir(batch), FileGenomes)
+	rdr, err := genome.NewReader(file)
+	if err != nil {
+		<-r.openFileTokens
+		return nil, fmt.Errorf("failed to create genome reader: %w", err)
+	}
+	return rdr, nil
+}
+
+func (r *subseqGenomeReaders) release(batch int, rdr *genome.Reader) error {
+	if batch < 0 || batch >= r.genomeBatches {
+		return fmt.Errorf("invalid genome batch: %d", batch)
+	}
+	if r.pooled() {
+		r.pools[batch] <- rdr
+		return nil
+	}
+
+	err := rdr.Close()
+	<-r.openFileTokens
+	return err
+}
+
+func (r *subseqGenomeReaders) close() error {
+	if !r.pooled() {
+		return nil
+	}
+
+	var closeErr error
+	for _, pool := range r.pools {
+		close(pool)
+		for rdr := range pool {
+			if err := rdr.Close(); err != nil && closeErr == nil {
+				closeErr = err
+			}
+		}
+	}
+	return closeErr
 }
 
 func init() {

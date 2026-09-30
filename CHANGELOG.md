@@ -34,6 +34,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added new flags `--show-genome-name` `--show-species-name` to add the taxonomic/species name as a prefix to sgenome fied.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
     - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
+- `lexicmap utils subseq`:
+    - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
 - `lexicmap util reindex-seeds`:
