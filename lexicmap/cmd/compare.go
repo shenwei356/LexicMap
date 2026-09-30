@@ -219,6 +219,8 @@ Output format:
 
 		hasHeaderLine := getFlagBool(cmd, "skip-header-line")
 
+		fullInputPath := getFlagBool(cmd, "full-input-path")
+
 		debug := getFlagBool(cmd, "debug")
 
 		// ---------------------------------------------------------------
@@ -615,7 +617,7 @@ Output format:
 						checkError(readErr)
 						q.g1.id = append(q.g1.id, []byte(genome1)...)
 					} else {
-						q.g1, readErr = ReadGenomeFromFile(genome1, reRefName)
+						q.g1, readErr = ReadGenomeFromFile(genome1, reRefName, fullInputPath)
 						checkError(readErr)
 					}
 
@@ -629,7 +631,7 @@ Output format:
 						checkError(readErr)
 						q.g2.id = append(q.g2.id, []byte(genome2)...)
 					} else {
-						q.g2, readErr = ReadGenomeFromFile(genome2, reRefName)
+						q.g2, readErr = ReadGenomeFromFile(genome2, reRefName, fullInputPath)
 						checkError(readErr)
 					}
 
@@ -706,16 +708,21 @@ Output format:
 func init() {
 	genomeCmd.AddCommand(compareCmd)
 
+	// input
+
+	compareCmd.Flags().StringSliceP("pair-file", "P", []string{},
+		formatFlagUsage(`Tab-delimited file(s) containing genome-ID pairs in the first two columns. Requires -d/--index; can be repeated.`))
+
 	compareCmd.Flags().BoolP("skip-header-line", "H", false,
 		formatFlagUsage(`Skip the header line in every --pair-file.`))
+
+	compareCmd.Flags().BoolP("full-input-path", "f", false,
+		formatFlagUsage(`Use the full path of input file as the genome name.`))
 
 	// general flags
 
 	compareCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index". When given, positional arguments are genome IDs.`))
-
-	compareCmd.Flags().StringSliceP("pair-file", "P", []string{},
-		formatFlagUsage(`Tab-delimited file(s) containing genome-ID pairs in the first two columns. Requires -d/--index; can be repeated.`))
 
 	compareCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
