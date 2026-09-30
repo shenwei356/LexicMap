@@ -29,10 +29,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 	"github.com/shenwei356/bio/seq"
@@ -63,8 +65,43 @@ Output format:
 Limitations:
   1. Not suitable for very large genome sets (e.g., > 1 million genomes) due to memory constraints.
   2. Genome sets with many highly similar genomes may result in a large number of genome pairs, 
-     and it can be slow and needs lot of memory.
+     which can require substantial time and memory.
   3. Genomes stored in multiple chunks are not evaluated as a whole.
+
+Notes on pair-table memory:
+  1. For indexes with no more than --max-dense-genomes genomes, compact dense pair
+     tables are used. They are faster and use less memory when many genome pairs
+     match, but their size grows quadratically with the number of genomes. Set the
+     value to 0 to force the sparse-map implementation.
+  2. Raising --max-dense-genomes enables dense tables for a larger index and can
+     greatly increase baseline memory. Lowering it can save memory for indexes in
+     which relatively few genome pairs match. At the default limit of 20,000
+     genomes, the global tables need about 1.14 GiB and each mask worker needs
+     about 215 MiB; the default 768 MiB budget therefore permits up to three mask
+     workers. These values exclude k-mer windows and final sorting results.
+  3. --dense-mask-memory limits only the temporary tables used by concurrent mask
+     workers; it is not a total RSS limit. One table is allocated up front for each
+     permitted worker. Raising the value may increase parallelism, but speed usually
+     has diminishing returns and can even regress because workers compete for memory
+     bandwidth and CPU cache, while completed masks are merged into the global dense
+     table by one collector goroutine. The global pair statistics, k-mer windows, and
+     final sorting results are additional memory.
+
+Notes on probabilistic pruning:
+  1. -f/--min-mask-fraction is the final reporting threshold. In contrast,
+     -s/--prob-threshold controls an early heuristic that discards pairs unlikely
+     to reach that threshold. Higher values prune more aggressively; 0 disables
+     the heuristic and computes exact pair statistics.
+  2. In sparse-map mode, pruning can substantially reduce the number of map entries
+     and therefore memory use. In dense-table mode, all pair slots are allocated
+     up front, so pruning does not reduce the main table memory or skip pair
+     comparisons within a mask. It can still save some time by avoiding updates
+     to discarded pairs and by keeping the active result set smaller.
+  3. The default -s 0.001 is retained for compatibility and sparse-map workloads.
+     With -s 0, results are independent of mask completion order, so changing
+     --dense-mask-memory affects only memory and parallelism. With -s > 0, changing
+     concurrency can alter the completion order and may affect marginal pairs
+     considered by the pruning heuristic.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -102,6 +139,12 @@ Limitations:
 		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
 		minMaskFraction := getFlagNonNegativeFloat64(cmd, "min-mask-fraction")
 		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
+		maxDenseGenomes := getFlagNonNegativeInt(cmd, "max-dense-genomes")
+		if maxDenseGenomes > maxSupportedDenseGenomes {
+			checkError(fmt.Errorf("value of --max-dense-genomes (%d) should not be greater than %d",
+				maxDenseGenomes, maxSupportedDenseGenomes))
+		}
+		denseMaskMemoryMiB := getFlagPositiveInt(cmd, "dense-mask-memory")
 
 		nMasks := getFlagNonNegativeInt(cmd, "masks")
 		if !(nMasks == 0 || (isPowerOf4(nMasks) && nMasks >= 64)) {
@@ -144,6 +187,15 @@ Limitations:
 		if outputLog {
 			log.Infof("  checking passed")
 			log.Infof("reading seed data of all masks...")
+		}
+
+		id2name, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
+		if err != nil {
+			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
+		}
+		genomeCodes, genomeOrdinals, err := buildGenomeOrdinals(id2name, info.GenomeBatches)
+		if err != nil {
+			checkError(err)
 		}
 
 		// -------------------------------------------------------------------------
@@ -222,9 +274,32 @@ Limitations:
 
 		// -------------------------------------------------------------------------
 
-		// Keep match count and prefix sum in one map to avoid storing and hashing
-		// every pair key twice.
-		pairStats := make(map[uint64]PairStats, 10240)
+		nGenomes := uint32(len(genomeCodes))
+		var nGenomePairs uint64
+		if nGenomes > 1 {
+			nGenomePairs = uint64(nGenomes) * uint64(nGenomes-1) / 2
+		}
+		// Dense tables need one slot for every possible unordered genome pair.
+		// Keep the switch genome-based for a more intuitive CLI, but calculate
+		// allocations from the exact n*(n-1)/2 pair count.
+		useDensePairs := maxDenseGenomes > 0 && nGenomes <= uint32(maxDenseGenomes) &&
+			nGenomePairs <= math.MaxUint32 && totalMasks <= math.MaxUint16
+		var pairStats map[uint64]PairStats
+		var denseStats *DensePairStats
+		var densePairStarts []uint32
+		if useDensePairs {
+			// Remap the possibly sparse batch/ref genome codes to [0, nGenomes).
+			// Sorted codes preserve the old pair-key tie-breaking order.
+			denseStats = newDensePairStats(int(nGenomePairs))
+			densePairStarts = make([]uint32, nGenomes)
+			for g := range nGenomes {
+				densePairStarts[g] = uint32(densePairRowStart(g, nGenomes))
+			}
+		} else {
+			// Keep match count and prefix sum in one map to avoid storing and
+			// hashing every pair key twice.
+			pairStats = make(map[uint64]PairStats, 10240)
+		}
 
 		// Calculate threshold for minimum prefix length
 		// threshold = 1 << ((k - minPrefix) * 2)
@@ -238,122 +313,149 @@ Limitations:
 		if outputLog {
 			log.Infof("  minimum prefix length between k-mers captured by a mask: %d", minPrefix)
 			log.Infof("  total masks: %d, required matches: %d (%.1f%%)", totalMasks, requiredMatches, minMaskFraction*100)
+			if useDensePairs {
+				log.Infof("  using compact pair tables for %s possible genome pairs", humanize.Comma(int64(nGenomePairs)))
+			}
 		}
 
 		// -------------------------------------------------------------------------
 		// collect counting results
+		maskWorkers := opt.NumCPUs
+		var denseMaskPool chan *DenseMaskCounts
+		if useDensePairs {
+			// Each concurrent mask needs one byte per possible pair plus a touched
+			// bitset. --dense-mask-memory limits the sum of only these temporary
+			// tables; the global statistics and k-mer windows are additional.
+			bytesPerMask := nGenomePairs + ((nGenomePairs + 63) >> 6 << 3)
+			denseMaskMemoryBudget := uint64(denseMaskMemoryMiB) << 20
+			workersByMemory := int(denseMaskMemoryBudget / max(uint64(1), bytesPerMask))
+			if workersByMemory < 1 {
+				workersByMemory = 1
+			}
+			if maskWorkers > workersByMemory {
+				maskWorkers = workersByMemory
+			}
+			denseMaskPool = make(chan *DenseMaskCounts, maskWorkers)
+			for range maskWorkers {
+				denseMaskPool <- newDenseMaskCounts(int(nGenomePairs))
+			}
+			if outputLog {
+				log.Infof("  dense mask workers: %d (--dense-mask-memory: %d MiB)", maskWorkers, denseMaskMemoryMiB)
+			}
+		}
 
 		type Result struct {
 			Counts    *map[uint64]uint8
+			Dense     *DenseMaskCounts
 			StartTime time.Time
 		}
 
-		ch := make(chan Result, opt.NumCPUs)
+		ch := make(chan Result, maskWorkers)
 		done := make(chan int)
+		// A single collector owns the global pair statistics. Mask workers write
+		// only to their private tables, so the hot dense-table updates need no locks.
 		go func() {
-			var processedMasks, remaining int
-			remaining = totalMasks
-			var pair uint64
-			var ok, shouldAddNewPair bool
-			var stats PairStats
-			var prefixLen uint8
+			processedMasks := 0
+			remaining := totalMasks
 			var pruneDecisions []int8
 
 			for result := range ch {
-				maskCounts := result.Counts
-
 				processedMasks++
 				remaining--
 
-				if maskCounts == nil { // no k-mers
+				if result.Counts == nil && result.Dense == nil { // no k-mers
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
 					}
 					continue
 				}
 
-				if len(*maskCounts) == 0 { // no data
-					poolMaskCounts.Put(maskCounts)
-
-					if showProgressBar {
-						chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
+				if useDensePairs {
+					// Merge one mask at a time so matches and prefix sums have the same
+					// semantics as the sparse map path.
+					mergeDenseMaskCounts(denseStats, result.Dense, processedMasks, remaining,
+						requiredMatches, totalMasks, minMaskFraction, probThreshold)
+					denseMaskPool <- result.Dense
+					if probThreshold > 0 && processedMasks < totalMasks && processedMasks&7 == 0 {
+						// Dense pruning clears statistics and active bits for unlikely
+						// pairs, but it cannot release the fixed-size dense arrays.
+						pruneDecisions = pruneDensePairStats(denseStats, pruneDecisions, processedMasks,
+							minMaskFraction, totalMasks, probThreshold)
 					}
-					continue
-				}
-
-				if probThreshold == 0 { //  no pruning
-					// Simply accumulate all pairs
-					for pair, prefixLen = range *maskCounts {
-						stats = pairStats[pair]
-						stats.matches++
-						stats.sumPrefix += uint32(prefixLen)
-						pairStats[pair] = stats
-					}
-
 				} else {
-
-					// Check if new pairs can still reach the threshold
-					shouldAddNewPair = false
-					if 1+remaining >= requiredMatches {
-						// Pre-compute probability check for new pairs (count=1)
-						shouldAddNewPair = shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold)
-					}
-
-					// Update match counts for pairs that matched in this mask
-					for pair, prefixLen = range *maskCounts {
-						stats, ok = pairStats[pair]
-						if !ok {
-							// New pair: check if it passes probability check
-							if shouldAddNewPair {
-								pairStats[pair] = PairStats{matches: 1, sumPrefix: uint32(prefixLen)}
+					maskCounts := result.Counts
+					if len(*maskCounts) > 0 {
+						if probThreshold == 0 { // no pruning
+							// Simply accumulate all pairs.
+							for pair, prefixLen := range *maskCounts {
+								stats := pairStats[pair]
+								stats.matches++
+								stats.sumPrefix += uint32(prefixLen)
+								pairStats[pair] = stats
 							}
 						} else {
-							// Existing pair: increment count
-							stats.matches++
-							stats.sumPrefix += uint32(prefixLen)
-							pairStats[pair] = stats
-						}
-					}
-
-					// Probabilistic pruning: check all active pairs to remove impossible ones early
-					if processedMasks < totalMasks && processedMasks&7 == 0 {
-						if cap(pruneDecisions) <= processedMasks {
-							pruneDecisions = make([]int8, processedMasks+1)
-						} else {
-							pruneDecisions = pruneDecisions[:processedMasks+1]
-							clear(pruneDecisions)
-						}
-						for pair, stats = range pairStats {
-							if stats.matches <= 1 {
-								continue
+							// Check if a new pair can still reach the required number of
+							// matching masks. The probability check is identical for all
+							// pairs first observed in this mask, so compute it once.
+							shouldAddNewPair := false
+							if 1+remaining >= requiredMatches {
+								shouldAddNewPair = shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold)
 							}
-							decision := pruneDecisions[stats.matches]
-							if decision == 0 {
-								if shouldKeepPair(processedMasks, int(stats.matches), minMaskFraction, totalMasks, probThreshold) {
-									decision = 1
+							// Update match counts for pairs that matched in this mask.
+							for pair, prefixLen := range *maskCounts {
+								stats, ok := pairStats[pair]
+								if !ok {
+									// New pair: retain it only if it passes the shared
+									// probability check above.
+									if shouldAddNewPair {
+										pairStats[pair] = PairStats{matches: 1, sumPrefix: uint32(prefixLen)}
+									}
 								} else {
-									decision = -1
+									// Existing pair: accumulate this mask's best prefix.
+									stats.matches++
+									stats.sumPrefix += uint32(prefixLen)
+									pairStats[pair] = stats
 								}
-								pruneDecisions[stats.matches] = decision
 							}
-							if decision < 0 {
-								delete(pairStats, pair)
+							// Probabilistic pruning: every eight processed masks, remove
+							// active pairs that are unlikely to reach the final threshold.
+							if processedMasks < totalMasks && processedMasks&7 == 0 {
+								if cap(pruneDecisions) <= processedMasks {
+									pruneDecisions = make([]int8, processedMasks+1)
+								} else {
+									pruneDecisions = pruneDecisions[:processedMasks+1]
+									clear(pruneDecisions)
+								}
+								for pair, stats := range pairStats {
+									if stats.matches <= 1 {
+										continue
+									}
+									decision := pruneDecisions[stats.matches]
+									if decision == 0 {
+										if shouldKeepPair(processedMasks, int(stats.matches), minMaskFraction, totalMasks, probThreshold) {
+											decision = 1
+										} else {
+											decision = -1
+										}
+										pruneDecisions[stats.matches] = decision
+									}
+									if decision < 0 {
+										delete(pairStats, pair)
+									}
+								}
 							}
 						}
 					}
+					clear(*maskCounts)
+					poolMaskCounts.Put(maskCounts)
 				}
-
-				clear(*maskCounts)
-				poolMaskCounts.Put(maskCounts)
 
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(result.StartTime)) / fcpus)
 				}
-
 				if processedMasks&63 == 0 {
 					runtime.GC()
 				}
-
 			}
 
 			done <- 1
@@ -363,7 +465,7 @@ Limitations:
 		// read seed data files
 
 		var wg sync.WaitGroup
-		tokens := make(chan int, opt.NumCPUs)
+		tokens := make(chan int, maskWorkers)
 
 		for chunk := range info.Chunks {
 			wg.Add(1)
@@ -502,9 +604,14 @@ Limitations:
 					// Sliding window for all-to-all comparison
 					window := poolKmerWindow.Get().(*KmerWindow)
 
-					// Per-mask tracking: which genomes appear in this mask
-					// local counts for this mask (max prefix per pair)
-					maskCounts := poolMaskCounts.Get().(*map[uint64]uint8)
+					// Per-mask tracking: keep the maximum prefix for each pair.
+					var maskCounts *map[uint64]uint8
+					var denseCounts *DenseMaskCounts
+					if useDensePairs {
+						denseCounts = <-denseMaskPool
+					} else {
+						maskCounts = poolMaskCounts.Get().(*map[uint64]uint8)
+					}
 
 					// seek
 					_, err = fh.Seek(int64(indexes[iMask][1])>>1, 0)
@@ -611,18 +718,23 @@ Limitations:
 							}
 							// Extract genome ID (batchID + refID)
 							batchIDAndRefID = (v >> BITS_NONE_IDX) & 4294967295
-							genome := uint32(batchIDAndRefID)
-							if hasLastGenome && genome == lastGenome {
+							genomeCode := uint32(batchIDAndRefID)
+							if hasLastGenome && genomeCode == lastGenome {
 								continue
 							}
+							genome := genomeCode
+							if useDensePairs {
+								genome = genomeOrdinal(genomeCode, genomeOrdinals)
+							}
 							*genomes = append(*genomes, genome)
-							lastGenome = genome
+							lastGenome = genomeCode
 							hasLastGenome = true
 						}
 
 						// Process kmer1 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer1, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8) // , blacklist)
+							processKmerWithWindow(kmer1, genomes, window, maskCounts, denseCounts, densePairStarts,
+								threshold, kMinus32, minPrefixU8)
 						}
 
 						if lastPair && !hasKmer2 {
@@ -640,18 +752,23 @@ Limitations:
 								continue // skip reverse complement
 							}
 							batchIDAndRefID = (v >> BITS_NONE_IDX) & 4294967295
-							genome := uint32(batchIDAndRefID)
-							if hasLastGenome && genome == lastGenome {
+							genomeCode := uint32(batchIDAndRefID)
+							if hasLastGenome && genomeCode == lastGenome {
 								continue
 							}
+							genome := genomeCode
+							if useDensePairs {
+								genome = genomeOrdinal(genomeCode, genomeOrdinals)
+							}
 							*genomes = append(*genomes, genome)
-							lastGenome = genome
+							lastGenome = genomeCode
 							hasLastGenome = true
 						}
 
 						// Process kmer2 with sliding window
 						if len(*genomes) > 0 {
-							processKmerWithWindow(kmer2, genomes, window, maskCounts, threshold, kMinus32, minPrefixU8) // , blacklist)
+							processKmerWithWindow(kmer2, genomes, window, maskCounts, denseCounts, densePairStarts,
+								threshold, kMinus32, minPrefixU8)
 						}
 
 						if lastPair {
@@ -673,6 +790,7 @@ Limitations:
 
 					ch <- Result{
 						Counts:    maskCounts,
+						Dense:     denseCounts,
 						StartTime: maskStart,
 					}
 				}
@@ -692,44 +810,66 @@ Limitations:
 
 		// ---------------------------------------------------------------
 		// Output results
-
-		id2name, err := readGenomeMapIdx2Name(filepath.Join(dbDir, FileGenomeIndex))
-		if err != nil {
-			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(dbDir, FileGenomeIndex), err))
-		}
-
-		results := make([]PairResult, 0, len(pairStats))
-		for pair, stats := range pairStats {
-			// Only output pairs that meet the required threshold
-			if int(stats.matches) >= requiredMatches {
-				results = append(results, PairResult{
-					pair:      pair,
-					nMasks:    int(stats.matches),
-					sumPrefix: stats.sumPrefix,
-				})
-			}
-		}
 		if outputLog {
 			log.Info()
-			log.Infof("total genome pairs: %d", len(results))
+			log.Info("sorting and writing results...")
 		}
-
-		// Sort by nMasks (then sumPrefix) in descending order
-		sorts.Quicksort(PairResults(results))
 
 		// Write header
 		outfh.WriteString("genome1\tgenome2\tminPrefix\tfracMasks\tnMasks\tsumPrefix\tavgPrefix\n")
 
-		// Write sorted results
-		var gid1, gid2 uint64
-		for _, result := range results {
-			gid1 = result.pair >> 32
-			gid2 = result.pair & 0xFFFFFFFF
+		var nResults int
+		if useDensePairs {
+			results := make([]uint32, 0, countDenseResults(denseStats, requiredMatches))
+			for wordIndex, word := range denseStats.active {
+				for word != 0 {
+					bit := bits.TrailingZeros64(word)
+					pairIndex := wordIndex<<6 + bit
+					if pairIndex < len(denseStats.matches) && int(denseStats.matches[pairIndex]) >= requiredMatches {
+						results = append(results, uint32(pairIndex))
+					}
+					word &= word - 1
+				}
+			}
+			nResults = len(results)
+			sorts.Quicksort(DensePairResults{pairs: results, stats: denseStats})
 
-			fracMasks := float64(result.nMasks) / float64(totalMasks)
-			fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
-				id2name[gid1], id2name[gid2], minPrefix, fracMasks, result.nMasks,
-				result.sumPrefix, float64(result.sumPrefix)/float64(result.nMasks))
+			for _, pairIndex := range results {
+				g1, g2 := densePairGenomes(pairIndex, nGenomes)
+				statsIndex := int(pairIndex)
+				nMatchedMasks := int(denseStats.matches[statsIndex])
+				sumPrefix := denseStats.sumPrefixes[statsIndex]
+				fracMasks := float64(nMatchedMasks) / float64(totalMasks)
+				fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
+					id2name[uint64(genomeCodes[g1])], id2name[uint64(genomeCodes[g2])], minPrefix,
+					fracMasks, nMatchedMasks, sumPrefix, float64(sumPrefix)/float64(nMatchedMasks))
+			}
+		} else {
+			results := make([]PairResult, 0, len(pairStats))
+			for pair, stats := range pairStats {
+				if int(stats.matches) >= requiredMatches {
+					results = append(results, PairResult{
+						pair:      pair,
+						nMasks:    int(stats.matches),
+						sumPrefix: stats.sumPrefix,
+					})
+				}
+			}
+			nResults = len(results)
+			sorts.Quicksort(PairResults(results))
+
+			for _, result := range results {
+				gid1 := result.pair >> 32
+				gid2 := result.pair & 0xFFFFFFFF
+				fracMasks := float64(result.nMasks) / float64(totalMasks)
+				fmt.Fprintf(outfh, "%s\t%s\t%d\t%.4f\t%d\t%d\t%.2f\n",
+					id2name[gid1], id2name[gid2], minPrefix, fracMasks, result.nMasks,
+					result.sumPrefix, float64(result.sumPrefix)/float64(result.nMasks))
+			}
+		}
+		if outputLog {
+			log.Info()
+			log.Infof("total genome pairs: %d", nResults)
 		}
 
 		if outputLog && outFile != "-" {
@@ -760,7 +900,13 @@ func init() {
 		formatFlagUsage(`Minimum fraction of masks that must match for a genome pair to be reported.`))
 
 	pairCmd.Flags().Float64P("prob-threshold", "s", 0.001,
-		formatFlagUsage(`Probabilistic threshold for early termination heuristic (lower = more aggressive pruning， 0 = disable pruning).`))
+		formatFlagUsage(`Probability threshold for early pruning (higher = more aggressive; 0 disables pruning and computes exact pair statistics).`))
+
+	pairCmd.Flags().Int("max-dense-genomes", defaultMaxDenseGenomes,
+		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes for using compact dense pair tables (maximum: %d; 0 disables them). Bigger values can greatly increase memory usage.`, maxSupportedDenseGenomes)))
+
+	pairCmd.Flags().Int("dense-mask-memory", defaultDenseMaskMemoryMiB,
+		formatFlagUsage(`Memory budget in MiB for concurrent temporary dense-mask tables (not total RSS). Bigger values permit more mask workers but may have diminishing returns because of memory-bandwidth contention and serial global merging. See the notes above.`))
 
 }
 
@@ -855,6 +1001,210 @@ var poolGenomes = &sync.Pool{New: func() interface{} {
 
 const WindowInitialSize = 1 << 18
 
+const (
+	defaultMaxDenseGenomes   = 20_000 // 199,990,000 possible unordered pairs.
+	maxSupportedDenseGenomes = 92_682 // Pair indexes are stored as uint32.
+	// Budget for per-mask dense tables only. It controls worker concurrency,
+	// not total RSS; larger values often become memory-bandwidth or collector bound.
+	defaultDenseMaskMemoryMiB = 768
+)
+
+// DenseMaskCounts stores the best prefix for one mask in a triangular pair
+// table. A zero prefix means unseen. The bitset records touched slots so merging
+// and resetting cost O(number of observed pairs), not O(number of all pairs).
+type DenseMaskCounts struct {
+	prefixes []uint8
+	touched  []uint64
+}
+
+func newDenseMaskCounts(nPairs int) *DenseMaskCounts {
+	return &DenseMaskCounts{
+		prefixes: make([]uint8, nPairs),
+		touched:  make([]uint64, (nPairs+63)>>6),
+	}
+}
+
+type DensePairStats struct {
+	// uint16 is sufficient because the dense path is limited to 65,535 masks.
+	matches     []uint16
+	sumPrefixes []uint32
+	// active marks pairs currently retained by probabilistic pruning.
+	active []uint64
+}
+
+func newDensePairStats(nPairs int) *DensePairStats {
+	return &DensePairStats{
+		matches:     make([]uint16, nPairs),
+		sumPrefixes: make([]uint32, nPairs),
+		active:      make([]uint64, (nPairs+63)>>6),
+	}
+}
+
+func densePairIndex(g1, g2, nGenomes uint32) int {
+	if g1 > g2 {
+		g1, g2 = g2, g1
+	}
+	return int(uint64(g1)*uint64(2*nGenomes-g1-1)/2 + uint64(g2-g1-1))
+}
+
+// densePairRowStart returns the first flat index for all pairs whose smaller
+// genome ordinal is g1. Rows contain (g1,g1+1), ..., (g1,nGenomes-1).
+func densePairRowStart(g1, nGenomes uint32) uint64 {
+	return uint64(g1) * uint64(2*nGenomes-g1-1) / 2
+}
+
+func densePairGenomes(pairIndex uint32, nGenomes uint32) (uint32, uint32) {
+	// Locate the triangular row by binary search, then obtain the column from
+	// the offset within that row. This runs only while writing final results.
+	idx := uint64(pairIndex)
+	lo, hi := uint32(0), nGenomes
+	for lo+1 < hi {
+		mid := lo + (hi-lo)/2
+		if densePairRowStart(mid, nGenomes) <= idx {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return lo, lo + 1 + uint32(idx-densePairRowStart(lo, nGenomes))
+}
+
+func mergeDenseMaskCounts(stats *DensePairStats, counts *DenseMaskCounts, processedMasks, remaining,
+	requiredMatches, totalMasks int, minMaskFraction, probThreshold float64) {
+	// As in the sparse path, all pairs first observed in this mask share the
+	// same keep/drop decision because they each have exactly one match so far.
+	shouldAddNewPair := probThreshold == 0
+	if probThreshold > 0 && 1+remaining >= requiredMatches {
+		shouldAddNewPair = shouldKeepPair(processedMasks, 1, minMaskFraction, totalMasks, probThreshold)
+	}
+
+	// Visit only pair slots touched by the worker. Clear both the prefix and
+	// bitset in place before returning this table to the worker pool.
+	for wordIndex, word := range counts.touched {
+		for word != 0 {
+			bit := bits.TrailingZeros64(word)
+			pairIndex := wordIndex<<6 + bit
+			if pairIndex < len(counts.prefixes) {
+				prefixLen := counts.prefixes[pairIndex]
+				if stats.matches[pairIndex] != 0 || shouldAddNewPair {
+					if stats.matches[pairIndex] == 0 {
+						stats.active[wordIndex] |= uint64(1) << bit
+					}
+					stats.matches[pairIndex]++
+					stats.sumPrefixes[pairIndex] += uint32(prefixLen)
+				}
+				counts.prefixes[pairIndex] = 0
+			}
+			word &= word - 1
+		}
+		counts.touched[wordIndex] = 0
+	}
+}
+
+func pruneDensePairStats(stats *DensePairStats, decisions []int8, processedMasks int,
+	minMaskFraction float64, totalMasks int, probThreshold float64) []int8 {
+	// The pruning decision depends only on the current match count. Cache it
+	// once per count instead of recomputing the probability for every pair.
+	if cap(decisions) <= processedMasks {
+		decisions = make([]int8, processedMasks+1)
+	} else {
+		decisions = decisions[:processedMasks+1]
+		clear(decisions)
+	}
+
+	// Scan active bits rather than all possible pair slots.
+	for wordIndex, word := range stats.active {
+		for word != 0 {
+			bit := bits.TrailingZeros64(word)
+			pairIndex := wordIndex<<6 + bit
+			if pairIndex >= len(stats.matches) {
+				break
+			}
+			matches := stats.matches[pairIndex]
+			if matches > 1 {
+				decision := decisions[matches]
+				if decision == 0 {
+					if shouldKeepPair(processedMasks, int(matches), minMaskFraction, totalMasks, probThreshold) {
+						decision = 1
+					} else {
+						decision = -1
+					}
+					decisions[matches] = decision
+				}
+				if decision < 0 {
+					stats.active[wordIndex] &^= uint64(1) << bit
+					stats.matches[pairIndex] = 0
+					stats.sumPrefixes[pairIndex] = 0
+				}
+			}
+			word &= word - 1
+		}
+	}
+	return decisions
+}
+
+func countDenseResults(stats *DensePairStats, requiredMatches int) int {
+	n := 0
+	for wordIndex, word := range stats.active {
+		for word != 0 {
+			bit := bits.TrailingZeros64(word)
+			pairIndex := wordIndex<<6 + bit
+			if pairIndex < len(stats.matches) && int(stats.matches[pairIndex]) >= requiredMatches {
+				n++
+			}
+			word &= word - 1
+		}
+	}
+	return n
+}
+
+func buildGenomeOrdinals(id2name map[uint64][]byte, genomeBatches int) ([]uint32, [][]uint32, error) {
+	// Encoded batch/ref IDs may be sparse. Dense pair tables require contiguous
+	// ordinals, while genomeCodes provides the lossless mapping back for output.
+	genomeCodes := make([]uint32, 0, len(id2name))
+	maxGenomeIdx := make([]int, genomeBatches)
+	for i := range maxGenomeIdx {
+		maxGenomeIdx[i] = -1
+	}
+	for id := range id2name {
+		if id > math.MaxUint32 {
+			return nil, nil, fmt.Errorf("genome index out of range: %d", id)
+		}
+		code := uint32(id)
+		batch := int(code >> BITS_GENOME_IDX)
+		if batch >= genomeBatches {
+			return nil, nil, fmt.Errorf("genome batch out of range: %d", batch)
+		}
+		genomeIdx := int(code & MASK_GENOME_IDX)
+		if genomeIdx > maxGenomeIdx[batch] {
+			maxGenomeIdx[batch] = genomeIdx
+		}
+		genomeCodes = append(genomeCodes, code)
+	}
+	slices.Sort(genomeCodes)
+
+	ordinals := make([][]uint32, genomeBatches)
+	for batch, maxIdx := range maxGenomeIdx {
+		if maxIdx < 0 {
+			continue
+		}
+		ordinals[batch] = make([]uint32, maxIdx+1)
+		for i := range ordinals[batch] {
+			ordinals[batch][i] = math.MaxUint32
+		}
+	}
+	for ordinal, code := range genomeCodes {
+		batch := int(code >> BITS_GENOME_IDX)
+		genomeIdx := int(code & MASK_GENOME_IDX)
+		ordinals[batch][genomeIdx] = uint32(ordinal)
+	}
+	return genomeCodes, ordinals, nil
+}
+
+func genomeOrdinal(code uint32, ordinals [][]uint32) uint32 {
+	return ordinals[int(code>>BITS_GENOME_IDX)][int(code&MASK_GENOME_IDX)]
+}
+
 type KmerWindow struct {
 	records []*KmerRecord
 	head    int
@@ -869,8 +1219,35 @@ var poolMaskCounts = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-// processKmerWithWindow processes a k-mer against the sliding window
-func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *KmerWindow, counts *map[uint64]uint8, threshold uint64, kMinus32 int, minPrefix uint8) { // , blacklist *sync.Map) {
+func setDensePairPrefix(dense *DenseMaskCounts, pairStarts []uint32, g1, g2 uint32, prefixLen uint8) {
+	if g1 > g2 {
+		g1, g2 = g2, g1
+	}
+	pairIndex := int(pairStarts[g1] + g2 - g1 - 1)
+	if prefixLen > dense.prefixes[pairIndex] {
+		// Mark a slot only on its first update in this mask; later updates only
+		// replace its maximum prefix length.
+		if dense.prefixes[pairIndex] == 0 {
+			dense.touched[pairIndex>>6] |= uint64(1) << (pairIndex & 63)
+		}
+		dense.prefixes[pairIndex] = prefixLen
+	}
+}
+
+func setMapPairPrefix(counts *map[uint64]uint8, g1, g2 uint32, prefixLen uint8) {
+	if g1 > g2 {
+		g1, g2 = g2, g1
+	}
+	key := uint64(g1)<<32 | uint64(g2)
+	if prefixLen > (*counts)[key] {
+		(*counts)[key] = prefixLen
+	}
+}
+
+// processKmerWithWindow processes a k-mer against the sliding window.
+func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window *KmerWindow,
+	counts *map[uint64]uint8, dense *DenseMaskCounts, pairStarts []uint32,
+	threshold uint64, kMinus32 int, minPrefix uint8) {
 	records := window.records
 	head := window.head
 
@@ -893,9 +1270,7 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	}
 
 	// Compare with all k-mers in the window
-	var key uint64
 	var g1, g2 uint32
-	// var ok bool
 	var prefixLen uint8
 	for i := head; i < len(records); i++ {
 		// Calculate exact prefix length using XOR and leading zeros
@@ -907,28 +1282,22 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 			continue
 		}
 
-		// Cartesian product of genome IDs
-		for _, g1 = range records[i].genomes {
-			for _, g2 = range *currentGenomes {
-				if g1 == g2 {
-					continue // skip self-comparison
+		// Cartesian product of genome IDs. Select the storage path outside the
+		// inner loop; this loop dominates highly similar genome collections.
+		if dense != nil {
+			for _, g1 = range records[i].genomes {
+				for _, g2 = range *currentGenomes {
+					if g1 != g2 {
+						setDensePairPrefix(dense, pairStarts, g1, g2, prefixLen)
+					}
 				}
-
-				// Ensure gid1 < gid2 for consistent key
-				if g1 < g2 {
-					key = uint64(g1)<<32 | uint64(g2)
-				} else {
-					key = uint64(g2)<<32 | uint64(g1)
-				}
-
-				// // Skip impossible pairs
-				// if _, ok = blacklist.Load(key); ok {
-				// 	continue
-				// }
-
-				// Keep maximum prefix length within this mask
-				if prefixLen > (*counts)[key] {
-					(*counts)[key] = prefixLen
+			}
+		} else {
+			for _, g1 = range records[i].genomes {
+				for _, g2 = range *currentGenomes {
+					if g1 != g2 {
+						setMapPairPrefix(counts, g1, g2, prefixLen)
+					}
 				}
 			}
 		}
@@ -941,26 +1310,28 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	var i, j int
 	if n > 1 {
 		prefixLen = uint8(kMinus32 + 32) // full k-mer length
-		for i = 0; i < n; i++ {
-			for j = i + 1; j < n; j++ {
-				g1, g2 = (*currentGenomes)[i], (*currentGenomes)[j]
-				if g1 == g2 {
-					continue // skip self-comparison
+		if dense != nil {
+			for i = 0; i < n; i++ {
+				g1 = (*currentGenomes)[i]
+				rowStart := int(pairStarts[g1]) - int(g1) - 1
+				for j = i + 1; j < n; j++ {
+					g2 = (*currentGenomes)[j]
+					pairIndex := rowStart + int(g2)
+					if prefixLen > dense.prefixes[pairIndex] {
+						if dense.prefixes[pairIndex] == 0 {
+							dense.touched[pairIndex>>6] |= uint64(1) << (pairIndex & 63)
+						}
+						dense.prefixes[pairIndex] = prefixLen
+					}
 				}
-
-				if g1 < g2 {
-					key = uint64(g1)<<32 | uint64(g2)
-				} else {
-					key = uint64(g2)<<32 | uint64(g1)
-				}
-
-				// // skip impossible pairs
-				// if _, ok = blacklist.Load(key); ok {
-				// 	continue
-				// }
-
-				if prefixLen > (*counts)[key] { // it's definitely the longest
-					(*counts)[key] = prefixLen
+			}
+		} else {
+			for i = 0; i < n; i++ {
+				for j = i + 1; j < n; j++ {
+					g1, g2 = (*currentGenomes)[i], (*currentGenomes)[j]
+					if g1 != g2 {
+						setMapPairPrefix(counts, g1, g2, prefixLen)
+					}
 				}
 			}
 		}
@@ -1003,3 +1374,23 @@ func (s PairResults) Less(i, j int) bool {
 	return s[i].nMasks > s[j].nMasks
 }
 func (s PairResults) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+type DensePairResults struct {
+	pairs []uint32
+	stats *DensePairStats
+}
+
+func (s DensePairResults) Len() int { return len(s.pairs) }
+func (s DensePairResults) Less(i, j int) bool {
+	idx1, idx2 := s.pairs[i], s.pairs[j]
+	matches1, matches2 := s.stats.matches[idx1], s.stats.matches[idx2]
+	if matches1 == matches2 {
+		sum1, sum2 := s.stats.sumPrefixes[idx1], s.stats.sumPrefixes[idx2]
+		if sum1 == sum2 {
+			return idx1 < idx2
+		}
+		return sum1 > sum2
+	}
+	return matches1 > matches2
+}
+func (s DensePairResults) Swap(i, j int) { s.pairs[i], s.pairs[j] = s.pairs[j], s.pairs[i] }
