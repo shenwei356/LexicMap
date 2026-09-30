@@ -39,3 +39,22 @@ func TestSampledKmerMapCapacity(t *testing.T) {
 		t.Fatalf("capacity: got %d, want 44", got)
 	}
 }
+
+func TestSubjectContigBoundsForwardAndReverse(t *testing.T) {
+	sketch := &subjectSketch{
+		seqLen:       260,
+		forwardLen:   100,
+		rcStart:      160,
+		contigBounds: [][2]int{{0, 40}, {60, 100}},
+	}
+
+	if start, end := subjectContigBounds(sketch, 20); start != 0 || end != 40 {
+		t.Fatalf("forward bounds: got [%d,%d), want [0,40)", start, end)
+	}
+	if start, end := subjectContigBounds(sketch, 180); start != 160 || end != 200 {
+		t.Fatalf("reverse bounds: got [%d,%d), want [160,200)", start, end)
+	}
+	if start, end := subjectContigBounds(sketch, 240); start != 220 || end != 260 {
+		t.Fatalf("reverse bounds: got [%d,%d), want [220,260)", start, end)
+	}
+}

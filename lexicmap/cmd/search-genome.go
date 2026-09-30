@@ -700,12 +700,13 @@ Output format:
 
 				// 1. read all sequences of the query genome
 				var query *GQuery
+				var readErr error
 				if adjustANIByQuality {
-					query, err = gr.ReadWithQual(file, true, idx.softMasking)
+					query, readErr = gr.ReadWithQual(file, true, idx.softMasking)
 				} else {
-					query, err = gr.Read(file, true, idx.softMasking)
+					query, readErr = gr.Read(file, true, idx.softMasking)
 				}
-				checkError(err)
+				checkError(readErr)
 				if query == nil { // no valid sequence
 					log.Warningf("no valid sequences in %s, skipped", file)
 					return
@@ -719,8 +720,8 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, rs, err := idx.GSearchScreen(query, windows, nil)
-				checkError(err)
+				genomeIds, rs, screenErr := idx.GSearchScreen(query, windows, nil)
+				checkError(screenErr)
 
 				if onlyGenomeScreening {
 					query.screenDetails = rs
@@ -733,13 +734,14 @@ Output format:
 				if genomeIds != nil {
 					// 3. search fragments for the query
 					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, minANI, maxQueryConcurrency, gcInterval)
+					var alignErr error
 					if orthoANI {
-						err = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
+						alignErr = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
 					} else {
-						err = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
+						alignErr = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
 					}
 
-					checkError(err)
+					checkError(alignErr)
 
 					// clear up
 
@@ -813,7 +815,7 @@ func init() {
 		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
-		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the genome filtering phase.`))
+		formatFlagUsage(`Keep the top N genome matches for a query (0 for all). Screening includes all candidates tied with the Nth score; ANI ranking then returns at most N matches.`))
 
 	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 20,
 		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))

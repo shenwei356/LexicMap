@@ -340,14 +340,17 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		go func() {
 			defer wgT.Done()
 
+			var taxonomy *taxdump.Taxonomy
+			var taxonomyErr error
 			if !idx.opt.LoadTaxRank {
-				idx.Taxonomy, err = taxdump.NewTaxonomyFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+				taxonomy, taxonomyErr = taxdump.NewTaxonomyFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
 			} else {
-				idx.Taxonomy, err = taxdump.NewTaxonomyWithRankFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
+				taxonomy, taxonomyErr = taxdump.NewTaxonomyWithRankFromNCBI(filepath.Join(idx.opt.TaxdumpDir, "nodes.dmp"))
 			}
-			if err != nil {
+			if taxonomyErr != nil {
 				checkError(fmt.Errorf("  failed to load taxonomy data: %s", idx.opt.TaxdumpDir))
 			}
+			idx.Taxonomy = taxonomy
 			idx.Taxonomy.CacheLCA()
 
 			if idx.opt.LoadTaxName || idx.opt.LoadTaxRank {
@@ -678,10 +681,11 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	wg.Add(1)
 	tokens <- 1
 	go func() {
-		idx.BatchGenomeIndex2GenomeID, err = readGenomeMapIdx2Name(filepath.Join(idx.path, FileGenomeIndex))
-		if err != nil {
-			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(idx.path, FileGenomeIndex), err))
+		genomeIDs, readErr := readGenomeMapIdx2Name(filepath.Join(idx.path, FileGenomeIndex))
+		if readErr != nil {
+			checkError(fmt.Errorf("failed to read %s: %s", filepath.Join(idx.path, FileGenomeIndex), readErr))
 		}
+		idx.BatchGenomeIndex2GenomeID = genomeIDs
 		wg.Done()
 		<-tokens
 	}()
@@ -828,6 +832,34 @@ func (idx *Index) Close() error {
 		wg.Wait()
 	}
 	return _err
+}
+
+func (idx *Index) acquireGenomeReader(batch int) (*genome.Reader, error) {
+	if batch < 0 || batch >= idx.info.GenomeBatches {
+		return nil, fmt.Errorf("invalid genome batch: %d", batch)
+	}
+	if idx.hasGenomeRdrs {
+		return <-idx.poolGenomeRdrs[batch], nil
+	}
+
+	idx.openFileTokens <- 1
+	file := filepath.Join(idx.path, DirGenomes, batchDir(batch), FileGenomes)
+	rdr, err := genome.NewReader(file)
+	if err != nil {
+		<-idx.openFileTokens
+		return nil, fmt.Errorf("failed to open genome data file %s: %w", file, err)
+	}
+	return rdr, nil
+}
+
+func (idx *Index) releaseGenomeReader(batch int, rdr *genome.Reader) error {
+	if idx.hasGenomeRdrs {
+		idx.poolGenomeRdrs[batch] <- rdr
+		return nil
+	}
+	err := rdr.Close()
+	<-idx.openFileTokens
+	return err
 }
 
 // --------------------------------------------------------------------------

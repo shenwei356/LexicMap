@@ -71,12 +71,68 @@ func (idx *Index) RecycleGSearchScreenDetailResultsMap(m *map[uint64]*GSearchScr
 
 // RecycleGSearchScreenDetailResults recycles a list of GSearchResultDetail
 func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDetail) {
+	if rs == nil {
+		return
+	}
 	for _, r := range *rs {
 		resetGSearchScreenResultDetail(r)
 		idx.poolGSearchDetailResult.Put(r)
 	}
 	*rs = (*rs)[:0]
 	idx.poolGSearchDetailResults.Put(rs)
+}
+
+func gsearchWindows(seqLen, windows, k int) ([][2]int, error) {
+	if windows < 1 {
+		return nil, fmt.Errorf("number of screening windows needs to be > 0")
+	}
+	if seqLen < k {
+		return nil, fmt.Errorf("query length (%d) is shorter than the k-mer size (%d)", seqLen, k)
+	}
+
+	step := seqLen / (windows + 1)
+	window := step << 1
+	if windows == 1 {
+		step, window = 0, seqLen
+	}
+	if window < k {
+		return nil, fmt.Errorf("%d screening windows are too many for a %d bp query: window length %d is shorter than k=%d", windows, seqLen, window, k)
+	}
+
+	ranges := make([][2]int, windows)
+	for i := range ranges {
+		start := i * step
+		end := start + window
+		if i == windows-1 {
+			end = seqLen
+		}
+		ranges[i] = [2]int{start, end}
+	}
+	return ranges, nil
+}
+
+// windowSkipRegions converts absolute, inclusive skip-region coordinates to
+// coordinates relative to the half-open sequence window [start, end).
+func windowSkipRegions(regions []int, start, end int) []int {
+	if len(regions) == 0 {
+		return nil
+	}
+	clipped := make([]int, 0, len(regions))
+	for i := 0; i+1 < len(regions); i += 2 {
+		a, b := regions[i], regions[i+1]
+		if b < start {
+			continue
+		}
+		if a >= end {
+			break
+		}
+		a = max(a, start)
+		b = min(b, end-1)
+		if a <= b {
+			clipped = append(clipped, a-start, b-start)
+		}
+	}
+	return clipped
 }
 
 var poolUint64ToUint64SliceMap = &sync.Pool{New: func() interface{} {
@@ -92,8 +148,9 @@ func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
 func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]struct{}) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
-	if windows < 1 {
-		return nil, nil, fmt.Errorf("window size needs to be > 0")
+	ranges, err := gsearchWindows(len(query.bigSeq), windows, idx.k)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	whiteList := poolUint64ToUint64SliceMap.Get().(*map[uint64]*[]uint64)
@@ -127,13 +184,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 		// idx.poolLocses.Put(_locsesW)
 	}()
 
-	lenSeq := len(query.bigSeq)
-	step := lenSeq / (windows + 1) // step size
-	window := step << 1            // window size
-	if windows == 1 {
-		window = lenSeq
-	}
-
 	k := idx.k
 	k8 := uint8(idx.lh.K)
 	ccc := util.Ns(0b01, k8)
@@ -149,22 +199,18 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	if useMaskIndexes {
 		screenMaskSlots, screenMaskCount = compactMaskSelection(len(idx.lh.Masks), maskSelection, maskIndexes)
 	}
-	for i := 0; i < windows; i++ {
-		start = i * step
-		if i == windows-1 {
-			end = lenSeq
-		} else {
-			end = start + window
-		}
+	for i, windowRange := range ranges {
+		start, end = windowRange[0], windowRange[1]
 		// fmt.Printf("window #%d: %d-%d\n", i+1, start+1, end)
 
 		funcMask := idx.lh.MaskKnownDistinctPrefixes
 		if idx.info.MainVersion == 3 && idx.info.MinorVersion < 5 { // for backward compatibility
 			funcMask = idx.lh.MaskKnownDistinctPrefixesWithStrandBias
 		}
-		_kmers, locses, err := funcMask(query.bigSeq[start:end], query.skipRegions, true)
+		_kmers, locses, err := funcMask(query.bigSeq[start:end], windowSkipRegions(query.skipRegions, start, end), true)
 		if err != nil {
-			panic(err)
+			idx.RecycleGSearchScreenResult(whiteList)
+			return nil, nil, fmt.Errorf("failed to mask screening window %d (%d-%d): %w", i+1, start+1, end, err)
 		}
 
 		for j, kmer = range *_kmers {
@@ -476,17 +522,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	}
 
 	// 2.4) sort
-	topN := idx.opt.TopN
-	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
-		return cmp.Compare(b.SumPrefix, a.SumPrefix)
-	})
-	if topN > 0 && len(*rs) > topN {
-		for _, r := range (*rs)[topN:] {
-			idx.RecycleGSearchScreenDetailResult(r)
-		}
-		clear((*rs)[topN:])
-		*rs = (*rs)[:topN]
-	}
+	trimGSearchScreenResults(rs, idx.opt.TopN, idx)
 
 	// fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
 	var refBatchAndIdxUint64 uint64
@@ -506,6 +542,44 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	// idx.RecycleGSearchScreenDetailResults(rs)
 
 	return whiteList, rs, nil
+}
+
+// well, it's just the internal genome index, but we need a deterministic secondary order for stable sorting
+func canonicalScreenGenomeIndex(r *GSearchScreenResultDetail) uint64 {
+	id := uint64(math.MaxUint64)
+	for _, candidate := range r.BatchGenomeIndex {
+		if candidate < id {
+			id = candidate
+		}
+	}
+	return id
+}
+
+// trimGSearchScreenResults retains all candidates tied with the Nth screening
+// score. The deterministic secondary order makes repeated searches stable.
+func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *Index) {
+	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
+		if d := cmp.Compare(b.SumPrefix, a.SumPrefix); d != 0 {
+			return d
+		}
+		return cmp.Compare(canonicalScreenGenomeIndex(a), canonicalScreenGenomeIndex(b))
+	})
+	if topN <= 0 || len(*rs) <= topN {
+		return
+	}
+
+	cutoff := (*rs)[topN-1].SumPrefix
+	end := topN
+	for end < len(*rs) && (*rs)[end].SumPrefix == cutoff {
+		end++
+	}
+	if idx != nil {
+		for _, r := range (*rs)[end:] {
+			idx.RecycleGSearchScreenDetailResult(r)
+		}
+	}
+	clear((*rs)[end:])
+	*rs = (*rs)[:end]
 }
 
 func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail) {
@@ -605,15 +679,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			*rs = append(*rs, r)
 		}
 
-		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
-				return d
-			}
-			if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
-				return d
-			}
-			return cmp.Compare(b.AFs, a.AFs)
-		})
+		trimGSearchResults(rs, idx.opt.TopN)
 
 		query.result = rs
 
@@ -701,13 +767,18 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
 				genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
 
-				rdr := <-idx.poolGenomeRdrs[genomeBatch]
+				rdr, err := idx.acquireGenomeReader(genomeBatch)
+				if err != nil {
+					checkError(err)
+				}
 
 				_g, err := rdr.Seqs(genomeIdx)
 				if err != nil {
+					_ = idx.releaseGenomeReader(genomeBatch, rdr)
 					checkError(fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s",
 						genomeBatch, genomeIdx, err))
 				}
+				genomes[i] = _g // recycle them later
 
 				if i == 0 { // use the first one for later use
 					g = _g
@@ -718,25 +789,25 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 					g.GenomeSize += _g.GenomeSize
 				}
 
+				if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
+					checkError(fmt.Errorf("failed to close genome reader: %s", err))
+				}
+
 				if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize {
 					log.Warningf("skipped subject genome %s (>= %s bp) which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
 						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
 						humanize.Comma(int64(g.GenomeSize)),
 						humanize.Comma(int64(maxSubjectGenomeSize)))
 
-					idx.poolGenomeRdrs[genomeBatch] <- rdr
 					for _, gx := range genomes {
-						genome.RecycleGenome(gx)
-						return
+						if gx != nil {
+							genome.RecycleGenome(gx)
+						}
 					}
-					break
+					return
 				}
 
-				genomes[i] = _g // recycle them later
-
 				// fmt.Printf("%s, %d seqs, %d bp\n", _g.ID, _g.NumSeqs, _g.GenomeSize)
-
-				idx.poolGenomeRdrs[genomeBatch] <- rdr
 			}
 
 			// fmt.Fprintf(os.Stderr, "%s vs %s\n", query.id, g.ID)
@@ -1053,6 +1124,30 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	RecycleResultOfIndexA(entriesA)
 
 	return nil
+}
+
+func trimGSearchResults(rs *[]*GSearchResult, topN int) {
+	slices.SortFunc(*rs, func(a, b *GSearchResult) int {
+		if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
+			return d
+		}
+		if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
+			return d
+		}
+		if d := cmp.Compare(b.AFs, a.AFs); d != 0 {
+			return d
+		}
+		return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex)
+	})
+	if topN <= 0 || len(*rs) <= topN {
+		return
+	}
+	for _, r := range (*rs)[topN:] {
+		r.Reset()
+		poolGSearchResult.Put(r)
+	}
+	clear((*rs)[topN:])
+	*rs = (*rs)[:topN]
 }
 
 var poolFragAlignResultMap = &sync.Pool{New: func() interface{} {

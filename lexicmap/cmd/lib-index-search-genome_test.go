@@ -73,3 +73,56 @@ func TestResetGSearchScreenResultDetailRetainsClearedLongestMatches(t *testing.T
 		}
 	}
 }
+
+func TestGSearchWindowsRejectsTooManyWindows(t *testing.T) {
+	if _, err := gsearchWindows(2_000, 10_000_000, 31); err == nil {
+		t.Fatal("expected an error when screening windows are shorter than k")
+	}
+}
+
+func TestWindowSkipRegionsClipsAndTranslatesCoordinates(t *testing.T) {
+	regions := []int{5, 12, 25, 35, 50, 60}
+	got := windowSkipRegions(regions, 10, 30)
+	want := []int{0, 2, 15, 19}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("window skip regions: got %v, want %v", got, want)
+	}
+}
+
+func TestTrimGSearchScreenResultsKeepsCutoffTies(t *testing.T) {
+	rs := []*GSearchScreenResultDetail{
+		{BatchGenomeIndex: []uint64{8}, SumPrefix: 80},
+		{BatchGenomeIndex: []uint64{4}, SumPrefix: 90},
+		{BatchGenomeIndex: []uint64{3}, SumPrefix: 90},
+		{BatchGenomeIndex: []uint64{1}, SumPrefix: 100},
+	}
+
+	trimGSearchScreenResults(&rs, 2, nil)
+	if got, want := len(rs), 3; got != want {
+		t.Fatalf("result count: got %d, want %d", got, want)
+	}
+	got := []uint64{rs[0].BatchGenomeIndex[0], rs[1].BatchGenomeIndex[0], rs[2].BatchGenomeIndex[0]}
+	want := []uint64{1, 3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ordered candidates: got %v, want %v", got, want)
+	}
+}
+
+func TestTrimGSearchResultsKeepsStrictTopN(t *testing.T) {
+	rs := []*GSearchResult{
+		{BatchGenomeIndex: 8, ANI: 0.90, AFq: 0.8, AFs: 0.7},
+		{BatchGenomeIndex: 4, ANI: 0.95, AFq: 0.8, AFs: 0.7},
+		{BatchGenomeIndex: 3, ANI: 0.95, AFq: 0.8, AFs: 0.7},
+	}
+
+	trimGSearchResults(&rs, 2)
+	got := []uint64{rs[0].BatchGenomeIndex, rs[1].BatchGenomeIndex}
+	want := []uint64{3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ordered ANI results: got %v, want %v", got, want)
+	}
+}
+
+func TestRecycleGSearchScreenDetailResultsAcceptsNil(t *testing.T) {
+	(&Index{}).RecycleGSearchScreenDetailResults(nil)
+}

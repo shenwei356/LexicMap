@@ -408,7 +408,7 @@ func alignQueryFragToSubjectSampled(
 	topChains := idx.chainingOptions.TopChains
 	onlyTopChains := topChains > 0
 
-	// Pre-index qfrag once for all chains
+	// Pre-index qfrag once for all chains.
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	defer idx.poolSeqComparator.Put(cpr)
 	if err := cpr.Index(qfrag); err != nil {
@@ -426,7 +426,7 @@ func alignQueryFragToSubjectSampled(
 			break
 		}
 		matched, aligned, gaps, pident, pidentAdjusted, ok := alignChain(
-			qfrag, qqual, concat, chain, sketch, false, algn, cpr,
+			qfrag, qqual, concat, chain, sketch, algn, cpr,
 			extLen, extLen2, minPIdent, minQcov, idx,
 			fScoreAndEvalue,
 		)
@@ -497,7 +497,6 @@ func alignChain(
 	subjectSeq []byte,
 	chain *Chain2Result,
 	sketch *subjectSketch,
-	useRC bool,
 	algn *wfa.Aligner,
 	cpr *SeqComparator, // pre-indexed comparator
 	extLen int,
@@ -513,30 +512,9 @@ func alignChain(
 	}
 
 	qLen := len(qfrag)
-	subjectLen := sketch.seqLen
 
-	// Locate the contig containing the chain.
-	var contigStart, contigEnd int
-	contigStart, contigEnd = 0, subjectLen
-	if bounds := sketch.contigBounds; len(bounds) > 0 {
-		if useRC {
-			for i := len(bounds) - 1; i >= 0; i-- {
-				cs := subjectLen - bounds[i][1]
-				ce := subjectLen - bounds[i][0]
-				if chain.TBegin >= cs && chain.TBegin < ce {
-					contigStart, contigEnd = cs, ce
-					break
-				}
-			}
-		} else {
-			for _, b := range bounds {
-				if chain.TBegin >= b[0] && chain.TBegin < b[1] {
-					contigStart, contigEnd = b[0], b[1]
-					break
-				}
-			}
-		}
-	}
+	// Locate the contig containing the chain on either concatenated strand.
+	contigStart, contigEnd := subjectContigBounds(sketch, chain.TBegin)
 
 	// Expand the chain region by extLen.
 	tExpBegin := max(chain.TBegin-extLen, contigStart)
@@ -623,6 +601,28 @@ func alignChain(
 	}
 
 	return totMatched, totAligned, totGaps, pident, pidentAdjusted, true
+}
+
+func subjectContigBounds(sketch *subjectSketch, position int) (int, int) {
+	if len(sketch.contigBounds) == 0 {
+		return 0, sketch.seqLen
+	}
+	if position >= sketch.rcStart {
+		for i := len(sketch.contigBounds) - 1; i >= 0; i-- {
+			start := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][1]
+			end := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][0]
+			if position >= start && position < end {
+				return start, end
+			}
+		}
+	} else {
+		for _, bounds := range sketch.contigBounds {
+			if position >= bounds[0] && position < bounds[1] {
+				return bounds[0], bounds[1]
+			}
+		}
+	}
+	return 0, sketch.seqLen
 }
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
@@ -732,19 +732,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		for r := range ch {
 			*rs = append(*rs, r)
 		}
-		// sorting matched genomes
-		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			if d := cmp.Compare(b.ANI, a.ANI); d != 0 { // by ANI
-				return d
-			}
-			if d := cmp.Compare(b.AFq, a.AFq); d != 0 { // by query AF
-				return d
-			}
-			if d := cmp.Compare(b.AFs, a.AFs); d != 0 { // by subject AF
-				return d
-			}
-			return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex)
-		})
+		trimGSearchResults(rs, idx.opt.TopN)
 
 		query.result = rs
 		done <- 1
@@ -753,10 +741,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	// 4) read genomes and align
 
 	K := gsa3SampledK
-	contigInterval := int(float64(fragLen) * 1.5)
-	if contigInterval < K {
-		contigInterval = K
-	}
+	contigInterval := max(K, int(float64(fragLen)*1.5))
 	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
 
 	alignOption := &wfa.Options{GlobalAlignment: true}
@@ -786,17 +771,20 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			var g *genome.Genome
 			genomes := make([]*genome.Genome, len(*batchIDAndRefIDs))
 			maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
-
 			for i, batchIDAndRefID := range *batchIDAndRefIDs {
 				genomeBatch := int(batchIDAndRefID >> BITS_GENOME_IDX)
 				genomeIdx := int(batchIDAndRefID & MASK_GENOME_IDX)
 
-				rdr := <-idx.poolGenomeRdrs[genomeBatch]
-
+				rdr, err := idx.acquireGenomeReader(genomeBatch)
+				if err != nil {
+					checkError(err)
+				}
 				_g, err := rdr.Seqs(genomeIdx)
 				if err != nil {
+					_ = idx.releaseGenomeReader(genomeBatch, rdr)
 					checkError(fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s", genomeBatch, genomeIdx, err))
 				}
+				genomes[i] = _g
 				if i == 0 {
 					g = _g
 				} else {
@@ -805,47 +793,38 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 					g.NumSeqs += _g.NumSeqs
 					g.GenomeSize += _g.GenomeSize
 				}
+				if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
+					checkError(fmt.Errorf("failed to close genome reader: %s", err))
+				}
 
 				if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize {
-					log.Warningf("%s (size: %s bp) exceeds the maximum subject genome size which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
+					log.Warningf("%s (size: %s bp) exceeds the maximum allowed subject genome size of %s, consider increasing --max-subject-genome-size",
 						idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
 						humanize.Comma(int64(g.GenomeSize)),
 						humanize.Comma(int64(maxSubjectGenomeSize)))
-
-					idx.poolGenomeRdrs[genomeBatch] <- rdr
 					for _, gx := range genomes {
-						genome.RecycleGenome(gx)
-						return
+						if gx != nil {
+							genome.RecycleGenome(gx)
+						}
 					}
-					break
+					return
 				}
-
-				genomes[i] = _g
-				idx.poolGenomeRdrs[genomeBatch] <- rdr
 			}
 
-			// b) Concatenate contigs with separators.
 			concat := poolConcat.Get().(*[]byte)
 			*concat = (*concat)[:0]
-
-			// Calculate total size: forward + contig intervals + RC interval + RC
-			var forwardSize int
+			forwardSize := contigInterval * (len(g.Seqs) - 1)
 			for _, s := range g.Seqs {
 				forwardSize += len(*s)
 			}
-			forwardSize += contigInterval * (len(g.Seqs) - 1)
-
-			// Total size = forward + 2*fragLen interval + RC (same as forward)
 			rcInterval := fragLen << 1
 			totalSize := forwardSize<<1 + rcInterval
-
-			// Pre-allocate the full capacity to avoid reallocation
 			if cap(*concat) < totalSize {
 				*concat = make([]byte, 0, totalSize)
 			}
 
 			var skipRegions [][2]int
-			contigBounds := make([][2]int, 0, len(g.Seqs)) // Only forward contigs needed
+			contigBounds := make([][2]int, 0, len(g.Seqs))
 			for i, s := range g.Seqs {
 				if i > 0 {
 					boundary := len(*concat)
@@ -856,10 +835,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				*concat = append(*concat, (*s)...)
 				contigBounds = append(contigBounds, [2]int{cs, len(*concat)})
 			}
-
-			// skip gap regions (N's) in forward strand
-			gaps := findGapRegions(*concat, 5)
-			if gaps != nil {
+			if gaps := findGapRegions(*concat, 5); gaps != nil {
 				for _, gap := range *gaps {
 					start, end := unpackGapRegion(gap)
 					skipRegions = append(skipRegions, [2]int{start, end - 1})
@@ -867,26 +843,13 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 				recycleGapRegions(gaps)
 			}
 
-			// c) Append 2*fragLen interval and reverse complement strand
 			forwardLen := len(*concat)
-			nnnRC := bytes.Repeat([]byte{'N'}, rcInterval)
-
-			// Add interval between forward and RC strands
-			*concat = append(*concat, nnnRC...)
-
-			// Append reverse complement of the forward strand
+			*concat = append(*concat, bytes.Repeat([]byte{'N'}, rcInterval)...)
 			rcStart := len(*concat)
-			// Directly append forward part to concat itself, then RC the newly appended portion
 			*concat = append(*concat, (*concat)[:forwardLen]...)
 			RC((*concat)[rcStart:])
+			slices.SortFunc(skipRegions, func(a, b [2]int) int { return a[0] - b[0] })
 
-			// Sort skip regions
-			slices.SortFunc(skipRegions, func(a, b [2]int) int {
-				return a[0] - b[0]
-			})
-
-			// d) Build the subject sketch using sampled k-mers on the combined sequence
-			// Pass forwardLen and rcStart for optimized k-mer extraction
 			sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, g.GenomeSize, forwardLen, rcStart)
 			if err != nil {
 				checkError(fmt.Errorf("fail to build subject sketch: %s", err))
@@ -960,10 +923,8 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			for _, gx := range genomes {
 				genome.RecycleGenome(gx)
 			}
-
 			*concat = (*concat)[:0]
 			poolConcat.Put(concat)
-
 		}(batchIDAndRefIDs)
 	}
 
@@ -1114,7 +1075,6 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 
 	// 6) Align each query fragment to subject
 	fScoreAndEvalue := scoreAndEvalue(2, -3, 5, 2, int(subject.genomeSize), 0.625, 0.41)
-
 	for i, qfrag := range *qfrags {
 		matched, alignedLen, gaps, pident, _, ok := alignQueryFragToSubjectSampled(
 			qfrag, nil, (*qSeeds)[i], sketch, (*concat),
