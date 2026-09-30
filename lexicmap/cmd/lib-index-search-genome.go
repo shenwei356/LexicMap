@@ -42,9 +42,9 @@ import (
 // GSearchScreenResultDetail is for storing genome search details
 type GSearchScreenResultDetail struct {
 	BatchGenomeIndex []uint64 // multiple values belong to the genome chunks of the same genome
-	SumPrefix        uint64   // sum of the longest matched prefix length for each mask, used for sorting
 
 	LongestMatches []uint8 // longest match for each selected mask
+	SumPrefix      uint64  // sum of the longest matched prefix length for each mask, used for sorting
 }
 
 func resetGSearchScreenResultDetail(r *GSearchScreenResultDetail) {
@@ -511,8 +511,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail) {
 	dst.BatchGenomeIndex = append(dst.BatchGenomeIndex, src.BatchGenomeIndex...)
 
+	var previous uint8
 	for i, v := range src.LongestMatches {
-		previous := dst.LongestMatches[i]
+		previous = dst.LongestMatches[i]
 		if v > previous {
 			dst.LongestMatches[i] = v
 			dst.SumPrefix += uint64(v - previous)

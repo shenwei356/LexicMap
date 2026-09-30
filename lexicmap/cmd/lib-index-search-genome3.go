@@ -732,14 +732,15 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		for r := range ch {
 			*rs = append(*rs, r)
 		}
+		// sorting matched genomes
 		slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-			if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
+			if d := cmp.Compare(b.ANI, a.ANI); d != 0 { // by ANI
 				return d
 			}
-			if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
+			if d := cmp.Compare(b.AFq, a.AFq); d != 0 { // by query AF
 				return d
 			}
-			if d := cmp.Compare(b.AFs, a.AFs); d != 0 {
+			if d := cmp.Compare(b.AFs, a.AFs); d != 0 { // by subject AF
 				return d
 			}
 			return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex)
