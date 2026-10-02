@@ -869,7 +869,7 @@ Notes on probabilistic pruning:
 		}
 		if outputLog {
 			log.Info()
-			log.Infof("total genome pairs: %d", nResults)
+			log.Infof("total genome pairs: %s", humanize.Comma(int64(nResults)))
 		}
 
 		if outputLog && outFile != "-" {

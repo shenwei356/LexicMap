@@ -302,7 +302,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		totalBases, err := updateInputBases(info, outDir, opt.NumCPUs)
 		checkError(err)
 		if opt.Verbose {
-			log.Infof("  done counting total bases (%s) in %s", humanize.Comma(totalBases), time.Since(startTime))
+			log.Infof("  done counting total bases (%s) in %s", humanize.Comma(int64(totalBases)), time.Since(startTime))
 		}
 		info.InputBases = totalBases
 	}
@@ -379,7 +379,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				checkError(fmt.Errorf("  failed to read genome2taxid file (%s): %s", idx.opt.Genome2TaxIdFile, err))
 			}
 			if verbose {
-				log.Infof("  %d genome2taxid records loaded from: %s", len(genome2taxids), idx.opt.Genome2TaxIdFile)
+				log.Infof("  %s genome2taxid records loaded from: %s", humanize.Comma(int64(len(genome2taxids))), idx.opt.Genome2TaxIdFile)
 			}
 
 			// genomes.map.bin
@@ -445,7 +445,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 			if verbose {
 				if nMissingTaxid > 0 {
-					log.Warningf("  %d genomes do not have taxids in the genome2taxid file: %s", nMissingTaxid, idx.opt.Genome2TaxIdFile)
+					log.Warningf("  %s genomes do not have taxids in the genome2taxid file: %s", humanize.Comma(int64(nMissingTaxid)), idx.opt.Genome2TaxIdFile)
 				}
 				log.Infof("  taxid information loaded")
 			}
