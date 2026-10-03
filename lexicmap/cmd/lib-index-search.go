@@ -1247,6 +1247,35 @@ var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
 	return &m
 }}
 
+func (idx *Index) keepGenomeByTaxID(cache *map[uint64]bool, batchGenomeIndex uint64) bool {
+	if keep, ok := (*cache)[batchGenomeIndex]; ok {
+		return keep
+	}
+
+	keep := idx.opt.KeepGenomesWithoutTaxId
+	if taxid, ok := idx.genomeIdx2TaxId[batchGenomeIndex]; ok {
+		keep = true
+		for _, negativeTaxid := range idx.opt.NegativeTaxIds {
+			if idx.Taxonomy.LCA(taxid, negativeTaxid) == negativeTaxid {
+				keep = false
+				break
+			}
+		}
+		if keep && idx.filterByPositiveTaxId {
+			keep = false
+			for _, positiveTaxid := range idx.opt.TaxIds {
+				if idx.Taxonomy.LCA(taxid, positiveTaxid) == positiveTaxid {
+					keep = true
+					break
+				}
+			}
+		}
+	}
+
+	(*cache)[batchGenomeIndex] = keep
+	return keep
+}
+
 // --------------------------------------------------------------------------
 // searching
 
@@ -1443,18 +1472,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		var refBatchAndIdxUint64 uint64
 		var filter *map[uint64]bool
 		filterByTaxId := idx.filterByTaxId
-		filterByPositiveTaxId := idx.filterByPositiveTaxId
-		filterByNegativeTaxId := idx.filterByNegativeTaxId
 		if filterByTaxId {
 			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
 		}
-		var keepGenome, matchOne bool
-		taxon := idx.Taxonomy
-		genomeIdx2TaxId := idx.genomeIdx2TaxId
-		keepGenomesWithoutTaxId := idx.opt.KeepGenomesWithoutTaxId
-		var _taxid, taxid uint32
-		taxids := idx.opt.TaxIds
-		negativeTaxids := idx.opt.NegativeTaxIds
 
 		// filter by a list of BatchAndIdx
 		filterByGenomeID := genomeIds != nil
@@ -1502,54 +1522,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						refBatchAndIdx = int(refBatchAndIdxUint64)
 
 						// filter by taxid
-						if filterByTaxId {
-							if keepGenome, ok = (*filter)[refBatchAndIdxUint64]; ok {
-								if !keepGenome {
-									continue
-								}
-							} else {
-
-								if taxid, ok = genomeIdx2TaxId[refBatchAndIdxUint64]; ok {
-									// black list
-									if filterByNegativeTaxId {
-										matchOne = false
-										for _, _taxid = range negativeTaxids {
-											if taxon.LCA(taxid, _taxid) == _taxid {
-												matchOne = true
-												break
-											}
-										}
-										if matchOne {
-											(*filter)[refBatchAndIdxUint64] = false
-											continue
-										} else if !filterByPositiveTaxId {
-											(*filter)[refBatchAndIdxUint64] = true
-											continue
-										}
-									}
-
-									// white list
-									if filterByPositiveTaxId {
-										matchOne = false
-										for _, _taxid = range taxids {
-											if taxon.LCA(taxid, _taxid) == _taxid {
-												matchOne = true
-												break
-											}
-										}
-										if matchOne {
-											(*filter)[refBatchAndIdxUint64] = true
-										} else {
-											(*filter)[refBatchAndIdxUint64] = false
-											continue
-										}
-									}
-								} else if !keepGenomesWithoutTaxId {
-									(*filter)[refBatchAndIdxUint64] = false
-									continue
-								}
-								(*filter)[refBatchAndIdxUint64] = true
-							}
+						if filterByTaxId && !idx.keepGenomeByTaxID(filter, refBatchAndIdxUint64) {
+							continue
 						}
 
 						// posT = int(refpos << 34 >> 35)

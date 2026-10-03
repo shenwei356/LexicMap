@@ -271,18 +271,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 
 		var filter *map[uint64]bool
 		filterByTaxId := idx.filterByTaxId
-		filterByPositiveTaxId := idx.filterByPositiveTaxId
-		filterByNegativeTaxId := idx.filterByNegativeTaxId
 		if filterByTaxId {
 			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
 		}
-		var keepGenome, matchOne bool
-		taxon := idx.Taxonomy
-		genomeIdx2TaxId := idx.genomeIdx2TaxId
-		keepGenomesWithoutTaxId := idx.opt.KeepGenomesWithoutTaxId
-		var _taxid, taxid uint32
-		taxids := idx.opt.TaxIds
-		negativeTaxids := idx.opt.NegativeTaxIds
 
 		for srs := range ch {
 			// different k-mers in subjects,
@@ -302,54 +293,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 					refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
 
 					// filter by taxid
-					if filterByTaxId {
-						if keepGenome, ok = (*filter)[refBatchAndIdxUint64]; ok {
-							if !keepGenome {
-								continue
-							}
-						} else {
-
-							if taxid, ok = genomeIdx2TaxId[refBatchAndIdxUint64]; ok {
-								// black list
-								if filterByNegativeTaxId {
-									matchOne = false
-									for _, _taxid = range negativeTaxids {
-										if taxon.LCA(taxid, _taxid) == _taxid {
-											matchOne = true
-											break
-										}
-									}
-									if matchOne {
-										(*filter)[refBatchAndIdxUint64] = false
-										continue
-									} else if !filterByPositiveTaxId {
-										(*filter)[refBatchAndIdxUint64] = true
-										continue
-									}
-								}
-
-								// white list
-								if filterByPositiveTaxId {
-									matchOne = false
-									for _, _taxid = range taxids {
-										if taxon.LCA(taxid, _taxid) == _taxid {
-											matchOne = true
-											break
-										}
-									}
-									if matchOne {
-										(*filter)[refBatchAndIdxUint64] = true
-									} else {
-										(*filter)[refBatchAndIdxUint64] = false
-										continue
-									}
-								}
-							} else if !keepGenomesWithoutTaxId {
-								(*filter)[refBatchAndIdxUint64] = false
-								continue
-							}
-							(*filter)[refBatchAndIdxUint64] = true
-						}
+					if filterByTaxId && !idx.keepGenomeByTaxID(filter, refBatchAndIdxUint64) {
+						continue
 					}
 
 					var r *GSearchScreenResultDetail

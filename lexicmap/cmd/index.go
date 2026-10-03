@@ -509,7 +509,7 @@ Important parameters:
 		if opt.Verbose || opt.Log2File {
 			log.Info()
 			log.Infof("finished building LexicMap index from %d files with %d masks in %s",
-				len(files), nMasks, time.Since(timeStart))
+				len(files), bopt.Masks, time.Since(timeStart))
 			log.Infof("LexicMap index saved: %s", outDir)
 		}
 	},

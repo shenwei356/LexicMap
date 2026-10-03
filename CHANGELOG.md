@@ -20,6 +20,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       when rebuilding an index.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
+    - Fixed data races in parallel seed computation and progress reporting.
+    - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
+      The mask file now determines the number of masks.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
@@ -34,6 +37,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added new flags `--show-genome-name` `--show-species-name` to add the taxonomic/species name as a prefix to sgenome fied.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
     - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
+    - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
 - `lexicmap util kmers`:

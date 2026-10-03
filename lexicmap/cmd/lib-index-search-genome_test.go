@@ -3,7 +3,42 @@ package cmd
 import (
 	"reflect"
 	"testing"
+
+	"github.com/shenwei356/bio/taxdump"
 )
+
+func TestKeepGenomeByTaxIDDoesNotDropFirstAllowedHit(t *testing.T) {
+	idx := &Index{
+		opt: &IndexSearchingOptions{
+			NegativeTaxIds: []uint32{3},
+		},
+		filterByNegativeTaxId: true,
+		genomeIdx2TaxId: map[uint64]uint32{
+			10: 2,
+			11: 4,
+		},
+		Taxonomy: &taxdump.Taxonomy{
+			Nodes: map[uint32]uint32{
+				1: 1,
+				2: 1,
+				3: 1,
+				4: 3,
+			},
+			MergeNodes: make(map[uint32]uint32),
+		},
+	}
+	cache := make(map[uint64]bool)
+
+	if !idx.keepGenomeByTaxID(&cache, 10) {
+		t.Fatal("the first hit outside the negative TaxId subtree should be kept")
+	}
+	if !idx.keepGenomeByTaxID(&cache, 10) {
+		t.Fatal("the cached allowed hit should be kept")
+	}
+	if idx.keepGenomeByTaxID(&cache, 11) {
+		t.Fatal("a hit inside the negative TaxId subtree should be rejected")
+	}
+}
 
 func TestCompactMaskSelection(t *testing.T) {
 	selection := []bool{false, true, false, true, true, false}

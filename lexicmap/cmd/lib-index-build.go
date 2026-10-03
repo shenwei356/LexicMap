@@ -201,6 +201,27 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	return nil
 }
 
+func loadIndexMasks(opt *IndexBuildingOptions) (*lexichash.LexicHash, error) {
+	if opt.MaskFile == "" {
+		return lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, 0)
+	}
+
+	lh, err := lexichash.NewFromTextFile(opt.MaskFile)
+	if err != nil {
+		return nil, err
+	}
+	if len(lh.Masks) < 64 {
+		return nil, fmt.Errorf("invalid number of masks: %d, should be >=64", len(lh.Masks))
+	}
+
+	opt.K = lh.K
+	opt.Masks = len(lh.Masks)
+	if opt.Chunks > opt.Masks {
+		return nil, fmt.Errorf("invalid chunks: %d, should be <= masks (%d)", opt.Chunks, opt.Masks)
+	}
+	return lh, nil
+}
+
 // BuildIndex builds index from a list of input files
 func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) error {
 	// they are already checked.
@@ -216,26 +237,15 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		log.Infof("--------------------- [ generating masks ] ---------------------")
 	}
 
-	// generate masks
-	var lh *lexichash.LexicHash
-	var err error
-
 	if opt.MaskFile != "" {
 		if opt.Verbose || opt.Log2File {
 			log.Info()
 			log.Infof("reading masks from file: %s", opt.MaskFile)
 		}
-		lh, err = lexichash.NewFromTextFile(opt.MaskFile)
-		checkError(err)
-		if len(lh.Masks) < 64 {
-			return fmt.Errorf("invalid numer of masks: %d, should be >=64", opt.Masks)
-		}
-		opt.K = lh.K
-	} else {
-		lh, err = lexichash.NewWithSeed(opt.K, opt.Masks, opt.RandSeed, 0)
-		if err != nil {
-			return err
-		}
+	}
+	lh, err := loadIndexMasks(opt)
+	if err != nil {
+		return err
 	}
 	if opt.SoftMasking {
 		lh.SupportSoftMasking()
@@ -585,8 +595,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			nFiles++
 
 			// write the genome to file
-			err = gw.Write(refseq)
-			if err != nil {
+			if err := gw.Write(refseq); err != nil {
 				checkError(fmt.Errorf("failed to write genome: %s", err))
 			}
 
@@ -595,8 +604,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// --------------------------------
 			// seed positions
 			if opt.SaveSeedPositions {
-				err = locw.Write(*refseq.Locs)
-				if err != nil {
+				if err := locw.Write(*refseq.Locs); err != nil {
 					checkError(fmt.Errorf("failed to write seed position: %s", err))
 				}
 			}
@@ -897,14 +905,16 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// wait the genome data being written
 			<-refseq.Done
 
+			startTime := refseq.StartTime
+
 			// recycle the genome
 			if refseq.Kmers != nil {
 				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
 			}
 			genome.RecycleGenome(refseq)
 
-			if opt.Verbose && !refseq.StartTime.IsZero() {
-				chDuration <- time.Duration(float64(time.Since(refseq.StartTime)) / threadsFloat)
+			if opt.Verbose && !startTime.IsZero() {
+				chDuration <- time.Duration(float64(time.Since(startTime)) / threadsFloat)
 			}
 
 			refIdx++
@@ -1012,9 +1022,9 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// 	_kmers, locses, err = lh.Mask(refseq.Seq, *skipRegions)
 				// }
 				// _kmers, locses, err = lh.MaskKnownPrefixes(refseq.Seq, *skipRegions)
-				_kmers, locses, err = lh.MaskKnownDistinctPrefixes(refseq.Seq, *skipRegions, true)
-				if err != nil { // E.g., some sequences contain invalid sequences.
-					checkError(fmt.Errorf("failed to compute LexicHash for %s: %s", refseq.ID, err))
+				_kmers, locses, maskErr := lh.MaskKnownDistinctPrefixes(refseq.Seq, *skipRegions, true)
+				if maskErr != nil { // E.g., some sequences contain invalid sequences.
+					checkError(fmt.Errorf("failed to compute LexicHash for %s: %s", refseq.ID, maskErr))
 				}
 
 				// remove low-complexity k-mers
@@ -1095,7 +1105,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					loc2maskidxRC = poolLoc2MaskIdx.Get().(*[]int)
 					kmerList = poolKmerKmerRC.Get().(*[]uint64)
 
-					var iter *iterator.Iterator
 					var kmer, kmerRC, kmerPos uint64
 					var ok bool
 					var _j, posOfPre, posOfCur, _start, _end int
@@ -1163,9 +1172,9 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
 
 						// iterate k-mers
-						iter, err = iterator.NewKmerIterator(refseq.Seq[start:end], k)
-						if err != nil {
-							checkError(err)
+						iter, iterErr := iterator.NewKmerIterator(refseq.Seq[start:end], k)
+						if iterErr != nil {
+							checkError(iterErr)
 						}
 
 						*kmerList = (*kmerList)[:0]
