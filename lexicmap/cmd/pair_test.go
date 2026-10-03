@@ -92,6 +92,25 @@ func TestProcessKmerWithWindowDenseMatchesMap(t *testing.T) {
 	}
 }
 
+func TestProcessKmerWithWindowResetsAtPrefixBucketBoundary(t *testing.T) {
+	window := &KmerWindow{}
+	counts := make(map[uint64]uint8)
+	genomes1 := []uint32{1}
+	genomes2 := []uint32{2}
+
+	processKmerWithWindow(0xff, &genomes1, window, &counts, nil, nil, 0x100, 0, 28)
+	processKmerWithWindow(0x100, &genomes2, window, &counts, nil, nil, 0x100, 0, 28)
+
+	if len(counts) != 0 {
+		t.Fatalf("cross-bucket k-mers were compared: %v", counts)
+	}
+	if window.head != 0 || len(window.records) != 1 || window.records[0].code != 0x100 {
+		t.Fatalf("window was not reset at bucket boundary: head=%d records=%v", window.head, window.records)
+	}
+	window.records[0].genomes = window.records[0].genomes[:0]
+	poolKmerRecord.Put(window.records[0])
+}
+
 func TestMergeDenseMaskCountsResetsAndAccumulates(t *testing.T) {
 	const nGenomes = uint32(4)
 	nPairs := int(nGenomes * (nGenomes - 1) / 2)

@@ -238,6 +238,20 @@ func (idx *Index) SetFragmentCompareOptions(fco *FragmentComparatorOptions) {
 	}}
 }
 
+func (idx *Index) initChainingResources() {
+	co := &ChainingOptions{
+		MaxGap:      float32(idx.opt.MaxGap),
+		MinLen:      idx.opt.MinSinglePrefix,
+		MinScore:    seedWeight(float32(idx.opt.MinSinglePrefix)),
+		MaxDistance: float32(idx.opt.MaxDistance),
+		TopChains:   idx.opt.TopNChains,
+	}
+	idx.chainingOptions = co
+	idx.poolChainers = &sync.Pool{New: func() interface{} {
+		return NewChainer(co)
+	}}
+}
+
 // NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
 	if opt.NoIndex {
@@ -257,18 +271,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		}}
 
 		// other resources
-		co := &ChainingOptions{
-			MaxGap:   float32(opt.MaxGap),
-			MinLen:   opt.MinSinglePrefix,
-			MinScore: seedWeight(float32(opt.MinSinglePrefix)),
-			// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
-			MaxDistance: float32(opt.MaxDistance),
-			TopChains:   opt.TopNChains,
-		}
-		idx.chainingOptions = co
-		idx.poolChainers = &sync.Pool{New: func() interface{} {
-			return NewChainer(co)
-		}}
+		idx.initChainingResources()
 
 		return idx, nil
 	}
@@ -772,23 +775,98 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	// other resources
-	co := &ChainingOptions{
-		MaxGap:   float32(opt.MaxGap),
-		MinLen:   opt.MinSinglePrefix,
-		MinScore: seedWeight(float32(opt.MinSinglePrefix)),
-		// MinScore:    seedWeight(float64(opt.MinMatchedBases)),
-		MaxDistance: float32(opt.MaxDistance),
-		TopChains:   opt.TopNChains,
-	}
-	idx.chainingOptions = co
-	idx.poolChainers = &sync.Pool{New: func() interface{} {
-		return NewChainer(co)
-	}}
+	idx.initChainingResources()
 
 	if idx.filterByTaxId || idx.opt.LoadTaxName || idx.opt.LoadTaxRank {
 		wgT.Wait()
 	}
 
+	return idx, nil
+}
+
+// NewGenomeComparator opens only the genome data needed by genome compare.
+// Seed masks, seed indexes, and seed-search pools are deliberately omitted.
+func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, error) {
+	if opt.NoIndex {
+		idx := &Index{path: outDir, opt: opt}
+		idx.initChainingResources()
+		return idx, nil
+	}
+
+	ok, err := pathutil.DirExists(outDir)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("index path not found: %s", outDir)
+	}
+
+	info, err := readIndexInfo(filepath.Join(outDir, FileInfo))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read info file: %s", err)
+	}
+	if info.MainVersion != MainVersion {
+		return nil, fmt.Errorf("index main versions do not match: %d (index) != %d (tool); please re-create the index", info.MainVersion, MainVersion)
+	}
+	if info.GenomeBatches < 1 {
+		return nil, fmt.Errorf("invalid number of genome batches: %d", info.GenomeBatches)
+	}
+
+	idx := &Index{
+		path:           outDir,
+		opt:            opt,
+		info:           info,
+		totalBases:     info.InputBases,
+		contigInterval: info.ContigInterval,
+		softMasking:    info.SoftMaksing,
+		openFileTokens: make(chan int, opt.MaxOpenFiles),
+	}
+	idx.initChainingResources()
+
+	// Reserve one descriptor for the command output. If every genome batch
+	// cannot have a reader, acquireGenomeReader opens readers on demand under
+	// openFileTokens instead.
+	nReaders := (opt.MaxOpenFiles - 1) / info.GenomeBatches
+	if nReaders > opt.NumCPUs {
+		nReaders = opt.NumCPUs
+	}
+	if nReaders < 1 {
+		return idx, nil
+	}
+
+	idx.poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
+	for i := range idx.poolGenomeRdrs {
+		idx.poolGenomeRdrs[i] = make(chan *genome.Reader, nReaders)
+	}
+	idx.hasGenomeRdrs = true
+
+	var wg sync.WaitGroup
+	tokens := make(chan int, max(1, opt.NumCPUs))
+	errCh := make(chan error, info.GenomeBatches*nReaders)
+	for i := 0; i < info.GenomeBatches; i++ {
+		for range nReaders {
+			tokens <- 1
+			wg.Add(1)
+			go func(batch int) {
+				defer wg.Done()
+				defer func() { <-tokens }()
+				file := filepath.Join(outDir, DirGenomes, batchDir(batch), FileGenomes)
+				rdr, readErr := genome.NewReader(file)
+				if readErr != nil {
+					errCh <- fmt.Errorf("failed to create genome reader: %s", readErr)
+					return
+				}
+				idx.poolGenomeRdrs[batch] <- rdr
+				idx.openFileTokens <- 1
+			}(i)
+		}
+	}
+	wg.Wait()
+	close(errCh)
+	if readErr := <-errCh; readErr != nil {
+		_ = idx.Close()
+		return nil, readErr
+	}
 	return idx, nil
 }
 

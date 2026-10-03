@@ -1251,6 +1251,19 @@ func processKmerWithWindow(currentCode uint64, currentGenomes *[]uint32, window 
 	records := window.records
 	head := window.head
 
+	// Codes are ordered. Once the fixed min-prefix bucket changes, no record
+	// from the previous bucket can satisfy minPrefix, even when the numeric
+	// distance happens to be smaller than threshold near a bucket boundary.
+	if head < len(records) && currentCode/threshold != records[head].code/threshold {
+		for i := head; i < len(records); i++ {
+			records[i].genomes = records[i].genomes[:0]
+			poolKmerRecord.Put(records[i])
+			records[i] = nil
+		}
+		records = records[:0]
+		head = 0
+	}
+
 	// Clean up window: remove k-mers that are too far away
 	for head < len(records) && currentCode-records[head].code >= threshold {
 		// Return KmerRecord to pool

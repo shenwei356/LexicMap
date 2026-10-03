@@ -171,7 +171,8 @@ type Writer struct {
 	// bufers
 	bufVar []byte // needs at most 8+8=16
 	buf    []byte // needs at most 1+16+1+16=34
-	buf8   []byte // for writing uint8
+
+	bufVals []byte // bounded scratch for seed-position postings
 
 	// for kv data
 	N  int // the number of bytes.
@@ -258,7 +259,8 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 
 		bufVar: make([]byte, 16),
 		buf:    make([]byte, 36),
-		buf8:   make([]byte, 8),
+
+		bufVals: make([]byte, 32<<10),
 	}
 
 	// ---------------------------------------------------------------------------
@@ -334,21 +336,16 @@ func AnchorExtracter(k uint8, maskPrefix uint8, anchorPrefix uint8) func(uint64)
 // WriteDataOfAMask writes data of one mask.
 func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var hasPrev bool
-	var preKey, key, _v uint64
+	var preKey, key uint64
 	var preVal, v *[]uint64
 	var offset uint64
 	var ctrlByteKey, ctrlByteVal byte
 	var nBytesKey, nBytesVal, n int
 	bufVar := wtr.bufVar // needs at most 8+8=16
 	buf := wtr.buf       // needs at most 1+16+1+16=34
-	buf8 := wtr.buf8     // for writing uint8
-	bufVals := poolBytesBuffer.Get().(*bytes.Buffer)
-	defer poolBytesBuffer.Put(bufVals)
 	var even bool
 	var i, nm1 int
 	var j int
-
-	use3BytesForSeedPos := wtr.use3BytesForSeedPos
 
 	nKmers := len(m)
 
@@ -469,33 +466,11 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 		// values
 
-		bufVals.Reset()
-
-		if !use3BytesForSeedPos {
-			for _, _v = range *preVal {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-			for _, _v = range *v {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-		} else {
-			for _, _v = range *preVal {
-				PutUint64ThreeBytes(buf8[:7], _v)
-				bufVals.Write(buf8[:7])
-			}
-			for _, _v = range *v {
-				PutUint64ThreeBytes(buf8[:7], _v)
-				bufVals.Write(buf8[:7])
-			}
-		}
-
-		_, err = w.Write(bufVals.Bytes())
+		n, err = wtr.writeSeedPositions(preVal, v)
 		if err != nil {
 			return err
 		}
-		wtr.N += bufVals.Len()
+		wtr.N += n
 
 		// update
 
@@ -547,25 +522,11 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 		// values
 
-		bufVals.Reset()
-
-		if !use3BytesForSeedPos {
-			for _, _v = range *preVal {
-				be.PutUint64(buf8, _v)
-				bufVals.Write(buf8)
-			}
-		} else {
-			for _, _v = range *preVal {
-				PutUint64ThreeBytes(buf8[:7], _v)
-				bufVals.Write(buf8[:7])
-			}
-		}
-
-		_, err = w.Write(bufVals.Bytes())
+		n, err = wtr.writeSeedPositions(preVal, nil)
 		if err != nil {
 			return err
 		}
-		wtr.N += bufVals.Len()
+		wtr.N += n
 	}
 
 	poolUint64s.Put(keys)
@@ -606,6 +567,48 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 	wtr.poolP2O.Put(p2o)
 	return nil
+}
+
+func (wtr *Writer) writeSeedPositions(values1, values2 *[]uint64) (int, error) {
+	width := 8
+	if wtr.use3BytesForSeedPos {
+		width = 7
+	}
+	buf := wtr.bufVals
+	used, total := 0, 0
+	for list := 0; list < 2; list++ {
+		values := values1
+		if list == 1 {
+			values = values2
+		}
+		if values == nil {
+			continue
+		}
+		for _, value := range *values {
+			if used+width > len(buf) {
+				n, err := wtr.w.Write(buf[:used])
+				total += n
+				if err != nil {
+					return total, err
+				}
+				used = 0
+			}
+			if width == 8 {
+				be.PutUint64(buf[used:used+8], value)
+			} else {
+				PutUint64ThreeBytes(buf[used:used+7], value)
+			}
+			used += width
+		}
+	}
+	if used > 0 {
+		n, err := wtr.w.Write(buf[:used])
+		total += n
+		if err != nil {
+			return total, err
+		}
+	}
+	return total, nil
 }
 
 // ReadKVIndex parses the k-mer-value index file.
@@ -984,10 +987,6 @@ func ReadKVDataHeader(file string) (uint8, int, int, uint8, error) {
 
 	return k, iFirstMask, nMasks, config1, nil
 }
-
-var poolBytesBuffer = &sync.Pool{New: func() interface{} {
-	return &bytes.Buffer{}
-}}
 
 var poolUint64s = &sync.Pool{New: func() interface{} {
 	tmp := make([]uint64, 0, 1<<20)

@@ -526,6 +526,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 func (cpr *SeqComparator) RecycleIndex() {
 	if cpr.tree != nil {
 		rtree.RecycleTree(cpr.tree)
+		cpr.tree = nil
 	}
 }
 

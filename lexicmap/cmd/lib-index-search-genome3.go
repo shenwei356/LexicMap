@@ -23,12 +23,14 @@ package cmd
 import (
 	"bytes"
 	"cmp"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"sync"
 	"time"
 
@@ -42,6 +44,8 @@ import (
 	"github.com/shenwei356/lexichash/iterator"
 	"github.com/shenwei356/wfa"
 )
+
+var errGenomeTooLarge = errors.New("genome exceeds the configured size limit")
 
 // subjectSketch is an in-memory sketch of a subject genome for sampled k-mer matching.
 // It is recycled after all query fragments have been processed against the subject.
@@ -607,20 +611,19 @@ func subjectContigBounds(sketch *subjectSketch, position int) (int, int) {
 	if len(sketch.contigBounds) == 0 {
 		return 0, sketch.seqLen
 	}
+	forwardPosition := position
 	if position >= sketch.rcStart {
-		for i := len(sketch.contigBounds) - 1; i >= 0; i-- {
-			start := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][1]
-			end := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][0]
-			if position >= start && position < end {
-				return start, end
-			}
+		forwardPosition = sketch.forwardLen - 1 - (position - sketch.rcStart)
+	}
+	i := sort.Search(len(sketch.contigBounds), func(i int) bool {
+		return sketch.contigBounds[i][1] > forwardPosition
+	})
+	if i < len(sketch.contigBounds) && forwardPosition >= sketch.contigBounds[i][0] {
+		bounds := sketch.contigBounds[i]
+		if position >= sketch.rcStart {
+			return sketch.rcStart + sketch.forwardLen - bounds[1], sketch.rcStart + sketch.forwardLen - bounds[0]
 		}
-	} else {
-		for _, bounds := range sketch.contigBounds {
-			if position >= bounds[0] && position < bounds[1] {
-				return bounds[0], bounds[1]
-			}
-		}
+		return bounds[0], bounds[1]
 	}
 	return 0, sketch.seqLen
 }
@@ -1121,7 +1124,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 }
 
 // ReadGenome reads a genome from the index
-func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
+func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64, genomeID string) (*GQuery, error) {
 
 	maxSubjectGenomeSize := idx.opt.MaxSubjectGenomeSize
 
@@ -1144,20 +1147,10 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 			_ = idx.releaseGenomeReader(genomeBatch, rdr)
 			return nil, fmt.Errorf("fail to read genome sequence for batch %d, genome index %d: %s", genomeBatch, genomeIdx, err)
 		}
-
-		for _, s1 := range g.Seqs {
-			s := poolSeq.Get().(*[]byte)
-			*s = (*s)[:0]
-			*s = append(*s, *s1...)
-			q.seqs = append(q.seqs, s)
-
-			q.genomeSize += len(*s1)
-		}
-
-		if maxSubjectGenomeSize > 0 && q.genomeSize > maxSubjectGenomeSize {
-			log.Warningf("%s (size: %s bp) exceeds the maximum subject genome size which exceeds the maximum allowed size of %s, consider increasing --max-subject-genome-size",
-				idx.BatchGenomeIndex2GenomeID[(*batchIDAndRefIDs)[0]],
-				humanize.Comma(int64(g.GenomeSize)),
+		if maxSubjectGenomeSize > 0 && g.GenomeSize > maxSubjectGenomeSize-q.genomeSize {
+			log.Warningf("skipped genome %s (size: at least %s bp), which exceeds the maximum allowed size of %s; consider increasing --max-genome-size",
+				genomeID,
+				humanize.Comma(int64(q.genomeSize)+int64(g.GenomeSize)),
 				humanize.Comma(int64(maxSubjectGenomeSize)))
 
 			if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
@@ -1166,7 +1159,17 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64) (*GQuery, error) {
 				return nil, fmt.Errorf("failed to close genome reader: %w", err)
 			}
 			genome.RecycleGenome(g)
-			break
+			RecycleGQuery(q)
+			return nil, errGenomeTooLarge
+		}
+
+		for _, s1 := range g.Seqs {
+			s := poolSeq.Get().(*[]byte)
+			*s = (*s)[:0]
+			*s = append(*s, *s1...)
+			q.seqs = append(q.seqs, s)
+
+			q.genomeSize += len(*s1)
 		}
 
 		if err := idx.releaseGenomeReader(genomeBatch, rdr); err != nil {
@@ -1241,6 +1244,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	defer idx.poolSeqComparator.Put(cpr)
+	defer cpr.RecycleIndex()
 
 	algn := wfa.New(wfa.DefaultPenalties, alignOption)
 	algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
@@ -1278,6 +1282,8 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 	var ls *[]*Chain2Result
 	var ok bool
 	var c *Chain2Result
+	var indexedIA uint64
+	var hasIndexedIA bool
 
 	for _, p := range *pairs {
 		ia, ib = p>>32, p&4294967295
@@ -1285,10 +1291,14 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		b = (*sfrags)[ib]
 
 		// a) pseudo alignment
-		cpr.RecycleIndex()
-		err = cpr.Index(a)
-		if err != nil {
-			return fmt.Errorf("fail to index query fragment: %s", err)
+		if !hasIndexedIA || ia != indexedIA {
+			cpr.RecycleIndex()
+			err = cpr.Index(a)
+			if err != nil {
+				return fmt.Errorf("fail to index query fragment: %s", err)
+			}
+			indexedIA = ia
+			hasIndexedIA = true
 		}
 
 		// positive strand

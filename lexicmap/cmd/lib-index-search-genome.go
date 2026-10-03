@@ -807,6 +807,8 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			var ls *[]*Chain2Result
 			var ok bool
 			var c *Chain2Result
+			var indexedIA uint64
+			var hasIndexedIA bool
 			for _, p := range *pairs {
 				ia, ib = p>>32, p&4294967295
 				a = (*qfrags)[ia]
@@ -817,10 +819,14 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 
 				// -----------------------------------------------
 				// a) pseudo alignment
-				cpr.RecycleIndex()
-				err = cpr.Index(a)
-				if err != nil {
-					checkError(fmt.Errorf("fail to index query fragment: %s", err))
+				if !hasIndexedIA || ia != indexedIA {
+					cpr.RecycleIndex()
+					err = cpr.Index(a)
+					if err != nil {
+						checkError(fmt.Errorf("fail to index query fragment: %s", err))
+					}
+					indexedIA = ia
+					hasIndexedIA = true
 				}
 
 				// positive strand
@@ -1040,6 +1046,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			// 5. clean up
 
 			wfa.RecycleAligner(algn)
+			cpr.RecycleIndex()
 			idx.poolSeqComparator.Put(cpr)
 			RecycleFragmentCompareResult(pairs)
 			idx.poolFragmentComparator.Put(fcpr)

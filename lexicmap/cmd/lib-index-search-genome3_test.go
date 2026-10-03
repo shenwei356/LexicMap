@@ -2,7 +2,14 @@
 
 package cmd
 
-import "testing"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+)
 
 func TestAddSampledKmerPosition(t *testing.T) {
 	kmers := make(map[uint64]uint32)
@@ -57,4 +64,84 @@ func TestSubjectContigBoundsForwardAndReverse(t *testing.T) {
 	if start, end := subjectContigBounds(sketch, 240); start != 220 || end != 260 {
 		t.Fatalf("reverse bounds: got [%d,%d), want [220,260)", start, end)
 	}
+
+	linear := func(position int) (int, int) {
+		if position >= sketch.rcStart {
+			for i := len(sketch.contigBounds) - 1; i >= 0; i-- {
+				start := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][1]
+				end := sketch.rcStart + sketch.forwardLen - sketch.contigBounds[i][0]
+				if position >= start && position < end {
+					return start, end
+				}
+			}
+		} else {
+			for _, bounds := range sketch.contigBounds {
+				if position >= bounds[0] && position < bounds[1] {
+					return bounds[0], bounds[1]
+				}
+			}
+		}
+		return 0, sketch.seqLen
+	}
+	for position := 0; position < sketch.seqLen; position++ {
+		wantStart, wantEnd := linear(position)
+		start, end := subjectContigBounds(sketch, position)
+		if start != wantStart || end != wantEnd {
+			t.Fatalf("position %d: got [%d,%d), want [%d,%d)", position, start, end, wantStart, wantEnd)
+		}
+	}
+}
+
+func TestReadGenomeRejectsAllChunksWhenCombinedSizeExceedsLimit(t *testing.T) {
+	dbDir := t.TempDir()
+	dir := filepath.Join(dbDir, DirGenomes, batchDir(0))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wtr, err := genome.NewWriter(filepath.Join(dir, FileGenomes), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, sequence := range []string{"ACGTACGT", "TGCATGCA"} {
+		g := genome.PoolGenome.Get().(*genome.Genome)
+		g.Reset()
+		g.ID = append(g.ID, byte('0'+i))
+		g.Seq = append(g.Seq, sequence...)
+		g.GenomeSize = len(g.Seq)
+		g.Len = len(g.Seq)
+		g.NumSeqs = 1
+		g.SeqSizes = append(g.SeqSizes, len(g.Seq))
+		seqID := []byte("seq")
+		g.SeqIDs = append(g.SeqIDs, &seqID)
+		if err = wtr.Write(g); err != nil {
+			genome.RecycleGenome(g)
+			t.Fatal(err)
+		}
+		genome.RecycleGenome(g)
+	}
+	if err = wtr.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	idx := &Index{
+		path:           dbDir,
+		opt:            &IndexSearchingOptions{MaxSubjectGenomeSize: 10},
+		info:           &IndexInfo{GenomeBatches: 1},
+		openFileTokens: make(chan int, 1),
+	}
+	chunks := []uint64{0, 1}
+	q, err := idx.ReadGenome(&chunks, "chunked")
+	if q != nil || !errors.Is(err, errGenomeTooLarge) {
+		t.Fatalf("oversized genome: query=%v err=%v", q, err)
+	}
+
+	firstChunk := []uint64{0}
+	q, err = idx.ReadGenome(&firstChunk, "chunked")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.genomeSize != 8 || len(q.seqs) != 1 {
+		t.Fatalf("reused query contains partial oversized data: size=%d contigs=%d", q.genomeSize, len(q.seqs))
+	}
+	RecycleGQuery(q)
 }

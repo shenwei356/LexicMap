@@ -27,6 +27,7 @@ import (
 	"math"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sync"
 
 	"github.com/shenwei356/bio/seqio/fastx"
@@ -52,7 +53,7 @@ type GQuery struct {
 var poolGQuery = &sync.Pool{New: func() interface{} {
 	return &GQuery{
 		id:          make([]byte, 0, 127),
-		bigSeq:      make([]byte, 0, 10<<20), // 10M
+		bigSeq:      make([]byte, 0),
 		seqs:        make([]*[]byte, 0, 256),
 		quals:       make([]*[]byte, 0, 256),
 		skipRegions: make([]int, 0, 512),
@@ -183,6 +184,11 @@ func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, re
 			RecycleGQuery(q)
 			return nil, fmt.Errorf("read seq %d in %s: %s", i, file, err)
 		}
+		growBy := len(record.Seq.Seq)
+		if i > 0 {
+			growBy += len(gr.nnn)
+		}
+		q.bigSeq = slices.Grow(q.bigSeq, growBy)
 
 		if i > 0 {
 			q.skipRegions = append(q.skipRegions, len(q.bigSeq), len(q.bigSeq)+gr.k-1)

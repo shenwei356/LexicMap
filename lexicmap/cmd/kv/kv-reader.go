@@ -27,6 +27,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -359,12 +360,53 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	return m, nil
 }
 
+// appendSeedPositions decodes count positions into an existing posting list.
+func (rdr *Reader) appendSeedPositions(values *[]uint64, count uint64) error {
+	if count > uint64(math.MaxInt-len(*values)) {
+		return fmt.Errorf("too many seed positions: %d", count)
+	}
+	oldLen := len(*values)
+	*values = slices.Grow(*values, int(count))
+	*values = (*values)[:oldLen+int(count)]
+
+	width := uint64(8)
+	decode := be.Uint64
+	if rdr.Use3BytesForSeedPos {
+		width = 7
+		decode = Uint64ThreeBytes
+	}
+	writeAt := oldLen
+	for count >= seedPosBatchSize {
+		nBytes := uint64(seedPosBatchSize) * width
+		n, _ := io.ReadFull(rdr.r, rdr.buf2048[:nBytes])
+		if n < int(nBytes) {
+			return ErrBrokenFile
+		}
+		for j := uint64(0); j < nBytes; j += width {
+			(*values)[writeAt] = decode(rdr.buf2048[j : j+width])
+			writeAt++
+		}
+		count -= seedPosBatchSize
+	}
+	if count > 0 {
+		nBytes := count * width
+		n, _ := io.ReadFull(rdr.r, rdr.buf2048[:nBytes])
+		if n < int(nBytes) {
+			return ErrBrokenFile
+		}
+		for j := uint64(0); j < nBytes; j += width {
+			(*values)[writeAt] = decode(rdr.buf2048[j : j+width])
+			writeAt++
+		}
+	}
+	return nil
+}
+
 // ReadDataOfAMaskAsMap reads data of a mask.
 // Please remember to recycle the result.
 func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error {
 	buf := rdr.buf
 	buf8 := rdr.buf8
-	buf2048 := rdr.buf2048
 	r := rdr.r
 
 	var ctrlByte byte
@@ -375,12 +417,9 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 	var nReaded int
 	var v1, v2 uint64
 	var kmer1, kmer2 uint64
-	var lenVal, lenVal1, lenVal2 uint64
-	var j uint64
+	var lenVal1, lenVal2 uint64
 	var values *[]uint64
-	var v uint64
 	var ok bool
-	var n uint64
 
 	var err error
 
@@ -395,14 +434,6 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 		return nil
 	}
 	var N int
-
-	var nSeedPosBytes uint64 = 8
-	fUint64 := be.Uint64
-	if rdr.Use3BytesForSeedPos {
-		nSeedPosBytes = 7
-		fUint64 = Uint64ThreeBytes
-	}
-	batchSizeBytes := uint64(seedPosBatchSize) * nSeedPosBytes
 
 	for {
 		// read the control byte
@@ -462,34 +493,8 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 			(*m)[kmer1] = values
 		}
 
-		lenVal = lenVal1
-		for lenVal >= seedPosBatchSize {
-			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if nReaded < int(batchSizeBytes) {
-				return ErrBrokenFile
-			}
-
-			for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
-				v = fUint64(buf2048[j : j+nSeedPosBytes])
-
-				*values = append(*values, v)
-			}
-
-			lenVal -= seedPosBatchSize
-		}
-		if lenVal > 0 {
-			n = lenVal * uint64(nSeedPosBytes)
-
-			nReaded, _ = io.ReadFull(r, buf2048[:n])
-			if nReaded < int(n) {
-				return ErrBrokenFile
-			}
-
-			for j = 0; j < n; j += nSeedPosBytes {
-				v = fUint64(buf2048[j : j+nSeedPosBytes])
-
-				*values = append(*values, v)
-			}
+		if err = rdr.appendSeedPositions(values, lenVal1); err != nil {
+			return err
 		}
 
 		if lastPair && !hasKmer2 {
@@ -502,34 +507,8 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 			(*m)[kmer2] = values
 		}
 
-		lenVal = lenVal2
-		for lenVal >= seedPosBatchSize {
-			nReaded, _ = io.ReadFull(r, buf2048[:batchSizeBytes])
-			if nReaded < int(batchSizeBytes) {
-				return ErrBrokenFile
-			}
-
-			for j = 0; j < batchSizeBytes; j += nSeedPosBytes {
-				v = fUint64(buf2048[j : j+nSeedPosBytes])
-
-				*values = append(*values, v)
-			}
-
-			lenVal -= seedPosBatchSize
-		}
-		if lenVal > 0 {
-			n = lenVal * uint64(nSeedPosBytes)
-
-			nReaded, _ = io.ReadFull(r, buf2048[:n])
-			if nReaded < int(n) {
-				return ErrBrokenFile
-			}
-
-			for j = 0; j < n; j += nSeedPosBytes {
-				v = fUint64(buf2048[j : j+nSeedPosBytes])
-
-				*values = append(*values, v)
-			}
+		if err = rdr.appendSeedPositions(values, lenVal2); err != nil {
+			return err
 		}
 
 		if lastPair {

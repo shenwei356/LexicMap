@@ -23,6 +23,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -37,7 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
-	"gonum.org/v1/gonum/stat/combin"
 )
 
 var compareCmd = &cobra.Command{
@@ -335,7 +335,7 @@ Output format:
 			NoIndex: !loadIndex,
 		}
 
-		idx, err := NewIndexSearcher(dbDir, sopt)
+		idx, err := NewGenomeComparator(dbDir, sopt)
 		checkError(err)
 
 		idx.SetSeqCompareOptions(&SeqComparatorOptions{
@@ -505,6 +505,7 @@ Output format:
 		var gname2idx map[string]*[]uint64
 
 		var pairs []string
+		var nPairs int
 		if loadIndex {
 			// genomes.map file for mapping index to genome id
 			gname2idx, err = readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
@@ -517,20 +518,23 @@ Output format:
 				if err != nil {
 					checkError(err)
 				}
-			} else {
-				pairs, err = combinationsOfTwo(inputs, "genome IDs")
-				if err != nil {
-					checkError(err)
-				}
-			}
-		} else {
-			pairs, err = combinationsOfTwo(inputs, "input sequence files")
-			if err != nil {
-				checkError(err)
 			}
 		}
+		if pairFileMode {
+			nPairs = len(pairs) >> 1
+		} else if loadIndex {
+			nPairs, err = combinationCount(len(inputs), "genome IDs")
+			checkError(err)
+		} else {
+			nPairs, err = combinationCount(len(inputs), "input sequence files")
+			checkError(err)
+		}
 		if loadIndex {
-			for _, genomeID := range pairs {
+			genomeIDs := inputs
+			if pairFileMode {
+				genomeIDs = pairs
+			}
+			for _, genomeID := range genomeIDs {
 				if _, ok := gname2idx[genomeID]; !ok {
 					hint := ""
 					if pairFileMode && !hasHeaderLine {
@@ -540,8 +544,6 @@ Output format:
 				}
 			}
 		}
-
-		nPairs := len(pairs) >> 1
 
 		if outputLog {
 			log.Info()
@@ -589,11 +591,11 @@ Output format:
 
 		// -----------------------------------------------------------
 
-		for i := 0; i < len(pairs); i += 2 {
+		submitPair := func(genome1, genome2 string) {
 			wg.Add(1)
 			tokens <- 1
 
-			go func(genome1, genome2 string) {
+			go func() {
 				timeStart := time.Now()
 				defer func() {
 					if debug {
@@ -606,38 +608,45 @@ Output format:
 				q := poolGPair.Get().(*GPair)
 
 				var _wg sync.WaitGroup
+				var readErr1, readErr2 error
 
 				// read genome sequences
 				_wg.Add(2)
 				go func() {
-					var readErr error
+					defer _wg.Done()
 					if loadIndex {
 						batchIDAndRefIDs := gname2idx[genome1]
-						q.g1, readErr = idx.ReadGenome(batchIDAndRefIDs)
-						checkError(readErr)
-						q.g1.id = append(q.g1.id, []byte(genome1)...)
+						q.g1, readErr1 = idx.ReadGenome(batchIDAndRefIDs, genome1)
+						if readErr1 == nil {
+							q.g1.id = append(q.g1.id, []byte(genome1)...)
+						}
 					} else {
-						q.g1, readErr = ReadGenomeFromFile(genome1, reRefName, fullInputPath)
-						checkError(readErr)
+						q.g1, readErr1 = ReadGenomeFromFile(genome1, reRefName, fullInputPath)
 					}
-
-					_wg.Done()
 				}()
 				go func() {
-					var readErr error
+					defer _wg.Done()
 					if loadIndex {
 						batchIDAndRefIDs := gname2idx[genome2]
-						q.g2, readErr = idx.ReadGenome(batchIDAndRefIDs)
-						checkError(readErr)
-						q.g2.id = append(q.g2.id, []byte(genome2)...)
+						q.g2, readErr2 = idx.ReadGenome(batchIDAndRefIDs, genome2)
+						if readErr2 == nil {
+							q.g2.id = append(q.g2.id, []byte(genome2)...)
+						}
 					} else {
-						q.g2, readErr = ReadGenomeFromFile(genome2, reRefName, fullInputPath)
-						checkError(readErr)
+						q.g2, readErr2 = ReadGenomeFromFile(genome2, reRefName, fullInputPath)
 					}
-
-					_wg.Done()
 				}()
 				_wg.Wait()
+				if readErr1 != nil && !errors.Is(readErr1, errGenomeTooLarge) {
+					checkError(readErr1)
+				}
+				if readErr2 != nil && !errors.Is(readErr2, errGenomeTooLarge) {
+					checkError(readErr2)
+				}
+				if errors.Is(readErr1, errGenomeTooLarge) || errors.Is(readErr2, errGenomeTooLarge) {
+					RecycleGPair(q)
+					return
+				}
 
 				// compare genomes
 				_wg.Add(2)
@@ -671,7 +680,19 @@ Output format:
 
 				ch <- q
 
-			}(pairs[i], pairs[i+1])
+			}()
+		}
+
+		if pairFileMode {
+			for i := 0; i < len(pairs); i += 2 {
+				submitPair(pairs[i], pairs[i+1])
+			}
+		} else {
+			for i := 0; i < len(inputs)-1; i++ {
+				for j := i + 1; j < len(inputs); j++ {
+					submitPair(inputs[i], inputs[j])
+				}
+			}
 		}
 
 		wg.Wait()
@@ -790,16 +811,20 @@ func init() {
 
 }
 
-func combinationsOfTwo(items []string, label string) ([]string, error) {
-	if len(items) < 2 {
-		return nil, fmt.Errorf("at least 2 %s are required, got %d", label, len(items))
+func combinationCount(n int, label string) (int, error) {
+	if n < 2 {
+		return 0, fmt.Errorf("at least 2 %s are required, got %d", label, n)
 	}
-	combs := combin.Combinations(len(items), 2)
-	pairs := make([]string, 0, len(combs)<<1)
-	for _, pair := range combs {
-		pairs = append(pairs, items[pair[0]], items[pair[1]])
+	a, b := n, n-1
+	if a&1 == 0 {
+		a /= 2
+	} else {
+		b /= 2
 	}
-	return pairs, nil
+	if a > math.MaxInt/b {
+		return 0, fmt.Errorf("too many %s: %d", label, n)
+	}
+	return a * b, nil
 }
 
 func readPairFiles(files []string, hasHeaderLine bool) ([]string, error) {
@@ -878,8 +903,12 @@ func (q *GPair) Reset() {
 }
 
 func RecycleGPair(q *GPair) {
-	RecycleGQuery(q.g1)
-	RecycleGQuery(q.g2)
+	if q.g1 != nil {
+		RecycleGQuery(q.g1)
+	}
+	if q.g2 != nil {
+		RecycleGQuery(q.g2)
+	}
 	q.Reset()
 	poolGPair.Put(q)
 }

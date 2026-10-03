@@ -359,3 +359,50 @@ func TestKVData(t *testing.T) {
 		return
 	}
 }
+
+func TestLargePostingUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T) {
+	for _, useThreeBytes := range []bool{false, true} {
+		name := "eight-byte positions"
+		if useThreeBytes {
+			name = "seven-byte positions"
+		}
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			file := filepath.Join(dir, "large.kv")
+			values := make([]uint64, 100_000)
+			for i := range values {
+				values[i] = uint64(i)
+			}
+			data := map[uint64]*[]uint64{7: &values}
+
+			wtr, err := NewWriter(5, 0, 1, file, 1, 1, useThreeBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(wtr.bufVals) != 32<<10 {
+				t.Fatalf("writer scratch: got %d bytes, want %d", len(wtr.bufVals), 32<<10)
+			}
+			if err = wtr.WriteDataOfAMask(data); err != nil {
+				t.Fatal(err)
+			}
+			if err = wtr.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			rdr, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rdr.Close()
+			prefix := []uint64{999}
+			got := map[uint64]*[]uint64{7: &prefix}
+			if err = rdr.ReadDataOfAMaskAndAppendToMap(&got); err != nil {
+				t.Fatal(err)
+			}
+			posting := *got[7]
+			if len(posting) != len(values)+1 || posting[0] != 999 || posting[len(posting)-1] != values[len(values)-1] {
+				t.Fatalf("unexpected merged posting: len=%d first=%d last=%d", len(posting), posting[0], posting[len(posting)-1])
+			}
+		})
+	}
+}

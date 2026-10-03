@@ -7,17 +7,11 @@ import (
 	"testing"
 )
 
-func TestCombinationsOfTwo(t *testing.T) {
-	got, err := combinationsOfTwo([]string{"a", "b", "c"}, "genome IDs")
-	if err != nil {
-		t.Fatal(err)
+func TestCombinationCount(t *testing.T) {
+	if got, err := combinationCount(3, "genome IDs"); err != nil || got != 3 {
+		t.Fatalf("count: got %d, err=%v, want 3", got, err)
 	}
-	want := []string{"a", "b", "a", "c", "b", "c"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("pairs: got %v, want %v", got, want)
-	}
-
-	if _, err := combinationsOfTwo([]string{"a"}, "genome IDs"); err == nil {
+	if _, err := combinationCount(1, "genome IDs"); err == nil {
 		t.Fatal("expected an error for fewer than two genome IDs")
 	}
 }
