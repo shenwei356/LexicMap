@@ -78,6 +78,7 @@ func (idx *Index) RecycleGSearchScreenDetailResults(rs *[]*GSearchScreenResultDe
 		resetGSearchScreenResultDetail(r)
 		idx.poolGSearchDetailResult.Put(r)
 	}
+	clear(*rs)
 	*rs = (*rs)[:0]
 	idx.poolGSearchDetailResults.Put(rs)
 }
@@ -457,6 +458,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 			(*rs)[j] = r
 			j++
 		}
+		clear((*rs)[j:])
 		*rs = (*rs)[:j]
 
 		// recycle datastructure
@@ -887,7 +889,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 
 				_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
 				if evalue > maxEvalue {
-					poolChain2.Put(c)
+					recycleChain2(c)
 					wfa.RecycleAlignmentResult(cigar)
 					RecycleSeqComparatorResult(cr)
 					continue
@@ -934,7 +936,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 					}
 					*ls = append(*ls, c)
 				} else {
-					poolChain2.Put(c)
+					recycleChain2(c)
 				}
 
 				// -----------------------------------------------
@@ -1028,14 +1030,12 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			// manually recycle ma and mb
 			for _, ls = range *ma {
 				for _, c = range *ls {
-					poolChain2.Put(c)
+					recycleChain2(c)
 				}
-				*ls = (*ls)[:0]
-				poolChains2.Put(ls)
+				recycleChaining2ResultSlice(ls)
 			}
 			for _, ls = range *mb {
-				*ls = (*ls)[:0]
-				poolChains2.Put(ls)
+				recycleChaining2ResultSlice(ls)
 			}
 			clear(*ma)
 			clear(*mb)
@@ -1181,6 +1181,7 @@ func RecycleGSearchResults(rs *[]*GSearchResult) {
 		r.Reset()
 		poolGSearchResult.Put(r)
 	}
+	clear(*rs)
 	*rs = (*rs)[:0]
 	poolGSearchResults.Put(rs)
 }

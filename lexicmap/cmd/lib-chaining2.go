@@ -84,11 +84,38 @@ func NewChainer2(options *Chaining2Options) *Chainer2 {
 func RecycleChaining2Result(chains *[]*Chain2Result) {
 	for _, chain := range *chains {
 		if chain != nil {
-			poolChain2.Put(chain)
+			recycleChain2(chain)
 		}
 	}
+	recycleChaining2ResultSlice(chains)
+}
+
+// Recycle only the slice when its HSPs have been transferred to another owner.
+func recycleChaining2ResultSlice(chains *[]*Chain2Result) {
+	if cap(*chains) > thresholdNSubs {
+		*chains = nil
+		return
+	}
+	clear((*chains)[:cap(*chains)])
 	*chains = (*chains)[:0]
 	poolChains2.Put(chains)
+}
+
+const maxPooledAlignmentBytes = 16 << 10 // total capacity of the four output buffers
+
+func recycleChain2(chain *Chain2Result) {
+	if cap(chain.CIGAR)+cap(chain.QSeq)+cap(chain.TSeq)+cap(chain.Alignment) > maxPooledAlignmentBytes {
+		chain.CIGAR = nil
+		chain.QSeq = nil
+		chain.TSeq = nil
+		chain.Alignment = nil
+	} else {
+		chain.CIGAR = chain.CIGAR[:0]
+		chain.QSeq = chain.QSeq[:0]
+		chain.TSeq = chain.TSeq[:0]
+		chain.Alignment = chain.Alignment[:0]
+	}
+	poolChain2.Put(chain)
 }
 
 var poolChains2 = &sync.Pool{New: func() interface{} {
@@ -352,7 +379,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	)
 
 	if len(*paths) == 0 {
-		poolChains2.Put(paths)
+		recycleChaining2ResultSlice(paths)
 		return nil, 0, 0, 0, 0, 0, 0, 0
 	}
 

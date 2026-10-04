@@ -246,3 +246,28 @@ func equalSortedUint32(a, b []uint32) bool {
 	}
 	return true
 }
+
+func TestRecycleSearchResultPreservesLeafValues(t *testing.T) {
+	tree := NewTree(4)
+	defer RecycleTree(tree)
+	tree.Insert(1, 7)
+	results, ok := tree.Search(1, 4)
+	if !ok || len(*results) != 1 {
+		t.Fatal("missing tree search result")
+	}
+	row := (*results)[0]
+	borrowed := row.Values
+	backing := *results
+	tree.RecycleSearchResult(results)
+	if row.Values != nil || backing[0] != nil || len(*results) != 0 {
+		t.Fatal("recycled result retains tree leaf references")
+	}
+	if len(borrowed) != 1 || borrowed[0] != 7 {
+		t.Fatal("recycling cleared borrowed leaf data")
+	}
+	results, ok = tree.Search(1, 4)
+	if !ok || len(*results) != 1 || len((*results)[0].Values) != 1 || (*results)[0].Values[0] != 7 {
+		t.Fatal("recycling changed a subsequent search")
+	}
+	tree.RecycleSearchResult(results)
+}

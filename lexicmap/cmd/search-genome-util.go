@@ -78,7 +78,9 @@ var poolQual = &sync.Pool{
 func (q *GQuery) Reset() {
 	q.id = q.id[:0]
 	q.bigSeq = q.bigSeq[:0]
+	clear(q.seqs)
 	q.seqs = q.seqs[:0]
+	clear(q.quals)
 	q.quals = q.quals[:0]
 	q.skipRegions = q.skipRegions[:0]
 	q.genomeSize = 0
@@ -95,6 +97,7 @@ func RecycleGQuery(q *GQuery) {
 			*s = (*s)[:0]
 			poolSeq.Put(s)
 		}
+		clear(q.seqs)
 		q.seqs = q.seqs[:0]
 	}
 	if q.quals != nil {
@@ -102,6 +105,7 @@ func RecycleGQuery(q *GQuery) {
 			*qual = (*qual)[:0]
 			poolQual.Put(qual)
 		}
+		clear(q.quals)
 		q.quals = q.quals[:0]
 	}
 	if q.skipRegions != nil {
@@ -325,6 +329,8 @@ var poolFragments = &sync.Pool{
 
 func recycleFragments(frags *[][]byte) {
 	if frags != nil {
+		// Fragments borrow query sequences; retain only the outer buffer.
+		clear(*frags)
 		*frags = (*frags)[:0]
 		poolFragments.Put(frags)
 	}

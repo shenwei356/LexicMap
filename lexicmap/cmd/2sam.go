@@ -177,6 +177,7 @@ Output:
 		fmt.Fprintf(outfh, "@PG\tID:lexicmap\tPN:lexicmap\tVN:%s\n", VERSION)
 
 		clear(m)
+		clear(refs)
 		refs = refs[:0]
 		if opt.Verbose {
 			log.Infof("  elapsed time: %s", time.Since(timeStart))
@@ -335,9 +336,10 @@ Output:
 							preQuery, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
 							a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS)
 
-						poolSearchResultOfASequence2.Put(a)
+						recycleSearchResultOfASequence2(a)
 					}
 
+					clear(aligns)
 					aligns = aligns[:0]
 					clear(m)
 				}
@@ -373,8 +375,10 @@ Output:
 						preQuery, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
 						a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS)
 
-					poolSearchResultOfASequence2.Put(a)
+					recycleSearchResultOfASequence2(a)
 				}
+				clear(aligns)
+				aligns = aligns[:0]
 			}
 
 			checkError(scanner.Err())
@@ -412,6 +416,11 @@ type SearchResultOfASequence2 struct {
 var poolSearchResultOfASequence2 = &sync.Pool{New: func() interface{} {
 	return &SearchResultOfASequence2{}
 }}
+
+func recycleSearchResultOfASequence2(r *SearchResultOfASequence2) {
+	*r = SearchResultOfASequence2{}
+	poolSearchResultOfASequence2.Put(r)
+}
 
 func init() {
 	utilsCmd.AddCommand(toSamCmd)

@@ -911,6 +911,16 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			if refseq.Kmers != nil {
 				lh.RecycleMaskResult(refseq.Kmers, refseq.Locses)
 			}
+			// No writer or indexing worker uses these seed buffers now.
+			// Keep the per-mask pointer array for reuse, without retaining seeds.
+			if refseq.ExtraKmers != nil {
+				for i, seeds := range *refseq.ExtraKmers {
+					if seeds != nil {
+						poolKmerAndLocs.Put(seeds)
+						(*refseq.ExtraKmers)[i] = nil
+					}
+				}
+			}
 			genome.RecycleGenome(refseq)
 
 			if opt.Verbose && !startTime.IsZero() {

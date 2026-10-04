@@ -451,6 +451,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 			genome.RecycleGenome(g) // do not forget to recycle it.
 		}
+		clear(_genomes)
 
 		chDuration <- time.Since(timeStart)
 	}
@@ -552,7 +553,9 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 		batchIDAndRefIDs = batchIDAndRefIDs[:0]
 		genomeSizes = genomeSizes[:0]
+		clear(seqSizes)
 		seqSizes = seqSizes[:0]
+		clear(seqIDs)
 		seqIDs = seqIDs[:0]
 
 		for i = 0; i < int(nChunks); i++ {

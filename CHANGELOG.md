@@ -38,8 +38,12 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
     - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
     - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
+    - Limit large buffers retained in search object pools.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
+- `lexicmap utils seed-pos`:
+    - Skip empty seed results and finish reading result fields before recycling them.
+    - Fixed data races in seed-position reader creation and error handling.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
 - `lexicmap util reindex-seeds`:

@@ -210,3 +210,17 @@ func TestReaderRestoresBufferSizeWhenReopened(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRecycleGenomeReleasesReturnedBuffers(t *testing.T) {
+	id := []byte("contig")
+	seq := []byte("ACGT")
+	g := &Genome{Seq: seq, SeqIDs: []*[]byte{&id}, TwoBit: Seq2TwoBit(seq)}
+	backing := g.SeqIDs
+	RecycleGenome(g)
+	if g.TwoBit != nil || len(g.SeqIDs) != 0 || backing[0] != nil {
+		t.Fatal("recycled genome retains returned ID or two-bit buffers")
+	}
+	if string(g.Seq) != "ACGT" || cap(g.SeqIDs) != cap(backing) {
+		t.Fatal("recycling discarded reusable genome buffers")
+	}
+}

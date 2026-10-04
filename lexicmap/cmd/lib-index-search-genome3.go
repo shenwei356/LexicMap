@@ -252,6 +252,7 @@ func (idx *Index) recycleSubjectSketch(s *subjectSketch) {
 		poolRepeatedKmerPositions.Put(s.repeatedKmerPositions)
 		s.repeatedKmerPositions = nil
 	}
+	s.contigBounds = nil
 	poolSubjectSketch.Put(s)
 }
 
@@ -660,6 +661,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 		for _, seeds := range *qSeeds {
 			poolKmerAndLocs.Put(seeds)
 		}
+		clear(*qSeeds)
 		*qSeeds = (*qSeeds)[:0]
 		poolQSeeds.Put(qSeeds)
 	}()
@@ -966,6 +968,7 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 		for _, seeds := range *qSeeds {
 			poolKmerAndLocs.Put(seeds)
 		}
+		clear(*qSeeds)
 		*qSeeds = (*qSeeds)[:0]
 		poolQSeeds.Put(qSeeds)
 	}()
@@ -1259,17 +1262,15 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 	defer func() {
 		for _, ls := range *ma {
 			for _, c := range *ls {
-				poolChain2.Put(c)
+				recycleChain2(c)
 			}
-			*ls = (*ls)[:0]
-			poolChains2.Put(ls)
+			recycleChaining2ResultSlice(ls)
 		}
 		clear(*ma)
 		poolFragAlignResultMap.Put(ma)
 
 		for _, ls := range *mb {
-			*ls = (*ls)[:0]
-			poolChains2.Put(ls)
+			recycleChaining2ResultSlice(ls)
 		}
 		clear(*mb)
 		poolFragAlignResultMap.Put(mb)
@@ -1356,7 +1357,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 
 		_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
 		if evalue > maxEvalue {
-			poolChain2.Put(c)
+			recycleChain2(c)
 			wfa.RecycleAlignmentResult(cigar)
 			RecycleSeqComparatorResult(cr)
 			continue
@@ -1393,7 +1394,7 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 			}
 			*ls = append(*ls, c)
 		} else {
-			poolChain2.Put(c)
+			recycleChain2(c)
 		}
 
 		wfa.RecycleAlignmentResult(cigar)

@@ -569,6 +569,7 @@ Result ordering:
 				}
 			}
 			idx.RecycleSearchResults(q.result)
+			q.result = nil
 
 			poolQuery.Put(q)
 			outfh.Flush()

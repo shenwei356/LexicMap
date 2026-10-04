@@ -196,7 +196,7 @@ func (r *SearchResult) Reset() {
 }
 
 var poolSearchResults = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SearchResult, 0, 65536)
+	tmp := make([]*SearchResult, 0, maxPooledSearchResults)
 	return &tmp
 }}
 
@@ -204,14 +204,27 @@ var poolSearchResult = &sync.Pool{New: func() interface{} {
 	return &SearchResult{Values: make([]uint64, 0, 1)}
 }}
 
+const (
+	maxPooledSearchResults = 65536
+	maxPooledSeedPositions = 1024 // 8 KiB per matched k-mer
+)
+
 // RecycleSearchResults recycles search results objects.
 func RecycleSearchResults(sr *[]*SearchResult) {
-	if len(*sr) > 0 {
-		for _, r := range *sr {
-			poolSearchResult.Put(r)
+	for _, r := range *sr {
+		if cap(r.Values) > maxPooledSeedPositions {
+			r.Values = nil
+		} else {
+			r.Values = r.Values[:0]
 		}
-		*sr = (*sr)[:0]
+		poolSearchResult.Put(r)
 	}
+	if cap(*sr) > maxPooledSearchResults {
+		*sr = nil
+		return
+	}
+	clear((*sr)[:cap(*sr)])
+	*sr = (*sr)[:0]
 	poolSearchResults.Put(sr)
 }
 

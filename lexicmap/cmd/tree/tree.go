@@ -429,8 +429,12 @@ var poolSearchResult = &sync.Pool{New: func() interface{} {
 // RecycleSearchResult recycles search results objects.
 func (idx *Tree) RecycleSearchResult(sr *[]*SearchResult) {
 	for _, r := range *sr {
+		// Values belongs to the tree leaf, so drop the reference without
+		// modifying the borrowed data.
+		r.Values = nil
 		poolSearchResult.Put(r)
 	}
+	clear(*sr)
 	*sr = (*sr)[:0]
 	poolSearchResults.Put(sr)
 }

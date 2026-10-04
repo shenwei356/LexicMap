@@ -216,11 +216,11 @@ Attention:
 				fmt.Fprintln(outfh)
 			}
 
+			idx = rGnm.idx
 			RecycleSearchResultOfAGenome(rGnm)
 
 			// -------------------------------------------------
 
-			idx = rGnm.idx
 			reader = readers[idx]
 			if reader != nil {
 				rGnm = reader.Next()
@@ -278,9 +278,17 @@ var poolSearchResultOfAGenome = &sync.Pool{New: func() interface{} {
 
 func RecycleSearchResultOfAGenome(r *SearchResultOfAGenome) {
 	r.Hits = 0
+	r.Query = ""
+	r.Qlen = ""
 	r.Sgenome = ""
 	r.QcovGnm = ""
 	r.Score = 0
+	for _, record := range r.Records {
+		// Parsed strings share the input line, which may include sequences.
+		*record = SearchResultOfASequence{}
+		poolSearchResultOfASequence.Put(record)
+	}
+	clear(r.Records)
 	r.Records = r.Records[:0]
 	poolSearchResultOfAGenome.Put(r)
 }
@@ -330,6 +338,7 @@ func (h SearchResultsHeap) Push(x interface{}) {
 func (h SearchResultsHeap) Pop() interface{} {
 	n := len(*(h.entries))
 	x := (*(h.entries))[n-1]
+	(*(h.entries))[n-1] = nil
 	*(h.entries) = (*(h.entries))[:n-1]
 	return x
 }
@@ -491,6 +500,8 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 
 		if rGnm.Sgenome != "" {
 			r.ch <- rGnm // do not forget the last one
+		} else {
+			RecycleSearchResultOfAGenome(rGnm)
 		}
 
 		close(r.ch)

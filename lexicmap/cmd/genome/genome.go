@@ -126,6 +126,7 @@ func (r *Genome) Reset() {
 	r.Len = 0
 	r.NumSeqs = 0
 	r.SeqSizes = r.SeqSizes[:0]
+	clear(r.SeqIDs)
 	r.SeqIDs = r.SeqIDs[:0]
 
 	r.GenomeIdx = -1
@@ -151,10 +152,16 @@ func RecycleGenome(g *Genome) {
 	g.Seqs = nil
 	if g.TwoBit != nil {
 		RecycleTwoBit(g.TwoBit)
+		g.TwoBit = nil
 	}
+	// Mask buffers have already been recycled by the index builder.
+	g.Kmers = nil
+	g.Locses = nil
 	for _, id := range g.SeqIDs {
 		poolID.Put(id)
 	}
+	clear(g.SeqIDs)
+	g.SeqIDs = g.SeqIDs[:0]
 	PoolGenome.Put(g)
 }
 

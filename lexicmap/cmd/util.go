@@ -192,6 +192,7 @@ func stringSplitN(s string, sep string, n int, a *[]string) {
 	}
 	(*a)[i] = s
 
+	clear((*a)[i+1:])
 	(*a) = (*a)[:i+1]
 }
 
@@ -214,6 +215,7 @@ func bytesSplitN(s []byte, sep []byte, n int, a *[][]byte) {
 	}
 	(*a)[i] = s
 
+	clear((*a)[i+1:])
 	(*a) = (*a)[:i+1]
 }
 
@@ -236,6 +238,7 @@ func stringSplitNByByte(s string, sep byte, n int, a *[]string) {
 	}
 	(*a)[i] = s
 
+	clear((*a)[i+1:])
 	(*a) = (*a)[:i+1]
 }
 

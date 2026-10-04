@@ -151,6 +151,7 @@ Figures:
 		}
 
 		if allGenomes {
+			clear(refnames)
 			refnames = refnames[:0]
 			for ref := range m {
 				refnames = append(refnames, ref)
@@ -278,9 +279,18 @@ Figures:
 			}
 		}}
 
+		recycleRef2Locs := func(r *Ref2Locs) {
+			genome.RecycleGenome(r.Genome)
+			r.Genome = nil
+			r.Ref = ""
+			*r.Locs = (*r.Locs)[:0]
+			poolRef2Locs.Put(r)
+		}
+
 		// seed position readers
 		readers := make([]*seedposition.Reader, 0, info.GenomeBatches) // save for closing them in the end
-		readerPools := make([]*sync.Pool, info.GenomeBatches)          // one for each genome batch
+		var readersMu sync.Mutex
+		readerPools := make([]*sync.Pool, info.GenomeBatches) // one for each genome batch
 		for batch := 0; batch < info.GenomeBatches; batch++ {
 			_batch := batch
 			readerPools[batch] = &sync.Pool{New: func() interface{} {
@@ -289,7 +299,9 @@ Figures:
 				if err != nil {
 					checkError(fmt.Errorf("failed to read seed position data file: %s", err))
 				}
+				readersMu.Lock()
 				readers = append(readers, rdr)
+				readersMu.Unlock()
 				return rdr
 			}}
 		}
@@ -350,13 +362,14 @@ Figures:
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
-					genome.RecycleGenome(ref2locs.Genome)
-					poolRef2Locs.Put(ref2locs)
+					recycleRef2Locs(ref2locs)
+					continue
 				}
 
 				n++
 				pre = 0
 				refname = ref2locs.Ref
+				genomeBatch := ref2locs.GenomeBatch
 				genomeIdx = ref2locs.GenomeIdx
 
 				if hasGenomeRdrs {
@@ -462,12 +475,11 @@ Figures:
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
-					genome.RecycleGenome(ref2locs.Genome)
-					poolRef2Locs.Put(ref2locs)
+					recycleRef2Locs(ref2locs)
 
 					// return or close genome reader
 					if hasGenomeRdrs {
-						poolGenomeRdrs[ref2locs.GenomeBatch] <- rdr
+						poolGenomeRdrs[genomeBatch] <- rdr
 					} else {
 						err = rdr.Close()
 						if err != nil {
@@ -579,12 +591,11 @@ Figures:
 					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 					}
-					genome.RecycleGenome(ref2locs.Genome)
-					poolRef2Locs.Put(ref2locs)
+					recycleRef2Locs(ref2locs)
 
 					// return or close genome reader
 					if hasGenomeRdrs {
-						poolGenomeRdrs[ref2locs.GenomeBatch] <- rdr
+						poolGenomeRdrs[genomeBatch] <- rdr
 					} else {
 						err = rdr.Close()
 						if err != nil {
@@ -638,12 +649,11 @@ Figures:
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 				}
-				genome.RecycleGenome(ref2locs.Genome)
-				poolRef2Locs.Put(ref2locs)
+				recycleRef2Locs(ref2locs)
 
 				// return or close genome reader
 				if hasGenomeRdrs {
-					poolGenomeRdrs[ref2locs.GenomeBatch] <- rdr
+					poolGenomeRdrs[genomeBatch] <- rdr
 				} else {
 					err = rdr.Close()
 					if err != nil {
@@ -653,7 +663,7 @@ Figures:
 
 				// ---------------------------------------------------------
 
-				counter[ref2locs.Ref]++
+				counter[refname]++
 			}
 
 			poolSkipRegions.Put(seqRegions)
@@ -666,6 +676,7 @@ Figures:
 			wg.Add(1)
 
 			go func(refname string) {
+				var err error
 				defer func() {
 					wg.Done()
 					<-tokens

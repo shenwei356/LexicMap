@@ -187,6 +187,11 @@ Attention:
 			var poolSubseq = &sync.Pool{New: func() interface{} {
 				return &Subseq{}
 			}}
+			recycleSubseq := func(result *Subseq) {
+				genome.RecycleGenome(result.Genome)
+				*result = Subseq{}
+				poolSubseq.Put(result)
+			}
 			ch := make(chan *Subseq, opt.NumCPUs)
 			m := make(map[uint64]*Subseq, opt.NumCPUs) // the buffer to output sorte
 			done := make(chan int)
@@ -208,9 +213,8 @@ Attention:
 							outfh.WriteString(result.Header)
 							outfh.Write(result.Seq.FormatSeq(lineWidth))
 							outfh.WriteByte('\n')
-							genome.RecycleGenome(result.Genome)
-							poolSubseq.Put(result)
 						}
+						recycleSubseq(result)
 
 						id++
 						continue
@@ -224,9 +228,8 @@ Attention:
 							outfh.WriteString(result.Header)
 							outfh.Write(result.Seq.FormatSeq(lineWidth))
 							outfh.WriteByte('\n')
-							genome.RecycleGenome(result.Genome)
-							poolSubseq.Put(result)
 						}
+						recycleSubseq(result)
 
 						delete(m, id)
 						id++
@@ -244,15 +247,15 @@ Attention:
 					var result *Subseq
 					for _, id = range ids {
 						result = m[id]
+						delete(m, id)
 
 						if result.Seq != nil {
 							nSuccess++
 							outfh.WriteString(result.Header)
 							outfh.Write(result.Seq.FormatSeq(lineWidth))
 							outfh.WriteByte('\n')
-							genome.RecycleGenome(result.Genome)
-							poolSubseq.Put(result)
 						}
+						recycleSubseq(result)
 					}
 				}
 
@@ -299,6 +302,7 @@ Attention:
 					}
 
 					defer func() {
+						clear(*items)
 						poolItems.Put(items)
 
 						wg.Done()

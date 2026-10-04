@@ -98,13 +98,26 @@ func RecycleChainer(poolChainers *sync.Pool, chainer *Chainer) {
 func RecycleChainingResult(chains *[]*[]int32) {
 	for _, chain := range *chains {
 		if chain != nil {
-			*chain = (*chain)[:0]
-			poolChain.Put(chain)
+			recycleChain(chain)
 		}
 	}
+	if cap(*chains) > thresholdNSubs {
+		*chains = nil
+		return
+	}
 
+	clear((*chains)[:cap(*chains)])
 	*chains = (*chains)[:0]
 	poolChains.Put(chains)
+}
+
+func recycleChain(chain *[]int32) {
+	if cap(*chain) > chainerInitSize {
+		*chain = nil
+		return
+	}
+	*chain = (*chain)[:0]
+	poolChain.Put(chain)
 }
 
 var poolChains = &sync.Pool{New: func() interface{} {

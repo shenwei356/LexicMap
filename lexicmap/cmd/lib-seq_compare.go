@@ -262,6 +262,7 @@ func recycleRegions(regions *[]*[2]int) {
 	for _, r := range *regions {
 		poolRegion.Put(r)
 	}
+	clear(*regions)
 	*regions = (*regions)[:0]
 	poolRegions.Put(regions)
 }
@@ -326,6 +327,7 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 		RecycleChaining2Result(r.Chains)
 		r.Chains = nil
 	}
+	r.TSeq = nil
 	poolSeqComparatorResult.Put(r)
 }
 
@@ -615,9 +617,16 @@ func TrimSubStrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int, minDist flo
 	}
 
 	if start >= end { // all discarded
+		clear(*subs)
 		*subs = (*subs)[:0]
 	} else {
-		*subs = (*subs)[start : end+1]
+		// Compact retained anchor pointers to the front so the pool can reuse
+		// the full backing array; slicing from start would reduce its capacity.
+		n := copy(*subs, (*subs)[start:end+1])
+		// Remove trailing copies before shortening the slice, otherwise these
+		// unused slots would still retain anchors after recycling.
+		clear((*subs)[n:])
+		*subs = (*subs)[:n]
 	}
 }
 
