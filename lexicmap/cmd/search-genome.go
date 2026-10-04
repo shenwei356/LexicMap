@@ -909,8 +909,8 @@ func init() {
 		formatFlagUsage(`Show extra columns for -S/--only-genome-screening.`))
 
 	// extra info
-	gsearchCmd.Flags().BoolP("show-genome-name", "", false,
+	gsearchCmd.Flags().BoolP("show-genome-name", "g", false,
 		formatFlagUsage(`Show the taxonomic name of subject genome in field 'sname'. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
-	gsearchCmd.Flags().BoolP("show-species-name", "", false,
+	gsearchCmd.Flags().BoolP("show-species-name", "s", false,
 		formatFlagUsage(`Show the species name of subject genome in field 'sname'. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
 }

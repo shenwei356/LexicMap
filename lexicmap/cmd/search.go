@@ -779,9 +779,9 @@ func init() {
 		formatFlagUsage(`Add 1-based genome chunk and subject-sequence index prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 denotes chunk 2 of 3 and s1/10 denotes sequence 1 of 10.`))
 	mapCmd.Flags().BoolP("show-avg-qual", "", false,
 		formatFlagUsage(`Add average quality of the aligned region as a suffix to alenHSP field, e.g., 128:21.6, where 21.6 is the average quality of the aligned region.`))
-	mapCmd.Flags().BoolP("show-genome-name", "", false,
+	mapCmd.Flags().BoolP("show-genome-name", "g", false,
 		formatFlagUsage(`Add the taxonomic name as a prefix to sgenome fied. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
-	mapCmd.Flags().BoolP("show-species-name", "", false,
+	mapCmd.Flags().BoolP("show-species-name", "s", false,
 		formatFlagUsage(`Add the species name as a prefix to sgenome fied. Flags -T/--taxdump and -G/--genome2taxid are needed.`))
 
 }
