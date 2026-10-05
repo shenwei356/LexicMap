@@ -39,6 +39,7 @@ type Query struct {
 	seq    []byte
 	qual   []byte
 	result *[]*SearchResult
+	stream *resultStreamer // formatted results buffered in a temp file
 }
 
 // Reset reset the data for next round of using
@@ -47,6 +48,7 @@ func (q *Query) Reset() {
 	q.seq = q.seq[:0]
 	q.qual = q.qual[:0]
 	q.result = nil
+	q.stream = nil
 }
 
 var poolQuery = &sync.Pool{New: func() interface{} {

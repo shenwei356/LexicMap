@@ -21,11 +21,15 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +38,118 @@ import (
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/spf13/cobra"
 )
+
+// streamRec locates the formatted rows of one genome hit in a stream file.
+type streamRec struct {
+	score float64 // SimilarityScore of the genome's best HSP, for ordering
+	off   int64
+	size  int64
+}
+
+// resultStreamer buffers formatted result rows in a temporary file instead
+// of keeping SearchResult objects in memory until the query finishes.
+// Stored rows contain only the per-genome fields (sgenome onward); drain()
+// prepends the "query\tqlen\thits" columns to every row once the final
+// number of hits is known. The file is unlinked right after creation so it
+// is reclaimed by the kernel on close or crash (POSIX).
+// See https://github.com/shenwei356/LexicMap/issues/37
+type resultStreamer struct {
+	dir      string   // directory for the temp file (prefer a real disk, not tmpfs)
+	fh       *os.File // lazily created on the first emitted result
+	bw       *bufio.Writer
+	name     string        // fh.Name(), kept for removal if unlink failed
+	unlinked bool          // fh was unlinked after creation
+	recs     []streamRec   // one record per emitted genome hit
+	off      int64         // write offset in fh
+	buf      *bytes.Buffer // scratch buffer for one genome's rows
+}
+
+// emit formats one genome hit and appends its rows (per-genome fields only)
+// to the stream file.
+func (s *resultStreamer) emit(r *SearchResult, writeRows func(io.Writer, *SearchResult)) {
+	// score for ordering, same key as the buffered path's final sort.
+	// SortBySeqID reorders SimilarityDetails by sequence id afterwards,
+	// so capture the score first.
+	score := (*r.SimilarityDetails)[0].SimilarityScore
+	r.SortBySeqID()
+
+	if s.buf == nil {
+		s.buf = &bytes.Buffer{}
+	} else {
+		s.buf.Reset()
+	}
+	writeRows(s.buf, r)
+
+	if s.fh == nil {
+		fh, err := os.CreateTemp(s.dir, "lexicmap-search-*.tsv")
+		checkError(err)
+		s.fh = fh
+		s.name = fh.Name()
+		// unlink while open so no cleanup is needed on crash or exit;
+		// if unlink fails (unusual filesystem) close() removes it instead
+		if err := os.Remove(s.name); err == nil {
+			s.unlinked = true
+		}
+		s.bw = bufio.NewWriterSize(fh, 1<<20)
+	}
+	n, err := s.bw.Write(s.buf.Bytes())
+	checkError(err)
+	s.recs = append(s.recs, streamRec{score: score, off: s.off, size: int64(n)})
+	s.off += int64(n)
+}
+
+// drain writes all buffered rows to outfh, ordered by score like the
+// buffered path, prepending rowPrefix (query\tqlen\thits\t) to every row.
+func (s *resultStreamer) drain(outfh *bufio.Writer, rowPrefix string) {
+	if s.fh == nil {
+		return
+	}
+	checkError(s.bw.Flush())
+
+	slices.SortFunc(s.recs, func(a, b streamRec) int {
+		return cmp.Compare(b.score, a.score)
+	})
+
+	var buf []byte
+	var nRead int
+	var err error
+	var i, start int
+	for _, rec := range s.recs {
+		if int64(cap(buf)) < rec.size {
+			buf = make([]byte, rec.size)
+		} else {
+			buf = buf[:rec.size]
+		}
+		nRead, err = s.fh.ReadAt(buf, rec.off)
+		if err != nil {
+			checkError(err)
+		}
+		// prepend the leading columns to every line (a genome hit may
+		// produce multiple rows, one per HSP)
+		for start = 0; start < nRead; start = i + 1 {
+			i = bytes.IndexByte(buf[start:nRead], '\n')
+			if i < 0 {
+				i = nRead
+			} else {
+				i += start
+			}
+			outfh.WriteString(rowPrefix)
+			outfh.Write(buf[start:i])
+			outfh.WriteByte('\n')
+		}
+	}
+}
+
+// close releases the temporary file.
+func (s *resultStreamer) close() {
+	if s.fh != nil {
+		checkError(s.fh.Close())
+		if !s.unlinked {
+			checkError(os.Remove(s.name))
+		}
+		s.fh = nil
+	}
+}
 
 var mapCmd = &cobra.Command{
 	Use:   "search",
@@ -127,6 +243,7 @@ Result ordering:
 		seq.ValidateSeq = false
 
 		outFile := getFlagString(cmd, "out-file")
+		streamTmpDir := getFlagString(cmd, "stream-tmp-dir")
 
 		var fhLog *os.File
 		if opt.Log2File {
@@ -455,10 +572,110 @@ Result ordering:
 		id2name := idx.BatchGenomeIndex2GenomeID
 		tax := idx.Taxonomy
 
+		// Stream formatted rows to a per-query temp file instead of buffering
+		// all aligned results in RAM when hits are unbounded (topN == 0).
+		// Indexes with chunked genomes still use the buffered path, because
+		// chunks of a genome must be merged before output.
+		// See https://github.com/shenwei356/LexicMap/issues/37
+		streamOutput := idx.opt.TopN == 0 && !idx.hasGenomeChunks
+
+		// writeGenomeRows writes all output rows of one genome hit to w.
+		// rowPrefix is the leading "query\tqlen\thits\t" columns; streamed rows
+		// pass "" and get the prefix from resultStreamer.drain instead.
+		writeGenomeRows := func(w io.Writer, r *SearchResult, rowPrefix string, seqAvgQual *seq.Seq) {
+			_c := 1 // index of the chain within the genome
+			j := 1  // index of the HSP within the chain
+			var strand byte
+			var vSseqid, vAlenHSP, vSgenome string
+			var taxid uint32
+			for _, sd := range *r.SimilarityDetails { // each chain
+				cr := sd.Similarity
+				for _, c := range *cr.Chains { // each match
+					if c == nil {
+						continue
+					}
+
+					if sd.RC {
+						strand = '-'
+					} else {
+						strand = '+'
+					}
+
+					if showSseqIdx {
+						vSseqid = fmt.Sprintf("c%d/%d:s%d/%d:%s", sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID)
+					} else {
+						vSseqid = string(sd.SeqID)
+					}
+
+					if seqAvgQual != nil {
+						vAlenHSP = fmt.Sprintf("%d:%.1f", c.AlignedLength, seqAvgQual.AvgQualOfRegion(33, c.QBegin+1, c.QEnd+1))
+					} else {
+						vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
+					}
+
+					if showSpeciesName {
+						vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
+						for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[r.BatchGenomeIndex]) {
+							if tax.Rank(taxid) == "species" {
+								vSgenome = fmt.Sprintf("%s:%s", tax.Name(taxid), id2name[r.BatchGenomeIndex])
+								break
+							}
+						}
+					} else if showTaxName {
+						vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
+					} else {
+						vSgenome = string(id2name[r.BatchGenomeIndex])
+					}
+
+					fmt.Fprintf(w, "%s%s\t%s\t%.3f\t%d\t%d\t%.3f\t%s\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
+						rowPrefix,
+						vSgenome, vSseqid, r.AlignedFraction,
+						_c,
+						j, c.AlignedFraction, vAlenHSP, c.PIdent, c.Gaps,
+						c.QBegin+1, c.QEnd+1,
+						c.TBegin+1, c.TEnd+1,
+						strand, sd.SeqLen,
+						c.Evalue, c.BitScore,
+					)
+
+					if moreColumns {
+						fmt.Fprintf(w, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
+					}
+
+					fmt.Fprintln(w)
+
+					j++
+				}
+				_c++
+			}
+		}
+
 		// -------  output function -------
 
 		printResult := func(q *Query) {
 			total++
+			if q.stream != nil { // results were streamed to a temp file
+				if len(q.stream.recs) > 0 {
+					if verbose {
+						if (total < 128 && total&7 == 0) || total&127 == 0 {
+							speed = float64(total) / time.Since(timeStart1).Minutes()
+							fmt.Fprintf(os.Stderr, "processed queries: %d, speed: %.3f queries per minute\r", total, speed)
+						}
+					}
+					matched++
+					q.stream.drain(outfh, fmt.Sprintf("%s\t%d\t%d\t", q.seqID, len(q.seq), len(q.stream.recs)))
+				}
+				q.stream.close()
+				q.stream = nil
+
+				poolQuery.Put(q)
+				outfh.Flush()
+
+				if gc && total&gcIntervalMinus1 == 0 {
+					runtime.GC()
+				}
+				return
+			}
 			if q.result == nil { // seqs shorter than K or queries without matches.
 				poolQuery.Put(q)
 
@@ -476,97 +693,17 @@ Result ordering:
 			}
 
 			queryID := q.seqID
-			// var c int
-			// var v *index.SubstrPair
-			// var i int
-			// var subs *[]*index.SubstrPair
-			var sd *SimilarityDetail
-			var cr *SeqComparatorResult
-			var c *Chain2Result
 			var targets = len(*q.result)
 			matched++
 
-			var strand byte
-			var _c, j int
-			var vSseqid string
-			var vAlenHSP string
-			var vSgenome string
-			var taxid uint32
 			var _seq *seq.Seq
 			if showAvgQual {
 				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
 				checkError(err)
 			}
+			rowPrefix := fmt.Sprintf("%s\t%d\t%d\t", queryID, len(q.seq), targets)
 			for _, r := range *q.result { // each genome
-				_c = 1
-				j = 1
-				for _, sd = range *r.SimilarityDetails { // each chain
-					cr = sd.Similarity
-
-					// if sd.RC {
-					// 	strand = '-'
-					// } else {
-					// 	strand = '+'
-					// }
-
-					for _, c = range *cr.Chains { // each match
-						if c == nil {
-							continue
-						}
-
-						if sd.RC {
-							strand = '-'
-						} else {
-							strand = '+'
-						}
-
-						if showSseqIdx {
-							vSseqid = fmt.Sprintf("c%d/%d:s%d/%d:%s", sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID)
-						} else {
-							vSseqid = string(sd.SeqID)
-						}
-
-						if showAvgQual {
-							vAlenHSP = fmt.Sprintf("%d:%.1f", c.AlignedLength, _seq.AvgQualOfRegion(33, c.QBegin+1, c.QEnd+1))
-						} else {
-							vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
-						}
-
-						if showSpeciesName {
-							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
-							for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[r.BatchGenomeIndex]) {
-								if tax.Rank(taxid) == "species" {
-									vSgenome = fmt.Sprintf("%s:%s", tax.Name(taxid), id2name[r.BatchGenomeIndex])
-									break
-								}
-							}
-						} else if showTaxName {
-							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
-						} else {
-							vSgenome = string(id2name[r.BatchGenomeIndex])
-						}
-
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%s\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-							queryID, len(q.seq),
-							targets, vSgenome, vSseqid, r.AlignedFraction,
-							_c,
-							j, c.AlignedFraction, vAlenHSP, c.PIdent, c.Gaps,
-							c.QBegin+1, c.QEnd+1,
-							c.TBegin+1, c.TEnd+1,
-							strand, sd.SeqLen,
-							c.Evalue, c.BitScore,
-						)
-
-						if moreColumns {
-							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
-						}
-
-						fmt.Fprintln(outfh)
-
-						j++
-					}
-					_c++
-				}
+				writeGenomeRows(outfh, r, rowPrefix, _seq)
 			}
 			idx.RecycleSearchResults(q.result)
 			q.result = nil
@@ -641,7 +778,25 @@ Result ordering:
 					}()
 
 					var err error
-					query.result, err = idx.Search(query, nil, idx.opt.Debug)
+					var emit func(*SearchResult)
+					if streamOutput {
+						streamer := &resultStreamer{dir: streamTmpDir}
+						query.stream = streamer
+
+						var _seq *seq.Seq
+						if showAvgQual {
+							_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, query.seq, query.qual)
+							checkError(err)
+						}
+						emit = func(r *SearchResult) {
+							streamer.emit(r, func(w io.Writer, r *SearchResult) {
+								writeGenomeRows(w, r, "", _seq)
+							})
+							idx.RecycleSearchResult(r)
+						}
+					}
+
+					query.result, err = idx.Search(query, nil, idx.opt.Debug, emit)
 					if err != nil {
 						checkError(err)
 					}
@@ -684,6 +839,9 @@ func init() {
 
 	mapCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
+
+	mapCmd.Flags().StringP("stream-tmp-dir", "", os.TempDir(),
+		formatFlagUsage(`Directory for temporary files used to stream search results (only applies when -n/--top-n-genomes is 0 and the index has no chunked genomes). Defaults to $TMPDIR or "/tmp"; set a path on a fast disk with enough space if the default is RAM-backed (tmpfs) or too small.`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))

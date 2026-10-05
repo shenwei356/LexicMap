@@ -1391,7 +1391,13 @@ func (idx *Index) keepGenomeByTaxID(cache *map[uint64]bool, batchGenomeIndex uin
 
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
-func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bool) (*[]*SearchResult, error) {
+//
+// If emit is not nil, each result is passed to emit() (which takes over
+// ownership, including recycling) as soon as its alignment finishes,
+// instead of being accumulated in the returned list. This is used for
+// streaming output when the number of hits is unbounded (TopN == 0) —
+// see https://github.com/shenwei356/LexicMap/issues/37
+func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bool, emit func(*SearchResult)) (*[]*SearchResult, error) {
 	var startTime time.Time
 	// debug := idx.opt.Debug
 
@@ -1975,7 +1981,13 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	// collect hits with good alignment
 	go func() {
 		for r := range ch2 {
-			*rs2 = append(*rs2, r)
+			if emit != nil {
+				// results are emitted (and recycled) as they complete,
+				// keeping memory O(concurrency) instead of O(#hits)
+				emit(r)
+			} else {
+				*rs2 = append(*rs2, r)
+			}
 		}
 
 		done <- 1
