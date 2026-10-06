@@ -481,8 +481,7 @@ Result ordering:
 			// var i int
 			// var subs *[]*index.SubstrPair
 			var sd *SimilarityDetail
-			var cr *SeqComparatorResult
-			var c *Chain2Result
+			var c AlignmentResult
 			var targets = len(*q.result)
 			matched++
 
@@ -501,19 +500,13 @@ Result ordering:
 				_c = 1
 				j = 1
 				for _, sd = range *r.SimilarityDetails { // each chain
-					cr = sd.Similarity
-
 					// if sd.RC {
 					// 	strand = '-'
 					// } else {
 					// 	strand = '+'
 					// }
 
-					for _, c = range *cr.Chains { // each match
-						if c == nil {
-							continue
-						}
-
+					for _, c = range sd.Alignments { // each match
 						if sd.RC {
 							strand = '-'
 						} else {

@@ -1297,6 +1297,68 @@ func (sr *SearchResult) SortBySeqID() {
 	sr.SimilarityDetails = sds
 }
 
+// AlignmentResult contains only data needed after alignment for coverage and output.
+type AlignmentResult struct {
+	AlignedFraction float64
+	PIdent          float64
+	Evalue          float64
+
+	AlignedLength int
+	Gaps          int
+	QBegin        int
+	QEnd          int
+	TBegin        int
+	TEnd          int
+	BitScore      int
+
+	CIGAR     []byte
+	QSeq      []byte
+	TSeq      []byte
+	Alignment []byte
+}
+
+// compactAlignmentResults transfers final output data and releases alignment work objects.
+func compactAlignmentResults(r *SeqComparatorResult) []AlignmentResult {
+	n := 0
+	for _, c := range *r.Chains {
+		if c != nil {
+			n++
+		}
+	}
+	results := make([]AlignmentResult, 0, n)
+	for i, c := range *r.Chains {
+		if c == nil {
+			continue
+		}
+		results = append(results, AlignmentResult{
+			AlignedFraction: c.AlignedFraction,
+			PIdent:          c.PIdent,
+			Evalue:          c.Evalue,
+			AlignedLength:   c.AlignedLength,
+			Gaps:            c.Gaps,
+			QBegin:          c.QBegin,
+			QEnd:            c.QEnd,
+			TBegin:          c.TBegin,
+			TEnd:            c.TEnd,
+			BitScore:        c.BitScore,
+			CIGAR:           c.CIGAR,
+			QSeq:            c.QSeq,
+			TSeq:            c.TSeq,
+			Alignment:       c.Alignment,
+		})
+
+		// The compact result owns the output buffers now.
+		c.CIGAR = nil
+		c.QSeq = nil
+		c.TSeq = nil
+		c.Alignment = nil
+		recycleChain2(c)
+		(*r.Chains)[i] = nil
+	}
+	RecycleSeqComparatorResult(r)
+	return results
+}
+
 // SimilarityDetail is the similarity detail of one reference sequence
 type SimilarityDetail struct {
 	// QBegin int
@@ -1306,7 +1368,7 @@ type SimilarityDetail struct {
 	RC bool
 
 	SimilarityScore float64
-	Similarity      *SeqComparatorResult
+	Alignments      []AlignmentResult
 	// Chain           *[]int
 
 	// sequence details
@@ -1359,8 +1421,8 @@ func (idx *Index) RecycleSearchResult(r *SearchResult) {
 // RecycleSimilarityDetails recycles a list of SimilarityDetails
 func (idx *Index) RecycleSimilarityDetails(sds *[]*SimilarityDetail) {
 	for _, sd := range *sds {
-		RecycleSeqComparatorResult(sd.Similarity)
-		sd.Similarity = nil
+		clear(sd.Alignments)
+		sd.Alignments = nil
 		poolSimilarityDetail.Put(sd)
 	}
 	recycleSimilarityDetailSlice(sds)
@@ -2501,8 +2563,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 							if hasResult {
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 								sd.RC = rc
-								sd.Similarity = r2
-								// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+								sd.Alignments = compactAlignmentResults(r2)
 								sd.SimilarityScore = maxSimilarityScore
 								sd.SeqID = sd.SeqID[:0]
 								// fmt.Printf("target seq a: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
@@ -2768,8 +2829,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					if hasResult {
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 						sd.RC = rc
-						sd.Similarity = r2
-						// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
+						sd.Alignments = compactAlignmentResults(r2)
 						sd.SimilarityScore = maxSimilarityScore
 						sd.SeqID = sd.SeqID[:0]
 						// fmt.Printf("target seq b: iSeq:%d, %s, pident:%f\n", iSeq, *tSeq.SeqIDs[iSeq], (*r2.Chains)[j].PIdent)
@@ -2835,12 +2895,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			regions := poolRegions.Get().(*[]*[2]int)
 			*regions = (*regions)[:0]
 			for _, sd := range *sds {
-				for _, c := range *sd.Similarity.Chains {
-					if c != nil {
-						region := poolRegion.Get().(*[2]int)
-						region[0], region[1] = c.QBegin, c.QEnd
-						*regions = append(*regions, region)
-					}
+				for _, c := range sd.Alignments {
+					region := poolRegion.Get().(*[2]int)
+					region[0], region[1] = c.QBegin, c.QEnd
+					*regions = append(*regions, region)
 				}
 			}
 			alignedBasesGenome = coverageLen(regions)
@@ -3001,12 +3059,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			regions := poolRegions.Get().(*[]*[2]int)
 			*regions = (*regions)[:0]
 			for _, sd := range *r.SimilarityDetails {
-				for _, c := range *sd.Similarity.Chains {
-					if c != nil {
-						region := poolRegion.Get().(*[2]int)
-						region[0], region[1] = c.QBegin, c.QEnd
-						*regions = append(*regions, region)
-					}
+				for _, c := range sd.Alignments {
+					region := poolRegion.Get().(*[2]int)
+					region[0], region[1] = c.QBegin, c.QEnd
+					*regions = append(*regions, region)
 				}
 			}
 			alignedBasesGenome = coverageLen(regions)

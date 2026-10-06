@@ -106,8 +106,8 @@ func TestRecycleTransferredResultSlicesPreservesLiveHSP(t *testing.T) {
 	chains := []*Chain2Result{c, nil, c}
 	chainBacking := chains
 	chains = chains[:1]
-	cr := &SeqComparatorResult{Chains: &chains}
-	sd := &SimilarityDetail{Similarity: cr}
+	alignments := []AlignmentResult{{QBegin: 5, QEnd: 15, QSeq: []byte("ACGT")}}
+	sd := &SimilarityDetail{Alignments: alignments}
 	details := []*SimilarityDetail{sd, nil, sd}
 	detailBacking := details
 	details = details[:1]
@@ -125,26 +125,51 @@ func TestRecycleTransferredResultSlicesPreservesLiveHSP(t *testing.T) {
 			t.Fatal("recycled slice retains references outside its current length")
 		}
 	}
-	if c.QBegin != 5 || c.QEnd != 15 || string(c.QSeq) != "ACGT" || sd.Similarity != cr {
+	if c.QBegin != 5 || c.QEnd != 15 || string(c.QSeq) != "ACGT" || !reflect.DeepEqual(sd.Alignments, alignments) {
 		t.Fatal("slice recycling modified an HSP still owned by another result")
 	}
 	// Release the objects once, from their final owner.
-	cr.Chains = nil
-	RecycleSeqComparatorResult(cr)
-	sd.Similarity = nil
+	sd.Alignments = nil
 	recycleChain2(c)
 }
 
-func TestRecycleSearchResultsReleasesNestedReferences(t *testing.T) {
+func TestCompactAlignmentResultsReleasesWorkObjects(t *testing.T) {
 	c := &Chain2Result{
+		AlignedFraction: 12.5, PIdent: 98.75, Evalue: 1e-10,
+		AlignedLength: 40, Gaps: 2, QBegin: 5, QEnd: 44,
+		TBegin: 10, TEnd: 49, BitScore: 87,
+		CIGAR: []byte("40M"), QSeq: []byte("ACGT"),
+		TSeq: []byte("AGGT"), Alignment: []byte("|.||"),
+	}
+	chains := []*Chain2Result{nil, c}
+	chainBacking := chains
+	cr := &SeqComparatorResult{Chains: &chains, TSeq: []byte("borrowed")}
+	alignments := compactAlignmentResults(cr)
+	if len(alignments) != 1 {
+		t.Fatalf("got %d compact alignments, want 1", len(alignments))
+	}
+	a := alignments[0]
+	if a.AlignedFraction != 12.5 || a.PIdent != 98.75 || a.Evalue != 1e-10 ||
+		a.AlignedLength != 40 || a.Gaps != 2 || a.QBegin != 5 || a.QEnd != 44 ||
+		a.TBegin != 10 || a.TEnd != 49 || a.BitScore != 87 ||
+		string(a.CIGAR) != "40M" || string(a.QSeq) != "ACGT" ||
+		string(a.TSeq) != "AGGT" || string(a.Alignment) != "|.||" {
+		t.Fatalf("compact alignment changed output data: %+v", a)
+	}
+	if cr.Chains != nil || cr.TSeq != nil || chainBacking[0] != nil || chainBacking[1] != nil ||
+		c.CIGAR != nil || c.QSeq != nil || c.TSeq != nil || c.Alignment != nil {
+		t.Fatal("alignment work objects retained transferred data")
+	}
+}
+
+func TestRecycleSearchResultsReleasesNestedReferences(t *testing.T) {
+	alignments := []AlignmentResult{{
 		CIGAR: []byte("1M"),
 		QSeq:  make([]byte, 1, maxPooledAlignmentBytes+1),
 		TSeq:  []byte("A"), Alignment: []byte("|"),
-	}
-	chains := []*Chain2Result{c, nil}
-	chainBacking := chains
-	cr := &SeqComparatorResult{Chains: &chains, TSeq: []byte("A")}
-	sd := &SimilarityDetail{Similarity: cr}
+	}}
+	alignmentBacking := alignments
+	sd := &SimilarityDetail{Alignments: alignments}
 	details := []*SimilarityDetail{sd}
 	detailBacking := details
 	subs := make([]*SubstrPair, 1, thresholdNSubs+1)
@@ -156,16 +181,16 @@ func TestRecycleSearchResultsReleasesNestedReferences(t *testing.T) {
 	results := []*SearchResult{r}
 	resultBacking := results
 	(&Index{}).RecycleSearchResults(&results)
-	if len(results) != 0 || resultBacking[0] != nil || detailBacking[0] != nil || chainBacking[0] != nil {
+	if len(results) != 0 || resultBacking[0] != nil || detailBacking[0] != nil {
 		t.Fatal("recycled results retain nested references")
 	}
-	if r.SimilarityDetails != nil || sd.Similarity != nil || cr.Chains != nil || cr.TSeq != nil {
+	if r.SimilarityDetails != nil || sd.Alignments != nil {
 		t.Fatal("recycled objects retain nested results or sequence data")
 	}
 	if r.Subs != nil || r.Chains != nil || subs != nil || seedChain != nil || seedChains != nil {
 		t.Fatal("recycled result retains oversized seed arrays")
 	}
-	if c.CIGAR != nil || c.QSeq != nil || c.TSeq != nil || c.Alignment != nil {
+	if !reflect.DeepEqual(alignmentBacking[0], AlignmentResult{}) {
 		t.Fatal("oversized alignment buffers were retained")
 	}
 }
