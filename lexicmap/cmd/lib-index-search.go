@@ -1192,9 +1192,54 @@ type SearchResult struct {
 	Score  float32 //  score for sorting
 	Chains *[]*[]int32
 
+	chainRegions []seedChainRegion // endpoints needed by alignment, without anchor references
+
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
 	AlignedFraction   float64              // query coverage per genome
+}
+
+// seedChainRegion stores the inclusive, unextended bounds used by alignment.
+// Chaining needs every anchor, but later stages only need the endpoints and strand.
+type seedChainRegion struct {
+	qBegin, qEnd int32
+	tBegin, tEnd int32
+	rc           bool
+}
+
+func (r *SearchResult) prepareAlignmentRegions() {
+	// Preserve the chain order previously used by alignment for file seeking.
+	if len(*r.Chains) > 1 {
+		slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
+			return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
+		})
+	}
+	r.chainRegions = make([]seedChainRegion, len(*r.Chains))
+	for i, chain := range *r.Chains {
+		first := (*r.Subs)[(*chain)[0]]
+		last := (*r.Subs)[(*chain)[len(*chain)-1]]
+		rc := first.TBegin > last.TBegin
+		if len(*chain) == 1 {
+			rc = last.QRC != last.TRC
+		}
+		region := seedChainRegion{
+			qBegin: first.QBegin, qEnd: last.QBegin + int32(last.Len) - 1,
+			tBegin: first.TBegin, tEnd: last.TBegin + int32(last.Len) - 1,
+			rc: rc,
+		}
+		if rc {
+			// Match the existing reverse-strand bounds, including the last seed's length.
+			region.tBegin = last.TBegin
+			region.tEnd = first.TBegin + int32(last.Len) - 1
+		}
+		r.chainRegions[i] = region
+	}
+
+	// The regions own their values; pending targets no longer need anchors or paths.
+	RecycleChainingResult(r.Chains)
+	r.Chains = nil
+	RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+	r.Subs = nil
 }
 
 func (sr *SearchResult) SortBySeqID() {
@@ -1263,7 +1308,6 @@ type SimilarityDetail struct {
 	SimilarityScore float64
 	Similarity      *SeqComparatorResult
 	// Chain           *[]int
-	NSeeds int
 
 	// sequence details
 	SeqLen int
@@ -1285,12 +1329,14 @@ func (r *SearchResult) Reset() {
 	r.Subs = nil
 	r.Score = 0
 	r.Chains = nil
+	r.chainRegions = nil
 	r.SimilarityDetails = nil
 	r.AlignedFraction = 0
 }
 
 // RecycleSearchResults recycles a search result object
 func (idx *Index) RecycleSearchResult(r *SearchResult) {
+	r.chainRegions = nil
 	if r.Subs != nil {
 		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
 		r.Subs = nil
@@ -1694,7 +1740,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 							r.NumSeqs = 0
 							r.Subs = subs
 							r.Score = 0
-							r.Chains = nil            // important
+							r.Chains = nil // important
+							r.chainRegions = nil
 							r.SimilarityDetails = nil // important
 							r.AlignedFraction = 0
 
@@ -1882,6 +1929,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			return
 		}
 
+		// Retain only chain bounds while this target waits for alignment.
+		r.prepareAlignmentRegions()
 		ch1 <- r
 
 		// idx.poolChainers.Put(chainer)
@@ -2091,7 +2140,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			}
 		}
 
-		var sub *SubstrPair
 		qlen := len(s)
 		var rc bool
 		var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
@@ -2113,71 +2161,16 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 		var tSeq *genome.Genome
 
-		// sort chains according to coordinates for faster file seeking
-		if len(*r.Chains) > 1 {
-			// sort.Slice(*r.Chains, func(i, j int) bool {
-			// 	return (*r.Subs)[(*(*r.Chains)[i])[0]].TBegin < (*r.Subs)[(*(*r.Chains)[j])[0]].TBegin
-			// })
-			slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
-				return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
-			})
-		}
-
 		// check sequences from all chains
-		var nSeeds int
-		for i, chain := range *r.Chains { // for each lexichash chain
+		for _, region := range r.chainRegions { // for each lexichash chain
 			// ------------------------------------------------------------------------
 			// extract subsequence from the refseq for comparing
 
-			// fmt.Printf("\n----------------- [ lexichash chain %d ] --------------\n", i+1)
-			// for _i, _c := range *chain {
-			// 	fmt.Printf("  %d, %s\n", _i, (*r.Subs)[_c])
-			// }
-
-			nSeeds = len(*chain)
-
-			// the first seed pair
-			sub = (*r.Subs)[(*chain)[0]]
-			// fmt.Printf("  first: %s\n", sub)
-			qb = int(sub.QBegin)
-			tb = int(sub.TBegin)
-
-			// the last seed pair
-			sub = (*r.Subs)[(*chain)[nSeeds-1]]
-			// fmt.Printf("  last: %s\n", sub)
-			qe = int(sub.QBegin) + int(sub.Len) - 1
-			te = int(sub.TBegin) + int(sub.Len) - 1
-			// fmt.Printf("  (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-
-			if nSeeds == 1 { // if there's only one seed, need to check the strand information
-				rc = sub.QRC != sub.TRC
-			} else { // check the strand according to coordinates of seeds
-				rc = tb > int(sub.TBegin)
-			}
-			// fmt.Printf("  rc: %v\n", rc)
-
-			// recycle chain ASAP
-			recycleChain(chain)
-			(*r.Chains)[i] = nil
-
-			// extend the locations in the reference
-			if rc { // reverse complement
-				// tBegin = int(sub.TBegin) - min(qlen-qe-1, extLen)
-				tBegin = int(sub.TBegin) - extLen
-				if tBegin < 0 {
-					tBegin = 0
-				}
-				// tEnd = tb + int(sub.Len) - 1 + min(qb, extLen)
-				tEnd = tb + int(sub.Len) - 1 + extLen
-			} else {
-				// tBegin = tb - min(qb, extLen)
-				tBegin = tb - extLen
-				if tBegin < 0 {
-					tBegin = 0
-				}
-				// tEnd = te + min(qlen-qe-1, extLen)
-				tEnd = te + extLen
-			}
+			qb, qe = int(region.qBegin), int(region.qEnd)
+			rc = region.rc
+			// Extend the saved bounds using the same limits as before.
+			tBegin = max(int(region.tBegin)-extLen, 0)
+			tEnd = int(region.tEnd) + extLen
 
 			// extend the locations in the query
 			qBegin = qb - min(qb, extLen)
@@ -2508,8 +2501,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 							if hasResult {
 								sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 								sd.RC = rc
-								// sd.Chain = (*r.Chains)[i]
-								sd.NSeeds = nSeeds
 								sd.Similarity = r2
 								// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
 								sd.SimilarityScore = maxSimilarityScore
@@ -2777,7 +2768,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					if hasResult {
 						sd := poolSimilarityDetail.Get().(*SimilarityDetail)
 						sd.RC = rc
-						sd.NSeeds = nSeeds
 						sd.Similarity = r2
 						// sd.SimilarityScore = float64(r2.AlignedBases) * (*r2.Chains)[j].PIdent // chain's aligned base * pident of 1st hsp.
 						sd.SimilarityScore = maxSimilarityScore
@@ -2814,12 +2804,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			RecycleSeqComparatorResult(cr)
 		}
 
-		// recyle chains ASAP
-		RecycleChainingResult(r.Chains)
-		r.Chains = nil
-
-		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
-		r.Subs = nil
+		r.chainRegions = nil
 
 		genome.RecycleGenome(tSeq)
 

@@ -7,6 +7,63 @@ import (
 	"testing"
 )
 
+func TestPrepareAlignmentRegionsPreservesBoundsAndReleasesSeeds(t *testing.T) {
+	// Interior and unused anchors must not survive conversion to alignment bounds.
+	subs := make([]*SubstrPair, 6, thresholdNSubs+1)
+	copy(subs, []*SubstrPair{
+		{QBegin: 10, TBegin: 600, Len: 31},
+		{QBegin: 30, TBegin: 580, Len: 19},
+		{QBegin: 50, TBegin: 550, Len: 25},
+		{QBegin: 100, TBegin: 200, Len: 22},
+		{QBegin: 150, TBegin: 250, Len: 29},
+		{QBegin: 999, TBegin: 999, Len: 31},
+	})
+	reverse, forward := []int32{0, 1, 2}, []int32{3, 4}
+	chains := []*[]int32{&reverse, &forward}
+	chainBacking := chains
+	r := &SearchResult{Subs: &subs, Chains: &chains, Score: 123}
+	r.prepareAlignmentRegions()
+	want := []seedChainRegion{
+		{qBegin: 100, qEnd: 178, tBegin: 200, tEnd: 278},
+		// Preserve the existing last-anchor length at the reverse chain's upper bound.
+		{qBegin: 10, qEnd: 74, tBegin: 550, tEnd: 624, rc: true},
+	}
+	if !reflect.DeepEqual(r.chainRegions, want) || r.Score != 123 {
+		t.Fatalf("alignment bounds/order or chaining score changed: %+v, score=%v", r.chainRegions, r.Score)
+	}
+	if r.Subs != nil || r.Chains != nil || subs != nil {
+		t.Fatal("pending alignment still retains anchors or chain paths")
+	}
+	if len(reverse) != 0 || len(forward) != 0 || chainBacking[0] != nil || chainBacking[1] != nil {
+		t.Fatal("seed paths were not recycled after saving alignment bounds")
+	}
+	(&Index{}).RecycleSearchResult(r)
+	if r.chainRegions != nil {
+		t.Fatal("recycled result retains alignment bounds")
+	}
+}
+
+func TestPrepareAlignmentRegionsSingleAnchorStrands(t *testing.T) {
+	for _, qrc := range []bool{false, true} {
+		for _, trc := range []bool{false, true} {
+			subs := []*SubstrPair{{QBegin: 7, TBegin: 11, Len: 19, QRC: qrc, TRC: trc}}
+			backing := subs
+			path := []int32{0}
+			chains := []*[]int32{&path}
+			r := &SearchResult{Subs: &subs, Chains: &chains}
+			r.prepareAlignmentRegions()
+			want := []seedChainRegion{{qBegin: 7, qEnd: 25, tBegin: 11, tEnd: 29, rc: qrc != trc}}
+			if !reflect.DeepEqual(r.chainRegions, want) {
+				t.Fatalf("qrc=%v trc=%v: got %+v, want %+v", qrc, trc, r.chainRegions, want)
+			}
+			if r.Subs != nil || r.Chains != nil || backing[0] != nil {
+				t.Fatal("single-anchor result retains recycled seeds")
+			}
+			(&Index{}).RecycleSearchResult(r)
+		}
+	}
+}
+
 func TestRecycleSubstrPairsDropsOversizedCapacityAfterDeduplication(t *testing.T) {
 	for _, long := range []bool{false, true} {
 		limit := thresholdNSubs

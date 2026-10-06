@@ -27,6 +27,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
+    - Release seed anchors and chain paths after chaining, keeping only the bounds needed for alignment.
     - **Fixed a data race bug in extension of pseudoalignment region**.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
