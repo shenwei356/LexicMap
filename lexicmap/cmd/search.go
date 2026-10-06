@@ -511,6 +511,8 @@ Result ordering:
 			var taxid uint32
 			var cigar, qseq, tseq, alignment, payloadScratch []byte
 			var payloadErr error
+			var spillReadCount, spillReadBytes uint64
+			var spillReadDuration time.Duration
 			var _seq *seq.Seq
 			if showAvgQual {
 				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
@@ -530,7 +532,16 @@ Result ordering:
 						c = &sd.Alignments[i]
 						cigar, qseq, tseq, alignment = c.CIGAR, c.QSeq, c.TSeq, c.Alignment
 						if q.alignmentPayload != nil && q.alignmentPayload.spilled {
+							var spillReadStart time.Time
+							if idx.opt.Debug {
+								spillReadStart = time.Now()
+							}
 							cigar, qseq, tseq, alignment, payloadScratch, payloadErr = q.alignmentPayload.payload(c, payloadScratch)
+							if idx.opt.Debug {
+								spillReadDuration += time.Since(spillReadStart)
+								spillReadCount++
+								spillReadBytes += uint64(len(cigar) + len(qseq) + len(tseq) + len(alignment))
+							}
 							if payloadErr != nil {
 								_ = q.closeAlignmentPayload()
 								checkError(payloadErr)
@@ -589,6 +600,11 @@ Result ordering:
 					}
 					_c++
 				}
+			}
+			if idx.opt.Debug && spillReadCount > 0 {
+				log.Debugf("%s (%s bp): finished reading spilled alignment payloads (%s HSPs, %s) in %s",
+					queryID, humanize.Comma(int64(len(q.seq))), humanize.Comma(int64(spillReadCount)),
+					humanize.IBytes(spillReadBytes), spillReadDuration)
 			}
 			idx.RecycleSearchResults(q.result)
 			q.result = nil

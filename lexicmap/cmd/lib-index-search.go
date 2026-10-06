@@ -1581,7 +1581,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int) // later, we will reuse this
 	var wg sync.WaitGroup
+	var seedSearcherDebugWG sync.WaitGroup
+	var seedSearcherDebugMu sync.Mutex
+	var nSeedSearchersFinished int
 	var beginM, endM int // range of mask of a chunk
+	var nKVSearchResults, nKVValues uint64
 
 	// -----------------------
 	// reverse k-mers
@@ -1705,9 +1709,15 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		filterByGenomeID := genomeIds != nil
 
 		for srs := range ch {
+			if debug {
+				nKVSearchResults += uint64(len(*srs))
+			}
 			// different k-mers in subjects,
 			// most of cases, there are more than one
 			for _, sr = range *srs {
+				if debug {
+					nKVValues += uint64(len(sr.Values))
+				}
 				// matched length
 				kPrefix = int(sr.Len)
 				// mismatch = sr.Mismatch
@@ -1843,11 +1853,19 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		}
 
 		wg.Add(1)
+		if debug {
+			seedSearcherDebugWG.Add(1)
+		}
 		go func(iS, beginM, endM int) {
 			var srs *[]*kv.SearchResult
 			var srs2 *[]*kv.SearchResult
 			var err error
+			var searchStart time.Time
+			var searchDuration time.Duration
 			if inMemorySearch {
+				if debug {
+					searchStart = time.Now()
+				}
 				// prefix search
 				// srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 				srs, err = searchersIM[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
@@ -1868,6 +1886,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				kv.RecycleSearchResults(srs2)
 			} else {
 				idx.searcherTokens[iS] <- 1 // get the access to the searcher
+				if debug {
+					searchStart = time.Now()
+				}
 
 				// prefix search
 				// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
@@ -1890,6 +1911,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 				<-idx.searcherTokens[iS] // return the access
 			}
+			if debug {
+				searchDuration = time.Since(searchStart)
+			}
 			if err != nil {
 				checkError(err)
 			}
@@ -1901,12 +1925,29 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			}
 
 			wg.Done()
+			if debug {
+				seedSearcherDebugMu.Lock()
+				nSeedSearchersFinished++
+				log.Debugf("%s (%s bp): seed searcher finished %d/%d (masks [%d, %d)): reading/decoding took %s",
+					query.seqID, humanize.Comma(int64(len(query.seq))), nSeedSearchersFinished, nSearchers,
+					beginM, endM, searchDuration)
+				seedSearcherDebugMu.Unlock()
+				seedSearcherDebugWG.Done()
+			}
 			// <-tokensS
 		}(iS, beginM, endM)
 	}
 	wg.Wait()
+	var producersDoneAt time.Time
+	if debug {
+		producersDoneAt = time.Now()
+	}
 	close(ch)
 	<-done
+	var collectorDrainDuration time.Duration
+	if debug {
+		collectorDrainDuration = time.Since(producersDoneAt)
+	}
 
 	var v *[]uint64
 	for _, v = range *_kmersR {
@@ -1921,12 +1962,23 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	idx.poolLocses.Put(_locsesR)
 
 	if debug {
+		seedMatchingDuration := time.Since(startTime)
+		seedSearcherDebugWG.Wait()
+		var nAnchors uint64
+		for _, r := range *m {
+			nAnchors += uint64(len(*r.Subs))
+		}
+		log.Debugf("%s (%s bp): seed collector: kv.SearchResult=%s, sum(len(sr.Values))=%s, anchors=%s, new genome entries=%s; drained in %s after all producers finished",
+			query.seqID, humanize.Comma(int64(len(query.seq))),
+			humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),
+			humanize.Comma(int64(nAnchors)), humanize.Comma(int64(len(*m))), collectorDrainDuration)
+
 		if idx.filterByTaxId {
 			log.Debugf("%s (%s bp): finished seed-matching with filtering by TaxId (%s genome hits) in %s",
-				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), time.Since(startTime))
+				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), seedMatchingDuration)
 		} else {
 			log.Debugf("%s (%s bp): finished seed-matching (%s genome hits) in %s",
-				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), time.Since(startTime))
+				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), seedMatchingDuration)
 		}
 
 		startTime = time.Now()

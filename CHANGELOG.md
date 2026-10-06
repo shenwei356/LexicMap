@@ -33,7 +33,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**.
+    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**, via idea from @d-callan [#38](https://github.com/shenwei356/LexicMap/pull/38)
     - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
     - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
     - Added new flags `-g/--show-genome-name` `-s/--show-species-name` to add the taxonomic/species name as a prefix to sgenome fied.
