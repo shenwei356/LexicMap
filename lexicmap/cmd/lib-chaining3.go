@@ -121,22 +121,28 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 
 	// compute scores
-	var s, m, M, g, d float64
+	// Signed, wide intermediates preserve negative scores and the existing
+	// truncation to a signed 32-bit score when packing each matrix entry.
+	var s, m, M, g, d int64
 	var mj, Mi int
 	var a, b *SubstrPair
-	maxGap := float64(ce.options.MaxGap)
-	maxDistance := float64(ce.options.MaxDistance)
+	maxGap := int64(ce.options.MaxGap)
+	maxDistance := int64(ce.options.MaxDistance)
+	var aQBegin, aTBegin int32
 
 	// initialize
 	a = (*subs)[0]
-	m = float64(a.Len) - distance2(sub0, a) - gap2(sub0, a)
+	d, g = chaining3DistanceAndGap(sub0.QBegin, sub0.TBegin, a.QBegin, a.TBegin)
+	m = int64(a.Len) - d - g
 	*maxscoresIdxs = append(*maxscoresIdxs, int64(m)<<32)
 
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor
+		aQBegin, aTBegin = a.QBegin, a.TBegin
 
 		// just initialize the max score, which comes from the current seed
-		m, mj = float64(a.Len)-distance2(sub0, a)-gap2(sub0, a), i
+		d, g = chaining3DistanceAndGap(sub0.QBegin, sub0.TBegin, aQBegin, aTBegin)
+		m, mj = int64(a.Len)-d-g, i
 
 		j = i
 		_bCount = 0
@@ -150,28 +156,27 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 			b = (*subs)[j] // previous seed/anchor
 
 			// filter out messed/crossed anchors
-			if b.QBegin == a.QBegin || b.TBegin > a.TBegin {
+			if b.QBegin == aQBegin || b.TBegin > aTBegin {
 				continue
 			}
 
 			_bCount++
 
-			_bBase = a.QBegin - b.QBegin - int32(b.Len)
+			_bBase = aQBegin - b.QBegin - int32(b.Len)
 			if !(_bBase <= bandBase || _bCount <= bandCount) {
 				break
 			}
 
-			d = distance2(a, b)
+			d, g = chaining3DistanceAndGap(aQBegin, aTBegin, b.QBegin, b.TBegin)
 			if d > maxDistance {
 				continue
 			}
 
-			g = gap2(a, b)
 			if g > maxGap {
 				continue
 			}
 
-			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - d - g // compute the score
+			s = (*maxscoresIdxs)[j]>>32 + int64(b.Len) - d - g // compute the score
 
 			if s >= m { // update the max score of current seed/anchor
 				m = s
@@ -199,7 +204,7 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 
 	// backtrack -----------------------------------------------------------
 
-	minScore := float64(ce.options.MinScore)
+	minScore := int64(ce.options.MinScore)
 	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,
@@ -296,4 +301,21 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 	}
 
 	return nil
+}
+
+// Match distance2/gap2's int32 coordinate subtraction, but widen before
+// taking absolute values so MinInt32 remains representable. Both penalties
+// share the same two absolute coordinate differences.
+func chaining3DistanceAndGap(aQ, aT, bQ, bT int32) (distance, gap int64) {
+	qDiff, tDiff := int64(aQ-bQ), int64(aT-bT)
+	if qDiff < 0 {
+		qDiff = -qDiff
+	}
+	if tDiff < 0 {
+		tDiff = -tDiff
+	}
+	if qDiff > tDiff {
+		return qDiff, qDiff - tDiff
+	}
+	return tDiff, tDiff - qDiff
 }

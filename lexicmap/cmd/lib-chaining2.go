@@ -238,11 +238,13 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 
 	// compute scores
-	var s, m, M, g float64
+	// Scores and gaps are integral. Keep intermediates wider than the packed
+	// 32-bit score so comparisons retain their original pre-packing values.
+	var s, m, M, g int64
 	// var d float64
 	var mj, Mi int
 	var a, b *SubstrPair
-	maxGap := float64(ce.options.MaxGap)
+	maxGap := int64(ce.options.MaxGap)
 	// maxDistance := float64(ce.options.MaxDistance)
 	// (*scores)[0] = (*subs)[0].Len
 	var aQBegin, aTBegin, bQBegin, bTBegin int32
@@ -253,7 +255,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		// k = band * i   // index of current seed in the score matrix
 
 		// just initialize the max score, which comes from the current seed
-		m, mj = float64(a.Len), i
+		m, mj = int64(a.Len), i
 		// (*scores)[k] = m
 
 		// Cache frequently accessed fields to reduce memory access overhead
@@ -306,9 +308,9 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 			}
 			// Compute absolute difference without converting to float twice
 			if qDiff > tDiff {
-				g = float64(qDiff - tDiff)
+				g = int64(qDiff - tDiff)
 			} else {
-				g = float64(tDiff - qDiff)
+				g = int64(tDiff - qDiff)
 			}
 
 			if g > maxGap { // limit the gap. necessary?
@@ -317,7 +319,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 			// s = (*maxscores)[j] + int(b.Len) - g // compute the score
 			// s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
-			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - g // compute the score
+			s = int64((*maxscoresIdxs)[j]>>32) + int64(b.Len) - g // compute the score
 			// (*scores)[k] = s                // necessary?
 
 			if s >= m { // update the max score of current seed/anchor
@@ -348,7 +350,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 
 	// backtrack
 
-	minScore := float64(ce.options.MinScore)
+	minScore := int64(ce.options.MinScore)
 	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,
@@ -366,7 +368,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 		// maxscores,
 		maxscoresIdxs,
 		0,
-		minScore,
+		float64(minScore),
 		minAlignLen,
 		ce.options.MinIdentity,
 		paths,
