@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/spf13/cobra"
@@ -53,6 +54,12 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
+  3. For searches with -a/--all, --max-align-result-memory can limit the global memory retained
+     for CIGAR strings, aligned query/subject sequences, and alignment text. When the limit is
+     exceeded, each affected query stores these fields in one file in the system temporary
+     directory and removes it after output. Concurrent queries use separate files. On Unix,
+     set TMPDIR to choose a temporary directory on a fast disk with sufficient free space.
+     This limit applies only to these output fields and is not a total process memory limit.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -172,6 +179,11 @@ Result ordering:
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 		moreColumns := getFlagBool(cmd, "all")
+		maxAlignResultMemory, err := ParseByteSize(getFlagString(cmd, "max-align-result-memory"))
+		checkError(err)
+		if !moreColumns {
+			maxAlignResultMemory = 0
+		}
 		showSseqIdx := getFlagBool(cmd, "show-sseq-idx")
 		showAvgQual := getFlagBool(cmd, "show-avg-qual")
 
@@ -349,6 +361,8 @@ Result ordering:
 
 			OutputSeq: moreColumns,
 
+			MaxAlignResultMemory: maxAlignResultMemory,
+
 			Debug: getFlagBool(cmd, "debug"),
 
 			TaxdumpDir:              taxdumpDir,
@@ -416,6 +430,9 @@ Result ordering:
 			if sopt.TopNChains > 0 {
 				log.Infof("  keep the top %d chains", sopt.TopNChains)
 			}
+			if sopt.MaxAlignResultMemory > 0 {
+				log.Infof("  maximum retained alignment output memory: %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))
+			}
 
 			if gc {
 				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
@@ -460,6 +477,7 @@ Result ordering:
 		printResult := func(q *Query) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
+				checkError(q.closeAlignmentPayload())
 				poolQuery.Put(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
@@ -481,7 +499,7 @@ Result ordering:
 			// var i int
 			// var subs *[]*index.SubstrPair
 			var sd *SimilarityDetail
-			var c AlignmentResult
+			var c *AlignmentResult
 			var targets = len(*q.result)
 			matched++
 
@@ -491,6 +509,8 @@ Result ordering:
 			var vAlenHSP string
 			var vSgenome string
 			var taxid uint32
+			var cigar, qseq, tseq, alignment, payloadScratch []byte
+			var payloadErr error
 			var _seq *seq.Seq
 			if showAvgQual {
 				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
@@ -506,7 +526,16 @@ Result ordering:
 					// 	strand = '+'
 					// }
 
-					for _, c = range sd.Alignments { // each match
+					for i := range sd.Alignments { // each match
+						c = &sd.Alignments[i]
+						cigar, qseq, tseq, alignment = c.CIGAR, c.QSeq, c.TSeq, c.Alignment
+						if q.alignmentPayload != nil && q.alignmentPayload.spilled {
+							cigar, qseq, tseq, alignment, payloadScratch, payloadErr = q.alignmentPayload.payload(c, payloadScratch)
+							if payloadErr != nil {
+								_ = q.closeAlignmentPayload()
+								checkError(payloadErr)
+							}
+						}
 						if sd.RC {
 							strand = '-'
 						} else {
@@ -551,7 +580,7 @@ Result ordering:
 						)
 
 						if moreColumns {
-							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", c.CIGAR, c.QSeq, c.TSeq, c.Alignment)
+							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", cigar, qseq, tseq, alignment)
 						}
 
 						fmt.Fprintln(outfh)
@@ -563,6 +592,7 @@ Result ordering:
 			}
 			idx.RecycleSearchResults(q.result)
 			q.result = nil
+			checkError(q.closeAlignmentPayload())
 
 			poolQuery.Put(q)
 			outfh.Flush()
@@ -683,6 +713,8 @@ func init() {
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
+	mapCmd.Flags().String("max-align-result-memory", "0",
+		formatFlagUsage(`Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. Values support K/M/G/T suffixes. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).`))
 
 	mapCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))

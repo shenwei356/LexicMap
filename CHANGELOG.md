@@ -28,18 +28,18 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
     - Release seed anchors and chain paths after chaining, and retain only output fields after alignment.
-    - **Fixed a data race bug in extension of pseudoalignment region**.
+    - Faster pseudoalignment for long queries.
+    - Fixed a data race bug in extension of pseudoalignment region。
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - Faster pseudoalignment for long queries.
+    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**.
     - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
     - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
     - Added new flags `-g/--show-genome-name` `-s/--show-species-name` to add the taxonomic/species name as a prefix to sgenome fied.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
     - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
     - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
-    - Limit large buffers retained in search object pools.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
 - `lexicmap utils seed-pos`:

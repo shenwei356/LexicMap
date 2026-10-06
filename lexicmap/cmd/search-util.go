@@ -39,14 +39,26 @@ type Query struct {
 	seq    []byte
 	qual   []byte
 	result *[]*SearchResult
+
+	alignmentPayload *alignmentPayloadStore
 }
 
 // Reset reset the data for next round of using
 func (q *Query) Reset() {
+	_ = q.closeAlignmentPayload()
 	q.seqID = q.seqID[:0]
 	q.seq = q.seq[:0]
 	q.qual = q.qual[:0]
 	q.result = nil
+}
+
+func (q *Query) closeAlignmentPayload() error {
+	if q.alignmentPayload == nil {
+		return nil
+	}
+	err := q.alignmentPayload.close()
+	q.alignmentPayload = nil
+	return err
 }
 
 var poolQuery = &sync.Pool{New: func() interface{} {

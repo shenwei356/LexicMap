@@ -87,6 +87,8 @@ type IndexSearchingOptions struct {
 	// Output
 	OutputSeq bool
 
+	MaxAlignResultMemory int64 // retained -a output-buffer budget shared by concurrent queries; 0 disables spilling
+
 	// debug
 	Debug bool
 
@@ -185,6 +187,8 @@ type Index struct {
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
 	poolChainers2     *sync.Pool
+
+	alignmentPayloadBudget *alignmentPayloadBudget
 
 	// genome data reader
 	poolGenomeRdrs []chan *genome.Reader
@@ -285,6 +289,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	idx := &Index{path: outDir, opt: opt}
+	if opt.OutputSeq {
+		idx.alignmentPayloadBudget = newAlignmentPayloadBudget(opt.MaxAlignResultMemory)
+	}
 
 	// -----------------------------------------------------
 	// info file
@@ -2080,12 +2087,18 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	rs2 := poolSearchResults.Get().(*[]*SearchResult)
 	*rs2 = (*rs2)[:0]
+	payloadStore := newAlignmentPayloadStore(idx.alignmentPayloadBudget)
+	query.alignmentPayload = payloadStore
 
 	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
+	var collectErr error
 
 	// collect hits with good alignment
 	go func() {
 		for r := range ch2 {
+			if collectErr == nil && payloadStore != nil {
+				collectErr = payloadStore.retain(r, rs2)
+			}
 			*rs2 = append(*rs2, r)
 		}
 
@@ -2968,9 +2981,13 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		pbs.Wait()
 	}
 	recycleSearchResultSlice(rs)
-
 	// recycle this comparator
 	idx.poolSeqComparator.Put(cpr)
+	if collectErr != nil {
+		idx.RecycleSearchResults(rs2)
+		_ = query.closeAlignmentPayload()
+		return nil, collectErr
+	}
 
 	if debug {
 		log.Debugf("%s (%s bp): finished alignment (%s genome hits) in %s",
@@ -2980,6 +2997,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	if len(*rs2) == 0 {
 		recycleSearchResultSlice(rs2)
+		_ = query.closeAlignmentPayload()
 		return nil, nil
 	}
 
@@ -3098,6 +3116,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			log.Debugf("%s (%s bp): finished filtering merged alignment results (%s genome hits) in %s",
 				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*rs2))), time.Since(startTime))
 			startTime = time.Now()
+		}
+	}
+	if payloadStore != nil {
+		payloadStore.reconcile(rs2)
+		if err := payloadStore.finalize(); err != nil {
+			idx.RecycleSearchResults(rs2)
+			_ = query.closeAlignmentPayload()
+			return nil, err
 		}
 	}
 
