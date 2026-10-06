@@ -27,6 +27,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
+    - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**。
     - Release seed anchors and chain paths after chaining, and retain only output fields after alignment.
     - Faster pseudoalignment for long queries.
     - Fixed a data race bug in extension of pseudoalignment region。

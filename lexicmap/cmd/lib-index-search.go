@@ -1467,11 +1467,6 @@ func recycleSearchResultSlice(sr *[]*SearchResult) {
 	poolSearchResults.Put(sr)
 }
 
-var poolSearchResultsMap = &sync.Pool{New: func() interface{} {
-	m := make(map[int]*SearchResult, 1024)
-	return &m
-}}
-
 func (idx *Index) keepGenomeByTaxID(cache *map[uint64]bool, batchGenomeIndex uint64) bool {
 	if keep, ok := (*cache)[batchGenomeIndex]; ok {
 		return keep
@@ -1558,9 +1553,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	// ----------------------------------------------------------------
 	// 2) matching the captured k-mers in databases
 
-	// a map for collecting matches for each reference: IdIdx -> result
-	m := poolSearchResultsMap.Get().(*map[int]*SearchResult)
-
 	inMemorySearch := idx.opt.InMemorySearch
 
 	var searchers []*kv.Searcher
@@ -1578,14 +1570,20 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	minPrefix := idx.opt.MinPrefix
 	// maxMismatch := idx.opt.MaxMismatch
 
-	ch := make(chan *[]*kv.SearchResult, nSearchers)
 	done := make(chan int) // later, we will reuse this
 	var wg sync.WaitGroup
-	var seedSearcherDebugWG sync.WaitGroup
 	var seedSearcherDebugMu sync.Mutex
 	var nSeedSearchersFinished int
+	var allSeedSearchersDoneAt time.Time
 	var beginM, endM int // range of mask of a chunk
-	var nKVSearchResults, nKVValues uint64
+	type seedSearcherDebugStat struct {
+		nKVSearchResults uint64
+		nKVValues        uint64
+	}
+	var seedSearcherDebugStats []seedSearcherDebugStat
+	if debug {
+		seedSearcherDebugStats = make([]seedSearcherDebugStat, nSearchers)
+	}
 
 	// -----------------------
 	// reverse k-mers
@@ -1672,177 +1670,26 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	<-doneR
 	// -----------------------
 
-	// 2.2) collect search results, they will be kept in RAM.
-	// For quries with a lot of hits, the memory would be high.
-	// And it's inevitable currently, but if we do want to decrease the memory usage,
-	// we can write these matches in temporal files.
-	go func() {
-		var refpos uint64
-
-		// query substring
-		var posQ int
-		var beginQ int
-		var rcQ bool
-
-		// var qCode, tCode uint64
-		var kPrefix int
-		var refBatchAndIdx, posT, beginT int
-		// var mismatch uint8
-		var rcT bool
-		var rvT bool
-
-		K := idx.k
-		// K8 := idx.k8
-		var locs []int
-		var sr *kv.SearchResult
-		var ok bool
-
-		// filter by taxid
-		var refBatchAndIdxUint64 uint64
-		var filter *map[uint64]bool
-		filterByTaxId := idx.filterByTaxId
-		if filterByTaxId {
-			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
-		}
-
-		// filter by a list of BatchAndIdx
-		filterByGenomeID := genomeIds != nil
-
-		for srs := range ch {
-			if debug {
-				nKVSearchResults += uint64(len(*srs))
-			}
-			// different k-mers in subjects,
-			// most of cases, there are more than one
-			for _, sr = range *srs {
-				if debug {
-					nKVValues += uint64(len(sr.Values))
-				}
-				// matched length
-				kPrefix = int(sr.Len)
-				// mismatch = sr.Mismatch
-				// qCode = (*_kmers)[sr.IQuery]
-
-				// locations in the query
-				// multiple locations for each QUERY k-mer,
-				// but most of cases, there's only one.
-				if !sr.IsSuffix {
-					locs = (*_locses)[sr.IQuery] // the mask is unknown
-				} else {
-					locs = (*_locses)[(*(*_locsesR)[sr.IQuery])[sr.IQuery2]] // the mask is unknown
-					// fmt.Println(sr.IQuery, (*_locsesR)[sr.IQuery], locs)
-				}
-				for _, posQ = range locs {
-					// query k-mers do not have the reverse flag !!!!
-					rcQ = posQ&MASK_STRAND > 0 // if on the reverse complement sequence
-					posQ >>= BITS_STRAND
-
-					// matched
-					// code = util.KmerPrefix(sr.Kmer, K8, sr.LenPrefix)
-					// tCode = sr.Kmer
-
-					// multiple locations for each MATCHED k-mer
-					// but most of cases, there's only one.
-					for _, refpos = range sr.Values {
-						// refBatchAndIdx = int(refpos >> 30) // batch+refIdx
-						refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
-
-						// filter by a white list of subject batch+refIdx
-						if filterByGenomeID {
-							if _, ok = (*genomeIds)[refBatchAndIdxUint64]; !ok {
-								continue
-							}
-						}
-
-						refBatchAndIdx = int(refBatchAndIdxUint64)
-
-						// filter by taxid
-						if filterByTaxId && !idx.keepGenomeByTaxID(filter, refBatchAndIdxUint64) {
-							continue
-						}
-
-						// posT = int(refpos << 34 >> 35)
-						posT = int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
-						rvT = refpos&MASK_REVERSE > 0
-						rcT = refpos>>BITS_REVERSE&MASK_STRAND > 0
-
-						if !rvT {
-							// query location
-							if rcQ { // on the negative strand
-								beginQ = posQ + K - kPrefix
-							} else {
-								beginQ = posQ
-							}
-
-							// subject location
-							if rcT {
-								beginT = posT + K - kPrefix
-							} else {
-								beginT = posT
-							}
-						} else {
-							// query location
-							if rcQ { // on the negative strand
-								beginQ = posQ
-							} else {
-								beginQ = posQ + K - kPrefix
-							}
-
-							// subject location
-							if rcT {
-								beginT = posT
-							} else {
-								beginT = posT + K - kPrefix
-							}
-						}
-
-						_sub2 := poolSub.Get().(*SubstrPair)
-						_sub2.QBegin = int32(beginQ)
-						_sub2.TBegin = int32(beginT)
-						// _sub2.QCode = qCode
-						// _sub2.TCode = tCode
-						_sub2.Len = uint8(kPrefix)
-						// _sub2.Mismatch = mismatch
-						_sub2.QRC = rcQ
-						_sub2.TRC = rcT
-
-						var r *SearchResult
-						if r, ok = (*m)[refBatchAndIdx]; !ok {
-							subs := poolSubs.Get().(*[]*SubstrPair)
-
-							r = poolSearchResult.Get().(*SearchResult)
-							r.BatchGenomeIndex = uint64(refBatchAndIdx)
-							r.GenomeBatch = refBatchAndIdx >> BITS_GENOME_IDX
-							r.GenomeIndex = refBatchAndIdx & MASK_GENOME_IDX
-							// r.ID = r.ID[:0] // extract it from genome file later
-							r.GenomeSize = 0
-							r.NumSeqs = 0
-							r.Subs = subs
-							r.Score = 0
-							r.Chains = nil // important
-							r.chainRegions = nil
-							r.SimilarityDetails = nil // important
-							r.AlignedFraction = 0
-
-							(*m)[refBatchAndIdx] = r
-						}
-
-						*r.Subs = append(*r.Subs, _sub2)
-					}
-				}
-			}
-
-			kv.RecycleSearchResults(srs)
-		}
-
-		if filterByTaxId {
-			clear(*filter)
-			idx.poolTaxIDfilter.Put(filter)
-		}
-		done <- 1
-	}()
-
-	// 2.1) search with multiple searchers
+	// 2.1) Search with multiple searchers. With multiple collector workers, each
+	// searcher expands its decoded postings into bounded anchor batches. The
+	// collectors own disjoint genome batches, so map updates and anchor appends
+	// need no per-anchor locks. Keep the lower-overhead serial path when only one
+	// collector worker is available.
+	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
+	parallelCollection := nCollectorWorkers > 1
+	var anchorCollector *seedAnchorCollector
+	var serialSearchResultsCh chan *[]*kv.SearchResult
+	var serialResults []*SearchResult
+	if parallelCollection {
+		anchorCollector = newSeedAnchorCollector(idx, nCollectorWorkers)
+	} else {
+		serialSearchResultsCh = make(chan *[]*kv.SearchResult, nSearchers)
+		go func() {
+			serialResults = collectSeedAnchorsSerial(idx, serialSearchResultsCh, _locses, _locsesR, genomeIds)
+			done <- 1
+		}()
+	}
+	filterByGenomeID := genomeIds != nil
 	for iS := 0; iS < nSearchers; iS++ {
 		if inMemorySearch {
 			beginM = searchersIM[iS].ChunkIndex
@@ -1853,10 +1700,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		}
 
 		wg.Add(1)
-		if debug {
-			seedSearcherDebugWG.Add(1)
-		}
 		go func(iS, beginM, endM int) {
+			defer wg.Done()
+
 			var srs *[]*kv.SearchResult
 			var srs2 *[]*kv.SearchResult
 			var err error
@@ -1918,22 +1764,96 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				checkError(err)
 			}
 
-			if len(*srs) == 0 { // no matcheds
-				kv.RecycleSearchResults(srs)
-			} else {
-				ch <- srs // send result
-			}
-
-			wg.Done()
 			if debug {
 				seedSearcherDebugMu.Lock()
 				nSeedSearchersFinished++
 				log.Debugf("%s (%s bp): seed searcher finished %d/%d (masks [%d, %d)): reading/decoding took %s",
 					query.seqID, humanize.Comma(int64(len(query.seq))), nSeedSearchersFinished, nSearchers,
 					beginM, endM, searchDuration)
+				if nSeedSearchersFinished == nSearchers {
+					allSeedSearchersDoneAt = time.Now()
+				}
 				seedSearcherDebugMu.Unlock()
-				seedSearcherDebugWG.Done()
 			}
+
+			if len(*srs) == 0 { // no matches
+				kv.RecycleSearchResults(srs)
+				return
+			}
+
+			if debug {
+				seedSearcherDebugStats[iS].nKVSearchResults = uint64(len(*srs))
+				for _, sr := range *srs {
+					seedSearcherDebugStats[iS].nKVValues += uint64(len(sr.Values))
+				}
+			}
+			if !parallelCollection {
+				serialSearchResultsCh <- srs
+				return
+			}
+
+			buffers := anchorCollector.newBuffers()
+			K := idx.k
+			var locs []int
+			for _, sr := range *srs {
+				kPrefix := int(sr.Len)
+				if !sr.IsSuffix {
+					locs = (*_locses)[sr.IQuery]
+				} else {
+					locs = (*_locses)[(*(*_locsesR)[sr.IQuery])[sr.IQuery2]]
+				}
+				for _, encodedPosQ := range locs {
+					rcQ := encodedPosQ&MASK_STRAND > 0
+					posQ := encodedPosQ >> BITS_STRAND
+					for _, refpos := range sr.Values {
+						batchGenomeIndex := refpos >> BITS_NONE_IDX
+						if filterByGenomeID {
+							if _, ok := (*genomeIds)[batchGenomeIndex]; !ok {
+								continue
+							}
+						}
+
+						posT := int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
+						rvT := refpos&MASK_REVERSE > 0
+						rcT := refpos>>BITS_REVERSE&MASK_STRAND > 0
+						var beginQ, beginT int
+						if !rvT {
+							if rcQ {
+								beginQ = posQ + K - kPrefix
+							} else {
+								beginQ = posQ
+							}
+							if rcT {
+								beginT = posT + K - kPrefix
+							} else {
+								beginT = posT
+							}
+						} else {
+							if rcQ {
+								beginQ = posQ
+							} else {
+								beginQ = posQ + K - kPrefix
+							}
+							if rcT {
+								beginT = posT
+							} else {
+								beginT = posT + K - kPrefix
+							}
+						}
+
+						anchorCollector.add(buffers, seedAnchor{
+							batchGenomeIndex: batchGenomeIndex,
+							qBegin:           int32(beginQ),
+							tBegin:           int32(beginT),
+							length:           uint8(kPrefix),
+							qrc:              rcQ,
+							trc:              rcT,
+						})
+					}
+				}
+			}
+			anchorCollector.flush(buffers)
+			kv.RecycleSearchResults(srs)
 			// <-tokensS
 		}(iS, beginM, endM)
 	}
@@ -1942,11 +1862,20 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	if debug {
 		producersDoneAt = time.Now()
 	}
-	close(ch)
-	<-done
+	var seedResults [][]*SearchResult
+	if parallelCollection {
+		anchorCollector.finish()
+		seedResults = anchorCollector.results
+	} else {
+		close(serialSearchResultsCh)
+		<-done
+		seedResults = [][]*SearchResult{serialResults}
+	}
 	var collectorDrainDuration time.Duration
+	var collectionAfterSearchDuration time.Duration
 	if debug {
 		collectorDrainDuration = time.Since(producersDoneAt)
+		collectionAfterSearchDuration = time.Since(allSeedSearchersDoneAt)
 	}
 
 	var v *[]uint64
@@ -1961,31 +1890,43 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	idx.poolKmers.Put(_kmersR)
 	idx.poolLocses.Put(_locsesR)
 
+	var nGenomeEntries int
+	var nAnchors uint64
+	for _, results := range seedResults {
+		nGenomeEntries += len(results)
+		if debug {
+			for _, r := range results {
+				nAnchors += uint64(len(*r.Subs))
+			}
+		}
+	}
 	if debug {
 		seedMatchingDuration := time.Since(startTime)
-		seedSearcherDebugWG.Wait()
-		var nAnchors uint64
-		for _, r := range *m {
-			nAnchors += uint64(len(*r.Subs))
+		var nKVSearchResults, nKVValues uint64
+		for _, stat := range seedSearcherDebugStats {
+			nKVSearchResults += stat.nKVSearchResults
+			nKVValues += stat.nKVValues
 		}
-		log.Debugf("%s (%s bp): seed collector: kv.SearchResult=%s, sum(len(sr.Values))=%s, anchors=%s, new genome entries=%s; drained in %s after all producers finished",
+		log.Debugf("%s (%s bp): seed collector (%d workers): kv.SearchResult=%s, sum(len(sr.Values))=%s, anchors=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
 			query.seqID, humanize.Comma(int64(len(query.seq))),
+			nCollectorWorkers,
 			humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),
-			humanize.Comma(int64(nAnchors)), humanize.Comma(int64(len(*m))), collectorDrainDuration)
+			humanize.Comma(int64(nAnchors)), humanize.Comma(int64(nGenomeEntries)),
+			collectionAfterSearchDuration, collectorDrainDuration)
 
 		if idx.filterByTaxId {
 			log.Debugf("%s (%s bp): finished seed-matching with filtering by TaxId (%s genome hits) in %s",
-				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), seedMatchingDuration)
+				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(nGenomeEntries)), seedMatchingDuration)
 		} else {
 			log.Debugf("%s (%s bp): finished seed-matching (%s genome hits) in %s",
-				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(len(*m))), seedMatchingDuration)
+				query.seqID, humanize.Comma(int64(len(query.seq))), humanize.Comma(int64(nGenomeEntries)), seedMatchingDuration)
 		}
 
 		startTime = time.Now()
 	}
 
-	if len(*m) == 0 { // no results
-		poolSearchResultsMap.Put(m)
+	if nGenomeEntries == 0 { // no results
+		clearSeedSearchResults(seedResults)
 		return nil, nil
 	}
 
@@ -2060,42 +2001,43 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		wg.Done()
 	}
 
-	for _, r := range *m {
-		tokens <- 1
-		wg.Add(1)
+	for _, results := range seedResults {
+		for _, r := range results {
+			tokens <- 1
+			wg.Add(1)
 
-		go chaining(r)
+			go chaining(r)
 
-		// this needs more memory
-		// go func(r *SearchResult) {
-		// 	if len(*r.Subs) > 1 {
-		// 		ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
-		// 	}
+			// this needs more memory
+			// go func(r *SearchResult) {
+			// 	if len(*r.Subs) > 1 {
+			// 		ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
+			// 	}
 
-		// 	chainer := idx.poolChainers.Get().(*Chainer)
-		// 	r.Chains, r.Score = chainer.Chain(r.Subs)
+			// 	chainer := idx.poolChainers.Get().(*Chainer)
+			// 	r.Chains, r.Score = chainer.Chain(r.Subs)
 
-		// 	defer func() {
-		// 		idx.poolChainers.Put(chainer)
-		// 		<-tokens
-		// 		wg.Done()
-		// 	}()
+			// 	defer func() {
+			// 		idx.poolChainers.Put(chainer)
+			// 		<-tokens
+			// 		wg.Done()
+			// 	}()
 
-		// 	if r.Score < minScore {
-		// 		idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
-		// 		return
-		// 	}
+			// 	if r.Score < minScore {
+			// 		idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
+			// 		return
+			// 	}
 
-		// 	ch1 <- r
-		// }(r)
+			// 	ch1 <- r
+			// }(r)
+		}
 	}
 
 	wg.Wait()
 	close(ch1)
 	<-done
 
-	clear(*m) // requires go >= v1.21
-	poolSearchResultsMap.Put(m)
+	clearSeedSearchResults(seedResults)
 
 	// 3.2) only keep the top N targets
 	topN := idx.opt.TopN
