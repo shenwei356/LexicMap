@@ -241,8 +241,6 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	// ------------------------------------------------------
 	// 2. search k-mers and return the most similar genomes
 
-	m := idx.poolGSearchDetailResultsMap.Get().(*map[uint64]*GSearchScreenResultDetail)
-
 	inMemorySearch := idx.opt.InMemorySearch
 	var searchers []*kv.Searcher
 	var searchersIM []*kv.InMemorySearcher
@@ -256,75 +254,41 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	}
 
 	minPrefix := idx.opt.MinPrefix
-	ch := make(chan *[]*kv.SearchResult, nSearchers)
-	done := make(chan int) // later, we will reuse this
 	var wg sync.WaitGroup
+	var seedSearcherDebugMu sync.Mutex
+	var nSeedSearchersFinished int
+	var allSeedSearchersDoneAt time.Time
 	var beginM, endM int // range of mask of a chunk
+	type seedSearcherDebugStat struct {
+		nKVSearchResults uint64
+		nKVValues        uint64
+	}
+	var seedSearcherDebugStats []seedSearcherDebugStat
+	if idx.opt.Debug {
+		seedSearcherDebugStats = make([]seedSearcherDebugStat, nSearchers)
+	}
 
-	// 2.2) collect search result
-	go func() {
-		var refpos uint64
-
-		var sr *kv.SearchResult
-		var iMask int
-		var refBatchAndIdxUint64 uint64
-		var ok bool
-
-		var filter *map[uint64]bool
-		filterByTaxId := idx.filterByTaxId
-		if filterByTaxId {
-			filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
-		}
-
-		for srs := range ch {
-			// different k-mers in subjects,
-			// most of cases, there are more than one
-			for _, sr = range *srs {
-				iMask = sr.IQuery
-				if screenMaskSlots != nil {
-					iMask = int(screenMaskSlots[iMask])
-					if iMask < 0 {
-						continue
-					}
-				}
-
-				// multiple locations for each MATCHED k-mer
-				// but most of cases, there's only one.
-				for _, refpos = range sr.Values {
-					refBatchAndIdxUint64 = refpos >> BITS_NONE_IDX // batch+refIdx
-
-					// filter by taxid
-					if filterByTaxId && !idx.keepGenomeByTaxID(filter, refBatchAndIdxUint64) {
-						continue
-					}
-
-					var r *GSearchScreenResultDetail
-					if r, ok = (*m)[refBatchAndIdxUint64]; !ok {
-						r = idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
-
-						r.BatchGenomeIndex = append(r.BatchGenomeIndex, refBatchAndIdxUint64)
-
-						(*m)[refBatchAndIdxUint64] = r
-					}
-
-					if r.LongestMatches == nil {
-						r.LongestMatches = make([]uint8, screenMaskCount)
-					}
-					if r.LongestMatches[iMask] < sr.Len { // update longest match
-						r.LongestMatches[iMask] = sr.Len
-					}
-				}
-			}
-
-			kv.RecycleSearchResults(srs)
-		}
-
-		if filterByTaxId {
-			clear(*filter)
-			idx.poolTaxIDfilter.Put(filter)
-		}
-		done <- 1
-	}()
+	// With multiple workers, producers expand postings into bounded batches and
+	// collectors exclusively own disjoint genome batches. This removes the
+	// single global-map writer without adding a lock to every posting update.
+	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
+	parallelCollection := nCollectorWorkers > 1
+	var collector *gsearchScreenCollector
+	var serialSearchResultsCh chan *[]*kv.SearchResult
+	var serialDone chan struct{}
+	var serialResults []*GSearchScreenResultDetail
+	var serialMatchCount uint64
+	if parallelCollection {
+		collector = newGSearchScreenCollector(idx, screenMaskCount, nCollectorWorkers)
+	} else {
+		serialSearchResultsCh = make(chan *[]*kv.SearchResult, nSearchers)
+		serialDone = make(chan struct{})
+		go func() {
+			serialResults, serialMatchCount = collectGSearchScreenResultsSerial(
+				idx, serialSearchResultsCh, screenMaskSlots, screenMaskCount)
+			close(serialDone)
+		}()
+	}
 
 	// 2.1) search with multiple searchers
 	// tokensS := make(chan int, idx.opt.MaxSeedingConcurrency)
@@ -339,9 +303,16 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 
 		wg.Add(1)
 		go func(iS, beginM, endM int) {
+			defer wg.Done()
+
 			var srs *[]*kv.SearchResult
 			var err error
+			var searchStart time.Time
+			var searchDuration time.Duration
 			if inMemorySearch {
+				if idx.opt.Debug {
+					searchStart = time.Now()
+				}
 				// prefix search
 				srs, err = searchersIM[iS].Search2((*_kmersW)[beginM:endM], minPrefix, true, false)
 				if err != nil {
@@ -349,53 +320,127 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 				}
 			} else {
 				idx.searcherTokens[iS] <- 1 // get the access to the searcher
+				if idx.opt.Debug {
+					searchStart = time.Now()
+				}
 
 				// prefix search
 				srs, err = searchers[iS].Search2((*_kmersW)[beginM:endM], minPrefix, true, false)
 				if err != nil {
 					checkError(err)
 				}
+				<-idx.searcherTokens[iS] // return the access
+			}
+			if idx.opt.Debug {
+				searchDuration = time.Since(searchStart)
 			}
 			if err != nil {
 				checkError(err)
 			}
 
-			if len(*srs) == 0 { // no matcheds
+			if idx.opt.Debug {
+				seedSearcherDebugMu.Lock()
+				nSeedSearchersFinished++
+				log.Debugf("%s (%s bp): genome seed searcher finished %d/%d (masks [%d, %d)): reading/decoding took %s",
+					query.id, humanize.Comma(int64(query.genomeSize)), nSeedSearchersFinished, nSearchers,
+					beginM, endM, searchDuration)
+				if nSeedSearchersFinished == nSearchers {
+					allSeedSearchersDoneAt = time.Now()
+				}
+				seedSearcherDebugMu.Unlock()
+			}
+
+			if len(*srs) == 0 { // no matches
 				kv.RecycleSearchResults(srs)
-			} else {
-				ch <- srs // send result
+				return
 			}
 
-			if !inMemorySearch {
-				<-idx.searcherTokens[iS] // return the access
+			if idx.opt.Debug {
+				seedSearcherDebugStats[iS].nKVSearchResults = uint64(len(*srs))
+				for _, sr := range *srs {
+					seedSearcherDebugStats[iS].nKVValues += uint64(len(sr.Values))
+				}
+			}
+			if !parallelCollection {
+				serialSearchResultsCh <- srs
+				return
 			}
 
-			wg.Done()
+			buffers := collector.newBuffers()
+			for _, sr := range *srs {
+				iMask := sr.IQuery
+				if screenMaskSlots != nil {
+					iMask = int(screenMaskSlots[iMask])
+					if iMask < 0 {
+						continue
+					}
+				}
+				for _, refpos := range sr.Values {
+					collector.add(buffers, gsearchScreenHit{
+						batchGenomeIndex: refpos >> BITS_NONE_IDX,
+						mask:             int32(iMask),
+						length:           sr.Len,
+					})
+				}
+			}
+			collector.flush(buffers)
+			kv.RecycleSearchResults(srs)
 		}(iS, beginM, endM)
 	}
 	wg.Wait()
-	close(ch)
-	<-done
+	var producersDoneAt time.Time
+	if idx.opt.Debug {
+		producersDoneAt = time.Now()
+	}
+	var screenResults [][]*GSearchScreenResultDetail
+	var nScreenMatches uint64
+	if parallelCollection {
+		collector.finish()
+		screenResults = collector.results
+		nScreenMatches = collector.matchCount()
+	} else {
+		close(serialSearchResultsCh)
+		<-serialDone
+		screenResults = [][]*GSearchScreenResultDetail{serialResults}
+		nScreenMatches = serialMatchCount
+	}
+	var collectorTailDuration, collectorDrainDuration time.Duration
+	if idx.opt.Debug {
+		collectorTailDuration = time.Since(allSeedSearchersDoneAt)
+		collectorDrainDuration = time.Since(producersDoneAt)
+	}
 
-	if len(*m) == 0 { // no results
-		idx.RecycleGSearchScreenDetailResultsMap(m)
-		poolUint64ToUint64SliceMap.Put(whiteList)
+	var nGenomeEntries int
+	for _, results := range screenResults {
+		nGenomeEntries += len(results)
+	}
+	if idx.opt.Debug {
+		var nKVSearchResults, nKVValues uint64
+		for _, stat := range seedSearcherDebugStats {
+			nKVSearchResults += stat.nKVSearchResults
+			nKVValues += stat.nKVValues
+		}
+		log.Debugf("%s (%s bp): genome seed collector (%d workers): kv.SearchResult=%s, sum(len(sr.Values))=%s, screen matches=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
+			query.id, humanize.Comma(int64(query.genomeSize)), nCollectorWorkers,
+			humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),
+			humanize.Comma(int64(nScreenMatches)), humanize.Comma(int64(nGenomeEntries)),
+			collectorTailDuration, collectorDrainDuration)
+	}
+
+	if nGenomeEntries == 0 { // no results
+		clearGSearchScreenResults(screenResults)
+		idx.RecycleGSearchScreenResult(whiteList)
 		return nil, nil, nil
 	}
 
 	// collect and store with a list
 	rs := idx.poolGSearchDetailResults.Get().(*[]*GSearchScreenResultDetail)
-
-	for _, r := range *m {
-		r.SumPrefix = 0
-		for _, v := range r.LongestMatches {
-			r.SumPrefix += uint64(v)
+	for _, results := range screenResults {
+		for _, r := range results {
+			*rs = append(*rs, r)
 		}
-		*rs = append(*rs, r)
 	}
-
-	clear(*m)
-	idx.RecycleGSearchScreenDetailResultsMap(m)
+	clearGSearchScreenResults(screenResults)
 
 	// 2.3) handle chunked genomes
 

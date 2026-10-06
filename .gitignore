@@ -41,3 +41,6 @@ lexicmap/binaries/*
 lexicmap/lexicmap*
 lexicmap/*.fasta
 lexicmap/indexes
+
+.codex*
+.claude*
