@@ -3167,7 +3167,10 @@ func compareSimilarityDetails(a, b *SimilarityDetail) int {
 	if c := bytes.Compare(a.SeqID, b.SeqID); c != 0 {
 		return c
 	}
-	return cmp.Compare(sdTBegin(a), sdTBegin(b))
+	if c := cmp.Compare(sdTBegin(a), sdTBegin(b)); c != 0 {
+		return c
+	}
+	return cmp.Compare(sdQBegin(a), sdQBegin(b))
 }
 
 // sdTBegin returns the subject position of a detail's first non-nil chain,
@@ -3176,6 +3179,17 @@ func sdTBegin(sd *SimilarityDetail) int {
 	for _, c := range *sd.Similarity.Chains {
 		if c != nil {
 			return c.TBegin
+		}
+	}
+	return 0
+}
+
+// sdQBegin returns the query position of a detail's first non-nil chain, the
+// final tie-break in compareSimilarityDetails.
+func sdQBegin(sd *SimilarityDetail) int {
+	for _, c := range *sd.Similarity.Chains {
+		if c != nil {
+			return c.QBegin
 		}
 	}
 	return 0

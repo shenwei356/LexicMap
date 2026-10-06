@@ -47,12 +47,17 @@ func TestPendingGenomeChunksCompletion(t *testing.T) {
 // first result (in argument order) and leave it usable by finalize.
 func TestMergeChunkResults(t *testing.T) {
 	idx := &Index{}
-	a := chunkTestResult(1, chunkTestDetail(9, "s2", 0, 50, 0))
-	b := chunkTestResult(2, chunkTestDetail(8, "s0", 50, 80, 0), chunkTestDetail(7, "s1", 80, 100, 0))
+	// the later-arriving chunk has the smaller BatchGenomeIndex; the merged
+	// result must still keep it as the canonical genome index
+	a := chunkTestResult(2, chunkTestDetail(9, "s2", 0, 50, 0))
+	b := chunkTestResult(1, chunkTestDetail(8, "s0", 50, 80, 0), chunkTestDetail(7, "s1", 80, 100, 0))
 
 	got := idx.mergeChunkResults([]*SearchResult{a, b})
 	if got != a {
 		t.Fatal("merged result is not the first chunk's result")
+	}
+	if got.BatchGenomeIndex != 1 {
+		t.Fatalf("merged BatchGenomeIndex = %d, want min 1", got.BatchGenomeIndex)
 	}
 	if len(*got.SimilarityDetails) != 3 {
 		t.Fatalf("merged SimilarityDetails = %d, want 3", len(*got.SimilarityDetails))
