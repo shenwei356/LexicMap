@@ -21,8 +21,60 @@
 package cmd
 
 import (
+	"math"
 	"testing"
 )
+
+func originalGapScore(gap float32) float32 {
+	if gap == 0 {
+		return 0
+	}
+	return 0.1*gap + 0.5*float32(math.Log2(float64(gap)))
+}
+
+func TestGapScoreMatchesOriginalBits(t *testing.T) {
+	check := func(gap float32) {
+		t.Helper()
+		got, want := gapScore(gap), originalGapScore(gap)
+		if math.Float32bits(got) != math.Float32bits(want) {
+			t.Fatalf("gap %g: got %g (%08x), want %g (%08x)",
+				gap, got, math.Float32bits(got), want, math.Float32bits(want))
+		}
+	}
+	for i := range 8193 {
+		check(float32(i))
+	}
+	for i := range 1024 {
+		check(float32(i) / 4)
+	}
+	for _, gap := range []float32{
+		math.Float32frombits(1 << 31), -1, -0.5,
+		math.Nextafter32(256, 0), math.Nextafter32(256, 257),
+		1 << 24, math.MaxFloat32, float32(math.Inf(1)), float32(math.NaN()),
+	} {
+		check(gap)
+	}
+}
+
+var gapScoreBenchmarkSink float32
+
+func BenchmarkGapScore(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		fn   func(float32) float32
+	}{
+		{"original", originalGapScore},
+		{"lookup", gapScore},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			var score float32
+			for i := 0; i < b.N; i++ {
+				score += tc.fn(float32(i % 51))
+			}
+			gapScoreBenchmarkSink = score
+		})
+	}
+}
 
 func TestChaining(t *testing.T) {
 	/* command to prepare seeds from a certain query

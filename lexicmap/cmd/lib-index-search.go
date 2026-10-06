@@ -1936,107 +1936,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	// minMatchedBases := idx.opt.MinMatchedBases
 
 	// 3.1) preprocess substring matches and chaining for each reference genome
-	rs := poolSearchResults.Get().(*[]*SearchResult)
-	*rs = (*rs)[:0]
-
-	K := idx.k
-	// k8 := idx.k8
-	// var matches uint8
-	// checkMismatch := maxMismatch >= 0 && maxMismatch < K-int(idx.opt.MinPrefix)
-
-	ch1 := make(chan *SearchResult, idx.opt.NumCPUs)
-	tokens := make(chan int, idx.opt.NumCPUs)
-
-	// collect chaining result
-	go func() {
-		for r := range ch1 {
-			*rs = append(*rs, r)
-		}
-
-		done <- 1
-	}()
-
-	minScore := idx.chainingOptions.MinScore
-
-	chaining := func(r *SearchResult) {
-		// only for dev.
-		//
-		// if len(*r.Subs) > 50000 {
-		// 	fmt.Printf("genome with %d pairs of anchors, genome batch: %d, genome index: %d\n",
-		// 		len(*r.Subs), r.GenomeBatch, r.GenomeIndex)
-		// }
-		// if r.BatchGenomeIndex != 166 {
-		// 	<-tokens
-		// 	wg.Done()
-		// 	return
-		// }
-
-		if len(*r.Subs) > 1 {
-			// fmt.Printf("anchors before: %d\n", len(*r.Subs))
-			ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
-			// fmt.Printf("anchors after: %d\n", len(*r.Subs))
-		}
-
-		chainer := idx.poolChainers.Get().(*Chainer)
-		r.Chains, r.Score = chainer.Chain(r.Subs)
-
-		if r.Score < minScore {
-			// many search results failed here, recylcing too many substring pairs resulting in a high memory load.
-			idx.RecycleSearchResult(r) // do not forget to recycle unused objects.
-
-			// idx.poolChainers.Put(chainer)
-			RecycleChainer(idx.poolChainers, chainer)
-			<-tokens
-			wg.Done()
-			return
-		}
-
-		// Retain only chain bounds while this target waits for alignment.
-		r.prepareAlignmentRegions()
-		ch1 <- r
-
-		// idx.poolChainers.Put(chainer)
-		RecycleChainer(idx.poolChainers, chainer)
-		<-tokens
-		wg.Done()
-	}
-
-	for _, results := range seedResults {
-		for _, r := range results {
-			tokens <- 1
-			wg.Add(1)
-
-			go chaining(r)
-
-			// this needs more memory
-			// go func(r *SearchResult) {
-			// 	if len(*r.Subs) > 1 {
-			// 		ClearSubstrPairs(poolSub, r.Subs, K) // remove duplicates and nested anchors
-			// 	}
-
-			// 	chainer := idx.poolChainers.Get().(*Chainer)
-			// 	r.Chains, r.Score = chainer.Chain(r.Subs)
-
-			// 	defer func() {
-			// 		idx.poolChainers.Put(chainer)
-			// 		<-tokens
-			// 		wg.Done()
-			// 	}()
-
-			// 	if r.Score < minScore {
-			// 		idx.RecycleSearchResult(r) // do not forget to recycle unused objects. // many search results failed here, recylcing too many substring pairs resulting in a high memory load.
-			// 		return
-			// 	}
-
-			// 	ch1 <- r
-			// }(r)
-		}
-	}
-
-	wg.Wait()
-	close(ch1)
-	<-done
-
+	rs := idx.chainSeedResults(seedResults, nGenomeEntries)
 	clearSeedSearchResults(seedResults)
 
 	// 3.2) only keep the top N targets
@@ -2085,6 +1985,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	query.alignmentPayload = payloadStore
 
 	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
+	tokens := make(chan int, idx.opt.NumCPUs)
 	var collectErr error
 
 	// collect hits with good alignment
@@ -2107,6 +2008,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		checkError(err)
 	}
 
+	K := idx.k
 	alignOption := &wfa.Options{GlobalAlignment: true}
 
 	// do not do this, as multiple genome readers would compete in reading sequences from the same file.

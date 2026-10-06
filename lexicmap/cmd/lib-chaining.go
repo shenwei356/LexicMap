@@ -672,9 +672,26 @@ func gap(a, b *SubstrPair) float32 {
 	return float32(math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin+int32(a.Len)-b.TBegin-int32(b.Len)))))
 }
 
+// Common integer gaps use exactly the same float32 calculation as the fallback.
+// The fixed table stays small even when a caller allows unusually large gaps.
+var gapScores = func() [256]float32 {
+	var scores [256]float32
+	for i := 1; i < len(scores); i++ {
+		gap := float32(i)
+		scores[i] = 0.1*gap + 0.5*float32(math.Log2(float64(gap)))
+	}
+	return scores
+}()
+
 func gapScore(gap float32) float32 {
 	if gap == 0 {
 		return 0
+	}
+	if gap > 0 && gap < float32(len(gapScores)) {
+		i := int(gap)
+		if gap == float32(i) {
+			return gapScores[i]
+		}
 	}
 	return 0.1*gap + 0.5*float32(math.Log2(float64(gap)))
 }

@@ -27,10 +27,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
-    - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**。
-    - Release seed anchors and chain paths after chaining, and retain only output fields after alignment.
+    - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
+    - Reuse fixed workers for seed chaining and precompute common gap penalties to reduce chaining overhead.
+    - Release seed anchors and chain paths after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - Faster pseudoalignment for long queries.
-    - Fixed a data race bug in extension of pseudoalignment region。
+    - Fixed a data race bug in extension of pseudoalignment region.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
