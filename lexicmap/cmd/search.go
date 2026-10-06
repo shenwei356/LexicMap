@@ -54,11 +54,12 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
-  3. For searches with -a/--all, --max-align-result-memory can limit the global memory retained
-     for CIGAR strings, aligned query/subject sequences, and alignment text. When the limit is
-     exceeded, each affected query stores these fields in one file in the system temporary
+  3. For searches with -a/--all, LexicMap retains up to 1 GiB of CIGAR strings, aligned
+     query/subject sequences, and alignment text in memory by default. When the global budget
+     is exceeded, each affected query stores these fields in one file in the system temporary
      directory and removes it after output. Concurrent queries use separate files. On Unix,
      set TMPDIR to choose a temporary directory on a fast disk with sufficient free space.
+     Use --max-align-result-memory to change the budget or set it to 0 to disable spilling.
      This limit applies only to these output fields and is not a total process memory limit.
 
 Taxonomic operations:
@@ -729,7 +730,7 @@ func init() {
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
-	mapCmd.Flags().String("max-align-result-memory", "0",
+	mapCmd.Flags().String("max-align-result-memory", "1G",
 		formatFlagUsage(`Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. Values support K/M/G/T suffixes. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).`))
 
 	mapCmd.Flags().IntP("max-query-conc", "J", 8,
