@@ -42,6 +42,7 @@ import (
 // streamRec locates the formatted rows of one genome hit in a stream file.
 type streamRec struct {
 	score float64 // SimilarityScore of the genome's best HSP, for ordering
+	gidx  uint64  // BatchGenomeIndex, deterministic tie-break for equal scores
 	off   int64
 	size  int64
 }
@@ -94,7 +95,7 @@ func (s *resultStreamer) emit(r *SearchResult, writeRows func(io.Writer, *Search
 	}
 	n, err := s.bw.Write(s.buf.Bytes())
 	checkError(err)
-	s.recs = append(s.recs, streamRec{score: score, off: s.off, size: int64(n)})
+	s.recs = append(s.recs, streamRec{score: score, gidx: r.BatchGenomeIndex, off: s.off, size: int64(n)})
 	s.off += int64(n)
 }
 
@@ -107,7 +108,10 @@ func (s *resultStreamer) drain(outfh *bufio.Writer, rowPrefix string) {
 	checkError(s.bw.Flush())
 
 	slices.SortFunc(s.recs, func(a, b streamRec) int {
-		return cmp.Compare(b.score, a.score)
+		if c := cmp.Compare(b.score, a.score); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.gidx, b.gidx) // deterministic order under ties
 	})
 
 	var buf []byte
@@ -572,12 +576,10 @@ Result ordering:
 		id2name := idx.BatchGenomeIndex2GenomeID
 		tax := idx.Taxonomy
 
-		// Stream formatted rows to a per-query temp file instead of buffering
-		// all aligned results in RAM when hits are unbounded (topN == 0).
-		// Indexes with chunked genomes still use the buffered path, because
-		// chunks of a genome must be merged before output.
+		// Formatted rows are streamed to a per-query temp file instead of
+		// buffering all aligned results in RAM. Chunks of a genome are
+		// merged inside Index.Search before emission.
 		// See https://github.com/shenwei356/LexicMap/issues/37
-		streamOutput := idx.opt.TopN == 0 && !idx.hasGenomeChunks
 
 		// writeGenomeRows writes all output rows of one genome hit to w.
 		// rowPrefix is the leading "query\tqlen\thits\t" columns; streamed rows
@@ -778,22 +780,19 @@ Result ordering:
 					}()
 
 					var err error
-					var emit func(*SearchResult)
-					if streamOutput {
-						streamer := &resultStreamer{dir: streamTmpDir}
-						query.stream = streamer
+					streamer := &resultStreamer{dir: streamTmpDir}
+					query.stream = streamer
 
-						var _seq *seq.Seq
-						if showAvgQual {
-							_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, query.seq, query.qual)
-							checkError(err)
-						}
-						emit = func(r *SearchResult) {
-							streamer.emit(r, func(w io.Writer, r *SearchResult) {
-								writeGenomeRows(w, r, "", _seq)
-							})
-							idx.RecycleSearchResult(r)
-						}
+					var _seq *seq.Seq
+					if showAvgQual {
+						_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, query.seq, query.qual)
+						checkError(err)
+					}
+					emit := func(r *SearchResult) {
+						streamer.emit(r, func(w io.Writer, r *SearchResult) {
+							writeGenomeRows(w, r, "", _seq)
+						})
+						idx.RecycleSearchResult(r)
 					}
 
 					query.result, err = idx.Search(query, nil, idx.opt.Debug, emit)
@@ -841,7 +840,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	mapCmd.Flags().StringP("stream-tmp-dir", "", os.TempDir(),
-		formatFlagUsage(`Directory for temporary files used to stream search results (only applies when -n/--top-n-genomes is 0 and the index has no chunked genomes). Defaults to $TMPDIR or "/tmp"; set a path on a fast disk with enough space if the default is RAM-backed (tmpfs) or too small.`))
+		formatFlagUsage(`Directory for temporary files used to stream search results. Defaults to $TMPDIR or "/tmp"; set a path on a fast disk with enough space if the default is RAM-backed (tmpfs) or too small.`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))

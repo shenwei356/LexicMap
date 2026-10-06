@@ -1389,13 +1389,45 @@ func (idx *Index) keepGenomeByTaxID(cache *map[uint64]bool, batchGenomeIndex uin
 // --------------------------------------------------------------------------
 // searching
 
+// alnMsg is the result of one dispatched alignment task. r is nil when the
+// genome or chunk produced no valid alignments. done is the group key of a
+// finished genome chunk — non-zero only for chunked genomes when results
+// are emitted — used to detect when every chunk of a genome has completed.
+type alnMsg struct {
+	r    *SearchResult
+	done uintptr
+}
+
+// pendingGenomeChunks accumulates the aligned results of a genome's chunks
+// until all of its dispatched chunks finish, so they can be merged and
+// emitted as one genome-level result.
+type pendingGenomeChunks struct {
+	expected int
+	done     int
+	results  []*SearchResult
+}
+
+// addResult records a finished chunk's result for merging.
+func (p *pendingGenomeChunks) addResult(r *SearchResult) {
+	p.results = append(p.results, r)
+}
+
+// markDone records one dispatched chunk's completion and reports whether
+// every chunk of the genome has finished, making the group's results
+// ready to merge and emit.
+func (p *pendingGenomeChunks) markDone() bool {
+	p.done++
+	return p.done == p.expected
+}
+
 // Search queries the index with a sequence.
 // After using the result, do not forget to call RecycleSearchResult().
 //
 // If emit is not nil, each result is passed to emit() (which takes over
-// ownership, including recycling) as soon as its alignment finishes,
-// instead of being accumulated in the returned list. This is used for
-// streaming output when the number of hits is unbounded (TopN == 0) —
+// ownership, including recycling) as soon as it is ready, instead of being
+// accumulated in the returned list. For indexes with chunked genomes, the
+// chunks of a genome are merged into one result before emission. This is
+// used for streaming output —
 // see https://github.com/shenwei356/LexicMap/issues/37
 func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bool, emit func(*SearchResult)) (*[]*SearchResult, error) {
 	var startTime time.Time
@@ -1976,18 +2008,71 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	rs2 := poolSearchResults.Get().(*[]*SearchResult)
 	*rs2 = (*rs2)[:0]
 
-	ch2 := make(chan *SearchResult, idx.opt.NumCPUs)
+	ch2 := make(chan alnMsg, idx.opt.NumCPUs)
+
+	// When results are emitted and the index has chunked genomes, the chunks
+	// of a genome must be merged before they can be emitted. Each dispatched
+	// chunk signals completion via alnMsg.done, and finished chunk results
+	// are accumulated in pend until the last chunk of that genome completes.
+	// Expected counts only cover chunks that had seed hits (the ones
+	// dispatched below), not all chunks of the genome.
+	var gcIdx2List *map[uint64]*[]int
+	var pend map[uintptr]*pendingGenomeChunks
+	if emit != nil && idx.hasGenomeChunks {
+		gcIdx2List = idx.poolGenomeChunksIdx2List.Get().(*map[uint64]*[]int)
+		pend = make(map[uintptr]*pendingGenomeChunks)
+		for _, r := range *rs {
+			if li, ok := (*gcIdx2List)[r.BatchGenomeIndex]; ok {
+				pk := uintptr(unsafe.Pointer(li))
+				p := pend[pk]
+				if p == nil {
+					p = &pendingGenomeChunks{}
+					pend[pk] = p
+				}
+				p.expected++
+			}
+		}
+	}
 
 	// collect hits with good alignment
 	go func() {
-		for r := range ch2 {
-			if emit != nil {
-				// results are emitted (and recycled) as they complete,
-				// keeping memory O(concurrency) instead of O(#hits)
-				emit(r)
-			} else {
-				*rs2 = append(*rs2, r)
+		for m := range ch2 {
+			if pend != nil && m.r != nil {
+				if li, ok := (*gcIdx2List)[m.r.BatchGenomeIndex]; ok {
+					p := pend[uintptr(unsafe.Pointer(li))]
+					p.addResult(m.r)
+					m.r = nil // consumed by the pending group
+				}
 			}
+			if m.done != 0 { // a genome chunk finished (hit or not)
+				p := pend[m.done]
+				if p.markDone() {
+					if len(p.results) > 0 {
+						rm := idx.mergeChunkResults(p.results)
+						if idx.finalizeGenomeResult(rm, len(s)) {
+							// results are emitted (and recycled) as they
+							// complete, keeping memory O(concurrency)
+							// instead of O(#hits)
+							emit(rm)
+						}
+					}
+					delete(pend, m.done)
+				}
+			}
+			if m.r == nil {
+				continue
+			}
+			if emit == nil {
+				*rs2 = append(*rs2, m.r)
+				continue
+			}
+			// a non-chunked genome in a chunked index: still needs the
+			// per-genome coverage filter, which the alignment worker
+			// skips for such indexes
+			if idx.hasGenomeChunks && !idx.finalizeGenomeResult(m.r, len(s)) {
+				continue // filtered out, recycled inside
+			}
+			emit(m.r)
 		}
 
 		done <- 1
@@ -2046,7 +2131,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	fcpus := float64(idx.opt.NumCPUs)
 
-	falin := func(r *SearchResult) { // for a reference genome
+	falin := func(r *SearchResult) *SearchResult { // for a reference genome
 		var err error
 		timeStart := time.Now()
 		defer func() {
@@ -2054,7 +2139,6 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			if debug {
 				chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 			}
-			wg.Done()
 		}()
 
 		// -----------------------------------------------------
@@ -2853,7 +2937,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				<-idx.openFileTokens
 			}
 
-			return
+			return nil
 		}
 
 		if !idx.hasGenomeChunks { // if hasGenomeChunks, do not filter results now
@@ -2891,7 +2975,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					}
 					<-idx.openFileTokens
 				}
-				return
+				return nil
 			}
 		}
 
@@ -2900,9 +2984,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		// sort.Slice(*sds, func(i, j int) bool {
 		// 	return (*sds)[i].SimilarityScore > (*sds)[j].SimilarityScore
 		// })
-		slices.SortFunc(*sds, func(a, b *SimilarityDetail) int {
-			return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
-		})
+		slices.SortFunc(*sds, compareSimilarityDetails)
 
 		r.SimilarityDetails = sds
 
@@ -2917,19 +2999,33 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			<-idx.openFileTokens
 		}
 
-		ch2 <- r
+		return r
 	}
 
 	for _, r := range *rs { // multiple references
 		tokens <- 1
 		wg.Add(1)
 
-		go falin(r)
+		var pk uintptr // group key when the result is a genome chunk
+		if pend != nil {
+			if li, ok := (*gcIdx2List)[r.BatchGenomeIndex]; ok {
+				pk = uintptr(unsafe.Pointer(li))
+			}
+		}
+		go func(r *SearchResult, done uintptr) {
+			// wg.Done() must come after the send, so that wg.Wait()
+			// guarantees all messages were delivered before ch2 is closed.
+			ch2 <- alnMsg{r: falin(r), done: done}
+			wg.Done()
+		}(r, pk)
 	}
 
 	wg.Wait()
 	close(ch2)
 	<-done
+	if gcIdx2List != nil {
+		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
+	}
 	// process bar
 	if debug {
 		close(chDuration)
@@ -2954,7 +3050,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	// merge search result from genome chunks, if has chunked genome
 	if idx.hasGenomeChunks {
-		var r, rp *SearchResult
+		var r *SearchResult
 		var i, j int
 		var a uint64 // SearchResult.BatchGenomeIndex
 		var ok bool
@@ -2985,19 +3081,12 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				(*li) = (*li)[:0]
 				continue
 			}
-			i = (*li)[0]
-			rp = (*rs2)[i]
-			for _, j = range (*li)[1:] { // merge j -> i
-				r = (*rs2)[j]
-
-				// only need to update SimilarityDetails, AlignedFraction
-				*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
-
-				clear(*r.SimilarityDetails)
-				*r.SimilarityDetails = (*r.SimilarityDetails)[:0]
-				idx.RecycleSearchResult(r)
+			chunks := make([]*SearchResult, len(*li))
+			for i, j = range *li {
+				chunks[i] = (*rs2)[j]
 				(*rs2)[j] = nil
 			}
+			(*rs2)[(*li)[0]] = idx.mergeChunkResults(chunks)
 
 			// reset the list
 			(*li) = (*li)[:0]
@@ -3015,50 +3104,16 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			startTime = time.Now()
 		}
 
-		// recompute query coverage per genome
-		var alignedBasesGenome int
-		minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
+		// recompute query coverage per genome (across merged chunks),
+		// filter, and sort each genome's alignments
 		j = 0
 		for _, r = range *rs2 {
 			if r == nil {
 				continue
 			}
-
-			// compute aligned bases per genome
-			regions := poolRegions.Get().(*[]*[2]int)
-			*regions = (*regions)[:0]
-			for _, sd := range *r.SimilarityDetails {
-				for _, c := range *sd.Similarity.Chains {
-					if c != nil {
-						region := poolRegion.Get().(*[2]int)
-						region[0], region[1] = c.QBegin, c.QEnd
-						*regions = append(*regions, region)
-					}
-				}
+			if !idx.finalizeGenomeResult(r, len(s)) {
+				continue // filtered out, recycled inside
 			}
-			alignedBasesGenome = coverageLen(regions)
-			recycleRegions(regions)
-
-			// filter by query coverage per genome
-			r.AlignedFraction = float64(alignedBasesGenome) / float64(len(s)) * 100
-			if r.AlignedFraction > 100 {
-				r.AlignedFraction = 100
-			}
-			if r.AlignedFraction < minQcovGnm { // no valid alignments
-				idx.RecycleSearchResult(r) // do not forget to recycle unused objects
-
-				continue
-			}
-
-			// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
-			// r.AlignResults = ars
-			// sort.Slice(*r.SimilarityDetails, func(i, j int) bool {
-			// 	return (*r.SimilarityDetails)[i].SimilarityScore > (*r.SimilarityDetails)[j].SimilarityScore
-			// })
-			slices.SortFunc(*r.SimilarityDetails, func(a, b *SimilarityDetail) int {
-				return cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore)
-			})
-
 			(*rs2)[j] = r
 			j++
 		}
@@ -3077,7 +3132,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	// 	return (*(*rs2)[i].SimilarityDetails)[0].SimilarityScore > (*(*rs2)[j].SimilarityDetails)[0].SimilarityScore
 	// })
 	slices.SortFunc(*rs2, func(a, b *SearchResult) int {
-		return cmp.Compare[float64]((*b.SimilarityDetails)[0].SimilarityScore, (*a.SimilarityDetails)[0].SimilarityScore)
+		if c := cmp.Compare[float64]((*b.SimilarityDetails)[0].SimilarityScore, (*a.SimilarityDetails)[0].SimilarityScore); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex) // deterministic order under ties
 	})
 
 	// ----------------------------------
@@ -3097,6 +3155,89 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	}
 
 	return rs2, nil
+}
+
+// compareSimilarityDetails orders alignments by descending SimilarityScore,
+// with deterministic tie-breaks on sequence id and subject position, so
+// output order does not depend on goroutine completion order.
+func compareSimilarityDetails(a, b *SimilarityDetail) int {
+	if c := cmp.Compare[float64](b.SimilarityScore, a.SimilarityScore); c != 0 {
+		return c
+	}
+	if c := bytes.Compare(a.SeqID, b.SeqID); c != 0 {
+		return c
+	}
+	return cmp.Compare(sdTBegin(a), sdTBegin(b))
+}
+
+// sdTBegin returns the subject position of a detail's first non-nil chain,
+// used as a deterministic tie-break in compareSimilarityDetails.
+func sdTBegin(sd *SimilarityDetail) int {
+	for _, c := range *sd.Similarity.Chains {
+		if c != nil {
+			return c.TBegin
+		}
+	}
+	return 0
+}
+
+// mergeChunkResults merges the alignments of sibling chunks of one genome
+// into the first result and recycles the rest. Only SimilarityDetails are
+// merged — AlignedFraction is recomputed afterwards by finalizeGenomeResult.
+func (idx *Index) mergeChunkResults(chunks []*SearchResult) *SearchResult {
+	rp := chunks[0]
+	for _, r := range chunks[1:] {
+		// keep the smallest BatchGenomeIndex, i.e. the first chunk's,
+		// as the canonical index of the merged result — the order of
+		// chunks here depends on their completion order
+		if r.BatchGenomeIndex < rp.BatchGenomeIndex {
+			rp.BatchGenomeIndex = r.BatchGenomeIndex
+		}
+		// only need to update SimilarityDetails, AlignedFraction
+		*rp.SimilarityDetails = append(*rp.SimilarityDetails, *r.SimilarityDetails...)
+
+		clear(*r.SimilarityDetails)
+		*r.SimilarityDetails = (*r.SimilarityDetails)[:0]
+		idx.RecycleSearchResult(r)
+	}
+	return rp
+}
+
+// finalizeGenomeResult recomputes a result's per-genome query coverage
+// (AlignedFraction), filters it by MinQueryAlignedFractionInAGenome, and
+// sorts its alignments by SimilarityScore. For indexes with chunked genomes
+// the per-chunk coverage filter in the alignment worker is skipped, so this
+// must run on every (possibly merged) genome-level result. Returns false
+// when the result is filtered out, in which case it has been recycled.
+func (idx *Index) finalizeGenomeResult(r *SearchResult, qlen int) bool {
+	// compute aligned bases per genome
+	regions := poolRegions.Get().(*[]*[2]int)
+	*regions = (*regions)[:0]
+	for _, sd := range *r.SimilarityDetails {
+		for _, c := range *sd.Similarity.Chains {
+			if c != nil {
+				region := poolRegion.Get().(*[2]int)
+				region[0], region[1] = c.QBegin, c.QEnd
+				*regions = append(*regions, region)
+			}
+		}
+	}
+	alignedBasesGenome := coverageLen(regions)
+	recycleRegions(regions)
+
+	// filter by query coverage per genome
+	r.AlignedFraction = float64(alignedBasesGenome) / float64(qlen) * 100
+	if r.AlignedFraction > 100 {
+		r.AlignedFraction = 100
+	}
+	if r.AlignedFraction < idx.opt.MinQueryAlignedFractionInAGenome { // no valid alignments
+		idx.RecycleSearchResult(r) // do not forget to recycle unused objects
+		return false
+	}
+
+	// Within each subject genome, alignments (HSP) are sorted by qcovHSP*pident
+	slices.SortFunc(*r.SimilarityDetails, compareSimilarityDetails)
+	return true
 }
 
 // RC computes the reverse complement sequence
