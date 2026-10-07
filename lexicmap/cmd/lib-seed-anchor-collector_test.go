@@ -49,12 +49,10 @@ func BenchmarkSeedAnchorCollectorAccumulation(b *testing.B) {
 		if after.HeapAlloc > before.HeapAlloc {
 			liveBytes += after.HeapAlloc - before.HeapAlloc
 		}
-		for _, results := range collector.results {
-			for _, result := range results {
-				idx.RecycleSearchResult(result)
-			}
-		}
 		collector.clearResults()
+		for i := range collector.arenas {
+			collector.arenas[i].recycle()
+		}
 		b.StartTimer()
 	}
 	b.ReportMetric(float64(liveBytes)/float64(b.N*nAnchors), "live-B/anchor")
@@ -113,11 +111,11 @@ func TestSeedAnchorCollectorCollectsEachGenomeOnce(t *testing.T) {
 				t.Fatalf("duplicate genome entry: %d", r.BatchGenomeIndex)
 			}
 			seen[r.BatchGenomeIndex] = true
-			if got, want := len(*r.Subs), nProducers*nPerProducer; got != want {
+			if got, want := len(r.Subs), nProducers*nPerProducer; got != want {
 				t.Fatalf("anchors for genome %d: got %d, want %d", r.BatchGenomeIndex, got, want)
 			}
 			seenAnchors := make(map[int32]bool, nProducers*nPerProducer)
-			for _, sub := range *r.Subs {
+			for _, sub := range r.Subs {
 				producer, i := int(sub.QBegin)/nPerProducer, int(sub.QBegin)%nPerProducer
 				want := SubstrPair{
 					QBegin: sub.QBegin, TBegin: int32(i), Len: 21,
@@ -128,10 +126,13 @@ func TestSeedAnchorCollectorCollectsEachGenomeOnce(t *testing.T) {
 				}
 				seenAnchors[sub.QBegin] = true
 			}
-			idx.RecycleSearchResult(r)
+
 		}
 	}
 	collector.clearResults()
+	for i := range collector.arenas {
+		collector.arenas[i].recycle()
+	}
 }
 
 func TestCollectSeedAnchorsSerial(t *testing.T) {
@@ -177,7 +178,8 @@ func TestCollectSeedAnchorsSerial(t *testing.T) {
 			ch <- &srs
 			close(ch)
 
-			results := collectSeedAnchorsSerial(idx, ch, &locses, &reverseLocses, nil)
+			var arena seedSearchResultArena
+			results := collectSeedAnchorsSerial(idx, ch, &locses, &reverseLocses, nil, &arena)
 			if len(results) != 1 || results[0].BatchGenomeIndex != genome {
 				t.Fatalf("genome entries: got %+v, want genome %d", results, genome)
 			}
@@ -185,10 +187,10 @@ func TestCollectSeedAnchorsSerial(t *testing.T) {
 				{QBegin: tt.qBegin, TBegin: tt.tBegin, Len: 21, QRC: tt.qrc, TRC: tt.trc},
 				{QBegin: tt.qBegin, TBegin: tt.tBegin + 16, Len: 21, QRC: tt.qrc, TRC: tt.trc},
 			}
-			if !reflect.DeepEqual(*results[0].Subs, want) {
-				t.Fatalf("anchors: got %+v, want %+v", *results[0].Subs, want)
+			if !reflect.DeepEqual(results[0].Subs, want) {
+				t.Fatalf("anchors: got %+v, want %+v", results[0].Subs, want)
 			}
-			idx.RecycleSearchResult(results[0])
+			arena.recycle()
 		})
 	}
 }

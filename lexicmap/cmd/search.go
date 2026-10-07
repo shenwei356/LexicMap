@@ -475,6 +475,8 @@ Result ordering:
 
 		// -------  output function -------
 
+		row := make([]byte, 0, 512)
+		outputOptions := searchOutputOptions{showSseqIdx: showSseqIdx, showAvgQual: showAvgQual, prefixName: showSpeciesName || showTaxName}
 		printResult := func(q *Query) {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
@@ -504,11 +506,8 @@ Result ordering:
 			var targets = len(*q.result)
 			matched++
 
-			var strand byte
 			var _c, j int
-			var vSseqid string
-			var vAlenHSP string
-			var vSgenome string
+			var genomeName string
 			var taxid uint32
 			var cigar, qseq, tseq, alignment, payloadScratch []byte
 			var payloadErr error
@@ -520,6 +519,18 @@ Result ordering:
 				checkError(err)
 			}
 			for _, r := range *q.result { // each genome
+				genomeName = ""
+				if showSpeciesName {
+					genomeName = tax.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex])
+					for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[r.BatchGenomeIndex]) {
+						if tax.Rank(taxid) == "species" {
+							genomeName = tax.Name(taxid)
+							break
+						}
+					}
+				} else if showTaxName {
+					genomeName = tax.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex])
+				}
 				_c = 1
 				j = 1
 				for _, sd = range *r.SimilarityDetails { // each chain
@@ -548,54 +559,30 @@ Result ordering:
 								checkError(payloadErr)
 							}
 						}
-						if sd.RC {
-							strand = '-'
-						} else {
-							strand = '+'
-						}
-
-						if showSseqIdx {
-							vSseqid = fmt.Sprintf("c%d/%d:s%d/%d:%s", sd.ChunkIdx+1, sd.NChunks, sd.SeqIdx+1, sd.NSeqs, sd.SeqID)
-						} else {
-							vSseqid = string(sd.SeqID)
-						}
-
+						var avgQual float64
 						if showAvgQual {
-							vAlenHSP = fmt.Sprintf("%d:%.1f", c.AlignedLength, _seq.AvgQualOfRegion(33, c.QBegin+1, c.QEnd+1))
-						} else {
-							vAlenHSP = fmt.Sprintf("%d", c.AlignedLength)
+							avgQual = _seq.AvgQualOfRegion(33, c.QBegin+1, c.QEnd+1)
 						}
-
-						if showSpeciesName {
-							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
-							for _, taxid = range tax.LineageTaxIds(idx.genomeIdx2TaxId[r.BatchGenomeIndex]) {
-								if tax.Rank(taxid) == "species" {
-									vSgenome = fmt.Sprintf("%s:%s", tax.Name(taxid), id2name[r.BatchGenomeIndex])
-									break
-								}
-							}
-						} else if showTaxName {
-							vSgenome = fmt.Sprintf("%s:%s", idx.Taxonomy.Name(idx.genomeIdx2TaxId[r.BatchGenomeIndex]), id2name[r.BatchGenomeIndex])
-						} else {
-							vSgenome = string(id2name[r.BatchGenomeIndex])
-						}
-
-						fmt.Fprintf(outfh, "%s\t%d\t%d\t%s\t%s\t%.3f\t%d\t%d\t%.3f\t%s\t%.3f\t%d\t%d\t%d\t%d\t%d\t%c\t%d\t%.2e\t%d",
-							queryID, len(q.seq),
-							targets, vSgenome, vSseqid, r.AlignedFraction,
-							_c,
-							j, c.AlignedFraction, vAlenHSP, c.PIdent, c.Gaps,
-							c.QBegin+1, c.QEnd+1,
-							c.TBegin+1, c.TEnd+1,
-							strand, sd.SeqLen,
-							c.Evalue, c.BitScore,
-						)
-
+						row = appendSearchResultRow(row[:0], queryID, len(q.seq), targets, id2name[r.BatchGenomeIndex], genomeName,
+							r, sd, c, _c, j, outputOptions, avgQual)
 						if moreColumns {
-							fmt.Fprintf(outfh, "\t%s\t%s\t%s\t%s", cigar, qseq, tseq, alignment)
+							row = append(row, '\t')
+							row = append(row, cigar...)
+							row = append(row, '\t')
+							row = append(row, qseq...)
+							row = append(row, '\t')
+							row = append(row, tseq...)
+							row = append(row, '\t')
+							row = append(row, alignment...)
 						}
-
-						fmt.Fprintln(outfh)
+						row = append(row, '\n')
+						if _, writeErr := outfh.Write(row); writeErr != nil {
+							checkError(writeErr)
+						}
+						// Retain common rows, but release large alignment payload copies.
+						if cap(row) > 64<<10 {
+							row = nil
+						}
 
 						j++
 					}

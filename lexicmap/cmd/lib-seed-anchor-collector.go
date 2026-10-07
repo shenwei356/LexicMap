@@ -46,7 +46,7 @@ type seedAnchor struct {
 	trc              bool
 }
 
-type seedGenomeSlotPage [seedGenomeSlotPageSize]*SearchResult
+type seedGenomeSlotPage [seedGenomeSlotPageSize]*seedSearchResult
 type seedGenomeSlots [seedGenomeSlotPages]*seedGenomeSlotPage
 
 var poolSeedGenomeSlotPages = &sync.Pool{New: func() any {
@@ -58,7 +58,7 @@ var poolSeedGenomeSlots = &sync.Pool{New: func() any {
 }}
 
 var poolSerialSeedSearchResultsMap = &sync.Pool{New: func() any {
-	m := make(map[int]*SearchResult, 1024)
+	m := make(map[int]*seedSearchResult, 1024)
 	return &m
 }}
 
@@ -66,7 +66,8 @@ type seedAnchorCollector struct {
 	idx *Index
 
 	channels  []chan []seedAnchor
-	results   [][]*SearchResult
+	results   [][]*seedSearchResult
+	arenas    []seedSearchResultArena
 	workersWG sync.WaitGroup
 	batchPool sync.Pool
 }
@@ -76,7 +77,8 @@ func newSeedAnchorCollector(idx *Index, nWorkers int) *seedAnchorCollector {
 	c := &seedAnchorCollector{
 		idx:      idx,
 		channels: make([]chan []seedAnchor, nWorkers),
-		results:  make([][]*SearchResult, nWorkers),
+		results:  make([][]*seedSearchResult, nWorkers),
+		arenas:   make([]seedSearchResultArena, nWorkers),
 	}
 	c.batchPool.New = func() any {
 		return make([]seedAnchor, 0, seedAnchorBatchSize)
@@ -128,7 +130,8 @@ func (c *seedAnchorCollector) collect(worker int) {
 	defer c.workersWG.Done()
 
 	slotsByBatch := make([]*seedGenomeSlots, c.idx.info.GenomeBatches)
-	results := make([]*SearchResult, 0, 1024)
+	results := make([]*seedSearchResult, 0, 1024)
+	arena := &c.arenas[worker]
 
 	var filter *map[uint64]bool
 	if c.idx.filterByTaxId {
@@ -158,18 +161,7 @@ func (c *seedAnchorCollector) collect(worker int) {
 			pageSlot := genomeIndex & seedGenomeSlotPageMask
 			r := (*page)[pageSlot]
 			if r == nil {
-				subs := poolSubs.Get().(*[]SubstrPair)
-				r = poolSearchResult.Get().(*SearchResult)
-				r.BatchGenomeIndex = anchor.batchGenomeIndex
-				r.GenomeBatch = genomeBatch
-				r.GenomeIndex = genomeIndex
-				r.GenomeSize = 0
-				r.NumSeqs = 0
-				r.Subs = subs
-				r.Score = 0
-				r.resetChainRegions()
-				r.SimilarityDetails = nil
-				r.AlignedFraction = 0
+				r = arena.add(anchor.batchGenomeIndex)
 				(*page)[pageSlot] = r
 				results = append(results, r)
 			}
@@ -180,7 +172,7 @@ func (c *seedAnchorCollector) collect(worker int) {
 			sub.Len = anchor.length
 			sub.QRC = anchor.qrc
 			sub.TRC = anchor.trc
-			*r.Subs = append(*r.Subs, sub)
+			r.Subs = append(r.Subs, sub)
 		}
 		c.batchPool.Put(batch[:0])
 	}
@@ -217,7 +209,7 @@ func (c *seedAnchorCollector) anchorCount() uint64 {
 	var n uint64
 	for _, results := range c.results {
 		for _, r := range results {
-			n += uint64(len(*r.Subs))
+			n += uint64(len(r.Subs))
 		}
 	}
 	return n
@@ -239,8 +231,9 @@ func collectSeedAnchorsSerial(
 	locses *[][]int,
 	reverseLocses *[][]int,
 	genomeIDs *map[uint64]*[]uint64,
-) []*SearchResult {
-	m := poolSerialSeedSearchResultsMap.Get().(*map[int]*SearchResult)
+	arena *seedSearchResultArena,
+) []*seedSearchResult {
+	m := poolSerialSeedSearchResultsMap.Get().(*map[int]*seedSearchResult)
 	var filter *map[uint64]bool
 	if idx.filterByTaxId {
 		filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
@@ -310,21 +303,10 @@ func collectSeedAnchorsSerial(
 					key := int(batchGenomeIndex)
 					r := (*m)[key]
 					if r == nil {
-						subs := poolSubs.Get().(*[]SubstrPair)
-						r = poolSearchResult.Get().(*SearchResult)
-						r.BatchGenomeIndex = batchGenomeIndex
-						r.GenomeBatch = key >> BITS_GENOME_IDX
-						r.GenomeIndex = key & MASK_GENOME_IDX
-						r.GenomeSize = 0
-						r.NumSeqs = 0
-						r.Subs = subs
-						r.Score = 0
-						r.resetChainRegions()
-						r.SimilarityDetails = nil
-						r.AlignedFraction = 0
+						r = arena.add(batchGenomeIndex)
 						(*m)[key] = r
 					}
-					*r.Subs = append(*r.Subs, sub)
+					r.Subs = append(r.Subs, sub)
 				}
 			}
 		}
@@ -335,7 +317,7 @@ func collectSeedAnchorsSerial(
 		clear(*filter)
 		idx.poolTaxIDfilter.Put(filter)
 	}
-	results := make([]*SearchResult, 0, len(*m))
+	results := make([]*seedSearchResult, 0, len(*m))
 	for _, r := range *m {
 		results = append(results, r)
 	}
@@ -344,7 +326,7 @@ func collectSeedAnchorsSerial(
 	return results
 }
 
-func clearSeedSearchResults(results [][]*SearchResult) {
+func clearSeedSearchResults(results [][]*seedSearchResult) {
 	for i, batch := range results {
 		clear(batch)
 		results[i] = nil

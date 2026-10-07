@@ -29,10 +29,10 @@ func TestTrimSeedSearchResultsKeepsCutoffTies(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Different arrival orders must retain the same candidate set.
 			for shift := range max(1, len(tt.scores)) {
-				rs := make([]*SearchResult, len(tt.scores))
+				rs := make([]*seedSearchResult, len(tt.scores))
 				for i := range rs {
 					id := (i + shift) % len(rs)
-					rs[i] = &SearchResult{BatchGenomeIndex: uint64(id), Score: tt.scores[id]}
+					rs[i] = &seedSearchResult{BatchGenomeIndex: uint64(id), Score: tt.scores[id]}
 				}
 				backing := rs
 				trimSeedSearchResults(&rs, tt.topN)
@@ -68,8 +68,8 @@ func seedChainingTestIndex(workers int) *Index {
 	return idx
 }
 
-func seedChainingTestResults(n int) [][]*SearchResult {
-	results := make([][]*SearchResult, 3)
+func seedChainingTestResults(n int) [][]*seedSearchResult {
+	results := make([][]*seedSearchResult, 3)
 	for i := range n {
 		var anchors []SubstrPair
 		switch i % 5 {
@@ -86,7 +86,7 @@ func seedChainingTestResults(n int) [][]*SearchResult {
 				{TBegin: 3000, Len: 31}, {QBegin: 1, TBegin: 3001, Len: 20}, {TBegin: 3000, Len: 31}}
 		}
 		subs := anchors
-		r := &SearchResult{BatchGenomeIndex: uint64(i), Subs: &subs}
+		r := &seedSearchResult{BatchGenomeIndex: uint64(i), Subs: subs}
 		results[i%len(results)] = append(results[i%len(results)], r)
 	}
 	return results
@@ -98,20 +98,19 @@ func TestChainSeedResultsMatchesSerial(t *testing.T) {
 			t.Run(fmt.Sprintf("targets=%d/workers=%d", n, workers), func(t *testing.T) {
 				idx := seedChainingTestIndex(workers)
 				serial := seedChainingTestResults(n)
-				want := make(map[uint64]*SearchResult)
+				want := make(map[uint64]*seedSearchResult)
 				for _, targets := range serial {
 					for _, r := range targets {
-						ClearSubstrPairs(r.Subs, idx.k)
+						ClearSubstrPairs(&r.Subs, idx.k)
 						chainer := idx.poolChainers.Get().(*Chainer)
-						r.resetChainRegions()
-						r.chainRegions, r.Score = chainer.Chain(r.Subs, r.chainRegions)
+						r.resetRegions()
+						r.chainRegions, r.Score = chainer.Chain(&r.Subs, r.chainRegions)
 						RecycleChainer(idx.poolChainers, chainer)
 						if r.Score < idx.chainingOptions.MinScore {
-							idx.RecycleSearchResult(r)
+							r.resetSeeds()
 							continue
 						}
-						RecycleSubstrPairs(poolSubs, r.Subs)
-						r.Subs = nil
+						r.resetSeeds()
 						want[r.BatchGenomeIndex] = r
 					}
 				}
@@ -129,13 +128,13 @@ func TestChainSeedResultsMatchesSerial(t *testing.T) {
 					if r.Score != w.Score || !reflect.DeepEqual(r.chainRegions, w.chainRegions) {
 						t.Fatalf("target %d: score or chain bounds differ", r.BatchGenomeIndex)
 					}
-					if r.Subs != nil {
+					if len(r.Subs) != 0 {
 						t.Fatalf("target %d retains anchors or chain paths", r.BatchGenomeIndex)
 					}
 				}
-				idx.RecycleSearchResults(got)
+				recycleSeedSearchResultSlice(got)
 				for _, r := range want {
-					idx.RecycleSearchResult(r)
+					r.resetSeeds()
 				}
 			})
 		}
@@ -154,12 +153,12 @@ func TestChainSeedResultsDropsOversizedChainer(t *testing.T) {
 		subs[i] = SubstrPair{QBegin: int32(i * 64), TBegin: int32(i * 64), Len: 31}
 	}
 	single := []SubstrPair{{Len: 31}}
-	got := idx.chainSeedResults([][]*SearchResult{{{Subs: &subs}, {Subs: &single}}}, 2)
+	got := idx.chainSeedResults([][]*seedSearchResult{{{Subs: subs}, {Subs: single}}}, 2)
 	if nCreated < 2 {
 		t.Fatalf("oversized chainer was retained: created %d chainers", nCreated)
 	}
 	if len(*got) != 2 {
 		t.Fatalf("got %d targets, want 2", len(*got))
 	}
-	idx.RecycleSearchResults(got)
+	recycleSeedSearchResultSlice(got)
 }

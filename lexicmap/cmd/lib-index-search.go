@@ -1630,13 +1630,20 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	parallelCollection := nCollectorWorkers > 1
 	var anchorCollector *seedAnchorCollector
 	var serialSearchResultsCh chan *[]kv.SearchResult
-	var serialResults []*SearchResult
+	var serialResults []*seedSearchResult
+	var serialArena seedSearchResultArena
+	defer serialArena.recycle()
 	if parallelCollection {
 		anchorCollector = newSeedAnchorCollector(idx, nCollectorWorkers)
+		defer func() {
+			for i := range anchorCollector.arenas {
+				anchorCollector.arenas[i].recycle()
+			}
+		}()
 	} else {
 		serialSearchResultsCh = make(chan *[]kv.SearchResult, nSearchers)
 		go func() {
-			serialResults = collectSeedAnchorsSerial(idx, serialSearchResultsCh, _locses, _locsesR, genomeIds)
+			serialResults = collectSeedAnchorsSerial(idx, serialSearchResultsCh, _locses, _locsesR, genomeIds, &serialArena)
 			done <- 1
 		}()
 	}
@@ -1811,14 +1818,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	if debug {
 		producersDoneAt = time.Now()
 	}
-	var seedResults [][]*SearchResult
+	var seedResults [][]*seedSearchResult
 	if parallelCollection {
 		anchorCollector.finish()
 		seedResults = anchorCollector.results
 	} else {
 		close(serialSearchResultsCh)
 		<-done
-		seedResults = [][]*SearchResult{serialResults}
+		seedResults = [][]*seedSearchResult{serialResults}
 	}
 	var collectorDrainDuration time.Duration
 	var collectionAfterSearchDuration time.Duration
@@ -1843,7 +1850,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		nGenomeEntries += len(results)
 		if debug {
 			for _, r := range results {
-				nAnchors += uint64(len(*r.Subs))
+				nAnchors += uint64(len(r.Subs))
 			}
 		}
 	}
@@ -1896,7 +1903,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	}
 
 	if len(*rs) == 0 { // It happens when there's only one anchor which is shorter than MinSinglePrefix.
-		recycleSearchResultSlice(rs)
+		recycleSeedSearchResultSlice(rs)
 		return nil, nil
 	}
 
@@ -1940,8 +1947,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	// sort genomes according to the index in a genome data file for slightly faster file seeking
 	if len(*rs) > 1 { // GenomeIndex
 		// sort.Slice(*rs, func(i, j int) bool { return (*rs)[i].GenomeIndex < (*rs)[j].GenomeIndex })
-		slices.SortFunc(*rs, func(a, b *SearchResult) int {
-			return a.GenomeIndex - b.GenomeIndex
+		slices.SortFunc(*rs, func(a, b *seedSearchResult) int {
+			return int(a.BatchGenomeIndex&MASK_GENOME_IDX) - int(b.BatchGenomeIndex&MASK_GENOME_IDX)
 		})
 	}
 
@@ -1977,7 +1984,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	fcpus := float64(idx.opt.NumCPUs)
 
-	falin := func(r *SearchResult) { // for a reference genome
+	falin := func(candidate *seedSearchResult) { // for a reference genome
+		r := candidate.alignmentResult()
 		var err error
 		timeStart := time.Now()
 		defer func() {
@@ -2361,8 +2369,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 									}
 
 									for _, op = range trimOps(cigar.Ops) {
-										// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-										c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+										c.CIGAR = strconv.AppendInt(c.CIGAR, int64(int(op&4294967295)), 10)
 										// c.CIGAR = append(c.CIGAR, op.Op)
 										// exchange D and I, cause these in WFA and SAM are inverse
 										_op = byte(op >> 32)
@@ -2627,8 +2634,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 							}
 
 							for _, op = range trimOps(cigar.Ops) {
-								// c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op.N)))...)
-								c.CIGAR = append(c.CIGAR, []byte(strconv.Itoa(int(op&4294967295)))...)
+								c.CIGAR = strconv.AppendInt(c.CIGAR, int64(int(op&4294967295)), 10)
 								// c.CIGAR = append(c.CIGAR, op.Op)
 								// exchange D and I, cause these in WFA and SAM are inverse
 								_op = byte(op >> 32)
@@ -2797,7 +2803,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		<-doneDuration
 		pbs.Wait()
 	}
-	recycleSearchResultSlice(rs)
+	recycleSeedSearchResultSlice(rs)
 	// recycle this comparator
 	idx.poolSeqComparator.Put(cpr)
 	if collectErr != nil {

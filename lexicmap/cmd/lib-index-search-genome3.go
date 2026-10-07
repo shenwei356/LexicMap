@@ -90,9 +90,29 @@ var poolRepeatedKmerPositions = &sync.Pool{}
 
 // poolQSeeds is for reusing query seed slices
 var poolQSeeds = &sync.Pool{New: func() interface{} {
-	s := make([]*[]uint64, 0, 10240)
+	s := make([][]uint64, 0, 256)
 	return &s
 }}
+
+func recycleQuerySeeds(seeds *[][]uint64) {
+	const maxPooledQueryFragments = 10240
+	if cap(*seeds) > maxPooledQueryFragments {
+		clear((*seeds)[:cap(*seeds)])
+		*seeds = nil
+		return
+	}
+	// Slots outside the current length may own buffers from a longer query.
+	backing := (*seeds)[:cap(*seeds)]
+	for i, words := range backing {
+		if cap(words) > thresholdNSubsLong {
+			backing[i] = nil
+		} else {
+			backing[i] = words[:0]
+		}
+	}
+	*seeds = (*seeds)[:0]
+	poolQSeeds.Put(seeds)
+}
 
 func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64]uint64, repeatedPositions *[]repeatedKmerPosition, kmer uint64, pos uint32) {
 	_, ok := (*kmers)[kmer]
@@ -257,29 +277,24 @@ func (idx *Index) recycleSubjectSketch(s *subjectSketch) {
 }
 
 // sampleQueryFragment samples fixed-length k-mers from a query fragment.
-func sampleQueryFragment(frag []byte) (*[]uint64, error) {
+func sampleQueryFragment(frag []byte, sampledKmers []uint64) ([]uint64, error) {
+	sampledKmers = sampledKmers[:0]
 	k := gsa3SampledK
 	k8 := uint8(k)
 	scale := uint64(gsa3SamplingScale)
 	scaleM1 := scale - 1
 
 	if len(frag) < k {
-		empty := []uint64{}
-		return &empty, nil
+		return sampledKmers, nil
 	}
 
 	ccc := util.Ns(0b01, k8)
 	ggg := util.Ns(0b10, k8)
 	ttt := (uint64(1) << (k << 1)) - 1
 
-	sampledKmers := poolKmerAndLocs.Get().(*[]uint64)
-	*sampledKmers = (*sampledKmers)[:0]
-
 	iter, err := iterator.NewKmerIterator(frag, k)
 	if err != nil {
-		*sampledKmers = (*sampledKmers)[:0]
-		poolKmerAndLocs.Put(sampledKmers)
-		return nil, err
+		return sampledKmers, err
 	}
 
 	pos := 0
@@ -312,7 +327,7 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 			continue
 		}
 
-		*sampledKmers = append(*sampledKmers, canonical, uint64(pos)<<1|canonicalRC)
+		sampledKmers = append(sampledKmers, canonical, uint64(pos)<<1|canonicalRC)
 
 		pos++
 	}
@@ -324,7 +339,7 @@ func sampleQueryFragment(frag []byte) (*[]uint64, error) {
 func alignQueryFragToSubjectSampled(
 	qfrag []byte,
 	qqual []byte,
-	qSeeds *[]uint64,
+	qSeeds []uint64,
 	sketch *subjectSketch,
 	concat []byte,
 	chainer *Chainer2,
@@ -347,7 +362,7 @@ func alignQueryFragToSubjectSampled(
 		return 0, 0, 0, 0, 0, false
 	}
 
-	qKmers := *qSeeds
+	qKmers := qSeeds
 	sKmerMap := sketch.sampledKmerMap
 	repeatedKmerMap := sketch.repeatedKmerMap
 	repeatedKmerPositions := *sketch.repeatedKmerPositions
@@ -652,26 +667,16 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	}
 
 	// 2) Sample k-mers from each query fragment.
-	qSeeds := poolQSeeds.Get().(*[]*[]uint64)
-	*qSeeds = (*qSeeds)[:0]
-	if cap(*qSeeds) < len(*qfrags) {
-		*qSeeds = make([]*[]uint64, 0, len(*qfrags))
-	}
-	defer func() {
-		for _, seeds := range *qSeeds {
-			poolKmerAndLocs.Put(seeds)
-		}
-		clear(*qSeeds)
-		*qSeeds = (*qSeeds)[:0]
-		poolQSeeds.Put(qSeeds)
-	}()
+	qSeeds := poolQSeeds.Get().(*[][]uint64)
+	*qSeeds = slices.Grow((*qSeeds)[:0], len(*qfrags))[:len(*qfrags)]
+	defer recycleQuerySeeds(qSeeds)
 
-	for _, qfrag := range *qfrags {
-		seeds, err := sampleQueryFragment(qfrag)
+	for i, qfrag := range *qfrags {
+		seeds, err := sampleQueryFragment(qfrag, (*qSeeds)[i])
+		(*qSeeds)[i] = seeds
 		if err != nil {
 			return fmt.Errorf("failed to sample query fragment: %w", err)
 		}
-		*qSeeds = append(*qSeeds, seeds)
 	}
 
 	if debug {
@@ -959,26 +964,16 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	}
 
 	// 2) Sample k-mers from each query fragment.
-	qSeeds := poolQSeeds.Get().(*[]*[]uint64)
-	*qSeeds = (*qSeeds)[:0]
-	if cap(*qSeeds) < len(*qfrags) {
-		*qSeeds = make([]*[]uint64, 0, len(*qfrags))
-	}
-	defer func() {
-		for _, seeds := range *qSeeds {
-			poolKmerAndLocs.Put(seeds)
-		}
-		clear(*qSeeds)
-		*qSeeds = (*qSeeds)[:0]
-		poolQSeeds.Put(qSeeds)
-	}()
+	qSeeds := poolQSeeds.Get().(*[][]uint64)
+	*qSeeds = slices.Grow((*qSeeds)[:0], len(*qfrags))[:len(*qfrags)]
+	defer recycleQuerySeeds(qSeeds)
 
-	for _, qfrag := range *qfrags {
-		seeds, err := sampleQueryFragment(qfrag)
+	for i, qfrag := range *qfrags {
+		seeds, err := sampleQueryFragment(qfrag, (*qSeeds)[i])
+		(*qSeeds)[i] = seeds
 		if err != nil {
 			return fmt.Errorf("failed to sample query fragment: %w", err)
 		}
-		*qSeeds = append(*qSeeds, seeds)
 	}
 
 	// 3) Build subject genome concatenated sequence.

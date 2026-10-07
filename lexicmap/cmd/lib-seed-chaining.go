@@ -7,11 +7,11 @@ import (
 )
 
 // trimSeedSearchResults retains all candidates tied with the Nth chaining score.
-func trimSeedSearchResults(rs *[]*SearchResult, topN int) {
+func trimSeedSearchResults(rs *[]*seedSearchResult, topN int) {
 	if topN <= 0 || len(*rs) <= topN {
 		return
 	}
-	slices.SortFunc(*rs, func(a, b *SearchResult) int {
+	slices.SortFunc(*rs, func(a, b *seedSearchResult) int {
 		return cmp.Compare(b.Score, a.Score)
 	})
 	cutoff := (*rs)[topN-1].Score
@@ -19,15 +19,15 @@ func trimSeedSearchResults(rs *[]*SearchResult, topN int) {
 	for end < len(*rs) && (*rs)[end].Score == cutoff {
 		end++
 	}
-	// Release discarded candidates for GC without retaining them in object pools.
+	// Remove discarded entries from the ranked list; the query owns their pages.
 	clear((*rs)[end:])
 	*rs = (*rs)[:end]
 }
 
 // chainSeedResults batches targets across fixed workers. Each worker owns its
 // chainer and output slice; merging happens only after all workers finish.
-func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) *[]*SearchResult {
-	rs := poolSearchResults.Get().(*[]*SearchResult)
+func (idx *Index) chainSeedResults(seedResults [][]*seedSearchResult, nTargets int) *[]*seedSearchResult {
+	rs := poolSeedSearchResults.Get().(*[]*seedSearchResult)
 	*rs = (*rs)[:0]
 	if nTargets == 0 {
 		return rs
@@ -37,35 +37,33 @@ func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) 
 	// Keep enough jobs for load balancing, including small searches, while
 	// amortizing channel operations for searches with millions of targets.
 	batchSize := min(64, max(1, nTargets/(nWorkers*8)))
-	jobs := make(chan []*SearchResult, nWorkers)
-	results := make([]*[]*SearchResult, nWorkers)
+	jobs := make(chan []*seedSearchResult, nWorkers)
+	results := make([]*[]*seedSearchResult, nWorkers)
 	var wg sync.WaitGroup
 	wg.Add(nWorkers)
 	for worker := range nWorkers {
 		go func() {
 			defer wg.Done()
-			local := poolSearchResults.Get().(*[]*SearchResult)
+			local := poolSeedSearchResults.Get().(*[]*seedSearchResult)
 			*local = (*local)[:0]
 			var chainer *Chainer
 			for batch := range jobs {
 				for _, r := range batch {
-					if len(*r.Subs) > 1 {
-						ClearSubstrPairs(r.Subs, idx.k)
+					if len(r.Subs) > 1 {
+						ClearSubstrPairs(&r.Subs, idx.k)
 					}
 					if chainer == nil {
 						chainer = idx.poolChainers.Get().(*Chainer)
 					}
-					r.resetChainRegions()
-					r.chainRegions, r.Score = chainer.Chain(r.Subs, r.chainRegions)
-					RecycleSubstrPairs(poolSubs, r.Subs)
-					r.Subs = nil
+					r.resetRegions()
+					r.chainRegions, r.Score = chainer.Chain(&r.Subs, r.chainRegions)
+					r.resetSeeds()
 					// Preserve the existing policy of dropping oversized scratch
 					// arrays rather than retaining them for subsequent targets.
 					if len(chainer.visited) > chainerInitSize {
 						chainer = nil
 					}
 					if r.Score < idx.chainingOptions.MinScore {
-						idx.RecycleSearchResult(r)
 						continue
 					}
 					*local = append(*local, r)
@@ -94,7 +92,7 @@ func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) 
 	*rs = slices.Grow(*rs, nKept)
 	for _, local := range results {
 		*rs = append(*rs, (*local)...)
-		recycleSearchResultSlice(local)
+		recycleSeedSearchResultSlice(local)
 	}
 	return rs
 }
