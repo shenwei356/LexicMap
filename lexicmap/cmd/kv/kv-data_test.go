@@ -360,7 +360,7 @@ func TestKVData(t *testing.T) {
 	}
 }
 
-func TestLargePostingUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T) {
+func TestLargeSeedDataUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T) {
 	for _, useThreeBytes := range []bool{false, true} {
 		name := "eight-byte positions"
 		if useThreeBytes {
@@ -399,9 +399,9 @@ func TestLargePostingUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T) 
 			if err = rdr.ReadDataOfAMaskAndAppendToMap(&got); err != nil {
 				t.Fatal(err)
 			}
-			posting := *got[7]
-			if len(posting) != len(values)+1 || posting[0] != 999 || posting[len(posting)-1] != values[len(values)-1] {
-				t.Fatalf("unexpected merged posting: len=%d first=%d last=%d", len(posting), posting[0], posting[len(posting)-1])
+			seedData := *got[7]
+			if len(seedData) != len(values)+1 || seedData[0] != 999 || seedData[len(seedData)-1] != values[len(values)-1] {
+				t.Fatalf("unexpected merged seed data: len=%d first=%d last=%d", len(seedData), seedData[0], seedData[len(seedData)-1])
 			}
 		})
 	}

@@ -4,7 +4,7 @@ weight: 20
 ---
 
 ```plain
-$ lexicmap search  -h
+$ lexicmap search -h
 Search sequences against an index
 
 Attention:
@@ -20,18 +20,44 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
-  3. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
+  3. For searches with -a/--all, LexicMap retains up to 1 GiB of CIGAR strings, aligned
+     query/subject sequences, and alignment text in memory by default. When the global budget
+     is exceeded, each affected query stores these fields in one file in the system temporary
+     directory and removes it after output. Concurrent queries use separate files. On Unix,
+     set TMPDIR to choose a temporary directory on a fast disk with sufficient free space.
+     Use --max-align-result-memory to change the budget or set it to 0 to disable spilling.
+     This limit applies only to these output fields and is not a total process memory limit.
+  4. Queries with very many seed matches in large indexes can run out of memory
+     during seed collection. Reduce -J/--max-query-conc to lower the memory used
+     by concurrent queries. --max-seed-memory enables experimental seed spilling
+     (disabled by default) to limit anchor collection buffers.
+     The budget is divided among up to -J concurrent collection slots. Decoded seed data
+     are delivered in small batches; anchors spill as sorted runs before a buffer growth
+     would exceed its query share. Runs are merged by genome for the existing chaining.
+     Final Top-N selection, including cutoff ties, still uses chaining scores.
+     Files use the system temporary directory (TMPDIR) and are removed after chaining.
+     This budget excludes one genome's complete anchor array, chaining scratch,
+     fixed I/O buffers, candidate metadata, loaded index data, and alignment memory.
+     It is not a total RSS limit.
+
+Taxonomic operations:
+  1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
+     mapping file (-G/--genome2taxid), are needed for filtering genomes by TaxId(s) and/or
+     showing taxonomic names.
+
+     Taxdump files can be createted from any taxonomy data with TaxonKit, see
+     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump
+
+     If -T and -G are not provided, it will try to find them in the index directory,
+     in the subdirectory "taxdump" and the file "taxdump/taxid.map", respectively.
+
+  2. Users can limit search by TaxId(s) via -t/--taxids or --taxid-file.
      Only genomes with descendant TaxIds of the specific ones or themselves are searched,
      in a similar way with BLAST+ 2.15.0 or later versions.
      Negative values are allowed as a black list.
 
      For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with
      -t 543,-561.
-
-     Users only need to provide NCBI-format taxdump files (-T/--taxdump, can also create from
-     any taxonomy data with TaxonKit https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump )
-     and a genome-ID-to-TaxId mapping file (-G/--genome2taxid).
-     There's no need to rebuild the index.
 
 Alignment result relationship:
 
@@ -124,7 +150,11 @@ Flags:
                                          1024. (default 1024)
   -J, --max-query-conc int               ► Maximum number of concurrent queries. Bigger values do not
                                          improve the batch searching speed and consume much memory.
-                                         (default 8)
+                                         Reduce this value when memory is limited. (default 8)
+      --max-seed-memory string           ► Experimental anchor collection buffer budget shared across
+                                         up to -J query slots (K/M/G/T suffixes; 0 disables spilling).
+                                         Uses TMPDIR for temporary files. Not a total memory limit. See
+                                         Tips in --help for details. (default "0")
   -Q, --min-qcov-per-genome float        ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).

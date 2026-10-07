@@ -187,7 +187,7 @@ type SearchResult struct {
 	Len      uint8 // length of common prefix/suffix between the query and this k-mer
 	IsSuffix bool  // if matched by suffix
 	// Mismatch  uint8    // number of mismatch, it has meanning only when checking mismatch!
-	Values []uint64 // value of this key
+	Values []uint64 // encoded reference seed locations for the matched key
 }
 
 // Reset just resets the stats of a SearchResult
@@ -200,7 +200,7 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 	return &tmp
 }}
 
-// appendSearchResult reuses the posting buffer in the next result slot. The
+// appendSearchResult reuses the seed data buffer in the next result slot. The
 // returned address is valid until another result is appended or the list is
 // recycled; searchers finish writing the current result before either action.
 func appendSearchResult(results *[]SearchResult) *SearchResult {
@@ -216,8 +216,8 @@ func appendSearchResult(results *[]SearchResult) *SearchResult {
 }
 
 // AppendSearchResults transfers src's records to dst and resets src's length.
-// The containers must be distinct. Unused posting buffers in dst move back to
-// src for reuse; recycling src cannot overwrite the transferred postings.
+// The containers must be distinct. Unused seed data buffers in dst move back to
+// src for reuse; recycling src cannot overwrite the transferred seed data.
 func AppendSearchResults(dst, src *[]SearchResult) {
 	for i := range *src {
 		r := appendSearchResult(dst)
@@ -240,7 +240,7 @@ func RecycleSearchResults(sr *[]SearchResult) {
 		*sr = nil
 		return
 	}
-	// Unused slots may own reusable posting buffers from an earlier, longer
+	// Unused slots may own reusable seed data buffers from an earlier, longer
 	// search. Bound all of them and keep ownership with this result container.
 	backing := (*sr)[:cap(*sr)]
 	for i := range backing {
@@ -256,6 +256,9 @@ func RecycleSearchResults(sr *[]SearchResult) {
 	poolSearchResults.Put(sr)
 }
 
+// seedPosBatchSize is the number of locations decoded per disk block or
+// in-memory batch. Disk batches can include one additional flag-checked location;
+// seedDataBuffer reserves the required 257 slots.
 const seedPosBatchSize = 256
 
 // Search queries a k-mer and returns k-mers with a minimum prefix of p,
@@ -264,6 +267,35 @@ const seedPosBatchSize = 256
 //
 // Please remember to recycle the results object with RecycleSearchResults().
 func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	return scr.search(kmers, p, checkFlag, reversedKmer, nil)
+}
+
+// SearchStream searches one query k-mer per mask with the same matching/flag
+// rules as Search, delivering at most 257 locations per synchronous batch.
+// IQuery includes ChunkIndex.
+// p is the minimum prefix length. checkFlag enables the existing reverse-key
+// flag check; reversedKmer selects the expected flag and marks suffix matches.
+// One reference-key match can produce several batches with identical metadata.
+//
+// consume must be non-nil. Values is borrowed: consume it or copy it before
+// returning, because the next batch reuses its array. Blocking the callback
+// blocks this decoder, providing backpressure without a growing result queue.
+// Callback errors stop this call and propagate unchanged; decoding resources
+// are returned on every exit. The caller has no result container to recycle.
+func (scr *Searcher) SearchStream(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool, consume func(SearchResult) error) error {
+	if consume == nil {
+		return fmt.Errorf("nil seed data consumer")
+	}
+	_, err := scr.search(kmers, p, checkFlag, reversedKmer, consume)
+	return err
+}
+
+// search is shared by Search and SearchStream to keep lookup, match lengths,
+// location order, and reverse-flag filtering identical. A nil consume collects
+// pooled results; a callback selects the fixed streaming sink. On success only
+// collected mode returns a non-nil out. Errors recycle any collected container;
+// streaming mode retains no delivered Values arrays.
+func (scr *Searcher) search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool, consume func(SearchResult) error) (out *[]SearchResult, err error) {
 	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != len(scr.Indexes) {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
@@ -336,10 +368,14 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	}
 	batchSizeBytes := uint64(seedPosBatchSize) * nSeedPosBytes
 
-	var err error
-
-	results := poolSearchResults.Get().(*[]SearchResult)
-	*results = (*results)[:0]
+	// Select the output mode without changing the KV lookup below. The deferred
+	// cleanup owns any collected result container until this call succeeds.
+	sink := newSearchResultSink(consume)
+	defer func() {
+		if err != nil && sink.results != nil {
+			RecycleSearchResults(sink.results)
+		}
+	}()
 	var found, saveKmer bool
 	// var mismatch uint8
 	var sr *SearchResult
@@ -558,7 +594,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						sr = appendSearchResult(results)
+						sr, err = sink.start()
+						if err != nil {
+							return nil, err
+						}
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -571,7 +610,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						lenVal-- // skip the checked one
 					}
 				} else {
-					sr = appendSearchResult(results)
+					sr, err = sink.start()
+					if err != nil {
+						return nil, err
+					}
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
 					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -591,6 +633,13 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 						}
 
+						// Consume this block before decoding another; retain metadata
+						// for subsequent batches belonging to the same matched key.
+						if consume != nil {
+							if err = sink.flush(); err != nil {
+								return nil, err
+							}
+						}
 						lenVal -= seedPosBatchSize
 					}
 					if lenVal > 0 {
@@ -650,7 +699,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						sr = appendSearchResult(results)
+						sr, err = sink.start()
+						if err != nil {
+							return nil, err
+						}
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer2
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
@@ -663,7 +715,10 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						lenVal-- // skip the checked one
 					}
 				} else {
-					sr = appendSearchResult(results)
+					sr, err = sink.start()
+					if err != nil {
+						return nil, err
+					}
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
 					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
@@ -683,6 +738,13 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 							sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 						}
 
+						// Consume this block before decoding another; retain metadata
+						// for subsequent batches belonging to the same matched key.
+						if consume != nil {
+							if err = sink.flush(); err != nil {
+								return nil, err
+							}
+						}
 						lenVal -= seedPosBatchSize
 					}
 					if lenVal > 0 {
@@ -713,11 +775,45 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 	}
 
 	// poolBufReader.Put(r)
-	return results, nil
+	// Deliver the last partial batch: no following key will call start to flush
+	// it. In collected mode flush is a no-op and the result slice is returned.
+	if err = sink.flush(); err != nil {
+		return nil, err
+	}
+	return sink.results, nil
 }
 
 // Search2 is very similar to Search, only the data structure of input kmers is different.
 func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	return scr.search2(kmers, p, checkFlag, reversedKmer, nil)
+}
+
+// Search2Stream searches multiple query k-mers per mask with the same matching/flag
+// rules as Search2, delivering at most 257 locations per synchronous batch.
+// IQuery includes ChunkIndex; IQuery2 indexes the within-mask query.
+// p is the minimum prefix length. checkFlag enables the existing reverse-key
+// flag check; reversedKmer selects the expected flag and marks suffix matches.
+// One reference-key match can produce several batches with identical metadata.
+//
+// consume must be non-nil. Values is borrowed: consume it or copy it before
+// returning, because the next batch reuses its array. Blocking the callback
+// blocks this decoder, providing backpressure without a growing result queue.
+// Callback errors stop this call and propagate unchanged; decoding resources
+// are returned on every exit. The caller has no result container to recycle.
+func (scr *Searcher) Search2Stream(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool, consume func(SearchResult) error) error {
+	if consume == nil {
+		return fmt.Errorf("nil seed data consumer")
+	}
+	_, err := scr.search2(kmers, p, checkFlag, reversedKmer, consume)
+	return err
+}
+
+// search2 is shared by Search2 and Search2Stream to keep lookup, match lengths,
+// location order, and reverse-flag filtering identical. A nil consume collects
+// pooled results; a callback selects the fixed streaming sink. On success only
+// collected mode returns a non-nil out. Errors recycle any collected container;
+// streaming mode retains no delivered Values arrays.
+func (scr *Searcher) search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool, consume func(SearchResult) error) (out *[]SearchResult, err error) {
 	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != len(scr.Indexes) {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
@@ -789,10 +885,14 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 	}
 	batchSizeBytes := uint64(seedPosBatchSize) * nSeedPosBytes
 
-	var err error
-
-	results := poolSearchResults.Get().(*[]SearchResult)
-	*results = (*results)[:0]
+	// Select the output mode without changing the KV lookup below. The deferred
+	// cleanup owns any collected result container until this call succeeds.
+	sink := newSearchResultSink(consume)
+	defer func() {
+		if err != nil && sink.results != nil {
+			RecycleSearchResults(sink.results)
+		}
+	}()
 	var found, saveKmer bool
 	// var mismatch uint8
 	var sr *SearchResult
@@ -1010,7 +1110,10 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							sr = appendSearchResult(results)
+							sr, err = sink.start()
+							if err != nil {
+								return nil, err
+							}
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
 							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -1024,7 +1127,10 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							lenVal-- // skip the checked one
 						}
 					} else {
-						sr = appendSearchResult(results)
+						sr, err = sink.start()
+						if err != nil {
+							return nil, err
+						}
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -1045,6 +1151,13 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 							}
 
+							// Consume this block before decoding another; retain metadata
+							// for subsequent batches belonging to the same matched key.
+							if consume != nil {
+								if err = sink.flush(); err != nil {
+									return nil, err
+								}
+							}
 							lenVal -= seedPosBatchSize
 						}
 						if lenVal > 0 {
@@ -1104,7 +1217,10 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							sr = appendSearchResult(results)
+							sr, err = sink.start()
+							if err != nil {
+								return nil, err
+							}
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
 							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
@@ -1118,7 +1234,10 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							lenVal-- // skip the checked one
 						}
 					} else {
-						sr = appendSearchResult(results)
+						sr, err = sink.start()
+						if err != nil {
+							return nil, err
+						}
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
@@ -1139,6 +1258,13 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 								sr.Values = append(sr.Values, fUint64(buf2048[j:j+nSeedPosBytes]))
 							}
 
+							// Consume this block before decoding another; retain metadata
+							// for subsequent batches belonging to the same matched key.
+							if consume != nil {
+								if err = sink.flush(); err != nil {
+									return nil, err
+								}
+							}
 							lenVal -= seedPosBatchSize
 						}
 						if lenVal > 0 {
@@ -1169,7 +1295,12 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 		}
 	}
 
-	return results, nil
+	// Deliver the last partial batch: no following key will call start to flush
+	// it. In collected mode flush is a no-op and the result slice is returned.
+	if err = sink.flush(); err != nil {
+		return nil, err
+	}
+	return sink.results, nil
 }
 
 // Close closes the searcher.

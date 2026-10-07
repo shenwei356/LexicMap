@@ -24,7 +24,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
 - `lexicmap search`:
-    - **Faster searching speed for batch queries**.
+    - **Faster searching speed for batch queries with -n/--top-n-genomes**.
+    - **Add experimental `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Process one genome's complete anchor list at a time for chaining; preserve global Top-N and cutoff ties. The budget excludes one genome's complete anchor array, chaining scratch, and other search memory. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
     - Optimize chaining to reduce memory use and garbage collection overhead.
     - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).

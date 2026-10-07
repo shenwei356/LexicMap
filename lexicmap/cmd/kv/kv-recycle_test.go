@@ -14,10 +14,10 @@ func TestRecycleSearchResultsBoundsSeedPositions(t *testing.T) {
 			}
 			if capacity > maxPooledSeedPositions {
 				if r.Values != nil {
-					t.Fatal("oversized posting array was retained")
+					t.Fatal("oversized seed data array was retained")
 				}
 			} else if cap(r.Values) != capacity {
-				t.Fatal("small posting array was not retained")
+				t.Fatal("small seed data array was not retained")
 			}
 		}
 		if len(results) != 0 {
@@ -49,26 +49,26 @@ func TestSearchResultBuffersSurviveGrowthAndReuse(t *testing.T) {
 			t.Fatal("growth changed a previous result")
 		}
 	}
-	posting := &results[0].Values[0]
+	bufferStart := &results[0].Values[0]
 	results = results[:0]
 	r := appendSearchResult(&results)
 	r.Values = append(r.Values, 1234)
-	if &r.Values[0] != posting {
-		t.Fatal("posting buffer was not reused")
+	if &r.Values[0] != bufferStart {
+		t.Fatal("seed data buffer was not reused")
 	}
 	RecycleSearchResults(&results)
 }
 
-func TestTransferredSearchResultsOwnPostingBuffers(t *testing.T) {
+func TestTransferredSearchResultsOwnSeedDataBuffers(t *testing.T) {
 	for _, capacity := range []int{1, 4} {
 		source := []SearchResult{{IQuery: 7, Values: []uint64{11, 12}}}
 		destination := make([]SearchResult, 1, capacity)
 		destination[0] = SearchResult{IQuery: 3, Values: []uint64{4}}
-		var unusedPosting *uint64
+		var unusedSeedData *uint64
 		if capacity > 1 {
 			backing := destination[:capacity]
 			backing[1].Values = []uint64{21, 22}
-			unusedPosting = &backing[1].Values[0]
+			unusedSeedData = &backing[1].Values[0]
 		}
 		AppendSearchResults(&destination, &source)
 		if len(source) != 0 || len(destination) != 2 || destination[0].Values[0] != 4 {
@@ -76,11 +76,11 @@ func TestTransferredSearchResultsOwnPostingBuffers(t *testing.T) {
 		}
 		r := appendSearchResult(&source)
 		r.Values = append(r.Values, 99)
-		if unusedPosting != nil && &r.Values[0] != unusedPosting {
-			t.Fatal("transfer discarded the destination's unused posting buffer")
+		if unusedSeedData != nil && &r.Values[0] != unusedSeedData {
+			t.Fatal("transfer discarded the destination's unused seed data buffer")
 		}
 		if destination[1].IQuery != 7 || destination[1].Values[0] != 11 || destination[1].Values[1] != 12 {
-			t.Fatal("source reuse overwrote transferred postings")
+			t.Fatal("source reuse overwrote transferred seed data")
 		}
 		RecycleSearchResults(&source)
 		RecycleSearchResults(&destination)

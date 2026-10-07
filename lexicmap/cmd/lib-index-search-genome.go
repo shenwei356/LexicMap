@@ -266,9 +266,9 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 		seedSearcherDebugStats = make([]seedSearcherDebugStat, nSearchers)
 	}
 
-	// With multiple workers, producers expand postings into bounded batches and
+	// With multiple workers, producers expand seed data into bounded batches and
 	// collectors exclusively own disjoint genome batches. This removes the
-	// single global-map writer without adding a lock to every posting update.
+	// single global-map writer without adding a lock to every seed data update.
 	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
 	parallelCollection := nCollectorWorkers > 1
 	var collector *gsearchScreenCollector
