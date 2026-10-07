@@ -176,7 +176,7 @@ func collectIndex15Searches(t *testing.T, searcher *Searcher, queries []uint64) 
 		}
 	}
 	queryList := append([]uint64(nil), queries...)
-	queryLists := []*[]uint64{&queryList}
+	queryLists := [][]uint64{queryList}
 	results, err := searcher.Search2(queryLists, 15, false, false)
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +292,7 @@ func TestCreateKVIndex15PreservesSearchResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	queryList := append([]uint64(nil), queries...)
-	queryLists := []*[]uint64{&queryList}
+	queryLists := [][]uint64{queryList}
 	inMemoryResults, err := inMemory.Search2(queryLists, 15, false, false)
 	if err != nil {
 		t.Fatal(err)

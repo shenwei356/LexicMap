@@ -238,7 +238,7 @@ func collectSeedAnchorsSerial(
 	idx *Index,
 	ch <-chan *[]*kv.SearchResult,
 	locses *[][]int,
-	reverseLocses *[]*[]int,
+	reverseLocses *[][]int,
 	genomeIDs *map[uint64]*[]uint64,
 ) []*SearchResult {
 	m := poolSerialSeedSearchResultsMap.Get().(*map[int]*SearchResult)
@@ -256,7 +256,7 @@ func collectSeedAnchorsSerial(
 			if !sr.IsSuffix {
 				queryLocs = (*locses)[sr.IQuery]
 			} else {
-				queryLocs = (*locses)[(*(*reverseLocses)[sr.IQuery])[sr.IQuery2]]
+				queryLocs = (*locses)[(*reverseLocses)[sr.IQuery][sr.IQuery2]]
 			}
 			for _, encodedPosQ := range queryLocs {
 				rcQ := encodedPosQ&MASK_STRAND > 0

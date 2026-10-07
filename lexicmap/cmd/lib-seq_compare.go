@@ -184,12 +184,10 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	r.QEnd, r.TEnd = -1, -1
 	r.MatchedBases = 0
 
-	regions := poolRegions.Get().(*[]*[2]int)
+	regions := poolRegions.Get().(*[][2]int)
 	for _, c := range *r.Chains {
 		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
-		region := poolRegion.Get().(*[2]int)
-		region[0], region[1] = c.QBegin, c.QEnd
-		*regions = append(*regions, region)
+		*regions = append(*regions, [2]int{c.QBegin, c.QEnd})
 
 		if c.QBegin < r.QBegin {
 			r.QBegin = c.QBegin
@@ -226,15 +224,13 @@ func (r *SeqComparatorResult) Update2(chains *[]*Chain2Result, queryLen int) {
 	r.QEnd, r.TEnd = -1, -1
 	r.MatchedBases = 0
 
-	regions := poolRegions.Get().(*[]*[2]int)
+	regions := poolRegions.Get().(*[][2]int)
 	for _, c := range *r.Chains {
 		// fmt.Printf("to merge [%d, %d] vs [%d, %d]\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd)
 
 		c.AlignedFraction = float64(c.AlignedBasesQ) / float64(queryLen) * 100
 
-		region := poolRegion.Get().(*[2]int)
-		region[0], region[1] = c.QBegin, c.QEnd
-		*regions = append(*regions, region)
+		*regions = append(*regions, [2]int{c.QBegin, c.QEnd})
 
 		r.MatchedBases += c.MatchedBases
 	}
@@ -251,17 +247,13 @@ func (r *SeqComparatorResult) Update2(chains *[]*Chain2Result, queryLen int) {
 
 // -----------------------------------------------------------------------------
 
-func recycleRegions(regions *[]*[2]int) {
-	for _, r := range *regions {
-		poolRegion.Put(r)
-	}
-	clear(*regions)
+func recycleRegions(regions *[][2]int) {
 	*regions = (*regions)[:0]
 	poolRegions.Put(regions)
 }
 
 // coverageLen computes the total covered bases for a list of regions which might have overlaps.
-func coverageLen(regions *[]*[2]int) (r int) {
+func coverageLen(regions *[][2]int) (r int) {
 	if len(*regions) == 0 {
 		return 0
 	}
@@ -273,22 +265,22 @@ func coverageLen(regions *[]*[2]int) (r int) {
 	// sort.Slice(*regions, func(i, j int) bool {
 	// 	return (*regions)[i][0] < (*regions)[j][0]
 	// })
-	slices.SortFunc(*regions, func(a, b *[2]int) int {
+	slices.SortFunc(*regions, func(a, b [2]int) int {
 		return a[0] - b[0]
 	})
 
-	var region *[2]int // ccurent region
+	var region [2]int  // current region
 	var start, end int // positions of the a merged region
 
 	region = (*regions)[0] // the first region
-	start, end = (*region)[0], (*region)[1]
+	start, end = region[0], region[1]
 
 	for i := 1; i < len(*regions); i++ {
 		region = (*regions)[i]
 		if region[0] > end { // has no overlap with previous merged region
 			r += end - start + 1 // add the length
 
-			start, end = (*region)[0], (*region)[1] // create a new merged region
+			start, end = region[0], region[1] // create a new merged region
 			continue
 		}
 		if region[1] <= end { // the current region is in the merged region
@@ -302,12 +294,8 @@ func coverageLen(regions *[]*[2]int) (r int) {
 }
 
 var poolRegions = &sync.Pool{New: func() interface{} {
-	tmp := make([]*[2]int, 0, 128)
+	tmp := make([][2]int, 0, 128)
 	return &tmp
-}}
-
-var poolRegion = &sync.Pool{New: func() interface{} {
-	return &[2]int{}
 }}
 
 var poolSeqComparatorResult = &sync.Pool{New: func() interface{} {
@@ -354,9 +342,6 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	t := cpr.tree
 	var kmer, kmerRC uint64
 	var ok bool
-	var v, p uint32
-	var srs *[]*rtree.SearchResult
-	var sr *rtree.SearchResult
 
 	// substring pairs/seeds/anchors
 	subs := poolSubsLong.Get().(*[]SubstrPair)
@@ -366,6 +351,31 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	ccc := cpr.ccc
 	ggg := cpr.ggg
 	ttt := cpr.ttt
+
+	var targetPos int
+	appendPositive := func(_ uint64, lenPrefix uint8, values []uint32) {
+		for _, v := range values {
+			p := v >> 1
+			if v&1 == 1 || p < begin || p+uint32(lenPrefix) > end {
+				continue
+			}
+			*subs = append(*subs, SubstrPair{
+				QBegin: int32(p), TBegin: int32(targetPos), Len: lenPrefix,
+			})
+		}
+	}
+	appendNegative := func(_ uint64, lenPrefix uint8, values []uint32) {
+		for _, v := range values {
+			p := v>>1 + uint32(k) - uint32(lenPrefix)
+			if v&1 == 0 || p+uint32(lenPrefix) < begin || p > end {
+				continue
+			}
+			*subs = append(*subs, SubstrPair{
+				QBegin: int32(p), TBegin: int32(targetPos + k - int(lenPrefix)),
+				Len: lenPrefix, QRC: true, TRC: true,
+			})
+		}
+	}
 
 	for {
 		kmer, kmerRC, ok, _ = iter.NextKmer()
@@ -379,61 +389,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 			continue
 		}
 
-		// ------------ positive strand -----------
-
-		srs, ok = t.Search(kmer, m)
-		if ok {
-			// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmer, k8))
-			for _, sr = range *srs {
-				for _, v = range sr.Values {
-					p = v >> 1
-					// fmt.Printf("  p: %d, len: %d\n", p, sr.LenPrefix)
-					if v&1 == 1 || p < begin || p+uint32(sr.LenPrefix) > end { // skip flanking regions
-						continue
-					}
-
-					_sub2 := SubstrPair{}
-					_sub2.QBegin = int32(p)
-					_sub2.TBegin = int32(iter.Index())
-					// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
-					_sub2.Len = uint8(sr.LenPrefix)
-					_sub2.QRC = false
-					_sub2.TRC = false
-
-					*subs = append(*subs, _sub2)
-				}
-			}
-
-			t.RecycleSearchResult(srs)
-		}
-
-		// ------------ negative strand -----------
-
-		srs, ok = t.Search(kmerRC, m)
-		if ok {
-			// fmt.Printf("%d: %s\n", iter.Index(), lexichash.MustDecode(kmerRC, k8))
-			for _, sr = range *srs {
-				for _, v = range sr.Values {
-					p = v>>1 + uint32(k) - uint32(sr.LenPrefix)
-					// fmt.Printf("  p: %d, len: %d\n", p, sr.LenPrefix)
-					if v&1 == 0 || p+uint32(sr.LenPrefix) < begin || p > end { // skip flanking regions
-						continue
-					}
-
-					_sub2 := SubstrPair{}
-					_sub2.QBegin = int32(p)
-					_sub2.TBegin = int32(iter.Index() + k - int(sr.LenPrefix))
-					// _sub2.Code = rtree.KmerPrefix(sr.Kmer, k8, sr.LenPrefix)
-					_sub2.Len = uint8(sr.LenPrefix)
-					_sub2.QRC = true
-					_sub2.TRC = true
-
-					*subs = append(*subs, _sub2)
-				}
-			}
-
-			t.RecycleSearchResult(srs)
-		}
+		targetPos = iter.Index()
+		t.SearchEach(kmer, m, appendPositive)
+		t.SearchEach(kmerRC, m, appendNegative)
 	}
 
 	if len(*subs) < 1 { // no way, no matches in the pseudo alignment

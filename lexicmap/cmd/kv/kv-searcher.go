@@ -691,7 +691,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 }
 
 // Search2 is very similar to Search, only the data structure of input kmers is different.
-func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
+func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
 	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
 	if len(kmers) != len(scr.Indexes) {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
@@ -795,7 +795,7 @@ func (scr *Searcher) Search2(kmers []*[]uint64, p uint8, checkFlag bool, reverse
 		// e.g., For a query ACGAC and p=3,
 		// kmers shared >=3 prefix are: ACGAA ... ACGTT.
 		// kmer = kmers[iQ]
-		for iKmer, kmer = range *kmers[iQ] {
+		for iKmer, kmer = range kmers[iQ] {
 
 			if kmer == 0 {
 				continue

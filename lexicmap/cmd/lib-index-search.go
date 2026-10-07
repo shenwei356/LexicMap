@@ -611,18 +611,12 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	idx.poolKmers = &sync.Pool{New: func() interface{} {
-		tmp := make([]*[]uint64, len(idx.lh.Masks))
-		for i := range tmp {
-			tmp[i] = &[]uint64{}
-		}
+		tmp := make([][]uint64, len(idx.lh.Masks))
 		return &tmp
 	}}
 
 	idx.poolLocses = &sync.Pool{New: func() interface{} {
-		tmp := make([]*[]int, len(idx.lh.Masks))
-		for i := range tmp {
-			tmp[i] = &[]int{}
-		}
+		tmp := make([][]int, len(idx.lh.Masks))
 		return &tmp
 	}}
 
@@ -1576,8 +1570,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	// -----------------------
 	// reverse k-mers
-	_kmersR := idx.poolKmers.Get().(*[]*[]uint64)
-	_locsesR := idx.poolLocses.Get().(*[]*[]int)
+	_kmersR := idx.poolKmers.Get().(*[][]uint64)
+	_locsesR := idx.poolLocses.Get().(*[][]int)
 
 	chR := make(chan [3]uint64, nSearchers)
 	doneR := make(chan int)
@@ -1591,8 +1585,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		for i2k := range chR {
 			// multiple oldMask might points to the same newMask
 			newMask, _kmer, oldMask = i2k[0], i2k[1], i2k[2]
-			v = (*_kmersR)[newMask]
-			vl = (*_locsesR)[newMask]
+			v = &(*_kmersR)[newMask]
+			vl = &(*_locsesR)[newMask]
 
 			existed = false
 			for _, _v = range *v {
@@ -1789,7 +1783,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				if !sr.IsSuffix {
 					locs = (*_locses)[sr.IQuery]
 				} else {
-					locs = (*_locses)[(*(*_locsesR)[sr.IQuery])[sr.IQuery2]]
+					locs = (*_locses)[(*_locsesR)[sr.IQuery][sr.IQuery2]]
 				}
 				for _, encodedPosQ := range locs {
 					rcQ := encodedPosQ&MASK_STRAND > 0
@@ -1867,14 +1861,12 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		collectionAfterSearchDuration = time.Since(allSeedSearchersDoneAt)
 	}
 
-	var v *[]uint64
-	for _, v = range *_kmersR {
-		*v = (*v)[:0]
+	for i := range *_kmersR {
+		(*_kmersR)[i] = (*_kmersR)[i][:0]
 	}
 
-	var vl *[]int
-	for _, vl = range *_locsesR {
-		*vl = (*vl)[:0]
+	for i := range *_locsesR {
+		(*_locsesR)[i] = (*_locsesR)[i][:0]
 	}
 	idx.poolKmers.Put(_kmersR)
 	idx.poolLocses.Put(_locsesR)
@@ -2766,13 +2758,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		if !idx.hasGenomeChunks { // if hasGenomeChunks, do not filter results now
 			// compute aligned bases per genome
 			var alignedBasesGenome int
-			regions := poolRegions.Get().(*[]*[2]int)
+			regions := poolRegions.Get().(*[][2]int)
 			*regions = (*regions)[:0]
 			for _, sd := range *sds {
 				for _, c := range sd.Alignments {
-					region := poolRegion.Get().(*[2]int)
-					region[0], region[1] = c.QBegin, c.QEnd
-					*regions = append(*regions, region)
+					*regions = append(*regions, [2]int{c.QBegin, c.QEnd})
 				}
 			}
 			alignedBasesGenome = coverageLen(regions)
@@ -2935,13 +2925,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			}
 
 			// compute aligned bases per genome
-			regions := poolRegions.Get().(*[]*[2]int)
+			regions := poolRegions.Get().(*[][2]int)
 			*regions = (*regions)[:0]
 			for _, sd := range *r.SimilarityDetails {
 				for _, c := range sd.Alignments {
-					region := poolRegion.Get().(*[2]int)
-					region[0], region[1] = c.QBegin, c.QEnd
-					*regions = append(*regions, region)
+					*regions = append(*regions, [2]int{c.QBegin, c.QEnd})
 				}
 			}
 			alignedBasesGenome = coverageLen(regions)

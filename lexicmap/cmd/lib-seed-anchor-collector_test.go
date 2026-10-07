@@ -164,7 +164,7 @@ func TestCollectSeedAnchorsSerial(t *testing.T) {
 			}
 			locses := [][]int{{qpos}}
 			reverseQueryIndices := []int{0}
-			reverseLocses := []*[]int{&reverseQueryIndices}
+			reverseLocses := [][]int{reverseQueryIndices}
 			genome := uint64(7)
 			srs := []*kv.SearchResult{{
 				IQuery: 0, IsSuffix: tt.reverse, IQuery2: 0, Len: 21,

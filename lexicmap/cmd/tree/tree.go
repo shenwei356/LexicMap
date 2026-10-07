@@ -443,6 +443,41 @@ func (idx *Tree) RecycleSearchResult(sr *[]*SearchResult) {
 // We assume the k values of the query k-mer and k-mers in the tree are the same.
 // After using the result, do not forget to call RecycleSearchResult().
 func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
+	target := t.searchNode(key, p)
+	if target == nil {
+		return nil, false
+	}
+
+	results := poolSearchResults.Get().(*[]*SearchResult)
+	shift := int(t.k) - 32
+	recursiveWalk(target, func(leafKey uint64, v []uint32) bool {
+		r := poolSearchResult.Get().(*SearchResult)
+		r.Kmer = leafKey
+		r.LenPrefix = uint8(bits.LeadingZeros64(key^leafKey)>>1 + shift)
+		r.Values = v
+		*results = append(*results, r)
+		return false
+	})
+	return results, true
+}
+
+// SearchEach visits matching leaves in lexicographic order without allocating
+// search results. lenPrefix is the exact common prefix length. Values belong to
+// the tree and must not be modified. It returns whether any leaves matched.
+func (t *Tree) SearchEach(key uint64, p uint8, fn func(leafKey uint64, lenPrefix uint8, values []uint32)) bool {
+	target := t.searchNode(key, p)
+	if target == nil {
+		return false
+	}
+	shift := int(t.k) - 32
+	recursiveWalk(target, func(leafKey uint64, v []uint32) bool {
+		fn(leafKey, uint8(bits.LeadingZeros64(key^leafKey)>>1+shift), v)
+		return false
+	})
+	return true
+}
+
+func (t *Tree) searchNode(key uint64, p uint8) *node {
 	if p < 1 {
 		p = 1
 	}
@@ -450,7 +485,6 @@ func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
 	if p > k {
 		p = k
 	}
-	key0, k0 := key, k
 	var target *node
 	n := t.root
 	search := key
@@ -508,26 +542,7 @@ func (t *Tree) Search(key uint64, p uint8) (*[]*SearchResult, bool) {
 		}
 	}
 
-	if target == nil {
-		return nil, false
-	}
-
-	// output all leaves below n
-	// results := make([]SearchResult, 0, 8)
-	results := poolSearchResults.Get().(*[]*SearchResult)
-
-	var shift int = int(k0 - 32) // pre calculate it, a little bit faster
-	recursiveWalk(target, func(key uint64, v []uint32) bool {
-		r := poolSearchResult.Get().(*SearchResult)
-		r.Kmer = key
-		r.LenPrefix = uint8(bits.LeadingZeros64(key0^key)>>1 + shift)
-		r.Values = v
-
-		*results = append(*results, r)
-		return false
-	})
-
-	return results, true
+	return target
 }
 
 // WalkFn is used for walking the tree. Takes a

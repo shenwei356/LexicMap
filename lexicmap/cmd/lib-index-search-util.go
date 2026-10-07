@@ -127,9 +127,14 @@ func _extendRight(s1, s2 []byte) (int, int) {
 	*subs = (*subs)[:0]
 	defer RecycleSubstrPairs(poolSubs, subs)
 
-	var v, p uint32
-	var srs *[]*tree.SearchResult
-	var sr *tree.SearchResult
+	var targetPos int
+	appendAnchors := func(_ uint64, lenPrefix uint8, values []uint32) {
+		for _, p := range values {
+			*subs = append(*subs, SubstrPair{
+				QBegin: int32(p), TBegin: int32(targetPos), Len: lenPrefix,
+			})
+		}
+	}
 
 	for {
 		kmer, ok, _ = iter.NextPositiveKmer()
@@ -137,27 +142,8 @@ func _extendRight(s1, s2 []byte) (int, int) {
 			break
 		}
 
-		srs, ok = t.Search(kmer, m)
-		if !ok {
-			continue
-		}
-
-		for _, sr = range *srs {
-			// fmt.Printf("%s vs %s, len:%d\n", kmers.MustDecode(kmer, _k), kmers.MustDecode(sr.Kmer, _k), sr.LenPrefix)
-			for _, v = range sr.Values {
-				p = v
-
-				_sub := SubstrPair{}
-				_sub.QBegin = int32(p)
-				_sub.TBegin = int32(iter.Index())
-				_sub.Len = uint8(sr.LenPrefix)
-				_sub.QRC = false
-				_sub.TRC = false
-
-				*subs = append(*subs, _sub)
-			}
-		}
-		t.RecycleSearchResult(srs)
+		targetPos = iter.Index()
+		t.SearchEach(kmer, m, appendAnchors)
 	}
 	tree.RecycleTree(t)
 

@@ -169,12 +169,10 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	// ------------------------------------------------------
 	// 1. capture k-mers in overlapped windows
 
-	_kmersW := idx.poolKmers.Get().(*[]*[]uint64)
-	// _locsesW := idx.poolLocses.Get().(*[]*[]int)
+	_kmersW := idx.poolKmers.Get().(*[][]uint64)
 	defer func() {
-		var v *[]uint64
-		for _, v = range *_kmersW {
-			*v = (*v)[:0]
+		for i := range *_kmersW {
+			(*_kmersW)[i] = (*_kmersW)[i][:0]
 		}
 		idx.poolKmers.Put(_kmersW)
 
@@ -223,7 +221,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 				continue
 			}
 
-			*(*_kmersW)[j] = append(*(*_kmersW)[j], kmer)
+			(*_kmersW)[j] = append((*_kmersW)[j], kmer)
 		}
 
 		if i == windows-1 && windows > 1 { // sort k-mers and remove duplicates
@@ -231,7 +229,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 				if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
 					continue
 				}
-				util.UniqUint64s((*_kmersW)[j])
+				util.UniqUint64s(&(*_kmersW)[j])
 			}
 		}
 
