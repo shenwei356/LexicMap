@@ -48,6 +48,10 @@ Attention:
   4. Both the default 20- and 24-column formats are supported,
      and formats better be consistent across all input files.
      If not, the output format would be the one with a valid record.
+  5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
+     bitscore * pident, retaining all ties at the cutoff score.
+     Unlike 'lexicmap search -n', this does not use chaining scores.
+     Selected genome results are buffered in memory to count retained genome hits.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -59,6 +63,7 @@ Attention:
 		outFile := getFlagString(cmd, "out-file")
 
 		query := getFlagString(cmd, "query")
+		topN := getFlagNonNegativeInt(cmd, "top-n-genomes")
 
 		bufferSizeS := getFlagString(cmd, "buffer-size")
 		if bufferSizeS == "" {
@@ -82,12 +87,13 @@ Attention:
 			w.Close()
 		}()
 
-		if len(files) == 1 {
+		if len(files) == 1 && topN == 0 {
 			if opt.Verbose {
 				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
 			}
 			fh, err := xopen.Ropen(files[0])
 			checkError(err)
+			defer fh.Close()
 
 			_, err = io.Copy(outfh, fh)
 			if err != nil {
@@ -95,6 +101,8 @@ Attention:
 			}
 			return
 		}
+
+		var retained []*SearchResultOfAGenome
 
 		// readers
 
@@ -130,7 +138,6 @@ Attention:
 
 		var reader *SearchResultReader
 		var rGnm *SearchResultOfAGenome
-		var rSeq *SearchResultOfASequence
 		var n int
 		var idx int
 		checkColumns := true
@@ -140,6 +147,7 @@ Attention:
 		var idx0 int
 		countTotalHits := true
 		var hits int
+		var cutoff float64
 
 		for {
 			if len(*(results.entries)) == 0 {
@@ -185,39 +193,23 @@ Attention:
 				))
 			}
 
-			n++
-
-			for _, rSeq = range rGnm.Records {
-				fmt.Fprintf(outfh, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
-					query,
-					qlen,
-					hits,
-					rGnm.Sgenome,
-					rSeq.Sseqid,
-					rGnm.QcovGnm,
-					rSeq.Cls,
-					rSeq.Hsp,
-					rSeq.QcovHSP,
-					rSeq.AlenHSP,
-					rSeq.Pident,
-					rSeq.Gaps,
-					rSeq.Qstart,
-					rSeq.Qend,
-					rSeq.Sstart,
-					rSeq.Send,
-					rSeq.Sstr,
-					rSeq.Slen,
-					rSeq.Evalue,
-					rSeq.Bitscore,
-				)
-				if moreColumns {
-					fmt.Fprintf(outfh, "\t%s", rSeq.Extra)
-				}
-				fmt.Fprintln(outfh)
-			}
-
 			idx = rGnm.idx
-			RecycleSearchResultOfAGenome(rGnm)
+			keep := topN == 0 || n < topN || rGnm.Score == cutoff
+			if keep {
+				n++
+				if topN > 0 && n == topN {
+					cutoff = rGnm.Score
+				}
+			}
+			if topN > 0 && keep {
+				// Retained results own their records until the final hit count is known.
+				retained = append(retained, rGnm)
+			} else {
+				if keep {
+					writeMergedGenomeResult(outfh, rGnm, query, qlen, hits, moreColumns)
+				}
+				RecycleSearchResultOfAGenome(rGnm)
+			}
 
 			// -------------------------------------------------
 
@@ -232,6 +224,12 @@ Attention:
 				rGnm.idx = idx
 				heap.Push(results, rGnm)
 			}
+		}
+
+		for i, r := range retained {
+			writeMergedGenomeResult(outfh, r, query, qlen, n, moreColumns)
+			RecycleSearchResultOfAGenome(r)
+			retained[i] = nil
 		}
 
 		if opt.Verbose {
@@ -249,10 +247,27 @@ func init() {
 	mergeCmd.Flags().StringP("query", "q", "",
 		formatFlagUsage(`Query ID to merge`))
 
+	mergeCmd.Flags().IntP("top-n-genomes", "n", 0,
+		formatFlagUsage(`Keep the top N genome matches by the highest alignment bitscore * pident per genome, including all matches tied at the cutoff score (0 for all). This filters alignment results, not chaining scores.`))
+
 	mergeCmd.Flags().StringP("buffer-size", "b", "20M",
 		formatFlagUsage(`Size of buffer, supported unit: K, M, G. You need increase the value when "bufio.Scanner: token too long" error reported`))
 
 	mergeCmd.SetUsageTemplate(usageTemplate(""))
+}
+
+func writeMergedGenomeResult(out io.Writer, r *SearchResultOfAGenome, query, qlen string, hits int, moreColumns bool) {
+	for _, record := range r.Records {
+		fmt.Fprintf(out, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
+			query, qlen, hits, r.Sgenome, record.Sseqid, r.QcovGnm,
+			record.Cls, record.Hsp, record.QcovHSP, record.AlenHSP, record.Pident,
+			record.Gaps, record.Qstart, record.Qend, record.Sstart, record.Send,
+			record.Sstr, record.Slen, record.Evalue, record.Bitscore)
+		if moreColumns {
+			fmt.Fprintf(out, "\t%s", record.Extra)
+		}
+		fmt.Fprintln(out)
+	}
 }
 
 type SearchResultOfAGenome struct {
@@ -371,6 +386,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 	ncols := 20
 
 	go func() {
+		defer fh.Close()
 		var line string
 		headerLine := true
 		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string

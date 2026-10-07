@@ -85,68 +85,86 @@ Usage:
   lexicmap search [flags] -d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]
 
 Flags:
-      --align-band int                 ► Band size in backtracking the score matrix (pseudo alignment
-                                       phase). (default 100)
-      --align-ext-len int              ► Extend length of upstream and downstream of seed regions, for
-                                       extracting query and target sequences for alignment. It should be
-                                       <= contig interval length in database. (default 1000)
-      --align-max-gap int              ► Maximum gap in a HSP segment. (default 20)
-  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 50)
-  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
-  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
-                                       want to output blast-style format with "lexicmap utils 2blast".
-      --debug                          ► Print debug information, including a progress bar.
-                                       (recommended when searching with one query).
-      --gc-interval int                ► Force garbage collection every N queries (0 for disable). The
-                                       value can't be too small. (default 64)
-  -G, --genome2taxid string            ► Two-column tabular file for mapping genome ID to TaxId,
-                                       needed for filtering results with TaxIds. Genome IDs in the index
-                                       can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk
-                                       cut -t -f 1 | csvtk uniq -Ut"
-  -h, --help                           help for search
-  -d, --index string                   ► Index directory created by "lexicmap index".
-  -k, --keep-genomes-without-taxid     ► Keep genome hits without TaxId, i.e., those without TaxId in
-                                       the --genome2taxid file.
-  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster seed
-                                       matching. It will consume a lot of RAM.
-  -e, --max-evalue float               ► Maximum evalue of a HSP segment. (default 10)
-      --max-open-files int             ► Maximum opened files. It mainly affects candidate subsequence
-                                       extraction. Increase this value if you have hundreds of genome
-                                       batches or have multiple queries, and do not forgot to set a
-                                       bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
-  -J, --max-query-conc int             ► Maximum number of concurrent queries. Bigger values do not
-                                       improve the batch searching speed and consume much memory. (default 8)
-  -Q, --min-qcov-per-genome float      ► Minimum query coverage (percentage) per genome.
-  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP.
-  -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --seed-max-dist int              ► Minimum distance between seeds in seed chaining. It should be
-                                       <= contig interval length in database. (default 1000)
-      --seed-max-gap int               ► Minimum gap in seed chaining. (default 50)
-  -p, --seed-min-prefix int            ► Minimum (prefix/suffix) length of matched seeds (anchors).
-                                       (default 15)
-  -P, --seed-min-single-prefix int     ► Minimum (prefix/suffix) length of matched seeds (anchors) if
-                                       there's only one pair of seeds matched. (default 17)
-      --show-sseq-idx                  ► Add 1-based genome chunk and subject sequence index prefixes
-                                       to sseqid values, e.g., c2/3:s1/10:contig00001, where c2/3 means
-                                       chunk 2 of 3 and s1/10 means sequence 1 of 1.
-  -T, --taxdump string                 ► Directory containing taxdump files (nodes.dmp, names.dmp,
-                                       etc.), needed for filtering results with TaxIds. For other
-                                       non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to
-                                       create taxdump files.
-      --taxid-file string              ► TaxIds from a file for filtering results, where the taxids
-                                       are equal to or are the children of the given taxids. Negative
-                                       values are allowed as a black list.
-  -t, --taxids strings                 ► TaxIds(s) for filtering results, where the taxids are equal
-                                       to or are the children of the given taxids. Negative values are
-                                       allowed as a black list.
-  -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
-                                       in the chaining phase. Value 1 is not recommended as the best
-                                       chaining result does not always bring the best alignment, so it's
-                                       better be >= 10. (default 0)
-  -n, --top-n-genomes int              ► Keep the top N genome matches for a query (0 for all) in the
-                                       chaining phase. Value 1 is not recommended as the best chaining
-                                       result does not always bring the best alignment, so it's better
-                                       be >= 100. (default 0)
+      --align-band int                   ► Band size in backtracking the score matrix (pseudo
+                                         alignment phase). (default 100)
+      --align-ext-len int                ► Extend length of upstream and downstream of seed regions,
+                                         for extracting query and target sequences for alignment. It
+                                         should be <= contig interval length in database. (default 1000)
+      --align-max-gap int                ► Maximum gap in a HSP segment. (default 20)
+  -l, --align-min-match-len int          ► Minimum aligned length in a HSP segment. (default 50)
+  -i, --align-min-match-pident float     ► Minimum base identity (percentage) in a HSP segment.
+                                         (default 70)
+  -a, --all                              ► Output more columns, e.g., matched sequences. Use this if
+                                         you want to output blast-style format with "lexicmap utils 2blast".
+      --debug                            ► Print debug information, including a progress bar.
+                                         (recommended when searching with one query).
+      --gc-interval int                  ► Force garbage collection every N queries (0 for disable).
+                                         The value can't be too small. (default 64)
+  -G, --genome2taxid string              ► Two-column tabular file for mapping genome ID to TaxId,
+                                         needed for filtering results with TaxIds. Genome IDs in the
+                                         index can be exported via "lexicmap utils genomes -d db.lmi/ |
+                                         csvtk cut -t -f 1 | csvtk uniq -Ut". (default: <taxdump
+                                         path>/taxid.map)
+  -h, --help                             help for search
+  -d, --index string                     ► Index directory created by "lexicmap index".
+  -k, --keep-genomes-without-taxid       ► Keep genome hits without TaxId, i.e., those without TaxId
+                                         in the --genome2taxid file.
+  -w, --load-whole-seeds                 ► Load the whole seed data into memory for faster seed
+                                         matching. It will consume a lot of RAM.
+      --max-align-result-memory string   ► Maximum memory for retaining CIGAR, query sequence, subject
+                                         sequence, and alignment text across concurrent queries. Values
+                                         support K/M/G/T suffixes. When the global budget is exceeded,
+                                         the affected query spills these fields to a temporary file.
+                                         This is not a total RSS limit (0 disables spilling). (default "1G")
+  -e, --max-evalue float                 ► Maximum evalue of a HSP segment. (default 10)
+      --max-open-files int               ► Maximum opened files. It mainly affects candidate
+                                         subsequence extraction. Increase this value if you have
+                                         hundreds of genome batches or have multiple queries, and do not
+                                         forgot to set a bigger "ulimit -n" in shell if the value is >
+                                         1024. (default 1024)
+  -J, --max-query-conc int               ► Maximum number of concurrent queries. Bigger values do not
+                                         improve the batch searching speed and consume much memory.
+                                         (default 8)
+  -Q, --min-qcov-per-genome float        ► Minimum query coverage (percentage) per genome.
+  -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP.
+  -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
+                                         (default "-")
+      --seed-max-dist int                ► Minimum distance between seeds in seed chaining. It should
+                                         be <= contig interval length in database. (default 1000)
+      --seed-max-gap int                 ► Minimum gap in seed chaining. (default 50)
+  -p, --seed-min-prefix int              ► Minimum (prefix/suffix) length of matched seeds (anchors).
+                                         (default 15)
+  -P, --seed-min-single-prefix int       ► Minimum (prefix/suffix) length of matched seeds (anchors)
+                                         if there's only one pair of seeds matched. (default 17)
+      --show-avg-qual                    ► Add average quality of the aligned region as a suffix to
+                                         alenHSP field, e.g., 128:21.6, where 21.6 is the average
+                                         quality of the aligned region.
+  -g, --show-genome-name                 ► Add the taxonomic name as a prefix to sgenome fied. Flags
+                                         -T/--taxdump and -G/--genome2taxid are needed.
+  -s, --show-species-name                ► Add the species name as a prefix to sgenome fied. Flags
+                                         -T/--taxdump and -G/--genome2taxid are needed.
+      --show-sseq-idx                    ► Add 1-based genome chunk and subject-sequence index
+                                         prefixes to sseqid values, e.g., c2/3:s1/10:contig00001, where
+                                         c2/3 denotes chunk 2 of 3 and s1/10 denotes sequence 1 of 10.
+  -T, --taxdump string                   ► Directory containing taxdump files (nodes.dmp, names.dmp,
+                                         etc.), needed for filtering results with TaxIds. For other
+                                         non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to
+                                         create taxdump files. (default: <index path>/taxdump)
+      --taxid-file string                ► TaxIds from a file for filtering results, where the taxids
+                                         are equal to or are the children of the given taxids. Negative
+                                         values are allowed as a black list.
+  -t, --taxids strings                   ► TaxIds(s) for filtering results, where the taxids are equal
+                                         to or are the children of the given taxids. Negative values are
+                                         allowed as a black list.
+  -N, --top-n-chains int                 ► Keep the top N chains in a genome for the query (0 for all)
+                                         in the chaining phase. Value 1 is not recommended as the best
+                                         chaining result does not always bring the best alignment, so
+                                         it's better be >= 10. (default 0)
+  -n, --top-n-genomes int                ► Keep the top N genome matches for a query (0 for all) in
+                                         the chaining phase, including all matches tied at the cutoff
+                                         score. Value 1 is not recommended as the best chaining result
+                                         does not always bring the best alignment, so it's better be >=
+                                         100. (default 0)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

@@ -1,9 +1,28 @@
 package cmd
 
 import (
+	"cmp"
 	"slices"
 	"sync"
 )
+
+// trimSeedSearchResults retains all candidates tied with the Nth chaining score.
+func trimSeedSearchResults(rs *[]*SearchResult, topN int) {
+	if topN <= 0 || len(*rs) <= topN {
+		return
+	}
+	slices.SortFunc(*rs, func(a, b *SearchResult) int {
+		return cmp.Compare(b.Score, a.Score)
+	})
+	cutoff := (*rs)[topN-1].Score
+	end := topN
+	for end < len(*rs) && (*rs)[end].Score == cutoff {
+		end++
+	}
+	// Release discarded candidates for GC without retaining them in object pools.
+	clear((*rs)[end:])
+	*rs = (*rs)[:end]
+}
 
 // chainSeedResults batches targets across fixed workers. Each worker owns its
 // chainer and output slice; merging happens only after all workers finish.

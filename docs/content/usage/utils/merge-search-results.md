@@ -18,6 +18,10 @@ Attention:
   4. Both the default 20- and 24-column formats are supported,
      and formats better be consistent across all input files.
      If not, the output format would be the one with a valid record.
+  5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
+     bitscore * pident, retaining all ties at the cutoff score.
+     Unlike 'lexicmap search -n', this does not use chaining scores.
+     Selected genome results are buffered in memory to count retained genome hits.
 
 Usage:
   lexicmap utils merge-search-results [flags] 
@@ -28,6 +32,9 @@ Flags:
   -h, --help                 help for merge-search-results
   -o, --out-file string      ► Out file, supports the ".gz" suffix ("-" for stdout). (default "-")
   -q, --query string         ► Query ID to merge
+  -n, --top-n-genomes int    ► Keep the top N genome matches by the highest alignment bitscore *
+                             pident per genome, including all matches tied at the cutoff score (0 for
+                             all). This filters alignment results, not chaining scores.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -67,6 +74,26 @@ lexicmap utils merge-search-results -o t.lexicmap.tsv.gz t.lexicmap@*.tsv.gz
 
 22:41:03.963 [INFO] 15 genome hits merged from 3 files for query: NC_000913.3:4166659-4168200
 ```
+
+To retain the top N genomes after merging, use `-n/--top-n-genomes`:
+
+```text
+lexicmap utils merge-search-results -n 100 -o t.lexicmap.top100.tsv.gz t.lexicmap@*.tsv.gz
+```
+
+This ranks genomes by the highest alignment `bitscore * pident` among their HSPs,
+using the values in the input TSV files. All genomes tied at the Nth score are retained,
+along with all of their HSPs, so more than N genomes may be returned. The `hits` column
+reports the number of retained genomes. The default, `-n 0`, keeps all genomes.
+
+`lexicmap search -n` filters candidates by chaining score before alignment.
+The merge command filters completed alignment results and cannot recover candidates
+discarded during the original searches.
+
+With `-n` enabled, selected genome results are buffered in memory until their count
+is known, then written with the correct `hits` value. No temporary files are used.
+This also supports standard input. The buffer includes all ties at the cutoff score,
+so its size depends on the number and size of retained alignments, not only N.
 
 If some files contain search results of multiple queries, then specify one query to merge.
 

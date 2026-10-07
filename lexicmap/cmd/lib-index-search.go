@@ -69,7 +69,7 @@ type IndexSearchingOptions struct {
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
 	// MinMatchedBases uint8 // the total matched bases
-	TopN       int // keep the topN scores, e.g, 10
+	TopN       int // keep the top N chaining scores, including cutoff ties
 	TopNChains int // keep the top N chains
 
 	// seeds chaining
@@ -1939,32 +1939,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	rs := idx.chainSeedResults(seedResults, nGenomeEntries)
 	clearSeedSearchResults(seedResults)
 
-	// 3.2) only keep the top N targets
-	topN := idx.opt.TopN
-	if topN > 0 && len(*rs) > topN {
-		// sort subjects in descending order based on the score
-		// just use the standard library for a few seed pairs.
-		// sort.Slice(*rs, func(i, j int) bool {
-		// 	return (*rs)[i].Score > (*rs)[j].Score
-		// })
-		slices.SortFunc(*rs, func(a, b *SearchResult) int {
-			return cmp.Compare(b.Score, a.Score)
-		})
-
-		// Since recycling too many substring pairs results in a high memory load,
-		// We just throw them away, and let GC handle them.
-		// It turns out faster and uses less memory.
-		//
-		// var r *SearchResult
-		// for i := topN; i < len(*rs); i++ {
-		// 	r = (*rs)[i]
-
-		// 	// do not forget to recycle the filtered result
-		// 	idx.RecycleSearchResult(r) // recylcing too many substring pairs resulting in a high memory load.
-		// }
-		clear((*rs)[topN:])
-		*rs = (*rs)[:topN]
-	}
+	// 3.2) keep the top N targets, including ties at the cutoff score
+	trimSeedSearchResults(rs, idx.opt.TopN)
 
 	if debug {
 		log.Debugf("%s (%s bp): finished chaining (%s genome hits) in %s",

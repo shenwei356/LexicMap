@@ -3,9 +3,62 @@ package cmd
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sync"
 	"testing"
 )
+
+func TestTrimSeedSearchResultsKeepsCutoffTies(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		scores []float32
+		topN   int
+		want   []uint64
+	}{
+		{name: "empty", topN: 1, want: []uint64{}},
+		{name: "unlimited", scores: []float32{80, 100, 90}, want: []uint64{0, 1, 2}},
+		{name: "below limit", scores: []float32{80, 100}, topN: 3, want: []uint64{0, 1}},
+		{name: "at limit", scores: []float32{80, 100}, topN: 2, want: []uint64{0, 1}},
+		{name: "unique cutoff", scores: []float32{80, 100, 90, 70}, topN: 2, want: []uint64{1, 2}},
+		{name: "cutoff ties", scores: []float32{80, 90, 100, 90, 70, 90}, topN: 2, want: []uint64{1, 2, 3, 5}},
+		{name: "top one ties", scores: []float32{90, 100, 80, 100}, topN: 1, want: []uint64{1, 3}},
+		{name: "all tied", scores: []float32{90, 90, 90}, topN: 1, want: []uint64{0, 1, 2}},
+		{name: "ties reach end", scores: []float32{90, 100, 90}, topN: 2, want: []uint64{0, 1, 2}},
+		{name: "near scores are distinct", scores: []float32{90, 90.00001, 80}, topN: 1, want: []uint64{1}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// Different arrival orders must retain the same candidate set.
+			for shift := range max(1, len(tt.scores)) {
+				rs := make([]*SearchResult, len(tt.scores))
+				for i := range rs {
+					id := (i + shift) % len(rs)
+					rs[i] = &SearchResult{BatchGenomeIndex: uint64(id), Score: tt.scores[id]}
+				}
+				backing := rs
+				trimSeedSearchResults(&rs, tt.topN)
+				got := make([]uint64, len(rs))
+				for i, r := range rs {
+					got[i] = r.BatchGenomeIndex
+					if r.Score != tt.scores[r.BatchGenomeIndex] {
+						t.Fatal("candidate score changed")
+					}
+					if tt.topN > 0 && len(backing) > tt.topN && i > 0 && rs[i-1].Score < r.Score {
+						t.Fatal("candidates are not sorted by descending chaining score")
+					}
+				}
+				slices.Sort(got)
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Fatalf("arrival shift %d: got candidates %v, want %v", shift, got, tt.want)
+				}
+				for _, r := range backing[len(rs):] {
+					if r != nil {
+						t.Fatal("discarded candidate remains referenced by the backing slice")
+					}
+				}
+			}
+		})
+	}
+}
 
 func seedChainingTestIndex(workers int) *Index {
 	idx := &Index{k: 31, opt: &IndexSearchingOptions{

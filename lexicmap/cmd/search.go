@@ -762,7 +762,7 @@ func init() {
 		formatFlagUsage(`Minimum distance between seeds in seed chaining. It should be <= contig interval length in database.`))
 
 	mapCmd.Flags().IntP("top-n-genomes", "n", 0,
-		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 100. (default 0)`))
+		formatFlagUsage(`Keep the top N genome matches for a query (0 for all) in the chaining phase, including all matches tied at the cutoff score. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 100. (default 0)`))
 
 	mapCmd.Flags().IntP("top-n-chains", "N", 0,
 		formatFlagUsage(`Keep the top N chains in a genome for the query (0 for all) in the chaining phase. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it's better be >= 10. (default 0)`))
