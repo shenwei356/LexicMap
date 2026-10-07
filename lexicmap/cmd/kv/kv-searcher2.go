@@ -102,8 +102,8 @@ func (scr *InMemorySearcher) AnchorPrefix() uint8 {
 // For m <0 or m >= k-p, mismatch will not be checked.
 //
 // Please remember to recycle the results object with RecycleSearchResults().
-func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
-	// func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	// func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != scr.ChunkSize {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.KVdata))
 	}
@@ -135,7 +135,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 	var kmer0 uint64 // previous one
 	var kmer1 uint64 // current one
 
-	results := poolSearchResults.Get().(*[]*SearchResult)
+	results := poolSearchResults.Get().(*[]SearchResult)
 	*results = (*results)[:0]
 
 	var found bool // , saveKmer bool
@@ -281,12 +281,7 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 			if found {
 				// fmt.Printf("  save: %s\n", lexichash.MustDecode(kmer1, k))
 				if kmer1 != kmer0 || first { // new kmer
-					if sr1 != nil {
-						// fmt.Printf("  record new result: %p\n", sr1)
-						*results = append(*results, sr1) // previous one
-					}
-
-					sr1 = poolSearchResult.Get().(*SearchResult)
+					sr1 = appendSearchResult(results)
 					sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr1.Kmer = kmer1
 					sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift
@@ -314,17 +309,14 @@ func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, checkFlag bool, rev
 
 			i += 2
 		}
-		if sr1 != nil {
-			*results = append(*results, sr1)
-		}
 	}
 
 	return results, nil
 }
 
 // Search2 is very similar to Search, only the data structure of input kmers is different.
-func (scr *InMemorySearcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
-	// func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+func (scr *InMemorySearcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	// func (scr *InMemorySearcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != scr.ChunkSize {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.KVdata))
 	}
@@ -356,7 +348,7 @@ func (scr *InMemorySearcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, 
 	var kmer0 uint64 // previous one
 	var kmer1 uint64 // current one
 
-	results := poolSearchResults.Get().(*[]*SearchResult)
+	results := poolSearchResults.Get().(*[]SearchResult)
 	*results = (*results)[:0]
 
 	var found bool // , saveKmer bool
@@ -505,12 +497,7 @@ func (scr *InMemorySearcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, 
 				if found {
 					// fmt.Printf("  save: %s\n", lexichash.MustDecode(kmer1, k))
 					if kmer1 != kmer0 || first { // new kmer
-						if sr1 != nil {
-							// fmt.Printf("  record new result: %p\n", sr1)
-							*results = append(*results, sr1) // previous one
-						}
-
-						sr1 = poolSearchResult.Get().(*SearchResult)
+						sr1 = appendSearchResult(results)
 						sr1.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr1.Kmer = kmer1
 						sr1.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift
@@ -538,9 +525,6 @@ func (scr *InMemorySearcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, 
 				}
 
 				i += 2
-			}
-			if sr1 != nil {
-				*results = append(*results, sr1)
 			}
 		}
 	}

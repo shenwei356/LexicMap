@@ -82,11 +82,11 @@ func TestGSearchScreenCollectorCollectsEachGenomeOnce(t *testing.T) {
 func TestCollectGSearchScreenResultsSerial(t *testing.T) {
 	idx := newGSearchScreenCollectorTestIndex(2)
 	genomes := []uint64{7, uint64(1)<<BITS_GENOME_IDX | 2049}
-	srs := []*kv.SearchResult{
+	srs := []kv.SearchResult{
 		{IQuery: 0, Len: 21, Values: []uint64{genomes[0] << BITS_NONE_IDX, genomes[1] << BITS_NONE_IDX}},
 		{IQuery: 1, Len: 25, Values: []uint64{genomes[0] << BITS_NONE_IDX, genomes[1] << BITS_NONE_IDX}},
 	}
-	ch := make(chan *[]*kv.SearchResult, 1)
+	ch := make(chan *[]kv.SearchResult, 1)
 	ch <- &srs
 	close(ch)
 

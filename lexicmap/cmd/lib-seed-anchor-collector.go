@@ -167,8 +167,7 @@ func (c *seedAnchorCollector) collect(worker int) {
 				r.NumSeqs = 0
 				r.Subs = subs
 				r.Score = 0
-				r.Chains = nil
-				r.chainRegions = nil
+				r.resetChainRegions()
 				r.SimilarityDetails = nil
 				r.AlignedFraction = 0
 				(*page)[pageSlot] = r
@@ -236,7 +235,7 @@ func (c *seedAnchorCollector) clearResults() {
 // itself with parallelism, but is slower when all work must remain serial.
 func collectSeedAnchorsSerial(
 	idx *Index,
-	ch <-chan *[]*kv.SearchResult,
+	ch <-chan *[]kv.SearchResult,
 	locses *[][]int,
 	reverseLocses *[][]int,
 	genomeIDs *map[uint64]*[]uint64,
@@ -250,7 +249,8 @@ func collectSeedAnchorsSerial(
 	K := idx.k
 
 	for srs := range ch {
-		for _, sr := range *srs {
+		for i := range *srs {
+			sr := &(*srs)[i]
 			kPrefix := int(sr.Len)
 			var queryLocs []int
 			if !sr.IsSuffix {
@@ -319,8 +319,7 @@ func collectSeedAnchorsSerial(
 						r.NumSeqs = 0
 						r.Subs = subs
 						r.Score = 0
-						r.Chains = nil
-						r.chainRegions = nil
+						r.resetChainRegions()
 						r.SimilarityDetails = nil
 						r.AlignedFraction = 0
 						(*m)[key] = r

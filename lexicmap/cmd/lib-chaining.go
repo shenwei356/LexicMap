@@ -93,61 +93,20 @@ func RecycleChainer(poolChainers *sync.Pool, chainer *Chainer) {
 	poolChainers.Put(chainer)
 }
 
-// RecycleChainingResult reycles the chaining results.
-// Please remember to call this after using the results.
-func RecycleChainingResult(chains *[]*[]int32) {
-	for _, chain := range *chains {
-		if chain != nil {
-			recycleChain(chain)
-		}
-	}
-	if cap(*chains) > thresholdNSubs {
-		*chains = nil
-		return
-	}
-
-	clear((*chains)[:cap(*chains)])
-	*chains = (*chains)[:0]
-	poolChains.Put(chains)
-}
-
-func recycleChain(chain *[]int32) {
-	if cap(*chain) > chainerInitSize {
-		*chain = nil
-		return
-	}
-	*chain = (*chain)[:0]
-	poolChain.Put(chain)
-}
-
-var poolChains = &sync.Pool{New: func() interface{} {
-	tmp := make([]*[]int32, 0, 8)
-	return &tmp
-}}
-
-var poolChain = &sync.Pool{New: func() interface{} {
-	tmp := make([]int32, 0, 8)
-	return &tmp
-}}
-
-// Chain finds the possible seed paths.
-// Please remember to call RecycleChainingResult after using the results.
-func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
+// Chain finds seed-chain bounds, reusing regions as output storage. Returned
+// regions own their coordinates and do not refer to anchors or chainer scratch.
+func (ce *Chainer) Chain(subs *[]SubstrPair, regions []seedChainRegion) ([]seedChainRegion, float32) {
+	regions = regions[:0]
 	n := len(*subs)
-
-	if n == 1 { // for one seed, just check the seed weight
-		paths := poolChains.Get().(*[]*[]int32)
-
+	if n == 0 {
+		return regions, 0
+	}
+	if n == 1 {
 		w := seedWeight(float32((*subs)[0].Len))
 		if w >= ce.options.MinScore {
-			path := poolChain.Get().(*[]int32)
-
-			*path = append(*path, 0)
-
-			*paths = append(*paths, path)
+			regions = append(regions, seedChainBounds(&(*subs)[0], &(*subs)[0], true))
 		}
-
-		return paths, w
+		return regions, w
 	}
 
 	// minLen := ce.options.MinLen
@@ -506,7 +465,6 @@ func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
 	for i = 0; i < n; i++ {
 		*visited = append(*visited, false)
 	}
-	paths := poolChains.Get().(*[]*[]int32)
 
 	var M float32
 	// var Mi int
@@ -575,8 +533,6 @@ func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
 			break
 		}
 
-		path := poolChain.Get().(*[]int32)
-
 		// fmt.Printf("max: Mi:%d(%d), %f\n", Mi, n, M)
 
 		// i = Mi
@@ -593,46 +549,20 @@ func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
 			changeDirection = (i != j && directions[j] != 0 && directions[i] != directions[j])
 
 			// fmt.Printf(" i:%d, visited:%v; j:%d, visited:%v\n", i, (*visited)[i], j, (*visited)[j])
-			if (*visited)[j] && !changeDirection { // current anchor is abandoned
-				// if len(*path) == 0 && !(*visited)[i] && (*subs)[i].Len >= minLen {
-				// 	*path = append(*path, i) // record the anchor
-				// 	// fmt.Printf(" orphan from %d, %s\n", i, (*subs)[i])
-				// }
-
-				// if len(*path) > 0 {
-				// 	// but don't forget already added path
-				// 	reverseInts(*path)
-				// 	*paths = append(*paths, path)
-				// 	// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
-
-				// 	path = poolChain.Get().(*[]int)
-				// }
-
-				*path = (*path)[:0]
-				(*visited)[i] = true // do not check it again
-
+			if (*visited)[j] && !changeDirection {
+				// Preserve the policy of abandoning the entire current path.
+				(*visited)[i] = true
 				break
 			}
-
-			*path = append(*path, int32(i)) // record the anchor
-			(*visited)[i] = true            // mark as visited
-
-			// if firstAnchor {
-			// fmt.Printf(" start from %d, %s\n", i, (*subs)[i])
-			// firstAnchor = false
-			// }
-			// else {
-			// fmt.Printf("  add %d, %s\n", i, (*subs)[i])
-			// }
-			if i == j || changeDirection { // the path starts here
+			(*visited)[i] = true
+			if i == j || changeDirection {
+				firstIdx := i
 				if changeDirection {
-					*path = append(*path, int32(j))
+					// Include j in the bounds without marking it as visited,
+					// exactly as the former path-based backtracking did.
+					firstIdx = j
 				}
-
-				reverseInt32s(*path)
-				*paths = append(*paths, path)
-				// fmt.Printf("  stop at %d, %s\n", i, (*subs)[i])
-
+				regions = append(regions, seedChainBounds(&(*subs)[firstIdx], &(*subs)[Mi], firstIdx == int(Mi)))
 				break
 			} else {
 				i = j
@@ -642,7 +572,28 @@ func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
 	}
 
 	// fmt.Println(maxScore)
-	return paths, maxScore
+	if len(regions) > 1 {
+		slices.SortFunc(regions, func(a, b seedChainRegion) int { return int(a.firstTBegin - b.firstTBegin) })
+	}
+	return regions, maxScore
+}
+
+func seedChainBounds(first, last *SubstrPair, single bool) seedChainRegion {
+	rc := first.TBegin > last.TBegin
+	if single {
+		rc = last.QRC != last.TRC
+	}
+	region := seedChainRegion{
+		qBegin: first.QBegin, qEnd: last.QBegin + int32(last.Len) - 1,
+		tBegin: first.TBegin, tEnd: last.TBegin + int32(last.Len) - 1,
+		firstTBegin: first.TBegin, rc: rc,
+	}
+	if rc {
+		// Preserve the reverse bounds' use of the last anchor's length.
+		region.tBegin = last.TBegin
+		region.tEnd = first.TBegin + int32(last.Len) - 1
+	}
+	return region
 }
 
 func seedWeight(l float32) float32 {

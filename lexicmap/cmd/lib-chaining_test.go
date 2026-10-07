@@ -150,13 +150,11 @@ func TestChaining(t *testing.T) {
 
 	chainer := NewChainer(cf)
 	for _, r := range *rs {
-		paths, sumMaxScore := chainer.Chain(r.Subs)
+		regions, sumMaxScore := chainer.Chain(r.Subs, nil)
 
-		t.Logf("sum score: %f, paths:\n", sumMaxScore)
-		for _, p := range *paths {
-			t.Logf("  %d\n", *p)
+		t.Logf("sum score: %f, regions:\n", sumMaxScore)
+		for _, region := range regions {
+			t.Logf("  %+v\n", region)
 		}
-
-		RecycleChainingResult(paths)
 	}
 }

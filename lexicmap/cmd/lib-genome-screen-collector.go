@@ -207,7 +207,7 @@ func (c *gsearchScreenCollector) matchCount() uint64 {
 
 func collectGSearchScreenResultsSerial(
 	idx *Index,
-	ch <-chan *[]*kv.SearchResult,
+	ch <-chan *[]kv.SearchResult,
 	screenMaskSlots []int32,
 	screenMaskCount int,
 ) ([]*GSearchScreenResultDetail, uint64) {
@@ -219,7 +219,8 @@ func collectGSearchScreenResultsSerial(
 	}
 
 	for srs := range ch {
-		for _, sr := range *srs {
+		for i := range *srs {
+			sr := &(*srs)[i]
 			iMask := sr.IQuery
 			if screenMaskSlots != nil {
 				iMask = int(screenMaskSlots[iMask])

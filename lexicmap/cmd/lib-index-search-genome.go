@@ -272,14 +272,14 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
 	parallelCollection := nCollectorWorkers > 1
 	var collector *gsearchScreenCollector
-	var serialSearchResultsCh chan *[]*kv.SearchResult
+	var serialSearchResultsCh chan *[]kv.SearchResult
 	var serialDone chan struct{}
 	var serialResults []*GSearchScreenResultDetail
 	var serialMatchCount uint64
 	if parallelCollection {
 		collector = newGSearchScreenCollector(idx, screenMaskCount, nCollectorWorkers)
 	} else {
-		serialSearchResultsCh = make(chan *[]*kv.SearchResult, nSearchers)
+		serialSearchResultsCh = make(chan *[]kv.SearchResult, nSearchers)
 		serialDone = make(chan struct{})
 		go func() {
 			serialResults, serialMatchCount = collectGSearchScreenResultsSerial(
@@ -303,7 +303,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 		go func(iS, beginM, endM int) {
 			defer wg.Done()
 
-			var srs *[]*kv.SearchResult
+			var srs *[]kv.SearchResult
 			var err error
 			var searchStart time.Time
 			var searchDuration time.Duration
@@ -355,7 +355,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 
 			if idx.opt.Debug {
 				seedSearcherDebugStats[iS].nKVSearchResults = uint64(len(*srs))
-				for _, sr := range *srs {
+				for i := range *srs {
+					sr := &(*srs)[i]
 					seedSearcherDebugStats[iS].nKVValues += uint64(len(sr.Values))
 				}
 			}
@@ -365,7 +366,8 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 			}
 
 			buffers := collector.newBuffers()
-			for _, sr := range *srs {
+			for i := range *srs {
+				sr := &(*srs)[i]
 				iMask := sr.IQuery
 				if screenMaskSlots != nil {
 					iMask = int(screenMaskSlots[iMask])

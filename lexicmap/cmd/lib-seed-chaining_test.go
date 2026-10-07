@@ -103,13 +103,15 @@ func TestChainSeedResultsMatchesSerial(t *testing.T) {
 					for _, r := range targets {
 						ClearSubstrPairs(r.Subs, idx.k)
 						chainer := idx.poolChainers.Get().(*Chainer)
-						r.Chains, r.Score = chainer.Chain(r.Subs)
+						r.resetChainRegions()
+						r.chainRegions, r.Score = chainer.Chain(r.Subs, r.chainRegions)
 						RecycleChainer(idx.poolChainers, chainer)
 						if r.Score < idx.chainingOptions.MinScore {
 							idx.RecycleSearchResult(r)
 							continue
 						}
-						r.prepareAlignmentRegions()
+						RecycleSubstrPairs(poolSubs, r.Subs)
+						r.Subs = nil
 						want[r.BatchGenomeIndex] = r
 					}
 				}
@@ -127,7 +129,7 @@ func TestChainSeedResultsMatchesSerial(t *testing.T) {
 					if r.Score != w.Score || !reflect.DeepEqual(r.chainRegions, w.chainRegions) {
 						t.Fatalf("target %d: score or chain bounds differ", r.BatchGenomeIndex)
 					}
-					if r.Subs != nil || r.Chains != nil {
+					if r.Subs != nil {
 						t.Fatalf("target %d retains anchors or chain paths", r.BatchGenomeIndex)
 					}
 				}

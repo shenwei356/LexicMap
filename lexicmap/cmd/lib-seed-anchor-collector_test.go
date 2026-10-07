@@ -166,14 +166,14 @@ func TestCollectSeedAnchorsSerial(t *testing.T) {
 			reverseQueryIndices := []int{0}
 			reverseLocses := [][]int{reverseQueryIndices}
 			genome := uint64(7)
-			srs := []*kv.SearchResult{{
+			srs := []kv.SearchResult{{
 				IQuery: 0, IsSuffix: tt.reverse, IQuery2: 0, Len: 21,
 				Values: []uint64{
 					genome<<BITS_NONE_IDX | uint64(13)<<BITS_FLAGS | flags,
 					genome<<BITS_NONE_IDX | uint64(29)<<BITS_FLAGS | flags,
 				},
 			}}
-			ch := make(chan *[]*kv.SearchResult, 1)
+			ch := make(chan *[]kv.SearchResult, 1)
 			ch <- &srs
 			close(ch)
 

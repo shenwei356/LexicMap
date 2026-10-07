@@ -146,7 +146,7 @@ type index15ResultSnapshot struct {
 	Values   []uint64
 }
 
-func snapshotIndex15Results(results *[]*SearchResult, includeQuery2 bool) []index15ResultSnapshot {
+func snapshotIndex15Results(results *[]SearchResult, includeQuery2 bool) []index15ResultSnapshot {
 	snapshots := make([]index15ResultSnapshot, len(*results))
 	for i, result := range *results {
 		snapshots[i] = index15ResultSnapshot{

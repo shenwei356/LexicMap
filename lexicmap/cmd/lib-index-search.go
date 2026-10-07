@@ -1179,10 +1179,10 @@ type SearchResult struct {
 	GenomeSize int
 	NumSeqs    int
 
-	Score  float32 //  score for sorting
-	Chains *[]*[]int32
+	Score float32 // score for sorting
 
-	chainRegions []seedChainRegion // endpoints needed by alignment, without anchor references
+	chainRegions      []seedChainRegion  // endpoints needed by alignment, without anchor references
+	inlineChainRegion [1]seedChainRegion // common single-chain case needs no separate allocation
 
 	// more about the alignment detail
 	SimilarityDetails *[]*SimilarityDetail // sequence comparing
@@ -1194,42 +1194,16 @@ type SearchResult struct {
 type seedChainRegion struct {
 	qBegin, qEnd int32
 	tBegin, tEnd int32
+	firstTBegin  int32 // original first anchor position, used to preserve file-seeking order
 	rc           bool
 }
 
-func (r *SearchResult) prepareAlignmentRegions() {
-	// Preserve the chain order previously used by alignment for file seeking.
-	if len(*r.Chains) > 1 {
-		slices.SortFunc(*r.Chains, func(a, b *[]int32) int {
-			return int((*r.Subs)[(*a)[0]].TBegin - (*r.Subs)[(*b)[0]].TBegin)
-		})
+func (r *SearchResult) resetChainRegions() {
+	if r.chainRegions == nil || cap(r.chainRegions) > thresholdNSubs {
+		r.chainRegions = r.inlineChainRegion[:0]
+	} else {
+		r.chainRegions = r.chainRegions[:0]
 	}
-	r.chainRegions = make([]seedChainRegion, len(*r.Chains))
-	for i, chain := range *r.Chains {
-		first := (*r.Subs)[(*chain)[0]]
-		last := (*r.Subs)[(*chain)[len(*chain)-1]]
-		rc := first.TBegin > last.TBegin
-		if len(*chain) == 1 {
-			rc = last.QRC != last.TRC
-		}
-		region := seedChainRegion{
-			qBegin: first.QBegin, qEnd: last.QBegin + int32(last.Len) - 1,
-			tBegin: first.TBegin, tEnd: last.TBegin + int32(last.Len) - 1,
-			rc: rc,
-		}
-		if rc {
-			// Match the existing reverse-strand bounds, including the last seed's length.
-			region.tBegin = last.TBegin
-			region.tEnd = first.TBegin + int32(last.Len) - 1
-		}
-		r.chainRegions[i] = region
-	}
-
-	// The regions own their values; pending targets no longer need anchors or paths.
-	RecycleChainingResult(r.Chains)
-	r.Chains = nil
-	RecycleSubstrPairs(poolSubs, r.Subs)
-	r.Subs = nil
 }
 
 func (sr *SearchResult) SortBySeqID() {
@@ -1380,23 +1354,17 @@ func (r *SearchResult) Reset() {
 	r.NumSeqs = 0
 	r.Subs = nil
 	r.Score = 0
-	r.Chains = nil
-	r.chainRegions = nil
+	r.resetChainRegions()
 	r.SimilarityDetails = nil
 	r.AlignedFraction = 0
 }
 
 // RecycleSearchResults recycles a search result object
 func (idx *Index) RecycleSearchResult(r *SearchResult) {
-	r.chainRegions = nil
+	r.resetChainRegions()
 	if r.Subs != nil {
 		RecycleSubstrPairs(poolSubs, r.Subs)
 		r.Subs = nil
-	}
-
-	if r.Chains != nil {
-		RecycleChainingResult(r.Chains)
-		r.Chains = nil
 	}
 
 	// yes, it might be nil for some failed in chaining
@@ -1661,12 +1629,12 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
 	parallelCollection := nCollectorWorkers > 1
 	var anchorCollector *seedAnchorCollector
-	var serialSearchResultsCh chan *[]*kv.SearchResult
+	var serialSearchResultsCh chan *[]kv.SearchResult
 	var serialResults []*SearchResult
 	if parallelCollection {
 		anchorCollector = newSeedAnchorCollector(idx, nCollectorWorkers)
 	} else {
-		serialSearchResultsCh = make(chan *[]*kv.SearchResult, nSearchers)
+		serialSearchResultsCh = make(chan *[]kv.SearchResult, nSearchers)
 		go func() {
 			serialResults = collectSeedAnchorsSerial(idx, serialSearchResultsCh, _locses, _locsesR, genomeIds)
 			done <- 1
@@ -1686,8 +1654,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		go func(iS, beginM, endM int) {
 			defer wg.Done()
 
-			var srs *[]*kv.SearchResult
-			var srs2 *[]*kv.SearchResult
+			var srs *[]kv.SearchResult
+			var srs2 *[]kv.SearchResult
 			var err error
 			var searchStart time.Time
 			var searchDuration time.Duration
@@ -1708,9 +1676,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					checkError(err)
 				}
 				if len(*srs2) > 0 {
-					*srs = append(*srs, (*srs2)...)
-					clear(*srs2) // Seed-result ownership was transferred to srs
-					*srs2 = (*srs2)[:0]
+					kv.AppendSearchResults(srs, srs2)
 				}
 				kv.RecycleSearchResults(srs2)
 			} else {
@@ -1732,9 +1698,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					checkError(err)
 				}
 				if len(*srs2) > 0 {
-					*srs = append(*srs, (*srs2)...)
-					clear(*srs2) // Seed-result ownership was transferred to srs
-					*srs2 = (*srs2)[:0]
+					kv.AppendSearchResults(srs, srs2)
 				}
 				kv.RecycleSearchResults(srs2)
 
@@ -1766,7 +1730,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 			if debug {
 				seedSearcherDebugStats[iS].nKVSearchResults = uint64(len(*srs))
-				for _, sr := range *srs {
+				for i := range *srs {
+					sr := &(*srs)[i]
 					seedSearcherDebugStats[iS].nKVValues += uint64(len(sr.Values))
 				}
 			}
@@ -1778,7 +1743,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			buffers := anchorCollector.newBuffers()
 			K := idx.k
 			var locs []int
-			for _, sr := range *srs {
+			for i := range *srs {
+				sr := &(*srs)[i]
 				kPrefix := int(sr.Len)
 				if !sr.IsSuffix {
 					locs = (*_locses)[sr.IQuery]
@@ -2730,7 +2696,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			RecycleSeqComparatorResult(cr)
 		}
 
-		r.chainRegions = nil
+		r.resetChainRegions()
 
 		genome.RecycleGenome(tSeq)
 

@@ -55,7 +55,10 @@ func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) 
 					if chainer == nil {
 						chainer = idx.poolChainers.Get().(*Chainer)
 					}
-					r.Chains, r.Score = chainer.Chain(r.Subs)
+					r.resetChainRegions()
+					r.chainRegions, r.Score = chainer.Chain(r.Subs, r.chainRegions)
+					RecycleSubstrPairs(poolSubs, r.Subs)
+					r.Subs = nil
 					// Preserve the existing policy of dropping oversized scratch
 					// arrays rather than retaining them for subsequent targets.
 					if len(chainer.visited) > chainerInitSize {
@@ -65,7 +68,6 @@ func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) 
 						idx.RecycleSearchResult(r)
 						continue
 					}
-					r.prepareAlignmentRegions()
 					*local = append(*local, r)
 				}
 			}

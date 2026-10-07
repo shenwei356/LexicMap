@@ -196,13 +196,37 @@ func (r *SearchResult) Reset() {
 }
 
 var poolSearchResults = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SearchResult, 0, maxPooledSearchResults)
+	tmp := make([]SearchResult, 0, 256)
 	return &tmp
 }}
 
-var poolSearchResult = &sync.Pool{New: func() interface{} {
-	return &SearchResult{Values: make([]uint64, 0, 1)}
-}}
+// appendSearchResult reuses the posting buffer in the next result slot. The
+// returned address is valid until another result is appended or the list is
+// recycled; searchers finish writing the current result before either action.
+func appendSearchResult(results *[]SearchResult) *SearchResult {
+	n := len(*results)
+	if n < cap(*results) {
+		*results = (*results)[:n+1]
+		r := &(*results)[n]
+		*r = SearchResult{Values: r.Values[:0]}
+	} else {
+		*results = append(*results, SearchResult{})
+	}
+	return &(*results)[n]
+}
+
+// AppendSearchResults transfers src's records to dst and resets src's length.
+// The containers must be distinct. Unused posting buffers in dst move back to
+// src for reuse; recycling src cannot overwrite the transferred postings.
+func AppendSearchResults(dst, src *[]SearchResult) {
+	for i := range *src {
+		r := appendSearchResult(dst)
+		values := r.Values
+		*r = (*src)[i]
+		(*src)[i] = SearchResult{Values: values}
+	}
+	*src = (*src)[:0]
+}
 
 const (
 	maxPooledSearchResults = 65536
@@ -210,20 +234,24 @@ const (
 )
 
 // RecycleSearchResults recycles search results objects.
-func RecycleSearchResults(sr *[]*SearchResult) {
-	for _, r := range *sr {
+func RecycleSearchResults(sr *[]SearchResult) {
+	if cap(*sr) > maxPooledSearchResults {
+		clear((*sr)[:cap(*sr)])
+		*sr = nil
+		return
+	}
+	// Unused slots may own reusable posting buffers from an earlier, longer
+	// search. Bound all of them and keep ownership with this result container.
+	backing := (*sr)[:cap(*sr)]
+	for i := range backing {
+		r := &backing[i]
 		if cap(r.Values) > maxPooledSeedPositions {
 			r.Values = nil
 		} else {
 			r.Values = r.Values[:0]
 		}
-		poolSearchResult.Put(r)
+		*r = SearchResult{Values: r.Values}
 	}
-	if cap(*sr) > maxPooledSearchResults {
-		*sr = nil
-		return
-	}
-	clear((*sr)[:cap(*sr)])
 	*sr = (*sr)[:0]
 	poolSearchResults.Put(sr)
 }
@@ -235,8 +263,8 @@ const seedPosBatchSize = 256
 // For m <0 or m >= k-p, mismatch will not be checked.
 //
 // Please remember to recycle the results object with RecycleSearchResults().
-func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
-	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != len(scr.Indexes) {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
 	}
@@ -310,7 +338,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 	var err error
 
-	results := poolSearchResults.Get().(*[]*SearchResult)
+	results := poolSearchResults.Get().(*[]SearchResult)
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
@@ -530,7 +558,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						sr = poolSearchResult.Get().(*SearchResult)
+						sr = appendSearchResult(results)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -543,7 +571,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						lenVal-- // skip the checked one
 					}
 				} else {
-					sr = poolSearchResult.Get().(*SearchResult)
+					sr = appendSearchResult(results)
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
 					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -578,7 +606,6 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						}
 					}
 
-					*results = append(*results, sr)
 				}
 			} else {
 				r.Discard(int(lenVal * nSeedPosBytes))
@@ -623,7 +650,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 						r.Discard(int((lenVal - 1) * nSeedPosBytes))
 					} else {
-						sr = poolSearchResult.Get().(*SearchResult)
+						sr = appendSearchResult(results)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer2
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
@@ -636,7 +663,7 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						lenVal-- // skip the checked one
 					}
 				} else {
-					sr = poolSearchResult.Get().(*SearchResult)
+					sr = appendSearchResult(results)
 					sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 					// sr.Kmer = kmer1
 					sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift // kmer 2
@@ -671,7 +698,6 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 						}
 					}
 
-					*results = append(*results, sr)
 				}
 			} else {
 				r.Discard(int(lenVal * nSeedPosBytes))
@@ -691,8 +717,8 @@ func (scr *Searcher) Search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 }
 
 // Search2 is very similar to Search, only the data structure of input kmers is different.
-func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]*SearchResult, error) {
-	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]*SearchResult, error) {
+func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversedKmer bool) (*[]SearchResult, error) {
+	// func (scr *Searcher) Search(kmers []uint64, p uint8, m int) (*[]SearchResult, error) {
 	if len(kmers) != len(scr.Indexes) {
 		return nil, fmt.Errorf("number of query kmers (%d) != number of masks (%d)", len(kmers), len(scr.Indexes))
 	}
@@ -765,7 +791,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 	var err error
 
-	results := poolSearchResults.Get().(*[]*SearchResult)
+	results := poolSearchResults.Get().(*[]SearchResult)
 	*results = (*results)[:0]
 	var found, saveKmer bool
 	// var mismatch uint8
@@ -984,7 +1010,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							sr = poolSearchResult.Get().(*SearchResult)
+							sr = appendSearchResult(results)
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
 							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -998,7 +1024,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							lenVal-- // skip the checked one
 						}
 					} else {
-						sr = poolSearchResult.Get().(*SearchResult)
+						sr = appendSearchResult(results)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer1)>>1) + shift // kmer 1
@@ -1034,7 +1060,6 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							}
 						}
 
-						*results = append(*results, sr)
 					}
 				} else {
 					r.Discard(int(lenVal * nSeedPosBytes))
@@ -1079,7 +1104,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 							r.Discard(int((lenVal - 1) * nSeedPosBytes))
 						} else {
-							sr = poolSearchResult.Get().(*SearchResult)
+							sr = appendSearchResult(results)
 							sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 							// sr.Kmer = kmer1
 							sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
@@ -1093,7 +1118,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							lenVal-- // skip the checked one
 						}
 					} else {
-						sr = poolSearchResult.Get().(*SearchResult)
+						sr = appendSearchResult(results)
 						sr.IQuery = iQ + chunkIndex // do not forget to add mask offset
 						// sr.Kmer = kmer1
 						sr.Len = uint8(bits.LeadingZeros64(kmer^kmer2)>>1) + shift
@@ -1129,7 +1154,6 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 							}
 						}
 
-						*results = append(*results, sr)
 					}
 				} else {
 					r.Discard(int(lenVal * nSeedPosBytes))
