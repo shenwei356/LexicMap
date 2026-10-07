@@ -339,9 +339,9 @@ func alignQueryFragToSubjectSampled(
 ) (int, int, int, float64, float64, bool) {
 	// Since we only use forward strand query k-mers and subject is a single concatenated
 	// sequence (forward + RC), we only need one set of anchors for unified chaining.
-	allSubs := poolSubsLong.Get().(*[]*SubstrPair)
+	allSubs := poolSubsLong.Get().(*[]SubstrPair)
 	*allSubs = (*allSubs)[:0]
-	defer RecycleSubstrPairs(poolSub, poolSubsLong, allSubs)
+	defer RecycleSubstrPairs(poolSubsLong, allSubs)
 
 	if sketch.sampledKmerMap == nil || len(*sketch.sampledKmerMap) == 0 {
 		return 0, 0, 0, 0, 0, false
@@ -367,7 +367,7 @@ func alignQueryFragToSubjectSampled(
 		qpos := int32(qposAndStrand >> 1)
 		qCanonicalRC := uint32(qposAndStrand & 1)
 		// The first occurrence is stored inline in the primary map.
-		sub := poolSub.Get().(*SubstrPair)
+		sub := SubstrPair{}
 		sub.Len = uint8(K)
 		sub.QBegin = qpos
 		sposAndStrand := first - 1
@@ -390,7 +390,7 @@ func alignQueryFragToSubjectSampled(
 			if posAndStrand&1 != qCanonicalRC {
 				spos = sketch.rcStart + sketch.forwardLen - spos - K
 			}
-			sub := poolSub.Get().(*SubstrPair)
+			sub := SubstrPair{}
 			sub.Len = uint8(K)
 			sub.QBegin = qpos
 			sub.TBegin = int32(spos)
@@ -470,15 +470,15 @@ func adjustedPIdentForAlignment(pident float64, qqual []byte, extendedQueryStart
 }
 
 // chainsFromSubs runs the chaining pipeline and returns all chains.
-func chainsFromSubs(subs *[]*SubstrPair, chainer *Chainer2, K int) (*[]*Chain2Result, bool) {
+func chainsFromSubs(subs *[]SubstrPair, chainer *Chainer2, K int) (*[]*Chain2Result, bool) {
 	if len(*subs) == 0 {
 		return nil, false
 	}
 
 	if len(*subs) > 1 {
-		ClearSubstrPairs(poolSub, subs, K)
+		ClearSubstrPairs(subs, K)
 	}
-	TrimSubStrPairs(poolSub, subs, K, 100)
+	TrimSubStrPairs(subs, K, 100)
 	if len(*subs) == 0 {
 		return nil, false
 	}

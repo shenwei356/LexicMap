@@ -123,9 +123,9 @@ func _extendRight(s1, s2 []byte) (int, int) {
 		return 0, 0
 	}
 
-	subs := poolSubs.Get().(*[]*SubstrPair)
+	subs := poolSubs.Get().(*[]SubstrPair)
 	*subs = (*subs)[:0]
-	defer RecycleSubstrPairs(poolSub, poolSubs, subs)
+	defer RecycleSubstrPairs(poolSubs, subs)
 
 	var v, p uint32
 	var srs *[]*tree.SearchResult
@@ -147,7 +147,7 @@ func _extendRight(s1, s2 []byte) (int, int) {
 			for _, v = range sr.Values {
 				p = v
 
-				_sub := poolSub.Get().(*SubstrPair)
+				_sub := SubstrPair{}
 				_sub.QBegin = int32(p)
 				_sub.TBegin = int32(iter.Index())
 				_sub.Len = uint8(sr.LenPrefix)
@@ -167,9 +167,9 @@ func _extendRight(s1, s2 []byte) (int, int) {
 
 	if len(*subs) > 1 {
 		// no need to clean as k == min_len
-		// ClearSubstrPairs(poolSub, subs, _k)
+		// ClearSubstrPairs(subs, _k)
 
-		slices.SortFunc(*subs, func(a, b *SubstrPair) int {
+		slices.SortFunc(*subs, func(a, b SubstrPair) int {
 			if a.QBegin == b.QBegin {
 				if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
 					return int(a.TBegin - b.TBegin)

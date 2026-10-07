@@ -178,7 +178,7 @@ func (r *Chain2Result) Reset() {
 //  5. QEnd.
 //  6. TBegin.
 //  7. TEnd.
-func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
+func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
@@ -243,6 +243,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	var s, m, M, g int64
 	// var d float64
 	var mj, Mi int
+	// Anchors stay in place during chaining; read by address to avoid value copies.
 	var a, b *SubstrPair
 	maxGap := int64(ce.options.MaxGap)
 	// maxDistance := float64(ce.options.MaxDistance)
@@ -251,7 +252,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	var qDiff, tDiff int32
 
 	for i = 1; i < n; i++ {
-		a = (*subs)[i] // current seed/anchor
+		a = &(*subs)[i] // current seed/anchor
 		// k = band * i   // index of current seed in the score matrix
 
 		// just initialize the max score, which comes from the current seed
@@ -272,7 +273,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 				break
 			}
 
-			b = (*subs)[j] // previous seed/anchor
+			b = &(*subs)[j] // previous seed/anchor
 			// k++            // index of previous seed in the score matrix
 
 			bQBegin, bTBegin = b.QBegin, b.TBegin
@@ -388,7 +389,7 @@ func (ce *Chainer2) Chain(subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int,
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
 }
 
-func chainARegion(subs *[]*SubstrPair, // a region of the subs
+func chainARegion(subs *[]SubstrPair, // a region of the subs
 	// maxscores *[]int, // a region of maxscores
 	maxscoresIdxs *[]uint64,
 	offset int, // offset of this region of subs
@@ -465,7 +466,7 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 		// |OK/   |tb
 		// o-------------------- Ref
 		//
-		sub = (*subs)[i]
+		sub = &(*subs)[i]
 
 		// overlapped = false
 		// nb = len(*bounds) >> 2 // len(bounds) / 4
@@ -688,11 +689,11 @@ func chainARegion(subs *[]*SubstrPair, // a region of the subs
 	return M, qB, qE, tB, tE
 }
 
-func distance2(a, b *SubstrPair) float64 {
+func distance2(a, b SubstrPair) float64 {
 	return math.Max(math.Abs(float64(a.QBegin-b.QBegin)), math.Abs(float64(a.TBegin-b.TBegin)))
 }
 
-func gap2(a, b *SubstrPair) float64 {
+func gap2(a, b SubstrPair) float64 {
 	return math.Abs(math.Abs(float64(a.QBegin-b.QBegin)) - math.Abs(float64(a.TBegin-b.TBegin)))
 }
 

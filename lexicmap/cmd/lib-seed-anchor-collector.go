@@ -158,7 +158,7 @@ func (c *seedAnchorCollector) collect(worker int) {
 			pageSlot := genomeIndex & seedGenomeSlotPageMask
 			r := (*page)[pageSlot]
 			if r == nil {
-				subs := poolSubs.Get().(*[]*SubstrPair)
+				subs := poolSubs.Get().(*[]SubstrPair)
 				r = poolSearchResult.Get().(*SearchResult)
 				r.BatchGenomeIndex = anchor.batchGenomeIndex
 				r.GenomeBatch = genomeBatch
@@ -175,7 +175,7 @@ func (c *seedAnchorCollector) collect(worker int) {
 				results = append(results, r)
 			}
 
-			sub := poolSub.Get().(*SubstrPair)
+			sub := SubstrPair{}
 			sub.QBegin = anchor.qBegin
 			sub.TBegin = anchor.tBegin
 			sub.Len = anchor.length
@@ -300,7 +300,7 @@ func collectSeedAnchorsSerial(
 						}
 					}
 
-					sub := poolSub.Get().(*SubstrPair)
+					sub := SubstrPair{}
 					sub.QBegin = int32(beginQ)
 					sub.TBegin = int32(beginT)
 					sub.Len = uint8(kPrefix)
@@ -310,7 +310,7 @@ func collectSeedAnchorsSerial(
 					key := int(batchGenomeIndex)
 					r := (*m)[key]
 					if r == nil {
-						subs := poolSubs.Get().(*[]*SubstrPair)
+						subs := poolSubs.Get().(*[]SubstrPair)
 						r = poolSearchResult.Get().(*SearchResult)
 						r.BatchGenomeIndex = batchGenomeIndex
 						r.GenomeBatch = key >> BITS_GENOME_IDX

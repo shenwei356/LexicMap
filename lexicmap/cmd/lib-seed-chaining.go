@@ -50,7 +50,7 @@ func (idx *Index) chainSeedResults(seedResults [][]*SearchResult, nTargets int) 
 			for batch := range jobs {
 				for _, r := range batch {
 					if len(*r.Subs) > 1 {
-						ClearSubstrPairs(poolSub, r.Subs, idx.k)
+						ClearSubstrPairs(r.Subs, idx.k)
 					}
 					if chainer == nil {
 						chainer = idx.poolChainers.Get().(*Chainer)

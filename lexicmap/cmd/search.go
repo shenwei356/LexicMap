@@ -498,7 +498,7 @@ Result ordering:
 			// var c int
 			// var v *index.SubstrPair
 			// var i int
-			// var subs *[]*index.SubstrPair
+			// var subs *[]index.SubstrPair
 			var sd *SimilarityDetail
 			var c *AlignmentResult
 			var targets = len(*q.result)

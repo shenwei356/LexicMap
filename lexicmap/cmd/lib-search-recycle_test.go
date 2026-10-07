@@ -9,8 +9,8 @@ import (
 
 func TestPrepareAlignmentRegionsPreservesBoundsAndReleasesSeeds(t *testing.T) {
 	// Interior and unused anchors must not survive conversion to alignment bounds.
-	subs := make([]*SubstrPair, 6, thresholdNSubs+1)
-	copy(subs, []*SubstrPair{
+	subs := make([]SubstrPair, 6, thresholdNSubs+1)
+	copy(subs, []SubstrPair{
 		{QBegin: 10, TBegin: 600, Len: 31},
 		{QBegin: 30, TBegin: 580, Len: 19},
 		{QBegin: 50, TBegin: 550, Len: 25},
@@ -46,8 +46,7 @@ func TestPrepareAlignmentRegionsPreservesBoundsAndReleasesSeeds(t *testing.T) {
 func TestPrepareAlignmentRegionsSingleAnchorStrands(t *testing.T) {
 	for _, qrc := range []bool{false, true} {
 		for _, trc := range []bool{false, true} {
-			subs := []*SubstrPair{{QBegin: 7, TBegin: 11, Len: 19, QRC: qrc, TRC: trc}}
-			backing := subs
+			subs := []SubstrPair{{QBegin: 7, TBegin: 11, Len: 19, QRC: qrc, TRC: trc}}
 			path := []int32{0}
 			chains := []*[]int32{&path}
 			r := &SearchResult{Subs: &subs, Chains: &chains}
@@ -56,7 +55,7 @@ func TestPrepareAlignmentRegionsSingleAnchorStrands(t *testing.T) {
 			if !reflect.DeepEqual(r.chainRegions, want) {
 				t.Fatalf("qrc=%v trc=%v: got %+v, want %+v", qrc, trc, r.chainRegions, want)
 			}
-			if r.Subs != nil || r.Chains != nil || backing[0] != nil {
+			if r.Subs != nil || r.Chains != nil || len(subs) != 0 {
 				t.Fatal("single-anchor result retains recycled seeds")
 			}
 			(&Index{}).RecycleSearchResult(r)
@@ -72,32 +71,65 @@ func TestRecycleSubstrPairsDropsOversizedCapacityAfterDeduplication(t *testing.T
 			limit = thresholdNSubsLong
 			listPool = poolSubsLong
 		}
-		subs := make([]*SubstrPair, 2, limit+1)
-		subs[0] = &SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
-		subs[1] = &SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
-		subPool := &sync.Pool{}
-		ClearSubstrPairs(subPool, &subs, 31)
+		subs := make([]SubstrPair, 2, limit+1)
+		subs[0] = SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
+		subs[1] = SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
+		ClearSubstrPairs(&subs, 31)
 		if len(subs) != 1 {
 			t.Fatalf("deduplication retained %d anchors", len(subs))
 		}
-		RecycleSubstrPairs(subPool, listPool, &subs)
+		RecycleSubstrPairs(listPool, &subs)
 		if subs != nil {
 			t.Fatalf("long=%v: shortened oversized seed array was retained", long)
 		}
 	}
 }
 
-func TestClearSubstrPairsClearsDiscardedTail(t *testing.T) {
-	keep := &SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
-	subs := []*SubstrPair{keep, {QBegin: 1, TBegin: 1, Len: 30}}
-	backing := subs
-	ClearSubstrPairs(&sync.Pool{}, &subs, 31)
-	if len(subs) != 1 || subs[0] != keep || backing[1] != nil {
-		t.Fatal("deduplication changed the surviving anchor or retained a discarded anchor")
+func TestClearSubstrPairsPreservesSurvivorAndCapacity(t *testing.T) {
+	keep := SubstrPair{QBegin: 1, TBegin: 1, Len: 31}
+	subs := []SubstrPair{keep, {QBegin: 1, TBegin: 1, Len: 30}}
+	capacity := cap(subs)
+	ClearSubstrPairs(&subs, 31)
+	if len(subs) != 1 || subs[0] != keep || cap(subs) != capacity {
+		t.Fatal("deduplication changed the surviving anchor or backing capacity")
 	}
-	RecycleSubstrPairs(&sync.Pool{}, &sync.Pool{}, &subs)
-	if backing[0] != nil || backing[1] != nil {
-		t.Fatal("recycling retains anchors after deduplication shortened the slice")
+	RecycleSubstrPairs(&sync.Pool{}, &subs)
+	if len(subs) != 0 || cap(subs) != capacity {
+		t.Fatal("recycling did not reset the length and preserve capacity")
+	}
+}
+
+func TestTrimSubStrPairsPreservesAnchorsAndCapacity(t *testing.T) {
+	anchors := []SubstrPair{
+		{QBegin: 0, TBegin: 0, Len: 31},
+		{QBegin: 0, TBegin: 10, Len: 21},
+		{QBegin: 0, TBegin: 20, Len: 11},
+		{QBegin: 200, TBegin: 200, Len: 31, QRC: true},
+		{QBegin: 500, TBegin: 500, Len: 31, TRC: true},
+		{QBegin: 500, TBegin: 510, Len: 21},
+		{QBegin: 500, TBegin: 520, Len: 11},
+	}
+	for _, tt := range []struct {
+		name  string
+		input []SubstrPair
+		want  []SubstrPair
+	}{
+		{"both ends", anchors, anchors[1:5]},
+		{"all discarded", anchors[:3], []SubstrPair{}},
+		{"no overhang", anchors[3:5], anchors[3:5]},
+		{"single anchor", anchors[3:4], anchors[3:4]},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			subs := append([]SubstrPair(nil), tt.input...)
+			backing, capacity := &subs[0], cap(subs)
+			TrimSubStrPairs(&subs, 31, 100)
+			if !reflect.DeepEqual(subs, tt.want) || cap(subs) != capacity {
+				t.Fatalf("got %+v (capacity %d), want %+v (capacity %d)", subs, cap(subs), tt.want, capacity)
+			}
+			if len(subs) > 0 && &subs[0] != backing {
+				t.Fatal("trimming did not reuse the front of the backing array")
+			}
+		})
 	}
 }
 
@@ -172,8 +204,8 @@ func TestRecycleSearchResultsReleasesNestedReferences(t *testing.T) {
 	sd := &SimilarityDetail{Alignments: alignments}
 	details := []*SimilarityDetail{sd}
 	detailBacking := details
-	subs := make([]*SubstrPair, 1, thresholdNSubs+1)
-	subs[0] = &SubstrPair{Len: 31}
+	subs := make([]SubstrPair, 1, thresholdNSubs+1)
+	subs[0] = SubstrPair{Len: 31}
 	seedChain := make([]int32, 1, chainerInitSize+1)
 	seedChains := make([]*[]int32, 1, thresholdNSubs+1)
 	seedChains[0] = &seedChain

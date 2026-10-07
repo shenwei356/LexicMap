@@ -132,7 +132,7 @@ var poolChain = &sync.Pool{New: func() interface{} {
 
 // Chain finds the possible seed paths.
 // Please remember to call RecycleChainingResult after using the results.
-func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
+func (ce *Chainer) Chain(subs *[]SubstrPair) (*[]*[]int32, float32) {
 	n := len(*subs)
 
 	if n == 1 { // for one seed, just check the seed weight
@@ -214,7 +214,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 		var minJ, rightBound int
 		var targetQ int32
 		for i = 1; i < n; i++ {
-			a = (*subs)[i]
+			a = &(*subs)[i]
 			aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
 
 			// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
@@ -239,7 +239,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 				targetQ = a.QBegin - maxDistanceInt32
 
 				// leftBound of j
-				minJ, _ = slices.BinarySearchFunc((*subs)[:rightBound+1], targetQ, func(e *SubstrPair, t int32) int {
+				minJ, _ = slices.BinarySearchFunc((*subs)[:rightBound+1], targetQ, func(e SubstrPair, t int32) int {
 					if e.QBegin < t {
 						return -1
 					}
@@ -251,7 +251,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 
 				// fmt.Printf(" j range: %d - %d = %d\n", minJ, rightBound, rightBound-minJ+1)
 				for j = rightBound; j >= minJ; j-- {
-					b = (*subs)[j]
+					b = &(*subs)[j]
 
 					// fmt.Printf("  j:%d, b: %s\n", j, b)
 
@@ -362,7 +362,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 			// }
 			// prevQIdx = append(prevQIdx, lastDiffGroup)
 
-			a = (*subs)[i]
+			a = &(*subs)[i]
 			// _itree.Insert(a.TBegin, a.TBegin+int32(a.Len)-1, int32(i))
 			ri.Add(uint32(a.TBegin), uint32(i))
 		}
@@ -376,7 +376,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 		// var rightBound int
 
 		for i = 1; i < n; i++ {
-			a = (*subs)[i]
+			a = &(*subs)[i]
 			aQBegin, aTBegin, aLen = a.QBegin, a.TBegin, int32(a.Len)
 
 			// fmt.Printf("i:%d/%d, a: %s\n", i, n, a)
@@ -418,7 +418,7 @@ func (ce *Chainer) Chain(subs *[]*SubstrPair) (*[]*[]int32, float32) {
 					// 	continue
 					// }
 
-					b = (*subs)[j]
+					b = &(*subs)[j]
 
 					// fmt.Printf("  j:%d, b: %s\n", j, b)
 
@@ -649,7 +649,7 @@ func seedWeight(l float32) float32 {
 	return 0.1 * l * l
 }
 
-func distance(a, b *SubstrPair) float32 {
+func distance(a, b SubstrPair) float32 {
 	return float32(math.Max(math.Abs(float64(a.QBegin-b.QBegin)), math.Abs(float64(a.TBegin-b.TBegin))))
 }
 

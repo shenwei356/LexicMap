@@ -96,7 +96,7 @@ func (r *Chain3Result) Reset() {
 	r.NAnchors = 0
 }
 
-var sub0 = &SubstrPair{}
+var sub0 = SubstrPair{}
 
 // Chain finds the possible chain path.
 // Please remember to call RecycleChaining3Result after using the results.
@@ -108,7 +108,7 @@ var sub0 = &SubstrPair{}
 //  5. QEnd.
 //  6. TBegin.
 //  7. TEnd.
-func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
+func (ce *Chainer3) Chain(subs *[]SubstrPair) *Chain3Result {
 	n := len(*subs)
 
 	var i, j int
@@ -125,19 +125,20 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 	// truncation to a signed 32-bit score when packing each matrix entry.
 	var s, m, M, g, d int64
 	var mj, Mi int
+	// Anchors stay in place during chaining; read by address to avoid value copies.
 	var a, b *SubstrPair
 	maxGap := int64(ce.options.MaxGap)
 	maxDistance := int64(ce.options.MaxDistance)
 	var aQBegin, aTBegin int32
 
 	// initialize
-	a = (*subs)[0]
+	a = &(*subs)[0]
 	d, g = chaining3DistanceAndGap(sub0.QBegin, sub0.TBegin, a.QBegin, a.TBegin)
 	m = int64(a.Len) - d - g
 	*maxscoresIdxs = append(*maxscoresIdxs, int64(m)<<32)
 
 	for i = 1; i < n; i++ {
-		a = (*subs)[i] // current seed/anchor
+		a = &(*subs)[i] // current seed/anchor
 		aQBegin, aTBegin = a.QBegin, a.TBegin
 
 		// just initialize the max score, which comes from the current seed
@@ -153,7 +154,7 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 				break
 			}
 
-			b = (*subs)[j] // previous seed/anchor
+			b = &(*subs)[j] // previous seed/anchor
 
 			// filter out messed/crossed anchors
 			if b.QBegin == aQBegin || b.TBegin > aTBegin {
@@ -228,7 +229,7 @@ func (ce *Chainer3) Chain(subs *[]*SubstrPair) *Chain3Result {
 			break
 		}
 
-		sub = (*subs)[i]
+		sub = &(*subs)[i]
 
 		nAnchors++
 

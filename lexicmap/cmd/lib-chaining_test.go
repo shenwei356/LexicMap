@@ -82,7 +82,7 @@ func TestChaining(t *testing.T) {
 	 	| csvtk cut -t -f qstart,tstart | sed 1d \
 		| awk '{print "{QBegin: "$1", TBegin: "$2", Len: 31},"}'
 	*/
-	subs := []*SubstrPair{
+	subs := []SubstrPair{
 		// two sequences on different strands
 		// {QBegin: 18, TBegin: 3453, Len: 31},
 		// {QBegin: 18, TBegin: 3640464, Len: 31},

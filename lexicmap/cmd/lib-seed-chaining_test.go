@@ -85,10 +85,7 @@ func seedChainingTestResults(n int) [][]*SearchResult {
 			anchors = []SubstrPair{{QBegin: 60, TBegin: 3065, Len: 31},
 				{TBegin: 3000, Len: 31}, {QBegin: 1, TBegin: 3001, Len: 20}, {TBegin: 3000, Len: 31}}
 		}
-		subs := make([]*SubstrPair, len(anchors))
-		for j := range anchors {
-			subs[j] = &anchors[j]
-		}
+		subs := anchors
 		r := &SearchResult{BatchGenomeIndex: uint64(i), Subs: &subs}
 		results[i%len(results)] = append(results[i%len(results)], r)
 	}
@@ -104,7 +101,7 @@ func TestChainSeedResultsMatchesSerial(t *testing.T) {
 				want := make(map[uint64]*SearchResult)
 				for _, targets := range serial {
 					for _, r := range targets {
-						ClearSubstrPairs(poolSub, r.Subs, idx.k)
+						ClearSubstrPairs(r.Subs, idx.k)
 						chainer := idx.poolChainers.Get().(*Chainer)
 						r.Chains, r.Score = chainer.Chain(r.Subs)
 						RecycleChainer(idx.poolChainers, chainer)
@@ -150,11 +147,11 @@ func TestChainSeedResultsDropsOversizedChainer(t *testing.T) {
 		nCreated++
 		return NewChainer(idx.chainingOptions)
 	}}
-	subs := make([]*SubstrPair, chainerInitSize+1)
+	subs := make([]SubstrPair, chainerInitSize+1)
 	for i := range subs {
-		subs[i] = &SubstrPair{QBegin: int32(i * 64), TBegin: int32(i * 64), Len: 31}
+		subs[i] = SubstrPair{QBegin: int32(i * 64), TBegin: int32(i * 64), Len: 31}
 	}
-	single := []*SubstrPair{{Len: 31}}
+	single := []SubstrPair{{Len: 31}}
 	got := idx.chainSeedResults([][]*SearchResult{{{Subs: &subs}, {Subs: &single}}}, 2)
 	if nCreated < 2 {
 		t.Fatalf("oversized chainer was retained: created %d chainers", nCreated)

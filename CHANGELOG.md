@@ -26,6 +26,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap search`:
     - **Faster searching speed for batch queries**.
     - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
+    - Store seed anchors as inline values to reduce memory use and garbage collection overhead.
     - Reuse fixed workers for seed chaining and precompute common gap penalties to reduce chaining overhead.
     - Release seed anchors and chain paths after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - Faster pseudoalignment for long queries.

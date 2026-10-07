@@ -984,12 +984,8 @@ func (s SubstrPair) String() string {
 		s.QBegin+1, s.QBegin+int32(s.Len), s1, s.TBegin+1, s.TBegin+int32(s.Len), s2, s.Len)
 }
 
-var poolSub = &sync.Pool{New: func() interface{} {
-	return &SubstrPair{}
-}}
-
 var poolSubs = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SubstrPair, 0, 8) // can't be big
+	tmp := make([]SubstrPair, 0, 8) // can't be big
 	return &tmp
 }}
 
@@ -1000,36 +996,32 @@ const (
 )
 
 // RecycleSubstrPairs recycles a list of SubstrPairs
-func RecycleSubstrPairs(subPool *sync.Pool, subsPool *sync.Pool, subs *[]*SubstrPair) {
+func RecycleSubstrPairs(subsPool *sync.Pool, subs *[]SubstrPair) {
 	maxCapacity := thresholdNSubs
 	if subsPool == poolSubsLong {
 		maxCapacity = thresholdNSubsLong
 	}
-	// Drop oversized arrays and their anchors instead of filling the pools.
+	// Drop oversized arrays instead of filling the pools.
 	if cap(*subs) > maxCapacity {
 		*subs = nil
 		return
 	}
-	for _, sub := range *subs {
-		subPool.Put(sub)
-	}
-	// Deduplication and trimming clear discarded tails before shortening subs.
-	clear(*subs)
+	// Value anchors contain no pointers; resetting the length is sufficient.
 	*subs = (*subs)[:0]
 	subsPool.Put(subs)
 }
 
 var poolSubsLong = &sync.Pool{New: func() interface{} {
-	tmp := make([]*SubstrPair, 0, thresholdNSubsLong)
+	tmp := make([]SubstrPair, 0, thresholdNSubsLong)
 	return &tmp
 }}
 
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
-func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
+func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 
 	// sort substrings/seeds in ascending order based on the starting position
 	// and in descending order based on the ending position.
-	slices.SortFunc(*subs, func(a, b *SubstrPair) int {
+	slices.SortFunc(*subs, func(a, b SubstrPair) int {
 		if a.QBegin == b.QBegin {
 			if a.QBegin+int32(a.Len) == b.QBegin+int32(b.Len) {
 				return int(a.TBegin - b.TBegin)
@@ -1039,7 +1031,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		return int(a.QBegin - b.QBegin)
 	})
 
-	var p *SubstrPair
+	var p SubstrPair
 	var upbound, vQEnd, vTBegin, vTEnd int32
 	var j int
 	markers := poolBoolList.Get().(*[]bool)
@@ -1120,7 +1112,7 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		// subs is already sorted by QBegin ascending; binary-search directly
 		// in subs to find the first anchor whose QBegin >= upbound. This
 		// replaces the auxiliary RangeIndex above.
-		start, _ := slices.BinarySearchFunc((*subs)[:i+1], upbound, func(s *SubstrPair, target int32) int {
+		start, _ := slices.BinarySearchFunc((*subs)[:i+1], upbound, func(s SubstrPair, target int32) int {
 			return int(s.QBegin - target)
 		})
 		for j = start; j <= i; j++ {
@@ -1140,12 +1132,9 @@ func ClearSubstrPairs(poolSub *sync.Pool, subs *[]*SubstrPair, k int) {
 		if !embedded {
 			(*subs)[j] = (*subs)[i]
 			j++
-		} else {
-			poolSub.Put((*subs)[i]) // do not forget to recycle the object
 		}
 	}
 	if j > 0 {
-		clear((*subs)[j:])
 		*subs = (*subs)[:j]
 	}
 
@@ -1186,7 +1175,7 @@ var poolSearchResults = &sync.Pool{New: func() interface{} {
 
 // SearchResult stores a search result in a genome for the given query sequence.
 type SearchResult struct {
-	Subs *[]*SubstrPair // matched substring pairs (query,target)
+	Subs *[]SubstrPair // matched substring pairs (query,target)
 
 	BatchGenomeIndex uint64 // just for finding genome chunks of the same genome
 
@@ -1245,7 +1234,7 @@ func (r *SearchResult) prepareAlignmentRegions() {
 	// The regions own their values; pending targets no longer need anchors or paths.
 	RecycleChainingResult(r.Chains)
 	r.Chains = nil
-	RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+	RecycleSubstrPairs(poolSubs, r.Subs)
 	r.Subs = nil
 }
 
@@ -1407,7 +1396,7 @@ func (r *SearchResult) Reset() {
 func (idx *Index) RecycleSearchResult(r *SearchResult) {
 	r.chainRegions = nil
 	if r.Subs != nil {
-		RecycleSubstrPairs(poolSub, poolSubs, r.Subs)
+		RecycleSubstrPairs(poolSubs, r.Subs)
 		r.Subs = nil
 	}
 

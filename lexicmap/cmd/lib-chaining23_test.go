@@ -48,7 +48,7 @@ func TestChaining3DistanceAndGapMatchesFloat(t *testing.T) {
 				for _, bt := range coords {
 					a, b := SubstrPair{QBegin: aq, TBegin: at}, SubstrPair{QBegin: bq, TBegin: bt}
 					d, g := chaining3DistanceAndGap(aq, at, bq, bt)
-					if float64(d) != distance2(&a, &b) || float64(g) != gap2(&a, &b) {
+					if float64(d) != distance2(a, b) || float64(g) != gap2(a, b) {
 						t.Fatalf("a=%v b=%v: distance/gap=%d/%d", a, b, d, g)
 					}
 				}
@@ -59,7 +59,7 @@ func TestChaining3DistanceAndGapMatchesFloat(t *testing.T) {
 
 func TestChaining23MatchesFloatReference(t *testing.T) {
 	rng := rand.New(rand.NewSource(2302))
-	fixtures := [][]*SubstrPair{
+	fixtures := [][]SubstrPair{
 		{{Len: 31}},
 		{{QBegin: 100, TBegin: 200, Len: 5}}, // Negative initial Chainer3 score.
 		{{Len: 5}, {QBegin: 1, TBegin: 2, Len: 5}, {QBegin: 2, TBegin: 1, Len: 5}, {QBegin: 4, TBegin: 4, Len: 5}},
@@ -70,12 +70,12 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 	}
 	for trial := range 500 {
 		n := 1 + rng.Intn(192)
-		subs := make([]*SubstrPair, n)
+		subs := make([]SubstrPair, n)
 		q, target := int32(0), int32(0)
 		for i := range subs {
 			q += int32(rng.Intn(8))
 			target += int32(rng.Intn(8))
-			subs[i] = &SubstrPair{QBegin: q, TBegin: target, Len: uint8(1 + rng.Intn(32))}
+			subs[i] = SubstrPair{QBegin: q, TBegin: target, Len: uint8(1 + rng.Intn(32))}
 			if trial%3 == 0 { // Repeated or crossed target anchors.
 				subs[i].TBegin = int32(rng.Intn(200))
 			}
@@ -136,9 +136,9 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 
 func BenchmarkDenseChaining(b *testing.B) {
 	for _, n := range []int{32, 256, 2048} {
-		subs := make([]*SubstrPair, n)
+		subs := make([]SubstrPair, n)
 		for i := range subs {
-			subs[i] = &SubstrPair{QBegin: int32(i * 3), TBegin: int32(i*3 + i/17), Len: 11}
+			subs[i] = SubstrPair{QBegin: int32(i * 3), TBegin: int32(i*3 + i/17), Len: 11}
 		}
 		for _, reference := range []bool{true, false} {
 			label := "integer"

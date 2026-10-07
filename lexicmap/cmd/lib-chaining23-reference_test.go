@@ -2,7 +2,7 @@
 // Keep their scoring, packing and tie-breaking independent of the optimized kernels.
 package cmd
 
-func referenceChaining2(ce *Chainer2, subs *[]*SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
+func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 	if n == 1 { // for one seed, just check the seed weight
 		sub := (*subs)[0]
@@ -35,7 +35,7 @@ func referenceChaining2(ce *Chainer2, subs *[]*SubstrPair) (*[]*Chain2Result, in
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 	var s, m, M, g float64
 	var mj, Mi int
-	var a, b *SubstrPair
+	var a, b SubstrPair
 	maxGap := float64(ce.options.MaxGap)
 	var aQBegin, aTBegin, bQBegin, bTBegin int32
 	var qDiff, tDiff int32
@@ -116,7 +116,7 @@ func referenceChaining2(ce *Chainer2, subs *[]*SubstrPair) (*[]*Chain2Result, in
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
 }
 
-func referenceChaining3(ce *Chainer3, subs *[]*SubstrPair) *Chain3Result {
+func referenceChaining3(ce *Chainer3, subs *[]SubstrPair) *Chain3Result {
 	n := len(*subs)
 	var i, j int
 	bandBase := int32(ce.options.BandBase) // band size of banded-DP
@@ -127,7 +127,7 @@ func referenceChaining3(ce *Chainer3, subs *[]*SubstrPair) *Chain3Result {
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 	var s, m, M, g, d float64
 	var mj, Mi int
-	var a, b *SubstrPair
+	var a, b SubstrPair
 	maxGap := float64(ce.options.MaxGap)
 	maxDistance := float64(ce.options.MaxDistance)
 	a = (*subs)[0]
@@ -179,7 +179,7 @@ func referenceChaining3(ce *Chainer3, subs *[]*SubstrPair) *Chain3Result {
 	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
 	i = Mi
 	var qb, qe, tb, te int32 // the bound (0-based)
-	var sub *SubstrPair
+	var sub SubstrPair
 	var beginOfNextAnchor int
 	var pident float64
 	firstAnchorOfAChain := true
