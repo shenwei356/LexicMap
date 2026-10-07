@@ -22,7 +22,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -146,21 +145,10 @@ Important parameters:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
+		defer setupCommandLog(opt, "")()
+		outputLog := opt.Verbose || opt.Log2File
+		
 		timeStart := time.Now()
-		defer func() {
-			if opt.Verbose || opt.Log2File {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		// ---------------------------------------------------------------
 		// basic flags
@@ -360,34 +348,27 @@ Important parameters:
 
 		outputDir := outDir != ""
 		if outputDir {
-			makeOutDir(outDir, force, "out-dir", opt.Verbose || opt.Log2File)
+			makeOutDir(outDir, force, "out-dir", outputLog)
 		}
 
 		// ---------------------------------------------------------------
 		// input files
 
-		if opt.Verbose || opt.Log2File {
-			log.Infof("LexicMap v%s", VERSION)
-			log.Info("  https://github.com/shenwei356/LexicMap")
-			log.Info()
-
-		}
-
 		// if refNameStr != "" {
 		// 	name2info, err = readKVs(refNameStr, false)
 		// 	checkError(err)
-		// 	if opt.Verbose || opt.Log2File {
+		// 	if outputLog {
 		// 		log.Infof("%d reference name information records loaded", len(name2info))
 		// 	}
 		// }
 
-		if opt.Verbose || opt.Log2File {
+		if outputLog {
 			log.Info("checking input files ...")
 		}
 
 		var files []string
 		if readFromDir {
-			if opt.Verbose || opt.Log2File {
+			if outputLog {
 				log.Infof("  scanning files from directory: %s", inDir)
 			}
 			files, err = getFileListFromDir(inDir, reFile, opt.NumCPUs)
@@ -398,11 +379,11 @@ Important parameters:
 				log.Warningf("  no files matching regular expression: %s", reFileStr)
 			}
 		} else {
-			if opt.Verbose || opt.Log2File {
+			if outputLog {
 				log.Info("  checking files from command-line argument or/and file list ...")
 			}
 			files = getFileListFromArgsAndFile(cmd, args, !skipFileCheck, "infile-list", !skipFileCheck)
-			if opt.Verbose || opt.Log2File {
+			if outputLog {
 				if len(files) == 1 && isStdin(files[0]) {
 					log.Info("  no files given, reading from stdin")
 				}
@@ -412,13 +393,13 @@ Important parameters:
 			checkError(fmt.Errorf("FASTA/Q files needed"))
 		} else if len(files) > 1<<BITS_IDX { // 1<< 34
 			checkError(fmt.Errorf("at most %d files supported, given: %d", 1<<BITS_IDX, len(files)))
-		} else if opt.Verbose || opt.Log2File {
+		} else if outputLog {
 			log.Infof("  %d input file(s) given", len(files))
 		}
 
 		// sort files according to taxonomic information
 		// if len(name2info) > 0 {
-		// 	if opt.Verbose || opt.Log2File {
+		// 	if outputLog {
 		// 		log.Info("sorting input files according to reference name information...")
 		// 	}
 		// 	file2info := make([][2]string, len(files))
@@ -445,7 +426,7 @@ Important parameters:
 		// 		files[i] = file2info[i][0]
 		// 		// fmt.Printf("%s, %s\n", files[i], file2info[i][1])
 		// 	}
-		// 	if opt.Verbose || opt.Log2File {
+		// 	if outputLog {
 		// 		log.Info("  input files sorted")
 		// 	}
 		// }
@@ -453,7 +434,7 @@ Important parameters:
 		// ---------------------------------------------------------------
 		// log
 
-		if opt.Verbose || opt.Log2File {
+		if outputLog {
 			log.Info()
 			log.Infof("--------------------- [ main parameters ] ---------------------")
 			log.Info()
@@ -506,7 +487,7 @@ Important parameters:
 			checkError(fmt.Errorf("failed to create a new index: %s", err))
 		}
 
-		if opt.Verbose || opt.Log2File {
+		if outputLog {
 			log.Info()
 			log.Infof("finished building LexicMap index from %d files with %d masks in %s",
 				len(files), bopt.Masks, time.Since(timeStart))

@@ -42,14 +42,15 @@ var genomesCmd = &cobra.Command{
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+
 		// ------------------------------
 
 		dbDir := getFlagString(cmd, "index")
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
-
-		outFile := getFlagString(cmd, "out-file")
 
 		extra := getFlagBool(cmd, "extra")
 

@@ -32,6 +32,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// logStartupInfo logs the actual command line, software version, optional build
+// commit (using the same format as the version command), and project URL.
+// Call it after configuring logging and checking whether informational logs are
+// enabled. It does not configure destinations or override the caller's quiet mode.
+// Shell-sensitive and empty argv entries are quoted for copying into a POSIX shell.
+func logStartupInfo() {
+	const shellSafe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@%+=:,./-"
+	invocation := make([]string, len(os.Args))
+	for i, arg := range os.Args {
+		if arg == "" || strings.Trim(arg, shellSafe) != "" {
+			arg = "'" + strings.ReplaceAll(arg, "'", "'\\''") + "'"
+		}
+		invocation[i] = arg
+	}
+	if COMMIT == "" {
+		log.Infof("LexicMap v%s", VERSION)
+	} else {
+		log.Infof("LexicMap v%s (%s)", VERSION, COMMIT)
+	}
+	log.Info("  https://github.com/shenwei356/LexicMap")
+	log.Info()
+	log.Infof("command: %s", strings.Join(invocation, " "))
+	log.Info()
+}
+
 func checkError(err error) {
 	if err != nil {
 		log.Error(err)

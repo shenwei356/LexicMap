@@ -55,6 +55,8 @@ Output:
 		opt := getOptions(cmd)
 
 		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+		outputLog := opt.Verbose || opt.Log2File
 
 		bufferSizeS := getFlagString(cmd, "buffer-size")
 		if bufferSizeS == "" {
@@ -68,15 +70,6 @@ Output:
 
 		concatSgenomeAndSseqid := getFlagBool(cmd, "concat-sgenome-sseqid")
 		separater := getFlagString(cmd, "separater")
-
-		timeStart0 := time.Now()
-		defer func() {
-			if opt.Verbose {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart0))
-				log.Info()
-			}
-		}()
 
 		// ---------------------------------------------------------------
 		// output file handler
@@ -116,7 +109,7 @@ Output:
 		// ---------------------------------------------------------------
 		// 1st round: extract subject sequence id and length
 		timeStart := time.Now()
-		if opt.Verbose {
+		if outputLog {
 			log.Info("round 1/2: extracting subject sequence IDs and lengths ...")
 		}
 
@@ -179,14 +172,14 @@ Output:
 		clear(m)
 		clear(refs)
 		refs = refs[:0]
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart))
 		}
 
 		// ---------------------------------------------------------------
 		// 2nd round: convert to sam
 		timeStart = time.Now()
-		if opt.Verbose {
+		if outputLog {
 			log.Info("round 2/2: converting to SAM format ...")
 		}
 
@@ -385,7 +378,7 @@ Output:
 			checkError(fh.Close())
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart))
 		}
 	},

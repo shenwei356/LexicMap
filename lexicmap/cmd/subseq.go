@@ -30,7 +30,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/bio/seq"
@@ -71,7 +70,8 @@ Attention:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		timeStart0 := time.Now()
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
 
 		// ------------------------------
 
@@ -80,7 +80,6 @@ Attention:
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
 
-		outFile := getFlagString(cmd, "out-file")
 		lineWidth := getFlagNonNegativeInt(cmd, "line-width")
 
 		upstream := getFlagNonNegativeInt(cmd, "upstream")
@@ -453,12 +452,6 @@ Attention:
 			}
 
 			checkError(readers.close())
-
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart0))
-				log.Info()
-			}
 
 			return
 		}

@@ -44,6 +44,9 @@ This command is only needed for indexes created by LexicMap v0.6.0 (3c257ca) or 
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		defer setupCommandLog(opt, "")()
+		outputLog := opt.Verbose || opt.Log2File
+
 		// ------------------------------
 
 		dbDir := getFlagString(cmd, "index")
@@ -61,14 +64,14 @@ This command is only needed for indexes created by LexicMap v0.6.0 (3c257ca) or 
 			checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
 		}
 
-		var startTime time.Time
+		startTime := time.Now()
 
 		old := info.InputBases
 		totalBases, err := updateInputBases(info, dbDir, opt.NumCPUs)
 		checkError(err)
 
-		if opt.Verbose {
-			fmt.Printf("update input bases from %d to %s in %s\n", old, humanize.Comma(totalBases), startTime)
+		if outputLog {
+			log.Infof("update input bases from %d to %s in %s", old, humanize.Comma(totalBases), time.Since(startTime))
 		}
 	},
 }

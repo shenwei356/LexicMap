@@ -47,6 +47,8 @@ Input:
 		opt := getOptions(cmd)
 
 		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+		outputLog := opt.Verbose || opt.Log2File
 
 		bufferSizeS := getFlagString(cmd, "buffer-size")
 		if bufferSizeS == "" {
@@ -71,7 +73,7 @@ Input:
 			kvsSeq, err = readKVs(kvFileSeq, ignoreCase)
 			if err != nil {
 				checkError(fmt.Errorf("read sseqid kv file: %s", err))
-			} else if opt.Verbose {
+			} else if outputLog {
 				log.Infof("%d pairs of sseqid key-value loaded", len(kvsSeq))
 			}
 		}
@@ -80,7 +82,7 @@ Input:
 			kvsGenome, err = readKVs(kvFileGenome, ignoreCase)
 			if err != nil {
 				checkError(fmt.Errorf("read sseqid kv file: %s", err))
-			} else if opt.Verbose {
+			} else if outputLog {
 				log.Infof("%d pairs of sgenome key-value loaded", len(kvsGenome))
 			}
 		}

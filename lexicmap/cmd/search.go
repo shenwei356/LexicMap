@@ -147,37 +147,10 @@ Result ordering:
 		seq.ValidateSeq = false
 
 		outFile := getFlagString(cmd, "out-file")
-
-		var fhLog *os.File
-		if opt.Log2File {
-			ro, err := filepath.Abs(outFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to check output file: %s", err))
-			}
-			rl, err := filepath.Abs(opt.LogFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to check log file: %s", err))
-			}
-			if ro == rl {
-				checkError(fmt.Errorf("output file and log file should not be the same: %s", outFile))
-			}
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		defer setupCommandLog(opt, outFile)()
 		verbose := opt.Verbose
 		outputLog := opt.Verbose || opt.Log2File
-
 		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		var err error
 
@@ -288,12 +261,6 @@ Result ordering:
 		}
 
 		// ---------------------------------------------------------------
-
-		if outputLog {
-			log.Infof("LexicMap v%s", VERSION)
-			log.Info("  https://github.com/shenwei356/LexicMap")
-			log.Info()
-		}
 
 		// ---------------------------------------------------------------
 		// input files
@@ -451,7 +418,9 @@ Result ordering:
 				log.Infof("  keep the top %d chains", sopt.TopNChains)
 			}
 			if sopt.MaxSeedMemory > 0 {
-				log.Infof("  seed collection buffer budget across query slots: %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
+				log.Infof("  seed collection buffer budget across query slots (--max-seed-memory): %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
+			} else {
+				log.Infof("  seed spilling disabled (--max-seed-memory=0)")
 			}
 			if sopt.MaxAlignResultMemory > 0 {
 				log.Infof("  maximum retained alignment output memory: %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))

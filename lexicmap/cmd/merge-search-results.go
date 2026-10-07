@@ -58,9 +58,11 @@ Attention:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		// ------------------------------
-
 		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+		outputLog := opt.Verbose || opt.Log2File
+
+		// ------------------------------
 
 		query := getFlagString(cmd, "query")
 		topN := getFlagNonNegativeInt(cmd, "top-n-genomes")
@@ -76,6 +78,25 @@ Attention:
 
 		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
 
+		if outputLog {
+			log.Infof("merging search results from %d files...", len(files))
+			if query == "" {
+				log.Infof("  query (--query): not specified (input must contain one query)")
+			} else {
+				log.Infof("  query (--query): %s", query)
+			}
+			if topN == 0 {
+				log.Infof("  top-n-genomes: 0 (all genome hits)")
+			} else {
+				log.Infof("  top-n-genomes: %d (alignment bitscore * pident, including cutoff ties)", topN)
+			}
+			if outFile == "-" {
+				log.Infof("  output file: - (stdout)")
+			} else {
+				log.Infof("  output file: %s", outFile)
+			}
+		}
+
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
@@ -88,7 +109,7 @@ Attention:
 		}()
 
 		if len(files) == 1 && topN == 0 {
-			if opt.Verbose {
+			if outputLog {
 				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
 			}
 			fh, err := xopen.Ropen(files[0])
@@ -174,6 +195,9 @@ Attention:
 
 				if query == "" {
 					query = rGnm.Query
+					if outputLog {
+						log.Infof("  query inferred from input: %s", query)
+					}
 				}
 				qlen = rGnm.Qlen
 				idx0 = rGnm.idx
@@ -232,7 +256,7 @@ Attention:
 			retained[i] = nil
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("%d genome hits merged from %d files for query: %s", n, len(files), query)
 		}
 	},

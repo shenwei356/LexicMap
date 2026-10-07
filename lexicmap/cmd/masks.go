@@ -22,10 +22,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
@@ -43,31 +41,14 @@ var masksCmd = &cobra.Command{
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
 		outputLog := opt.Verbose || opt.Log2File
-
-		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		var err error
 
 		// ---------------------------------------------------------------
 		dbDir := getFlagString(cmd, "index")
-
-		outFile := getFlagString(cmd, "out-file")
 
 		k := getFlagPositiveInt(cmd, "kmer")
 		if k < minK || k > 32 {

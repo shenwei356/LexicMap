@@ -52,6 +52,9 @@ blocks.
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		defer setupCommandLog(opt, "")()
+		outputLog := opt.Verbose || opt.Log2File
+
 		// ------------------------------
 
 		dbDir := getFlagString(cmd, "index")
@@ -63,7 +66,7 @@ blocks.
 
 		// ---------------------------------------------------------------
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("recreating seed indexes with %d partitions for: %s", partitions, dbDir)
 		}
 
@@ -75,15 +78,6 @@ blocks.
 		}
 
 		// ---------------------------------------------------------------
-
-		timeStart := time.Now()
-		defer func() {
-			if opt.Verbose {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-		}()
 
 		showProgressBar := opt.Verbose
 
@@ -172,7 +166,7 @@ blocks.
 			pbs.Wait()
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("update index information file: %s", fileInfo)
 		}
 		info.Partitions = partitions
@@ -180,7 +174,7 @@ blocks.
 		if err != nil {
 			checkError(fmt.Errorf("failed to write info file: %s", err))
 		}
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("  finished updating the index information file: %s", fileInfo)
 		}
 	},

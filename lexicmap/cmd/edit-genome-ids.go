@@ -57,8 +57,11 @@ Tips:
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		// opt := getOptions(cmd)
+		opt := getOptions(cmd)
 		seq.ValidateSeq = false
+
+		defer setupCommandLog(opt, "")()
+		outputLog := opt.Verbose || opt.Log2File
 
 		pattern := getFlagString(cmd, "pattern")
 		replacement := []byte(getFlagString(cmd, "replacement"))
@@ -174,13 +177,17 @@ Tips:
 			checkError(fmt.Errorf("failed to check backup file %s: %s", backFile, err))
 		}
 		if hasBackup {
-			log.Infof("found the backup of genome index mapping file: %s", backFile)
+			if outputLog {
+				log.Infof("found the backup of genome index mapping file: %s", backFile)
+			}
 		} else {
 			err = os.Rename(fileGenomeIndex0, backFile)
 			if err != nil {
 				checkError(fmt.Errorf("failed to create backup file %s: %s", backFile, err))
 			}
-			log.Infof("created a backup of genome index mapping file: %s", backFile)
+			if outputLog {
+				log.Infof("created a backup of genome index mapping file: %s", backFile)
+			}
 		}
 
 		if _n == 0 {
@@ -195,7 +202,9 @@ Tips:
 			}
 		}
 
-		log.Infof("%d of %d genome IDs are changed", _n, N)
+		if outputLog {
+			log.Infof("%d of %d genome IDs are changed", _n, N)
+		}
 	},
 }
 

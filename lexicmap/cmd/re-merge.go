@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -64,24 +63,8 @@ When to use this command?
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		defer setupCommandLog(opt, "")()
 		outputLog := opt.Verbose || opt.Log2File
-
-		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		// ---------------------------------------------------------------
 
@@ -106,7 +89,7 @@ When to use this command?
 		// ---------------------------------------------------------------
 		// check indexes of all batches
 
-		if opt.Verbose || opt.Log2File {
+		if outputLog {
 			log.Infof("checking indexes ...")
 		}
 
@@ -128,7 +111,7 @@ When to use this command?
 
 		if len(batchDirs) == 0 {
 			checkError(fmt.Errorf("no indexes found in %s", tmpDir))
-		} else if opt.Verbose || opt.Log2File {
+		} else if outputLog {
 			log.Infof("  %d index directries found in %s", len(batchDirs), tmpDir)
 		}
 
