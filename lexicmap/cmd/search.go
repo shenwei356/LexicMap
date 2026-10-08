@@ -61,6 +61,25 @@ Tips:
      set TMPDIR to choose a temporary directory on a fast disk with sufficient free space.
      Use --max-align-result-memory to change the budget or set it to 0 to disable spilling.
      This limit applies only to these output fields and is not a total process memory limit.
+  4. Queries with very many seed matches in large indexes can run out of memory
+     during seed collection. Reduce -J/--max-query-conc to lower the memory used
+     by concurrent queries. --max-seed-memory enables seed spilling
+     (disabled by default) to limit anchor collection buffers.
+     The budget is divided among up to -J concurrent collection slots. Decoded seed data
+     are delivered in small batches; anchors spill as sorted runs before a buffer growth
+     would exceed its query share. Each spill writes the entire current anchor buffer,
+     then reuses it for further collection. If any spill occurred, the final in-memory
+     batch is also written to disk after collection, and the collection arrays are released.
+     All anchors are then read from disk and merged into complete-genome batches for parallel chaining.
+     Queries that never spill use in-memory anchors and create no temporary seed files.
+     Tiny shares and single-thread searches chain one genome at a time.
+     Final Top-N selection, including cutoff ties, still uses chaining scores.
+     Files use the system temporary directory (TMPDIR) and are removed after chaining.
+     The budget covers producer/collection buffers, radix workspace, and normal chaining
+     batches. It excludes a single oversized genome or the serial fallback's complete
+     anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
+     loaded index data, and alignment memory.
+     It is not a total RSS limit.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -135,37 +154,10 @@ Result ordering:
 		seq.ValidateSeq = false
 
 		outFile := getFlagString(cmd, "out-file")
-
-		var fhLog *os.File
-		if opt.Log2File {
-			ro, err := filepath.Abs(outFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to check output file: %s", err))
-			}
-			rl, err := filepath.Abs(opt.LogFile)
-			if err != nil {
-				checkError(fmt.Errorf("failed to check log file: %s", err))
-			}
-			if ro == rl {
-				checkError(fmt.Errorf("output file and log file should not be the same: %s", outFile))
-			}
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		defer setupCommandLog(opt, outFile)()
 		verbose := opt.Verbose
 		outputLog := opt.Verbose || opt.Log2File
-
 		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		var err error
 
@@ -180,6 +172,11 @@ Result ordering:
 			checkError(fmt.Errorf("the value of flag -p/--seed-min-prefix (%d) should be in the range of [5, 32]", minPrefix))
 		}
 		moreColumns := getFlagBool(cmd, "all")
+		maxSeedMemory, err := ParseByteSize(getFlagString(cmd, "max-seed-memory"))
+		checkError(err)
+		if maxSeedMemory > 0 && maxSeedMemory < seedAnchorBytes {
+			checkError(fmt.Errorf("--max-seed-memory must be 0 or at least %d bytes", seedAnchorBytes))
+		}
 		maxAlignResultMemory, err := ParseByteSize(getFlagString(cmd, "max-align-result-memory"))
 		checkError(err)
 		if !moreColumns {
@@ -272,12 +269,6 @@ Result ordering:
 
 		// ---------------------------------------------------------------
 
-		if outputLog {
-			log.Infof("LexicMap v%s", VERSION)
-			log.Info("  https://github.com/shenwei356/LexicMap")
-			log.Info()
-		}
-
 		// ---------------------------------------------------------------
 		// input files
 
@@ -363,6 +354,8 @@ Result ordering:
 			OutputSeq: moreColumns,
 
 			MaxAlignResultMemory: maxAlignResultMemory,
+			MaxSeedMemory:        maxSeedMemory,
+			MaxQueryConcurrency:  maxQueryConcurrency,
 
 			Debug: getFlagBool(cmd, "debug"),
 
@@ -431,8 +424,13 @@ Result ordering:
 			if sopt.TopNChains > 0 {
 				log.Infof("  keep the top %d chains", sopt.TopNChains)
 			}
+			if sopt.MaxSeedMemory > 0 {
+				log.Infof("  seed collection buffer budget across query slots (--max-seed-memory): %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
+			} else {
+				log.Infof("  seed spilling disabled (--max-seed-memory=0)")
+			}
 			if sopt.MaxAlignResultMemory > 0 {
-				log.Infof("  maximum retained alignment output memory: %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))
+				log.Infof("  maximum retained alignment output memory (--max-align-result-memory): %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))
 			}
 
 			if gc {
@@ -717,11 +715,13 @@ func init() {
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))
+	mapCmd.Flags().String("max-seed-memory", "0",
+		formatFlagUsage(`Anchor collection buffer budget shared across up to -J query slots (K/M/G/T suffixes; 0 disables spilling). Uses TMPDIR for temporary files. Not a total memory limit. See Tips in --help for details.`))
 	mapCmd.Flags().String("max-align-result-memory", "1G",
 		formatFlagUsage(`Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. Values support K/M/G/T suffixes. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).`))
 
 	mapCmd.Flags().IntP("max-query-conc", "J", 8,
-		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory.`))
+		formatFlagUsage(`Maximum number of concurrent queries. Bigger values do not improve the batch searching speed and consume much memory. Reduce this value when memory is limited.`))
 
 	mapCmd.Flags().IntP("gc-interval", "", 64,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))

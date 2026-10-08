@@ -48,6 +48,9 @@ Attention:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+
 		// ------------------------------
 
 		dbDir := getFlagString(cmd, "index")
@@ -55,7 +58,6 @@ Attention:
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
 
-		outFile := getFlagString(cmd, "out-file")
 		lineWidth := getFlagNonNegativeInt(cmd, "line-width")
 
 		refname := getFlagString(cmd, "ref-name")

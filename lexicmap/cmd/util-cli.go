@@ -32,6 +32,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// logStartupInfo logs the actual command line, software version, optional build
+// commit (using the same format as the version command), project URL, and current
+// working directory. The directory is printed immediately before the invocation.
+// Call it after configuring logging and checking whether informational logs are
+// enabled. It does not configure destinations or override the caller's quiet mode.
+// Shell-sensitive and empty argv entries are quoted for copying into a POSIX shell.
+func logStartupInfo() {
+	const shellSafe = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_@%+=:,./-"
+	invocation := make([]string, len(os.Args))
+	for i, arg := range os.Args {
+		if arg == "" || strings.Trim(arg, shellSafe) != "" {
+			arg = "'" + strings.ReplaceAll(arg, "'", "'\\''") + "'"
+		}
+		invocation[i] = arg
+	}
+	if COMMIT == "" {
+		log.Infof("LexicMap v%s", VERSION)
+	} else {
+		log.Infof("LexicMap v%s (%s)", VERSION, COMMIT)
+	}
+	log.Info("  https://github.com/shenwei356/LexicMap")
+	log.Info()
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Warningf("CWD: unavailable (%s)", err)
+	} else {
+		log.Infof("CWD: %s", pwd)
+	}
+	log.Infof("CMD: %s", strings.Join(invocation, " "))
+	log.Info()
+}
+
 func checkError(err error) {
 	if err != nil {
 		log.Error(err)

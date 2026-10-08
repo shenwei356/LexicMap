@@ -258,17 +258,19 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	var allSeedSearchersDoneAt time.Time
 	var beginM, endM int // range of mask of a chunk
 	type seedSearcherDebugStat struct {
+		// Count query-seed/reference-k-mer matches, not distinct reference k-mers.
 		nKVSearchResults uint64
-		nKVValues        uint64
+		// Count matched reference seed locations before genome/TaxId filtering.
+		nKVValues uint64
 	}
 	var seedSearcherDebugStats []seedSearcherDebugStat
 	if idx.opt.Debug {
 		seedSearcherDebugStats = make([]seedSearcherDebugStat, nSearchers)
 	}
 
-	// With multiple workers, producers expand postings into bounded batches and
+	// With multiple workers, producers expand seed data into bounded batches and
 	// collectors exclusively own disjoint genome batches. This removes the
-	// single global-map writer without adding a lock to every posting update.
+	// single global-map writer without adding a lock to every seed data update.
 	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
 	parallelCollection := nCollectorWorkers > 1
 	var collector *gsearchScreenCollector
@@ -420,7 +422,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 			nKVSearchResults += stat.nKVSearchResults
 			nKVValues += stat.nKVValues
 		}
-		log.Debugf("%s (%s bp): genome seed collector (%d workers): kv.SearchResult=%s, sum(len(sr.Values))=%s, screen matches=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
+		log.Debugf("%s (%s bp): genome seed collector (%d workers): k-mer matches=%s, matched k-mer locations=%s, screen matches=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
 			query.id, humanize.Comma(int64(query.genomeSize)), nCollectorWorkers,
 			humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),
 			humanize.Comma(int64(nScreenMatches)), humanize.Comma(int64(nGenomeEntries)),

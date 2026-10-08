@@ -76,7 +76,9 @@ Figures:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		timeStart := time.Now()
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+		outputLog := opt.Verbose || opt.Log2File
 
 		// ------------------------------
 
@@ -92,7 +94,6 @@ Figures:
 			checkError(fmt.Errorf("flag -n/--ref-name needed, or use -a/--all-refs for all ref genomes"))
 		}
 
-		outFile := getFlagString(cmd, "out-file")
 		moreColumns := getFlagBool(cmd, "verbose")
 		minDist := getFlagNonNegativeInt(cmd, "min-dist")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -106,7 +107,7 @@ Figures:
 
 		outputPlotDir := plotDir != ""
 		if outputPlotDir {
-			makeOutDir(plotDir, force, "plot-dir", opt.Verbose)
+			makeOutDir(plotDir, force, "plot-dir", outputLog)
 		}
 
 		bins := getFlagPositiveInt(cmd, "bins")
@@ -177,7 +178,7 @@ Figures:
 			// 		n = opt.NumCPUs
 			// 	}
 			n := 1
-			if opt.Verbose || opt.Log2File {
+			if outputLog {
 				log.Infof("creating genome reader pools, each batch with %d readers...", n)
 			}
 			poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
@@ -786,14 +787,11 @@ Figures:
 			pbs.Wait()
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("seed positions of %d genomes(s) saved to %s", n, outFile)
 			if outputPlotDir {
 				log.Infof("histograms of %d genomes(s) saved to %s", nPlot, plotDir)
 			}
-			log.Info()
-			log.Infof("elapsed time: %s", time.Since(timeStart))
-			log.Info()
 		}
 	},
 }

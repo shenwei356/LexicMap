@@ -4,6 +4,9 @@
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
 
+- `lexicmap`:
+    - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
+    - All commands check that the log file differs from the output file before opening it.
 - New commands:
     - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seeds data, which speeds up seed matching for large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
@@ -24,7 +27,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
 - `lexicmap search`:
-    - **Faster searching speed for batch queries**.
+    - **Faster searching speed for batch queries with -n/--top-n-genomes**.
+    - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a big value (such as 1/2 ~ 3/4 of the free available RAM) when queries have very many seed matches in large indexes and risk running out of memory during seed collection. See help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
     - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
     - Optimize chaining to reduce memory use and garbage collection overhead.
     - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
@@ -33,7 +37,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. The default global budget is 1 GiB; use `0` to disable spilling. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
+    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. The default global budget is 1 GiB; use `0` to disable spilling. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`; the number of retained candidates may exceed N.
     - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
     - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.

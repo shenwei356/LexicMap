@@ -360,7 +360,7 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	return m, nil
 }
 
-// appendSeedPositions decodes count positions into an existing posting list.
+// appendSeedPositions decodes count positions into an existing seed data list.
 func (rdr *Reader) appendSeedPositions(values *[]uint64, count uint64) error {
 	if count > uint64(math.MaxInt-len(*values)) {
 		return fmt.Errorf("too many seed positions: %d", count)

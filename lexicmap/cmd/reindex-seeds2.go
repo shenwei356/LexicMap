@@ -58,6 +58,9 @@ may see only a small overall gain.
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		defer setupCommandLog(opt, "")()
+		outputLog := opt.Verbose || opt.Log2File
+
 		dbDir := getFlagString(cmd, "index")
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
@@ -79,19 +82,10 @@ may see only a small overall gain.
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("recreating adaptive seed indexes with %d partitions and a %s block threshold for: %s",
 				partitions, humanize.IBytes(uint64(threshold)), dbDir)
 		}
-		timeStart := time.Now()
-		defer func() {
-			if opt.Verbose {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-		}()
-
 		showProgressBar := opt.Verbose
 		var pbs *mpb.Progress
 		var chunksBar *mpb.Bar
@@ -197,7 +191,7 @@ may see only a small overall gain.
 			checkError(fmt.Errorf("failed to update index information file: %s", err))
 		}
 
-		if opt.Verbose {
+		if outputLog {
 			percentage := float64(0)
 			if total.NonEmptyBlocks > 0 {
 				percentage = float64(total.IndexedBlocks) / float64(total.NonEmptyBlocks) * 100

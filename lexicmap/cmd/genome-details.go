@@ -71,14 +71,16 @@ Output format:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
+		outputLog := opt.Verbose || opt.Log2File
+
 		// ------------------------------
 
 		dbDir := getFlagString(cmd, "index")
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
-
-		outFile := getFlagString(cmd, "out-file")
 
 		extra := getFlagBool(cmd, "extra")
 
@@ -102,24 +104,24 @@ Output format:
 		existed, err := pathutil.Exists(fileGenomeDetails)
 		checkError(err)
 		if !existed {
-			if opt.Verbose {
+			if outputLog {
 				log.Infof("extracting genome details and saving to %s", fileGenomeDetails)
 			}
 			timeStart := time.Now()
 			checkError(extractGenomeDetails(opt, dbDir, saveSeqIDs))
-			if opt.Verbose {
+			if outputLog {
 				log.Infof("  elapsed time: %s", time.Since(timeStart))
 				log.Info()
 			}
 		}
 
 		// -----------------------------------------------------
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("reading genome details from %s", fileGenomeDetails)
 		}
 		timeStart1 := time.Now()
 		checkError(readGenomeDetails(fileGenomeDetails, outfh, extra))
-		if opt.Verbose {
+		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart1))
 		}
 	},
@@ -165,10 +167,11 @@ const FileGenomeDetails = "genomes.details.bin"
 const FLAG_SAVE_SEQIDS = 1
 
 func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
+	outputLog := opt.Verbose || opt.Log2File
 
 	// ---------------------------------------------------------------
 	// info file
-	if opt.Verbose {
+	if outputLog {
 		log.Infof("  reading index info file")
 	}
 	fileInfo := filepath.Join(dbDir, FileInfo)
@@ -184,7 +187,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	// genome readers
 	nReaders := 1
 
-	if opt.Verbose {
+	if outputLog {
 		log.Infof("  creating reader pools for %d genome batches, each with %d reader(s)...", info.GenomeBatches, nReaders)
 	}
 	poolGenomeRdrs := make([]chan *genome.Reader, info.GenomeBatches)
@@ -216,7 +219,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 	// ---------------------------------------------------------------
 	// read genome chunks data if existed
-	if opt.Verbose {
+	if outputLog {
 		log.Infof("  reading genome chunk data files")
 	}
 	genomeChunks, err := readGenomeChunksLists(filepath.Join(dbDir, FileGenomeChunks))
@@ -252,7 +255,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 	// ---------------------------------------------------------------
 	// genomes.map file for mapping index to genome id
-	if opt.Verbose {
+	if outputLog {
 		log.Infof("  reading genomes.map file and genome data")
 	}
 
@@ -453,7 +456,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 		}
 		clear(_genomes)
 
-		chDuration <- time.Since(timeStart)
+		// Only progress-bar mode creates and drains this channel.
+		if opt.Verbose {
+			chDuration <- time.Since(timeStart)
+		}
 	}
 
 	if opt.Verbose {

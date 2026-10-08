@@ -172,7 +172,7 @@ type Writer struct {
 	bufVar []byte // needs at most 8+8=16
 	buf    []byte // needs at most 1+16+1+16=34
 
-	bufVals []byte // bounded scratch for seed-position postings
+	bufVals []byte // bounded scratch for encoded seed data
 
 	// for kv data
 	N  int // the number of bytes.

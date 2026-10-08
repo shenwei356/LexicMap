@@ -56,24 +56,9 @@ Attention:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
 		outputLog := opt.Verbose || opt.Log2File
-
-		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		var err error
 
@@ -83,7 +68,6 @@ Attention:
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
-		outFile := getFlagString(cmd, "out-file")
 
 		mask := getFlagNonNegativeInt(cmd, "mask")
 

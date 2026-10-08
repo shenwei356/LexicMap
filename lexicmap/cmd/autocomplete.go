@@ -63,7 +63,11 @@ fish:
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+		opt := getOptions(cmd)
+
 		outfile := getFlagString(cmd, "file")
+		defer setupCommandLog(opt, outfile)()
+		outputLog := opt.Verbose || opt.Log2File
 		shell := getFlagString(cmd, "shell")
 
 		dir := filepath.Dir(outfile)
@@ -86,7 +90,9 @@ fish:
 			checkError(fmt.Errorf("unsupported shell: %s", shell))
 		}
 
-		log.Infof("%s completion file for lexicmap saved to %s", shell, outfile)
+		if outputLog {
+			log.Infof("%s completion file for lexicmap saved to %s", shell, outfile)
+		}
 	},
 }
 

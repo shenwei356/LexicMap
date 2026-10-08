@@ -32,13 +32,13 @@ func TestSampleQueryFragmentMatchesPointerBasedSampler(t *testing.T) {
 func TestRecycleQuerySeedsBoundsUnusedSlots(t *testing.T) {
 	seeds := [][]uint64{make([]uint64, 1, 8), make([]uint64, 1, thresholdNSubsLong+1)}
 	backing := seeds
-	posting := &seeds[0][0]
+	bufferStart := &seeds[0][0]
 	seeds = seeds[:1]
 	recycleQuerySeeds(&seeds)
 	if len(seeds) != 0 || len(backing[0]) != 0 || cap(backing[0]) != 8 || backing[1] != nil {
 		t.Fatal("recycling lost a small buffer or retained an oversized unused buffer")
 	}
-	if &backing[0][:1][0] != posting {
+	if &backing[0][:1][0] != bufferStart {
 		t.Fatal("recycling replaced the reusable sampling buffer")
 	}
 }

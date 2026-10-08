@@ -265,6 +265,28 @@ func TestCreateKVIndex15PreservesSearchResults(t *testing.T) {
 	if got := collectIndex15Searches(t, indexed, queries); !reflect.DeepEqual(got, want) {
 		t.Fatalf("idx15 search differs from legacy:\ngot:  %#v\nwant: %#v", got, want)
 	}
+	// Streaming must also follow tagged offsets and empty secondary buckets.
+	for _, prefixLength := range []uint8{13, 15, 16} {
+		queries2 := [][]uint64{queries}
+		collected, err := indexed.Search2(queries2, prefixLength, false, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := seedDataSnapshot(*collected)
+		RecycleSearchResults(collected)
+		var streamed []SearchResult
+		err = indexed.Search2Stream(queries2, prefixLength, false, false, func(r SearchResult) error {
+			if len(r.Values) > seedPosBatchSize+1 {
+				t.Fatal("unbounded idx15 seed data batch")
+			}
+			r.Values = append([]uint64(nil), r.Values...)
+			streamed = append(streamed, r)
+			return nil
+		})
+		if err != nil || !reflect.DeepEqual(expected, seedDataSnapshot(streamed)) {
+			t.Fatalf("idx15 stream differs at prefix %d: %v", prefixLength, err)
+		}
+	}
 	if err = indexed.Close(); err != nil {
 		t.Fatal(err)
 	}

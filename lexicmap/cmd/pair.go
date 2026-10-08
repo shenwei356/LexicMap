@@ -108,24 +108,9 @@ Notes on probabilistic pruning:
 		opt := getOptions(cmd)
 		seq.ValidateSeq = false
 
-		var fhLog *os.File
-		if opt.Log2File {
-			fhLog = addLog(opt.LogFile, opt.Verbose)
-		}
-
+		outFile := getFlagString(cmd, "out-file")
+		defer setupCommandLog(opt, outFile)()
 		outputLog := opt.Verbose || opt.Log2File
-
-		timeStart := time.Now()
-		defer func() {
-			if outputLog {
-				log.Info()
-				log.Infof("elapsed time: %s", time.Since(timeStart))
-				log.Info()
-			}
-			if opt.Log2File {
-				fhLog.Close()
-			}
-		}()
 
 		var err error
 
@@ -135,7 +120,6 @@ Notes on probabilistic pruning:
 		if dbDir == "" {
 			checkError(fmt.Errorf("flag -d/--index needed"))
 		}
-		outFile := getFlagString(cmd, "out-file")
 		minPrefix := getFlagPositiveInt(cmd, "min-prefix")
 		minMaskFraction := getFlagNonNegativeFloat64(cmd, "min-mask-fraction")
 		probThreshold := getFlagNonNegativeFloat64(cmd, "prob-threshold")
@@ -152,12 +136,6 @@ Notes on probabilistic pruning:
 		}
 
 		// -------------------------------------------------------------------------
-
-		if outputLog {
-			log.Infof("LexicMap v%s", VERSION)
-			log.Info("  https://github.com/shenwei356/LexicMap")
-			log.Info()
-		}
 
 		// -------------------------------------------------------------------------
 		// checking index
