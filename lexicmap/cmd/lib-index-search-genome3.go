@@ -179,6 +179,11 @@ var gsa3SamplingScale = 4 // sampling rate: keep if hash(kmer) % scale == 0
 // buildSubjectSketchSampledOptimized scans the forward sequence once and records
 // enough strand information to address both the forward and RC concatenated copies.
 func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][2]int, contigBounds [][2]int, genomeSize int, forwardLen int, rcStart int) (*subjectSketch, error) {
+	return idx.buildSubjectSketchSampled(seq, skipRegions, contigBounds, genomeSize, forwardLen, rcStart, true)
+}
+
+// buildSubjectSketchSampled can allocate maps owned by the bounded compare cache.
+func (idx *Index) buildSubjectSketchSampled(seq []byte, skipRegions [][2]int, contigBounds [][2]int, genomeSize int, forwardLen int, rcStart int, pooled bool) (*subjectSketch, error) {
 	k := gsa3SampledK
 	k8 := uint8(k)
 	scale := uint64(gsa3SamplingScale)
@@ -202,7 +207,17 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 	}
 
 	mapCapacity := sampledKmerMapCapacity(genomeSize, int(scale))
-	kmerMap, repeatedKmerMap, repeatedKmerPositions := acquireSampledKmerMaps(mapCapacity)
+	var kmerMap *map[uint64]uint32
+	var repeatedKmerMap *map[uint64]uint64
+	var repeatedKmerPositions *[]repeatedKmerPosition
+	if pooled {
+		kmerMap, repeatedKmerMap, repeatedKmerPositions = acquireSampledKmerMaps(mapCapacity)
+	} else {
+		m := make(map[uint64]uint32, mapCapacity)
+		r := make(map[uint64]uint64, mapCapacity/16)
+		p := make([]repeatedKmerPosition, 0, mapCapacity/16)
+		kmerMap, repeatedKmerMap, repeatedKmerPositions = &m, &r, &p
+	}
 
 	region := 0
 	var canonical uint64
@@ -240,7 +255,12 @@ func (idx *Index) buildSubjectSketchSampledOptimized(seq []byte, skipRegions [][
 		addSampledKmerPosition(kmerMap, repeatedKmerMap, repeatedKmerPositions, canonical, uint32(pos)<<1|canonicalRC)
 	}
 
-	s := poolSubjectSketch.Get().(*subjectSketch)
+	var s *subjectSketch
+	if pooled {
+		s = poolSubjectSketch.Get().(*subjectSketch)
+	} else {
+		s = &subjectSketch{}
+	}
 	s.seqLen = len(seq)
 	s.forwardLen = forwardLen
 	s.rcStart = rcStart
@@ -953,30 +973,9 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	return nil
 }
 
-// CompareTwoGenomes compares two genomes directly without using an index.
-// It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
-func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
-	// 1) Cut the query into fragments.
-	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
-	defer recycleFragments(qfrags)
-	if len(*qfrags) == 0 {
-		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
-	}
-
-	// 2) Sample k-mers from each query fragment.
-	qSeeds := poolQSeeds.Get().(*[][]uint64)
-	*qSeeds = slices.Grow((*qSeeds)[:0], len(*qfrags))[:len(*qfrags)]
-	defer recycleQuerySeeds(qSeeds)
-
-	for i, qfrag := range *qfrags {
-		seeds, err := sampleQueryFragment(qfrag, (*qSeeds)[i])
-		(*qSeeds)[i] = seeds
-		if err != nil {
-			return fmt.Errorf("failed to sample query fragment: %w", err)
-		}
-	}
-
-	// 3) Build subject genome concatenated sequence.
+// buildComparisonSubject preserves contig gaps and forward/RC coordinates.
+// Cached subjects use fresh buffers so evicted maps are not retained in pools.
+func (idx *Index) buildComparisonSubject(subject *GQuery, fragLen int, pooled bool) (*[]byte, *subjectSketch, error) {
 	K := gsa3SampledK
 	contigInterval := int(float64(fragLen) * 1.5)
 	if contigInterval < K {
@@ -984,12 +983,14 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	}
 	nnn := bytes.Repeat([]byte{'N'}, contigInterval)
 
-	concat := poolConcat.Get().(*[]byte)
-	*concat = (*concat)[:0]
-	defer func() {
+	var concat *[]byte
+	if pooled {
+		concat = poolConcat.Get().(*[]byte)
 		*concat = (*concat)[:0]
-		poolConcat.Put(concat)
-	}()
+	} else {
+		buffer := []byte(nil)
+		concat = &buffer
+	}
 
 	// Calculate total size: forward + contig intervals + RC interval + RC
 	var forwardSize int
@@ -1048,11 +1049,66 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFrag
 	})
 
 	// 4) Build the subject sketch using sampled k-mers
-	sketch, err := idx.buildSubjectSketchSampledOptimized(*concat, skipRegions, contigBounds, subject.genomeSize, forwardLen, rcStart)
+	sketch, err := idx.buildSubjectSketchSampled(*concat, skipRegions, contigBounds, subject.genomeSize, forwardLen, rcStart, pooled)
 	if err != nil {
-		return fmt.Errorf("fail to build subject sketch: %s", err)
+		if pooled {
+			poolConcat.Put(concat)
+		}
+		return nil, nil, fmt.Errorf("fail to build subject sketch: %s", err)
 	}
-	defer idx.recycleSubjectSketch(sketch)
+	return concat, sketch, nil
+}
+
+// CompareTwoGenomes compares two genomes directly without using an index.
+// It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
+func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
+	return idx.compareTwoGenomesPrepared(query, subject, nil, nil, fragLen, minFragLen, minAF, minANI)
+}
+
+// compareTwoGenomesPrepared borrows cached data while keeping results pair-local.
+func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minFragLen int, minAF, minANI float64) error {
+	var qfrags *[][]byte
+	var qfragLens int
+	var qSeeds *[][]uint64
+	if qp != nil {
+		qfrags, qfragLens, qSeeds = qp.fragments, qp.fragmentBases, &qp.seeds
+	} else {
+		// 1) Cut the query into fragments.
+		qfrags, qfragLens = seqs2fragments(&query.seqs, fragLen, minFragLen)
+		defer recycleFragments(qfrags)
+		if qfrags == nil || len(*qfrags) == 0 {
+			return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+		}
+
+		// 2) Sample k-mers from each query fragment.
+		qSeeds = poolQSeeds.Get().(*[][]uint64)
+		*qSeeds = slices.Grow((*qSeeds)[:0], len(*qfrags))[:len(*qfrags)]
+		defer recycleQuerySeeds(qSeeds)
+
+		for i, qfrag := range *qfrags {
+			seeds, err := sampleQueryFragment(qfrag, (*qSeeds)[i])
+			(*qSeeds)[i] = seeds
+			if err != nil {
+				return fmt.Errorf("failed to sample query fragment: %w", err)
+			}
+		}
+	}
+
+	// Subject layout and sampled map can be reused in both comparison directions.
+	K := gsa3SampledK
+	var concat *[]byte
+	var sketch *subjectSketch
+	if sp != nil {
+		concat, sketch = &sp.concat, sp.sketch
+	} else {
+		var err error
+		concat, sketch, err = idx.buildComparisonSubject(subject, fragLen, true)
+		if err != nil {
+			return err
+		}
+		defer idx.recycleSubjectSketch(sketch)
+		defer func() { *concat = (*concat)[:0]; poolConcat.Put(concat) }()
+	}
 
 	// 5) Set up alignment tools
 	alignOption := &wfa.Options{GlobalAlignment: true}
@@ -1186,36 +1242,42 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64, genomeID string) (*GQue
 // orthologous fragment pairs (reciprocal best hits) for ANI/AF calculation.
 // Based on GSearchAlign2 from lib-index-search-genome.go.
 func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
-	// 1) Cut both query and subject into fragments
-	qfrags, qfragLens := seqs2fragments(&query.seqs, fragLen, minFragLen)
-	defer recycleFragments(qfrags)
-	if len(*qfrags) == 0 {
-		return fmt.Errorf("no query fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+	return idx.compareTwoGenomesOrthoANIPrepared(query, subject, nil, nil, fragLen, minFragLen, minAF, minANI)
+}
+
+// compareTwoGenomesOrthoANIPrepared borrows sorted entries without changing pair selection.
+func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minFragLen int, minAF, minANI float64) error {
+	var qfrags, sfrags *[][]byte
+	var qfragLens, sfragLens int
+	if qp != nil {
+		qfrags, qfragLens = qp.fragments, qp.fragmentBases
+	} else {
+		qfrags, qfragLens = seqs2fragments(&query.seqs, fragLen, minFragLen)
+		defer recycleFragments(qfrags)
+	}
+	if sp != nil {
+		sfrags, sfragLens = sp.fragments, sp.fragmentBases
+	} else {
+		sfrags, sfragLens = seqs2fragments(&subject.seqs, fragLen, minFragLen)
+		defer recycleFragments(sfrags)
+	}
+	if qfrags == nil || len(*qfrags) == 0 || sfrags == nil || len(*sfrags) == 0 {
+		return fmt.Errorf("no fragments for alignment (minimum fragment length: %d bp)", minFragLen)
 	}
 
-	sfrags, sfragLens := seqs2fragments(&subject.seqs, fragLen, minFragLen)
-	defer recycleFragments(sfrags)
-	if len(*sfrags) == 0 {
-		return fmt.Errorf("no subject fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
-	}
-
-	// 2) Pre-compute query-side k-mer entries once
-	indexer := idx.poolFragmentComparator.Get().(*FragmentComparator)
-	entriesA, err := indexer.IndexA(qfrags)
-	if err != nil {
-		idx.poolFragmentComparator.Put(indexer)
-		return err
-	}
-	defer idx.poolFragmentComparator.Put(indexer)
-
-	// 3) Find similar fragment pairs
 	fcpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
-	pairs, err := fcpr.CompareWithIndexedA(entriesA, sfrags)
-	if err != nil {
-		idx.poolFragmentComparator.Put(fcpr)
-		return fmt.Errorf("fail to find similar fragments: %s", err)
+	defer idx.poolFragmentComparator.Put(fcpr)
+	var pairs *[]uint64
+	var err error
+	if qp != nil && sp != nil {
+		pairs = fcpr.scanPairsMerged(qp.entries, sp.entries)
+	} else {
+		pairs, err = fcpr.Compare(qfrags, sfrags)
+		if err != nil {
+			return fmt.Errorf("fail to find similar fragments: %s", err)
+		}
 	}
-	RecycleResultOfIndexA(entriesA)
+	defer RecycleFragmentCompareResult(pairs)
 
 	// Sort pairs for better cache locality
 	slices.Sort(*pairs)
@@ -1395,8 +1457,6 @@ func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int,
 		wfa.RecycleAlignmentResult(cigar)
 		RecycleSeqComparatorResult(cr)
 	}
-	RecycleFragmentCompareResult(pairs)
-	idx.poolFragmentComparator.Put(fcpr)
 
 	// 8) Identify orthologous fragments (reciprocal best hits)
 	fsort := func(a, b *Chain2Result) int {

@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/xopen"
@@ -119,6 +120,12 @@ Output format:
 		}
 
 		orthoANI := getFlagBool(cmd, "OrthoANI")
+		cacheBudgetStr := getFlagString(cmd, "max-genome-cache-memory")
+		cacheBudget, err := ParseByteSize(cacheBudgetStr)
+		checkError(err)
+		if cacheBudget < 0 || strings.HasPrefix(strings.TrimSpace(cacheBudgetStr), "-") {
+			checkError(fmt.Errorf("--max-genome-cache-memory must be nonnegative"))
+		}
 
 		fragSize := getFlagPositiveInt(cmd, "frag-size")
 		if fragSize < 100 {
@@ -558,6 +565,28 @@ Output format:
 
 		// -----------------------------------------------------------
 
+		// Cached preparation has no pair-local results and holds no open files.
+		var genomeCache *compareGenomeCache
+		if cacheBudget > 0 {
+			genomeCache = newCompareGenomeCache(cacheBudget, func(name string) (*preparedCompareGenome, error) {
+				var q *GQuery
+				var readErr error
+				if loadIndex {
+					q, readErr = idx.ReadGenome(gname2idx[name], name)
+					if q != nil {
+						q.id = append(q.id, name...)
+					}
+				} else {
+					q, readErr = ReadGenomeFromFile(name, reRefName, fullInputPath)
+				}
+				if readErr != nil {
+					return nil, readErr
+				}
+				return idx.prepareCompareGenome(q, fragSize, minFragLen, orthoANI)
+			})
+			defer genomeCache.close()
+		}
+
 		submitPair := func(genome1, genome2 string) {
 			wg.Add(1)
 			tokens <- 1
@@ -573,6 +602,7 @@ Output format:
 				}()
 
 				q := poolGPair.Get().(*GPair)
+				q.cache = genomeCache
 
 				var _wg sync.WaitGroup
 				var readErr1, readErr2 error
@@ -581,7 +611,14 @@ Output format:
 				_wg.Add(2)
 				go func() {
 					defer _wg.Done()
-					if loadIndex {
+					if genomeCache != nil {
+						e := genomeCache.acquire(genome1)
+						q.entries[0], readErr1 = e, e.err
+						if e.value != nil {
+							q.views[0] = *e.value.genome
+							q.g1 = &q.views[0]
+						}
+					} else if loadIndex {
 						batchIDAndRefIDs := gname2idx[genome1]
 						q.g1, readErr1 = idx.ReadGenome(batchIDAndRefIDs, genome1)
 						if readErr1 == nil {
@@ -593,7 +630,14 @@ Output format:
 				}()
 				go func() {
 					defer _wg.Done()
-					if loadIndex {
+					if genomeCache != nil {
+						e := genomeCache.acquire(genome2)
+						q.entries[1], readErr2 = e, e.err
+						if e.value != nil {
+							q.views[1] = *e.value.genome
+							q.g2 = &q.views[1]
+						}
+					} else if loadIndex {
 						batchIDAndRefIDs := gname2idx[genome2]
 						q.g2, readErr2 = idx.ReadGenome(batchIDAndRefIDs, genome2)
 						if readErr2 == nil {
@@ -610,19 +654,24 @@ Output format:
 				if readErr2 != nil && !errors.Is(readErr2, errGenomeTooLarge) {
 					checkError(readErr2)
 				}
-				if errors.Is(readErr1, errGenomeTooLarge) || errors.Is(readErr2, errGenomeTooLarge) {
+				if errors.Is(readErr1, errGenomeTooLarge) || errors.Is(readErr2, errGenomeTooLarge) || q.g1 == nil || q.g2 == nil {
 					RecycleGPair(q)
 					return
 				}
 
+				// Pair-local views borrow immutable preparation until output is finished.
+				var p1, p2 *preparedCompareGenome
+				if genomeCache != nil {
+					p1, p2 = q.entries[0].value, q.entries[1].value
+				}
 				// compare genomes
 				_wg.Add(2)
 				go func() {
 					var compareErr error
 					if orthoANI {
-						compareErr = idx.CompareTwoGenomesOrthoANI(q.g1, q.g2, fragSize, minFragLen, minAF, minANI)
+						compareErr = idx.compareTwoGenomesOrthoANIPrepared(q.g1, q.g2, p1, p2, fragSize, minFragLen, minAF, minANI)
 					} else {
-						compareErr = idx.CompareTwoGenomes(q.g1, q.g2, fragSize, minFragLen, minAF, minANI)
+						compareErr = idx.compareTwoGenomesPrepared(q.g1, q.g2, p1, p2, fragSize, minFragLen, minAF, minANI)
 					}
 					if compareErr != nil {
 						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, compareErr))
@@ -635,7 +684,7 @@ Output format:
 						// unnecessary
 						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF, minANI)
 					} else {
-						compareErr := idx.CompareTwoGenomes(q.g2, q.g1, fragSize, minFragLen, minAF, minANI)
+						compareErr := idx.compareTwoGenomesPrepared(q.g2, q.g1, p2, p1, fragSize, minFragLen, minAF, minANI)
 						if compareErr != nil {
 							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, compareErr))
 						}
@@ -674,6 +723,11 @@ Output format:
 		close(ch)
 		<-done
 
+		if genomeCache != nil && outputLog {
+			log.Infof("genome cache: %d loads, %d reuses, %d evictions, peak charged memory %s (budget %s)",
+				genomeCache.loads, genomeCache.hits, genomeCache.evictions,
+				humanize.IBytes(uint64(genomeCache.peak)), humanize.IBytes(uint64(cacheBudget)))
+		}
 		// -------  final log  -------
 
 		if verbose {
@@ -717,6 +771,9 @@ func init() {
 
 	compareCmd.Flags().IntP("max-open-files", "", 1024,
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+
+	compareCmd.Flags().String("max-genome-cache-memory", "1G",
+		formatFlagUsage(`Memory budget for reusing prepared genomes (supports K/M/G; 0 disables reuse). Uses conservative cache accounting; active uncached comparisons, alignment scratch, readers, and runtime memory are additional.`))
 
 	compareCmd.Flags().IntP("gc-interval", "", 128,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))
@@ -854,8 +911,12 @@ func readPairs(file string, hasHeaderLine bool) ([]string, error) {
 	return list, fh.Close()
 }
 
+// GPair owns results for one genome pair and pins any borrowed cache entries.
 type GPair struct {
-	g1, g2 *GQuery
+	g1, g2  *GQuery
+	cache   *compareGenomeCache         // nil for the original uncached path
+	entries [2]*compareGenomeCacheEntry // pinned until results have been printed
+	views   [2]GQuery                   // metadata and sequence views with independent results
 }
 
 var poolGPair = &sync.Pool{
@@ -867,9 +928,25 @@ var poolGPair = &sync.Pool{
 func (q *GPair) Reset() {
 	q.g1 = nil
 	q.g2 = nil
+	q.cache = nil
+	q.entries = [2]*compareGenomeCacheEntry{}
+	q.views = [2]GQuery{}
 }
 
+// RecycleGPair releases pair results before unpinning borrowed genome sequences.
 func RecycleGPair(q *GPair) {
+	if q.cache != nil {
+		for _, g := range []*GQuery{q.g1, q.g2} {
+			if g != nil && g.result != nil {
+				RecycleGSearchResults(g.result)
+			}
+		}
+		q.cache.release(q.entries[0])
+		q.cache.release(q.entries[1])
+		q.Reset()
+		poolGPair.Put(q)
+		return
+	}
 	if q.g1 != nil {
 		RecycleGQuery(q.g1)
 	}
