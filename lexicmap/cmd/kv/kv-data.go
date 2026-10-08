@@ -188,6 +188,7 @@ type Writer struct {
 	anchorPrefix uint8
 	poolP2O      *sync.Pool
 	getAnchor    func(uint64) uint64
+	maskCounts   []maskCount // deferred header patches for streamed masks
 }
 
 // Close is very important
@@ -195,6 +196,12 @@ func (wtr *Writer) Close() (err error) {
 	err = wtr.w.Flush()
 	if err != nil {
 		return err
+	}
+	for _, patch := range wtr.maskCounts {
+		be.PutUint64(wtr.buf[:8], patch.count)
+		if _, err = wtr.fh.WriteAt(wtr.buf[:8], patch.offset); err != nil {
+			return err
+		}
 	}
 	err = wtr.fh.Close()
 	if err != nil {
@@ -533,7 +540,15 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 	// -----------------------------------------
 	// save index
+	return wtr.writeMaskIndex(p2o)
+}
 
+func (wtr *Writer) writeMaskIndex(p2o *[]uint64) error {
+	defer wtr.poolP2O.Put(p2o)
+	buf, wi := wtr.buf, wtr.wi
+	var err error
+	var j int
+	var offset uint64
 	var kmer uint64
 	var nRecords uint64
 	e := len(*p2o) >> 1
@@ -565,7 +580,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		}
 	}
 
-	wtr.poolP2O.Put(p2o)
 	return nil
 }
 

@@ -16,6 +16,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
     - **Faster speed and >30% lower memory by optimizing seed computation**.
+    - Reduce time and memory use during batch merging with a streaming merge of sorted seed chunks.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during
       the first round of probe capture (k-mer masking)**.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect

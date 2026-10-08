@@ -426,8 +426,6 @@ Result ordering:
 			}
 			if sopt.MaxSeedMemory > 0 {
 				log.Infof("  seed collection buffer budget across query slots (--max-seed-memory): %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
-			} else {
-				log.Infof("  seed spilling disabled (--max-seed-memory=0)")
 			}
 			if sopt.MaxAlignResultMemory > 0 {
 				log.Infof("  maximum retained alignment output memory (--max-align-result-memory): %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))

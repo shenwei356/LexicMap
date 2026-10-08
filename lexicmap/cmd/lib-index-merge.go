@@ -120,7 +120,6 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				}()
 
 				var rdr *kv.Reader
-				var i int
 				// var kmer uint64
 				// var values, values1 *[]uint64
 				// var ok bool
@@ -147,42 +146,15 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					}
 				}
 
-				m := kv.PoolKmerData.Get().(*map[uint64]*[]uint64)
-				for c := 0; c < rdrIdx.ChunkSize; c++ { // for all mask
-					clear(*m)
-
-					for i, rdr = range rdrs {
-						// there's no need to read them in memory first
-						// m1, err := rdr.ReadDataOfAMaskAsMap()
-						// if err != nil {
-						// 	checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
-						// 		c+rdr.ChunkIndex, pathB[i], err))
-						// }
-
-						// for kmer, values1 = range *m1 {
-						// 	if values, ok = (*m)[kmer]; !ok {
-						// 		(*m)[kmer] = values1 // directly move data from m1 to m, this saves a lot of memory
-						// 	} else {
-						// 		*values = append(*values, (*values1)...)
-						// 	}
-						// }
-						// kv.RecycleKmerData(m1)
-
-						// online processing
-						err = rdr.ReadDataOfAMaskAndAppendToMap(m)
-						if err != nil {
-							checkError(fmt.Errorf("failed to read data of mask %d from file %s: %s",
-								c+rdr.ChunkIndex, pathB[i], err))
-						}
-					}
-
-					err = wtr.WriteDataOfAMask(*m)
-					if err != nil {
-						checkError(fmt.Errorf("failed to write to k-mer data file: %s", err))
+				merger, err := kv.NewMerger(rdrs, wtr)
+				if err != nil {
+					checkError(err)
+				}
+				for c := 0; c < rdrIdx.ChunkSize; c++ {
+					if err = merger.WriteMask(); err != nil {
+						checkError(fmt.Errorf("failed to merge mask %d: %s", c+rdrIdx.ChunkIndex, err))
 					}
 				}
-
-				kv.RecycleKmerData(m)
 
 				for _, rdr = range rdrs {
 					err = rdr.Close()
