@@ -1487,6 +1487,7 @@ func ReadGenomeFromFile(file string, reRefName *regexp.Regexp, fullPathAsRefName
 	if err != nil {
 		return nil, err
 	}
+	defer fastxReader.Close()
 
 	q := poolGQuery.Get().(*GQuery)
 	q.Reset()

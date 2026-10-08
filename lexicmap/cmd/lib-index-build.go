@@ -43,7 +43,6 @@ import (
 	"github.com/shenwei356/bio/seqio/fastx"
 	"github.com/shenwei356/kmers"
 	"github.com/shenwei356/lexichash"
-	"github.com/shenwei356/lexichash/iterator"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 
@@ -961,6 +960,13 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	var wgMask sync.WaitGroup                 // ensure all jobs done
 	tokensMask := make(chan int, opt.NumCPUs) // control the max concurrency number
 
+	// Each genome worker borrows private window scratch and reuses it across deserts.
+	windowMaskers := &sync.Pool{New: func() interface{} {
+		w, err := lh.NewWindowMasker()
+		checkError(err)
+		return w
+	}}
+
 	genomesMask := make(chan *genome.Genome, opt.NumCPUs)
 	doneMask := make(chan int)
 
@@ -1101,9 +1107,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// fill sketching deserts
 
 				var extraLocs *[]int
-				var loc2maskidx *[]int
-				var loc2maskidxRC *[]int
-				var kmerList *[]uint64
 
 				if !opt.DisableDesertFilling {
 					var pos2str, pos, pre, d uint32
@@ -1113,16 +1116,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 					lenSeq := len(refseq.Seq)
 					var start, end int
-					var _kmers2 *[]uint64
-					var _locses2 *[][]int
-					var _locs []int
-					var _i int
-					// kmer2maskidx := poolKmer2MaskIdx.Get().(*map[uint64]int)
-					loc2maskidx = poolLoc2MaskIdx.Get().(*[]int)
-					loc2maskidxRC = poolLoc2MaskIdx.Get().(*[]int)
-					kmerList = poolKmerKmerRC.Get().(*[]uint64)
+					windowMasker := windowMaskers.Get().(*lexichash.WindowMasker)
+					defer windowMaskers.Put(windowMasker)
 
-					var kmer, kmerRC, kmerPos uint64
+					var kmer, kmerPos uint64
 					var ok bool
 					var _j, posOfPre, posOfCur, _start, _end int
 
@@ -1188,62 +1185,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 						// fmt.Printf("  posOfPre: %d, posOfCur: %d\n", posOfPre, posOfCur)
 
-						// iterate k-mers
-						iter, iterErr := iterator.NewKmerIterator(refseq.Seq[start:end], k)
-						if iterErr != nil {
-							checkError(iterErr)
+						// Compute k-mers and per-position mask winners in one window pass.
+						kmerList, maskIndexes, windowErr := windowMasker.Mask(refseq.Seq[start:end])
+						if windowErr != nil {
+							checkError(fmt.Errorf("failed to mask desert window for %s: %s", refseq.ID, windowErr))
 						}
-
-						*kmerList = (*kmerList)[:0]
-						for {
-							kmer, kmerRC, ok, _ = iter.NextKmer()
-							if !ok {
-								break
-							}
-							*kmerList = append(*kmerList, kmer)
-							*kmerList = append(*kmerList, kmerRC)
-						}
-
-						// masks this region, just treat it as a query sequence
-						// _kmers2, _locses2, _ = lh.MaskKnownPrefixes(refseq.Seq[start:end], nil)
-						// here, checkShorterPrefix can be false, as we do not need all probes to capture there k-mers,
-						// we only need a few.
-						_kmers2, _locses2, _ = lh.MaskKnownDistinctPrefixes(refseq.Seq[start:end], nil, false)
-
-						// // remove low-complexity k-mers
-						// // k8 := uint8(lh.K)
-						// for i, kmer := range *_kmers2 {
-						// 	if kmer == ttt || (kmer != 0 && util.IsLowComplexity(kmer, k8)) {
-						// 		// fmt.Printf("low-complexity k-mer #%d: %s\n", i, lexichash.MustDecode(kmer, k8))
-						// 		(*_kmers2)[i] = 0
-						// 		continue
-						// 	}
-						// }
-
-						// clear(*kmer2maskidx)
-						// for _i, kmer = range *_kmers2 {
-						// 	// mulitple masks probably capture more than one k-mer in such a short sequence,
-						// 	// we just record the last mask.
-						// 	(*kmer2maskidx)[kmer] = _i
-						// }
-
-						*loc2maskidx = (*loc2maskidx)[:0]
-						*loc2maskidxRC = (*loc2maskidxRC)[:0]
-						for _i = start; _i < end; _i++ {
-							*loc2maskidx = append(*loc2maskidx, -1)
-							*loc2maskidxRC = append(*loc2maskidxRC, -1)
-						}
-						for _i, _locs = range *_locses2 {
-							for _, loc = range _locs {
-								if loc&1 == 0 {
-									(*loc2maskidx)[loc>>1] = _i
-								} else {
-									(*loc2maskidxRC)[loc>>1] = _i
-								}
-							}
-						}
-
-						lh.RecycleMaskResult(_kmers2, _locses2)
 
 						// start from the previous seed
 						_j = posOfPre + seedDist
@@ -1267,7 +1213,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// fmt.Printf("    test u %d\n", _j)
 
 								// strand +
-								kmer = (*kmerList)[_j<<1]
+								kmer = kmerList[_j<<1]
 								// fmt.Printf("    kmer+, low-complexity: %v\n", util.IsLowComplexityDust(kmer, k8))
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
@@ -1279,7 +1225,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 									// 	kmerPos = uint64(start+_j) << 1
 									// 	break
 									// }
-									_im = (*loc2maskidx)[_j]
+									_im = maskIndexes[_j<<1]
 									if _im >= 0 {
 										kmerPos = uint64(start+_j) << 1
 										ok = true
@@ -1288,7 +1234,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								}
 
 								// strand -
-								kmer = (*kmerList)[(_j<<1)+1]
+								kmer = kmerList[(_j<<1)+1]
 								// fmt.Printf("    kmer-, low-complexity: %v\n", util.IsLowComplexityDust(kmer, k8))
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
@@ -1300,7 +1246,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 									// 	kmerPos = uint64(start+_j)<<1 | 1
 									// 	break
 									// }
-									_im = (*loc2maskidxRC)[_j]
+									_im = maskIndexes[(_j<<1)+1]
 									if _im >= 0 {
 										kmerPos = uint64(start+_j)<<1 | 1
 										ok = true
@@ -1345,7 +1291,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								// fmt.Printf("    test d %d\n", _j)
 
 								// strand +
-								kmer = (*kmerList)[_j<<1]
+								kmer = kmerList[_j<<1]
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, 0, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, 0, k8, lenPrefix) {
@@ -1356,7 +1302,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 									// 	kmerPos = uint64(start+_j) << 1
 									// 	break
 									// }
-									_im = (*loc2maskidx)[_j]
+									_im = maskIndexes[_j<<1]
 									if _im >= 0 {
 										kmerPos = uint64(start+_j) << 1
 										ok = true
@@ -1365,7 +1311,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 								}
 
 								// strand -
-								kmer = (*kmerList)[(_j<<1)+1]
+								kmer = kmerList[(_j<<1)+1]
 								// if kmer != 0 &&
 								// 	!util.MustKmerHasSuffix(kmer, tttSuffix, k8, lenSuffix) &&
 								// 	!util.MustKmerHasPrefix(kmer, tttPrefix, k8, lenPrefix) {
@@ -1376,7 +1322,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 									// 	kmerPos = uint64(start+_j)<<1 | 1
 									// 	break
 									// }
-									_im = (*loc2maskidxRC)[_j]
+									_im = maskIndexes[(_j<<1)+1]
 									if _im >= 0 {
 										kmerPos = uint64(start+_j)<<1 | 1
 										ok = true
@@ -1484,10 +1430,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				if !opt.DisableDesertFilling {
 					poolInts.Put(extraLocs)
-					poolKmerKmerRC.Put(kmerList)
-					// poolKmer2MaskIdx.Put(kmer2maskidx)
-					poolLoc2MaskIdx.Put(loc2maskidx)
-					poolLoc2MaskIdx.Put(loc2maskidxRC)
 				}
 
 				// recycle
@@ -2328,17 +2270,6 @@ var poolPrefxCounter = &sync.Pool{New: func() interface{} {
 
 var poolKmer2MaskIdx = &sync.Pool{New: func() interface{} {
 	tmp := make(map[uint64]int, 1024)
-	return &tmp
-}}
-
-var poolLoc2MaskIdx = &sync.Pool{New: func() interface{} {
-	tmp := make([]int, 1024)
-	return &tmp
-}}
-
-// kmer, kmerRC
-var poolKmerKmerRC = &sync.Pool{New: func() interface{} {
-	tmp := make([]uint64, 1024)
 	return &tmp
 }}
 

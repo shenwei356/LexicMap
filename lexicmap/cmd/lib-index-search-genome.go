@@ -34,6 +34,7 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
+	"github.com/shenwei356/lexichash"
 	"github.com/shenwei356/wfa"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
@@ -198,22 +199,47 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	if useMaskIndexes {
 		screenMaskSlots, screenMaskCount = compactMaskSelection(len(idx.lh.Masks), maskSelection, maskIndexes)
 	}
+	// Keep the original mask indexes for compact k-mer-only results and deduplication.
+	selectedMasks := make([]int, 0, screenMaskCount)
+	for j = range idx.lh.Masks {
+		if screenMaskSlots == nil || screenMaskSlots[j] >= 0 {
+			selectedMasks = append(selectedMasks, j)
+		}
+	}
+	// Each query reuses private sketch scratch across its screening windows.
+	// Older indexes retain their original strand-biased masking behavior.
+	var sketcher *lexichash.Sketcher
+	if !(idx.info.MainVersion == 3 && idx.info.MinorVersion < 5) {
+		sketcher, err = idx.lh.NewSketcher(selectedMasks)
+		if err != nil {
+			idx.RecycleGSearchScreenResult(whiteList)
+			return nil, nil, err
+		}
+	}
 	for i, windowRange := range ranges {
 		start, end = windowRange[0], windowRange[1]
 		// fmt.Printf("window #%d: %d-%d\n", i+1, start+1, end)
 
-		funcMask := idx.lh.MaskKnownDistinctPrefixes
-		if idx.info.MainVersion == 3 && idx.info.MinorVersion < 5 { // for backward compatibility
-			funcMask = idx.lh.MaskKnownDistinctPrefixesWithStrandBias
+		var captured []uint64 // compact selected values, or full results for older indexes
+		var _kmers *[]uint64
+		var locses *[][]int
+		if sketcher != nil {
+			captured, err = sketcher.Mask(query.bigSeq[start:end], windowSkipRegions(query.skipRegions, start, end), true)
+		} else {
+			_kmers, locses, err = idx.lh.MaskKnownDistinctPrefixesWithStrandBias(query.bigSeq[start:end], windowSkipRegions(query.skipRegions, start, end), true)
+			if err == nil {
+				captured = *_kmers
+			}
 		}
-		_kmers, locses, err := funcMask(query.bigSeq[start:end], windowSkipRegions(query.skipRegions, start, end), true)
 		if err != nil {
 			idx.RecycleGSearchScreenResult(whiteList)
 			return nil, nil, fmt.Errorf("failed to mask screening window %d (%d-%d): %w", i+1, start+1, end, err)
 		}
 
-		for j, kmer = range *_kmers {
-			if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
+		for j, kmer = range captured {
+			if sketcher != nil {
+				j = selectedMasks[j]
+			} else if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
 				continue
 			}
 			if kmer == 0 || kmer == ccc || kmer == ggg || kmer == ttt ||
@@ -225,15 +251,14 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 		}
 
 		if i == windows-1 && windows > 1 { // sort k-mers and remove duplicates
-			for j = range *_kmers {
-				if (maskSelection != nil && !maskSelection[j]) || (useMaskIndexes && !maskIndexSelected(maskIndexes, j)) {
-					continue
-				}
+			for _, j = range selectedMasks {
 				util.UniqUint64s(&(*_kmersW)[j])
 			}
 		}
 
-		idx.lh.RecycleMaskResult(_kmers, locses)
+		if _kmers != nil {
+			idx.lh.RecycleMaskResult(_kmers, locses)
+		}
 	}
 
 	// ------------------------------------------------------
