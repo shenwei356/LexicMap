@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"cmp"
 	"slices"
 	"sync"
 
@@ -64,7 +65,23 @@ type FragmentComparator struct {
 	// after collection, sorted by Key and scanned linearly for equal-key runs.
 	entries []rtree.BatchEntry
 
+	// pairCounts carries counts through row grouping and Top-N sorting, avoiding
+	// a second grouping map and repeated hash lookups inside the sort comparator.
+	pairCounts []fragmentPairCount
+
+	// Dense counter scratch is private to this comparator and bounded separately
+	// from output pairs. Only visited cells are reset between query-row blocks.
+	pairCounter []uint16
+	pairVisited []uint64
+
 	poolChainers *sync.Pool
+}
+
+// fragmentPairCount keeps the original packed fragment IDs and uint16 count.
+// Counts intentionally retain wraparound and duplicate-position multiplicity.
+type fragmentPairCount struct {
+	pair  uint64 // query fragment in the high 32 bits, subject in the low 32 bits
+	count uint16 // shared position cross products, with the original uint16 arithmetic
 }
 
 var poolMapUint64Uint16 = &sync.Pool{New: func() interface{} {
@@ -205,8 +222,12 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 
 // scanPairsMerged walks the two sorted streams entriesA (genome A) and entriesB
 // (genome B) in lockstep. For every shared Key, it enumerates the cross product
-// of the A-run and B-run and accumulates per-pair counts in a pooled map.
+// of the A-run and B-run. Bounded dense row blocks avoid hashing for ordinary
+// genomes; larger or sparse fragment-ID spaces use the original pooled map.
 func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchEntry) *[]uint64 {
+	if pairs, ok := cpr.scanPairsDense(entriesA, entriesB); ok {
+		return pairs
+	}
 	counter := poolMapUint64Uint16.Get().(*map[uint64]uint16)
 
 	nA, nB := len(entriesA), len(entriesB)
@@ -244,61 +265,51 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		ib = jb
 	}
 
-	pairs := poolUint64s.Get().(*[]uint64)
-	*pairs = (*pairs)[:0]
+	counts := cpr.pairCounts[:0]
 	threshold := cpr.options.MinSharedKmers
 	for key, v := range *counter {
 		if v >= threshold {
-			*pairs = append(*pairs, key)
+			counts = append(counts, fragmentPairCount{pair: key, count: v})
 		}
 	}
-
-	topNFragments := cpr.options.TopNFragments
-	if topNFragments > 0 {
-		// sortutil.Uint64s(*pairs)
-		slices.Sort(*pairs)
-
-		ma := poolFragPairMap.Get().(*map[uint64]*[]uint64)
-
-		var ia, ib uint64
-		var ls *[]uint64
-		var ok bool
-		for _, p := range *pairs {
-			ia, ib = p>>32, p&4294967295
-
-			if ls, ok = (*ma)[ia]; !ok {
-				ls = poolKmerAndLocs.Get().(*[]uint64)
-				*ls = (*ls)[:0]
-				(*ma)[ia] = ls
-			}
-			*ls = append(*ls, ib)
-		}
-
-		*pairs = (*pairs)[:0]
-		for ia, ls := range *ma {
-			if len(*ls) > topNFragments {
-				slices.SortFunc(*ls, func(a, b uint64) int {
-					return int((*counter)[ia<<32|b]) - int((*counter)[ia<<32|a])
-				})
-
-				*ls = (*ls)[:topNFragments]
-			}
-			for _, ib := range *ls {
-				*pairs = append(*pairs, ia<<32|ib)
-			}
-		}
-
-		for _, ls := range *ma {
-			*ls = (*ls)[:0]
-			poolKmerAndLocs.Put(ls)
-		}
-		clear(*ma)
-		poolFragPairMap.Put(ma)
-	}
+	cpr.pairCounts = counts
 
 	clear(*counter)
 	poolMapUint64Uint16.Put(counter)
 
+	return cpr.selectFragmentPairs()
+}
+
+// selectFragmentPairs groups adjacent query rows after sorting packed IDs.
+// Keep the original count-only unstable sort and ascending subject input order:
+// adding a tie-breaker or using a stable sort would change Top-N tie selection.
+func (cpr *FragmentComparator) selectFragmentPairs() *[]uint64 {
+	pairs := poolUint64s.Get().(*[]uint64)
+	*pairs = (*pairs)[:0]
+	counts := cpr.pairCounts
+	topN := cpr.options.TopNFragments
+	if topN <= 0 {
+		for _, p := range counts {
+			*pairs = append(*pairs, p.pair)
+		}
+		return pairs
+	}
+	slices.SortFunc(counts, func(a, b fragmentPairCount) int { return cmp.Compare(a.pair, b.pair) })
+	for start := 0; start < len(counts); {
+		end := start + 1
+		for end < len(counts) && counts[end].pair>>32 == counts[start].pair>>32 {
+			end++
+		}
+		row := counts[start:end]
+		if len(row) > topN {
+			slices.SortFunc(row, func(a, b fragmentPairCount) int { return int(b.count) - int(a.count) })
+			row = row[:topN]
+		}
+		for _, p := range row {
+			*pairs = append(*pairs, p.pair)
+		}
+		start = end
+	}
 	return pairs
 }
 
@@ -308,8 +319,3 @@ func RecycleFragmentCompareResult(pairs *[]uint64) {
 		poolUint64s.Put(pairs)
 	}
 }
-
-var poolFragPairMap = &sync.Pool{New: func() interface{} {
-	tmp := make(map[uint64]*[]uint64, 4096)
-	return &tmp
-}}

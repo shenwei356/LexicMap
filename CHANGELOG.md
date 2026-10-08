@@ -15,7 +15,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
-    - **Faster speed and >30% lower memory by optimizing seed computation**.
+    - **Faster speed (45% less time) and 30% lower memory by optimizing seed computation and merging**.
     - Reduce time and memory use during batch merging with a streaming merge of sorted seed chunks.
     - Avoid repeated k-mer decoding and full-mask resets when filling sketching deserts.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during
@@ -51,6 +51,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap genome compare`:
     - Reuse genome sequences, fragments, sampled seeds and subject sketches, or sorted OrthoANI entries, across genome pairs.
     - Add `--max-genome-cache-memory` (default `1G`, `0` disables reuse) to limit retained prepared genomes. Active uncached comparisons and alignment scratch use additional memory.
+- `lexicmap genome search/compare`:
+    - Speed up OrthoANI fragment-pair counting with dense row blocks using at most 64 MiB of counter scratch per worker. Avoid grouping maps and hash lookups during Top-N sorting while preserving duplicate k-mer counts and tie selection.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
