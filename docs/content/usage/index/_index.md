@@ -129,16 +129,18 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
-                            ■ The actual value is min(--seed-data-threads, max(1, --max-open-files/($batches_1_round + 2))),
-                            where $batches_1_round = min(int($input_files / --batch-size), --max-open-files).
+                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs.
+                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)),
+                            where $inputs is the number of batches in the current merge group (at most --max-open-files - 10).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
-                            ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
+                            ► It's only used in merging indexes of multiple genome batches (minimum: 12).
+                            Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
+                            Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
 Usage:
   lexicmap index [flags] [-k <k>] [-m <masks>] {-I <seqs dir> | [-S] -X <file list>} -O <index.lmi>
@@ -177,9 +179,9 @@ Flags:
                                   reduce search sensitivity, but it's useful when simply checking
                                   whether a query matches any position in a genome that contains many
                                   tandem repeat sequences. (0 for no filtering)
-      --max-open-files int        ► Maximum opened files, used in merging indexes. If there are >100
-                                  batches, please increase this value and set a bigger "ulimit -n" in
-                                  shell. (default 1024)
+      --max-open-files int        ► Maximum open files for merging indexes, including 8 reserved files
+                                  (minimum: 12 for multiple batches). Large batch counts are merged in
+                                  multiple rounds. Set "ulimit -n" at least this high. (default 1024)
   -l, --min-seq-len int           ► Maximum sequence length to index. The value would be k for values
                                   <= 0. (default -1)
       --no-desert-filling         ► Disable sketching desert filling (only for debug).
@@ -194,9 +196,8 @@ Flags:
       --save-seed-pos             ► Save seed positions, which can be inspected with "lexicmap utils
                                   seed-pos".
   -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
-                                  from all batches, the value should be in range of [1, -c/--chunks]. If
-                                  there are >100 batches, please also increase the value of
-                                  --max-open-files and set a bigger "ulimit -n" in shell. (default 8)
+                                  from all batches, in range [1, -c/--chunks]. Merging threads are
+                                  limited by --max-open-files. (default 8)
   -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
   -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
                                   Deserts with seed distance larger than this value will be filled by

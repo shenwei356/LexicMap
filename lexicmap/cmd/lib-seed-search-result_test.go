@@ -5,21 +5,37 @@ import (
 	"testing"
 )
 
+// TestSeedSearchResultPagesKeepAddressesStable checks records and their buffers across page growth.
 func TestSeedSearchResultPagesKeepAddressesStable(t *testing.T) {
 	var arena seedSearchResultArena
 	defer arena.recycle()
 	first := arena.add(7)
 	first.Subs = append(first.Subs, SubstrPair{QBegin: 11, TBegin: 17, Len: 31})
-	if &first.Subs[0] != &first.inlineSub[0] {
-		t.Fatal("single anchor did not use inline storage")
-	}
+	// A pooled record may retain a grown buffer; its address must also stay stable.
+	firstSub := &first.Subs[0]
 	for i := range seedSearchResultPageSize*2 + 3 {
 		r := arena.add(uint64(i + 100))
 		r.Subs = append(r.Subs, SubstrPair{QBegin: int32(i), Len: 31})
 	}
-	if first != &arena.pages[0][0] || first.BatchGenomeIndex != 7 ||
+	if first != &arena.pages[0][0] || &first.Subs[0] != firstSub || first.BatchGenomeIndex != 7 ||
 		first.Subs[0] != (SubstrPair{QBegin: 11, TBegin: 17, Len: 31}) {
 		t.Fatal("growing the arena moved or overwrote an active candidate")
+	}
+}
+
+// TestSeedSearchResultResetSeedsStorage checks inline initialization and buffer reuse without a pool.
+func TestSeedSearchResultResetSeedsStorage(t *testing.T) {
+	var r seedSearchResult
+	r.resetSeeds()
+	if len(r.Subs) != 0 || cap(r.Subs) != 1 || &r.Subs[:1][0] != &r.inlineSub[0] {
+		t.Fatal("fresh record did not use empty inline storage")
+	}
+	r.Subs = append(r.Subs, SubstrPair{QBegin: 11}, SubstrPair{QBegin: 17})
+	// Resetting a grown buffer should keep its backing array and capacity.
+	backing, capacity := &r.Subs[0], cap(r.Subs)
+	r.resetSeeds()
+	if len(r.Subs) != 0 || cap(r.Subs) != capacity || &r.Subs[:1][0] != backing {
+		t.Fatal("reset did not reuse the empty grown buffer")
 	}
 }
 

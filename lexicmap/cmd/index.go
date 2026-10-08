@@ -126,8 +126,9 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
-                            ■ The actual value is min(--seed-data-threads, max(1, --max-open-files/($batches_1_round + 2))),
-                            where $batches_1_round = min(int($input_files / --batch-size), --max-open-files).
+                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs.
+                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)),
+                            where $inputs is the number of batches in the current merge group (at most --max-open-files - 10).
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
@@ -137,8 +138,9 @@ Important parameters:
                             "lexicmap utils reindex-seeds2 -d <index>" to create adaptive idx15 secondary indexes,
                             which can reduce seed-matching time.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches. If there are >100 batches,
-                            ($input_files / --batch-size), please increase this value and set a bigger "ulimit -n" in shell.
+                            ► It's only used in merging indexes of multiple genome batches (minimum: 12).
+                            Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
+                            Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -587,7 +589,7 @@ func init() {
 	indexCmd.Flags().IntP("partitions", "", 4096,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
 	indexCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files, used in merging indexes. If there are >100 batches, please increase this value and set a bigger "ulimit -n" in shell.`))
+		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
 
 	indexCmd.Flags().BoolP("save-seed-pos", "", false,
 		formatFlagUsage(`Save seed positions, which can be inspected with "lexicmap utils seed-pos".`))
@@ -598,7 +600,7 @@ func init() {
 		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
 
 	indexCmd.Flags().IntP("seed-data-threads", "J", 8,
-		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are >100 batches, please also increase the value of --max-open-files and set a bigger "ulimit -n" in shell.`))
+		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files.`))
 
 	indexCmd.Flags().IntP("contig-interval", "", 1000,
 		formatFlagUsage(`Length of interval (N's) between contigs in a genome. It can't be too small (<1000) or some alignments might be fragmented`))

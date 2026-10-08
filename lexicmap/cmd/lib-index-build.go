@@ -232,6 +232,15 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	// 	return err
 	// }
 
+	nFiles := len(infiles)
+	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
+	// Reject insufficient merge budgets before allocating masks or building batches.
+	if nBatches > 1 {
+		if _, _, err := planIndexMerge(nBatches, opt.MaxOpenFiles, opt.MergeThreads); err != nil {
+			return err
+		}
+	}
+
 	if opt.Verbose || opt.Log2File {
 		log.Info()
 		log.Infof("--------------------- [ generating masks ] ---------------------")
@@ -327,8 +336,6 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 
 	// split the files in to batches
-	nFiles := len(infiles)
-	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
 	tmpIndexes := make([]string, 0, nBatches)
 
 	// tmp dir

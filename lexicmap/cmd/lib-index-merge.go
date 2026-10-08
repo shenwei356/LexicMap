@@ -36,6 +36,30 @@ import (
 	"github.com/shenwei356/lexichash"
 )
 
+// Leave room for standard streams, logging, and Go's runtime descriptors.
+const indexMergeReservedFiles = 8
+
+// planIndexMerge bounds input groups and workers by the file budget. Each worker
+// opens one seed file per input and two output files. Groups must shrink on every
+// round, even when the configured file budget is small.
+func planIndexMerge(nIndexes, maxOpenFiles, mergeThreads int) (batchSize, workers int, err error) {
+	if nIndexes < 1 {
+		return 0, 0, fmt.Errorf("no indexes to merge")
+	}
+	if mergeThreads < 1 {
+		return 0, 0, fmt.Errorf("invalid number of merge threads: %d, should be >= 1", mergeThreads)
+	}
+	// Multiple inputs need a fan-in of at least two to make progress.
+	minFiles := indexMergeReservedFiles + 2 + min(nIndexes, 2)
+	if maxOpenFiles < minFiles {
+		return 0, 0, fmt.Errorf("invalid max open files for merging: %d, should be >= %d (including %d reserved files)", maxOpenFiles, minFiles, indexMergeReservedFiles)
+	}
+	budget := maxOpenFiles - indexMergeReservedFiles // descriptors available to seed-merging workers
+	batchSize = min(nIndexes, budget-2)
+	workers = min(mergeThreads, budget/(batchSize+2))
+	return batchSize, workers, nil
+}
+
 // mergeIndexes merge multiple indexes to a big one
 func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8, opt *IndexBuildingOptions, kvChunks int,
 	outdir string, paths []string, tmpDir string, round int) error {
@@ -45,9 +69,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	}
 
 	nIndexes := len(paths)
-	chunkSize := opt.MaxOpenFiles // chunk of indexes
-	if chunkSize > nIndexes {
-		chunkSize = nIndexes
+	chunkSize, _, err := planIndexMerge(nIndexes, opt.MaxOpenFiles, opt.MergeThreads)
+	if err != nil {
+		return err
 	}
 	batches := (len(paths) + chunkSize - 1) / chunkSize
 
@@ -67,12 +91,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		}
 		pathB = paths[begin:end]
 
-		mergeThreads = opt.MergeThreads
-		for mergeThreads*(len(pathB)+2) > opt.MaxOpenFiles { // 2 is for output file and index file
-			mergeThreads--
-		}
-		if mergeThreads < 1 {
-			mergeThreads = 1
+		_, mergeThreads, err = planIndexMerge(len(pathB), opt.MaxOpenFiles, opt.MergeThreads)
+		if err != nil {
+			return err
 		}
 		tokens := make(chan int, mergeThreads)
 
@@ -130,6 +151,11 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				if err != nil {
 					checkError(fmt.Errorf("failed to read info from an index file: %s", err))
 				}
+				// Only the header fields are needed; release this descriptor before
+				// opening the input seed files and the two output files.
+				if err = rdrIdx.Close(); err != nil {
+					checkError(fmt.Errorf("failed to close seed index file: %s", err))
+				}
 
 				// outfile
 				file := filepath.Join(dirSeeds, chunkFile(chunk))
@@ -162,8 +188,6 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 						checkError(fmt.Errorf("failed to close kv-data file: %s", err))
 					}
 				}
-
-				rdrIdx.Close()
 
 				err = wtr.Close()
 				if err != nil {
@@ -310,8 +334,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	}
 
 	runtime.GC()
-	mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
-	return nil
+	return mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
 }
 
 var poolUint64s = &sync.Pool{New: func() interface{} {

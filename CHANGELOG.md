@@ -27,6 +27,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed data races in parallel seed computation and progress reporting.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
+    - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
 - `lexicmap search`:
     - **Faster searching speed for batch queries with -n/--top-n-genomes**.
     - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a big value (such as 1/2 ~ 3/4 of the free available RAM) when queries have very many seed matches in large indexes and risk running out of memory during seed collection. See help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).

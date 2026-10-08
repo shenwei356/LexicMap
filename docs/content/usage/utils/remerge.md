@@ -18,12 +18,15 @@ When to use this command?
   22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 
   ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and
-  -J/--seed-data-threads (e.g., 12. 12 needs be <= 4096/(297+2)=13.7).
+  -J/--seed-data-threads (e.g., 12. 12 needs to be <= (4096-8)/(297+2)=13.7).
   And you need to set a bigger 'ulimit -n' if the value of --max-open-files is bigger than 1024.
 
 - The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
 
 - Disk quota is reached in the merging step.
+
+Large batch counts are merged in multiple rounds within --max-open-files,
+including 8 files reserved for standard streams, logging, and runtime use.
 
 Usage:
   lexicmap utils remerge [flags] [flags] -d <index path>
@@ -31,13 +34,12 @@ Usage:
 Flags:
   -h, --help                    help for remerge
   -d, --index string            ► Index directory created by "lexicmap index".
-      --max-open-files int      ► Maximum opened files, used in merging indexes. If there are >100
-                                batches, please increase this value and set a bigger "ulimit -n" in
-                                shell. (default 1024)
+      --max-open-files int      ► Maximum open files for merging indexes, including 8 reserved files
+                                (minimum: 12 for multiple batches). Large batch counts are merged in
+                                multiple rounds. Set "ulimit -n" at least this high. (default 1024)
   -J, --seed-data-threads int   ► Number of threads for writing seed data and merging seed chunks from
-                                all batches, the value should be in range of [1, -c/--chunks]. If there
-                                are >100 batches, please also increase the value of --max-open-files and
-                                set a bigger "ulimit -n" in shell. (default 8)
+                                all batches, in range [1, -c/--chunks]. Merging threads are limited by
+                                --max-open-files. (default 8)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
