@@ -33,7 +33,8 @@ import (
 )
 
 // logStartupInfo logs the actual command line, software version, optional build
-// commit (using the same format as the version command), and project URL.
+// commit (using the same format as the version command), project URL, and current
+// working directory. The directory is printed immediately before the invocation.
 // Call it after configuring logging and checking whether informational logs are
 // enabled. It does not configure destinations or override the caller's quiet mode.
 // Shell-sensitive and empty argv entries are quoted for copying into a POSIX shell.
@@ -53,7 +54,13 @@ func logStartupInfo() {
 	}
 	log.Info("  https://github.com/shenwei356/LexicMap")
 	log.Info()
-	log.Infof("command: %s", strings.Join(invocation, " "))
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Warningf("CWD: unavailable (%s)", err)
+	} else {
+		log.Infof("CWD: %s", pwd)
+	}
+	log.Infof("CMD: %s", strings.Join(invocation, " "))
 	log.Info()
 }
 

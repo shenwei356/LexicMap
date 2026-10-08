@@ -89,9 +89,10 @@ type IndexSearchingOptions struct {
 
 	// MaxSeedMemory enables streamed seed matching and threshold-based anchor
 	// spilling when positive; zero selects the original collection/chaining path.
-	// It limits combined collection-array capacities in bytes across query slots,
-	// including old/new arrays during growth. It excludes per-genome chaining
-	// arrays/scratch, decoded seed-data batches, I/O buffers, and other search data.
+	// It limits producer/collection arrays (including growth overlap), radix
+	// workspace, and normal parallel replay buffers in bytes across query slots.
+	// It excludes an oversized genome or serial fallback's complete anchor array,
+	// worker chaining scratch, decoded seed-data batches, I/O buffers, and other data.
 	// A positive value must fit at least one seedAnchor; this is not an RSS limit.
 	MaxSeedMemory int64
 	// MaxQueryConcurrency determines the fixed shares used by MaxSeedMemory.
@@ -1554,8 +1555,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	var allSeedSearchersDoneAt time.Time
 	var beginM, endM int // range of mask of a chunk
 	type seedSearcherDebugStat struct {
+		// Count query-seed/reference-k-mer matches, not distinct reference k-mers.
 		nKVSearchResults uint64
-		nKVValues        uint64
+		// Count matched reference seed locations before genome/TaxId filtering.
+		nKVValues uint64
 	}
 	var seedSearcherDebugStats []seedSearcherDebugStat
 	if debug {
@@ -1649,7 +1652,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	var rs *[]*seedSearchResult
 	if idx.seedMemoryBudget != nil {
-		// The experimental path replaces both seed collection and per-genome
+		// The seed-spilling path replaces both seed collection and per-genome
 		// chaining. It returns the same candidate scores/bounds consumed below.
 		// The arena must outlive Top-N and alignment because candidates refer to it.
 		var spillArena seedSearchResultArena
@@ -1893,6 +1896,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		idx.poolLocses.Put(_locsesR)
 
 		var nGenomeEntries int
+		// Collected anchors after genome/TaxId filtering, before deduplication/chaining.
 		var nAnchors uint64
 		for _, results := range seedResults {
 			nGenomeEntries += len(results)
@@ -1909,7 +1913,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				nKVSearchResults += stat.nKVSearchResults
 				nKVValues += stat.nKVValues
 			}
-			log.Debugf("%s (%s bp): seed collector (%d workers): kv.SearchResult=%s, sum(len(sr.Values))=%s, anchors=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
+			log.Debugf("%s (%s bp): seed collector (%d workers): k-mer matches=%s, matched k-mer locations=%s, anchors after filtering=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
 				query.seqID, humanize.Comma(int64(len(query.seq))),
 				nCollectorWorkers,
 				humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),

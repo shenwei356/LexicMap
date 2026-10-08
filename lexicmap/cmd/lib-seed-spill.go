@@ -11,14 +11,148 @@ import (
 	"unsafe"
 )
 
-// seedSpillRecordBytes is the serialized size. Records encode fields explicitly
-// rather than writing the Go struct, whose padding is platform-dependent.
+/*
+#Seed spilling: background, storage, and readback
+
+Queries with very many seed matches in large indexes can run out of memory
+during seed collection. A single decoded reference seed location can produce
+multiple anchors when the matching seed occurs at multiple query positions.
+Keeping all decoded KV data and expanded anchors in memory can therefore be
+expensive, even when only a small number of genomes will pass global Top-N.
+Top-N cannot be decided yet: each genome's chaining score needs its complete
+set of anchors from all seed partitions.
+
+--max-seed-memory enables streaming seed data and spilling collected anchors
+to temporary files, using the existing index without rebuilding it. It is
+disabled by default (0). Reducing -J/--max-query-conc also reduces the memory
+used by concurrent queries. Spilling trades sorting and disk I/O for smaller
+anchor collection buffers; a very small budget causes frequent writes/merges.
+
+## Collection and the first spill
+
+The budget is divided into fixed shares for concurrent query slots. Each query
+owns one seedSpillStore, and idle slots do not lend their shares to active ones.
+Decoded KV data arrive in small borrowed batches. Searchers expand those values
+into query/target anchors, apply genome/TaxId filters, and submit accepted anchors
+to the store through bounded producer buffers.
+
+	Existing seed index -> batched KV decoding -> expanded anchors
+	                                                  |
+	                                                  v
+	                                          In-memory collection
+	                                                  |
+	                       buffer growth fits? -------+-------+
+	                             yes: continue                | no
+	                                                          v
+	                                               Stable sort by genome ID
+	                                                          |
+	                                                          v
+	                                                 Write a sorted run
+	                                                          |
+	                                                          v
+	                                              Reset length; reuse buffer
+
+Before growing the collection array, the store accounts for producer buffers,
+old/new collection arrays during copying, and radix-sort workspace. If growth
+would exceed the query share, flush writes the ENTIRE current anchor buffer,
+then resets its length to zero while retaining capacity. It does not keep the
+first budget-sized portion permanently in RAM and write only later anchors.
+Sorting/growth reserves mean the spill can start before anchor payload alone
+reaches the configured share. Stable sorting groups genomes while preserving
+the accepted arrival order of anchors within each genome; it does not deduplicate
+anchors, calculate chaining scores, or apply Top-N.
+
+## Temporary files and the 20-byte record format
+
+Each query gets a separate directory, created lazily on its first spill under
+the system temporary directory (TMPDIR). Choose a disk-backed directory with
+enough free space: tmpfs stores the files in RAM. A run contains many genomes,
+and one genome can occur in many runs. Run files have no header or per-genome
+delimiter; they contain consecutive, explicitly encoded 20-byte records:
+
+	Byte range  [0:8]      [8:12]       [12:16]       [16]    [17]   [18:20]
+	Field       genome ID  query begin  target begin  length  flags  reserved
+	Size        8 B        4 B          4 B           1 B     1 B    2 B
+
+	8 + 4 + 4 + 1 + 1 + 2 = 20 bytes per anchor
+
+Multi-byte fields are little-endian. The genome ID packs the genome-batch and
+genome identifiers. Query/target coordinates retain their int32 bit patterns.
+Flags pack query/target reverse-complement booleans into bits 0/1; the reserved
+bytes are zero. These are 18 useful bytes plus two explicit reserved bytes,
+independent of Go struct padding (seedAnchor occupies 24 bytes on amd64).
+Records store expanded anchors, not raw uint64 KV data, k-mers, sequences, or
+alignment results. Query identity comes from the owning store, so it is not
+repeated in each record. writeSeedSpillAnchor/readSeedSpillAnchor encode/decode
+this layout.
+
+For example, letters below identify genomes, and each letter is one anchor:
+
+	First buffer:  B A C A B -> sort -> run-000000000000: A A B B C
+	Second buffer: D B A D B -> sort -> run-000000000001: A B B D D
+	Final tail:    A C       -> sort -> run-000000000002: A C
+
+During collection, each group of 16 chronological runs at the same merge level
+is merged into one run at the next level. Inputs are deleted only after the
+new output succeeds. This keeps at most 15 runs per level and avoids retaining
+metadata for every flush. Each merge opens at most 16 readers and one writer.
+
+## Readback, chaining, and global Top-N
+
+consume runs only after every seed searcher has finished, since any partition
+can still contribute anchors to a genome. If no spill occurred, it sorts and
+iterates the in-memory anchors without creating files. If any spill occurred,
+it also writes the final in-memory tail, releases the collection/sort arrays,
+and compacts to at most 16 remaining runs before streaming their final merge.
+
+The temporary files are not another searchable seed index. Matching has already
+finished against the original index. Readback sequentially merges sorted runs,
+holding one head record per input in a value-slice min-heap, plus I/O buffers.
+Equal genome IDs become contiguous, even when their anchors span many files:
+
+	run 0: A A B B C
+	run 1: A B B D D  -- merge --> A A A A | B B B B | C C | D D
+	run 2: A C                      genome A  genome B   C     D
+
+	Complete genome anchors -> deduplicate and chain
+	                        -> retain score and seedChainRegion boundaries
+	All genome scores       -> global Top-N with cutoff ties
+	                        -> read target sequences from the original index
+	                        -> existing alignment, chunk merging, and output
+
+The chaining caller reconstructs complete genomes into bounded batches and
+uses the ordinary parallel chaining implementation. Tiny shares and single-
+thread searches process one complete genome at a time. A genome is never split
+into independently scored partial groups, and no per-run Top-N is applied.
+This preserves global selection by chaining score, including cutoff ties.
+After chaining, the store's deferred close removes its directory on normal
+returns and returned errors, and releases its query slot.
+
+## Budget scope
+
+The budget covers producer/collection buffers, radix workspace, and normal
+chaining batches. It excludes a single oversized genome or the serial fallback's
+complete anchor array, worker chaining scratch, decoding/I/O buffers, candidate
+metadata, loaded index data, and alignment/output memory. Unreachable arrays
+may also await GC. This limits accounted anchor buffers, not total heap/RSS;
+a genome with unusually many anchors can still exceed available RAM.
+*/
+
+// seedSpillRecordBytes is the fixed on-disk size of one expanded seedAnchor:
+// 8 (genome ID) + 4 (query begin) + 4 (target begin) + 1 (match length)
+// + 1 (two strand flags packed into one byte) + 2 (reserved zeros) = 20 bytes.
+// The 18 useful bytes and two reserved bytes are an explicit file format, not
+// Go struct padding. The in-memory seedAnchor is 24 bytes on amd64; its fields
+// are encoded individually, so platform-dependent padding is never written.
 const seedSpillRecordBytes = 20
 
 // seedSpillMergeFanIn limits one merge to 16 input files and one output file.
 // Equal-level compaction avoids accumulating unbounded file metadata when a
 // small collection budget causes frequent spills.
 const seedSpillMergeFanIn = 16
+
+// Small groups avoid a second array and use the existing comparison sort.
+const seedSpillRadixMin = 1024
 
 // seedAnchorBytes includes struct padding (24 bytes on amd64). Collection budget
 // calculations use this size, not the smaller serialized record size.
@@ -29,17 +163,18 @@ const seedAnchorBytes = int64(unsafe.Sizeof(seedAnchor{}))
 // decoding resources. Each query receives the same fixed share; idle slots do
 // not lend their space. A store holds its slot through chaining until close.
 //
-// This accounts for collection arrays, including old/new arrays during growth.
-// It excludes one genome's complete anchor array for chaining, chaining scratch,
-// decoding/I/O buffers, and candidate metadata. Unreachable arrays may await GC,
-// so this is not a total heap/RSS limit. The channel is shared across queries;
-// the other fields are fixed before use.
+// This accounts for producer batches, collection arrays (including old/new arrays
+// during growth), radix workspace, and normal replay batches. It excludes a
+// single oversized genome or the serial fallback's complete anchor array, worker
+// chaining scratch, decoding/I/O buffers, and candidate metadata. Unreachable
+// arrays may await GC, so this is not a total heap/RSS limit. The channel is shared
+// across queries; the other fields are fixed before use.
 type seedMemoryBudget struct {
 	// slots is a counting semaphore: send to acquire a query share, receive to
 	// release it. Capacity is the effective number of simultaneously active stores.
 	slots chan struct{}
-	// anchorsPerQuery limits the combined capacities of a query's collection
-	// arrays in seedAnchor elements, rather than bytes.
+	// anchorsPerQuery limits collection, transfer, and radix arrays in seedAnchor
+	// elements. Normal replay batches also use the unused bytes of this share.
 	anchorsPerQuery int
 	// tempDir is the parent of per-query directories. Empty uses os.MkdirTemp's
 	// system default, including TMPDIR. Tests override it before creating stores.
@@ -95,6 +230,22 @@ type seedSpillStore struct {
 	// anchors is the flat, pointer-free array charged to the budget. flush
 	// resets its length and reuses capacity; spilled consume drops the array.
 	anchors []seedAnchor
+	// sortScratch is the second, pointer-free array for stable radix grouping.
+	// Both capacities count against the query share. It is reused between flushes
+	// and released before replay, so replay can use the resulting budget headroom.
+	sortScratch []seedAnchor
+	// transferReserve charges the fixed producer batches before producers start.
+	// It is zero for direct store users and released after all searchers join.
+	transferReserve int
+	// replayBufferBytes charges the one flat buffer for normal chaining batches.
+	// A single genome larger than this buffer still follows the documented
+	// unbudgeted replay fallback; the normal buffer remains charged during it.
+	replayBufferBytes int64
+	// onFirstSpill optionally reports the transition before the first nonempty
+	// flush starts sorting/writing. flush clears it before calling it, so even a
+	// failed write cannot report the start twice. The callback runs synchronously
+	// under the collector's store lock; direct store users need no logger.
+	onFirstSpill func()
 	// runs lists live sorted files in chronological order. After collection
 	// compaction, at most 15 runs remain at any one merge level.
 	runs []seedSpillRun
@@ -107,7 +258,7 @@ type seedSpillStore struct {
 	// count counts every successfully accepted anchor, including duplicates.
 	// consume compares its emitted count to detect whole-record truncation.
 	count uint64
-	// peakBufferBytes is debug telemetry for accounted collection allocations,
+	// peakBufferBytes is debug telemetry for accounted anchor-buffer allocations,
 	// including simultaneous old/replacement arrays, rather than observed RSS.
 	peakBufferBytes int64
 	// spilled stays true after the first successful flush and selects the file
@@ -140,24 +291,111 @@ func newSeedSpillStore(b *seedMemoryBudget) *seedSpillStore {
 // On an I/O error the new anchor is not accepted; the caller must abort and close.
 func (s *seedSpillStore) add(anchor seedAnchor) error {
 	if len(s.anchors) == cap(s.anchors) {
-		capacity := cap(s.anchors)
-		next := min(s.budget.anchorsPerQuery, max(512, capacity*2))
-		// Count both old and replacement arrays during growth. Spill before a
-		// growth could exceed this query's share; then reuse the existing array.
-		if capacity > 0 && (next <= capacity || capacity+next > s.budget.anchorsPerQuery) {
-			if err := s.flush(); err != nil {
-				return err
-			}
-		} else {
-			buf := make([]seedAnchor, len(s.anchors), next)
-			copy(buf, s.anchors)
-			s.anchors = buf
-			s.peakBufferBytes = max(s.peakBufferBytes, int64(capacity+next)*seedAnchorBytes)
+		if err := s.makeRoom(); err != nil {
+			return err
 		}
 	}
 	s.anchors = append(s.anchors, anchor)
 	s.count++
 	return nil
+}
+
+// addBatch copies a borrowed producer batch, flushing only at array boundaries.
+// No producer-owned slice is retained. Copying spans amortizes the per-anchor
+// append/capacity checks, while each successfully copied span updates count.
+func (s *seedSpillStore) addBatch(anchors []seedAnchor) error {
+	for len(anchors) > 0 {
+		if len(s.anchors) == cap(s.anchors) {
+			if err := s.makeRoom(); err != nil {
+				return err
+			}
+		}
+		n := min(len(anchors), cap(s.anchors)-len(s.anchors))
+		s.anchors = append(s.anchors, anchors[:n]...)
+		s.count += uint64(n)
+		anchors = anchors[n:]
+	}
+	return nil
+}
+
+// makeRoom reserves radix workspace before growing a large collection array.
+// Tiny shares keep the comparison-sort path, which needs no second array.
+// Growth accounts for the old array too, even though it becomes unreachable.
+func (s *seedSpillStore) makeRoom() error {
+	available := s.budget.anchorsPerQuery - s.transferReserve
+	maximum := available
+	if available >= seedSpillRadixMin {
+		// Shares smaller than two radix arrays stop below the radix threshold.
+		maximum = max(seedSpillRadixMin-1, available/2)
+	}
+	capacity := cap(s.anchors)
+	next := min(maximum, max(512, capacity*2))
+	if capacity > 0 && (next <= capacity || capacity+next+cap(s.sortScratch) > available) {
+		return s.flush()
+	}
+	buf := make([]seedAnchor, len(s.anchors), next)
+	copy(buf, s.anchors)
+	s.anchors = buf
+	s.recordBufferPeak(int64(capacity) * seedAnchorBytes)
+	return nil
+}
+
+// recordBufferPeak includes all live, explicitly budgeted buffers. extra is the
+// old collection array during growth. Unreachable arrays awaiting GC, fixed I/O
+// buffers, candidate pages, and chaining scratch retain their existing exclusions.
+func (s *seedSpillStore) recordBufferPeak(extra int64) {
+	n := int64(s.transferReserve+cap(s.anchors)+cap(s.sortScratch))*seedAnchorBytes + s.replayBufferBytes + extra
+	s.peakBufferBytes = max(s.peakBufferBytes, n)
+}
+
+// sortAnchors stably groups by the entire uint64 genome identifier. Byte-wise
+// counting passes avoid comparison sorting billions of records; bytes shared by
+// every identifier are skipped. Equal identifiers preserve accepted arrival order,
+// exactly as SortStableFunc, including across run compaction. The two array
+// capacities have already been reserved by makeRoom and are charged together.
+func (s *seedSpillStore) sortAnchors() {
+	if len(s.anchors) < seedSpillRadixMin {
+		slices.SortStableFunc(s.anchors, compareSeedAnchorGenome)
+		return
+	}
+	first := s.anchors[0].batchGenomeIndex
+	var varying uint64
+	for _, a := range s.anchors {
+		varying |= a.batchGenomeIndex ^ first
+	}
+	if varying == 0 {
+		return
+	}
+	if cap(s.sortScratch) < cap(s.anchors) {
+		// Equal capacities keep odd-pass swaps from shrinking the reusable
+		// collection array when the final run is only partially filled.
+		s.sortScratch = make([]seedAnchor, len(s.anchors), cap(s.anchors))
+	}
+	s.recordBufferPeak(0)
+	src, dst := s.anchors, s.sortScratch[:len(s.anchors)]
+	for shift := uint(0); shift < 64; shift += 8 {
+		if byte(varying>>shift) == 0 {
+			continue
+		}
+		var counts [256]int
+		for _, a := range src {
+			counts[byte(a.batchGenomeIndex>>shift)]++
+		}
+		// 257 prefix boundaries cover all 256 byte values, including the end
+		// of bucket 255. Entry 256 is the total count, rather than a bucket.
+		var offsets [257]int
+		for i, n := range counts {
+			offsets[i+1] = offsets[i] + n
+		}
+		for _, a := range src {
+			bucket := byte(a.batchGenomeIndex >> shift)
+			dst[offsets[bucket]] = a
+			offsets[bucket]++
+		}
+		src, dst = dst, src
+	}
+	// Keep the sorted array directly; an odd pass count needs no copy-back.
+	s.anchors, s.sortScratch = src, dst[:0]
 }
 
 // compareSeedAnchorGenome compares only packed genome-batch/genome identifiers.
@@ -173,10 +411,20 @@ func compareSeedAnchorGenome(a, b seedAnchor) int {
 	return 0
 }
 
-// writeSeedSpillAnchor appends one 20-byte little-endian temporary record:
-// [0:8] packed genome identifier; [8:12] query begin; [12:16] target begin;
-// [16] match length; [17] query/target reverse-complement flags in bits 0/1;
-// [18:20] reserved zeros. Coordinates retain their int32 bit representation.
+// writeSeedSpillAnchor appends one expanded anchor as a fixed 20-byte record.
+// Multi-byte integers use little-endian encoding. Byte offsets are:
+//
+//	[0:8]   packed genome-batch/genome identifier (uint64)
+//	[8:12]  query begin (int32 bit pattern)
+//	[12:16] target begin (int32 bit pattern)
+//	[16]    match length (uint8)
+//	[17]    flags: bit 0 = query reverse complement, bit 1 = target reverse complement
+//	[18:20] reserved zeros, included in the 20-byte record size
+//
+// This is not the raw uint64 KV data: matching has already expanded it into
+// query/target coordinates. No k-mer or sequence is stored. No query ID is
+// needed because each seedSpillStore and its run files belong to one query.
+// Converting coordinates to uint32 preserves their signed int32 bit patterns.
 // AvailableBuffer avoids allocating a separate record slice. The caller owns
 // the writer and must flush it before closing the file.
 func writeSeedSpillAnchor(w *bufio.Writer, a seedAnchor) error {
@@ -186,9 +434,12 @@ func writeSeedSpillAnchor(w *bufio.Writer, a seedAnchor) error {
 		}
 	}
 	record := w.AvailableBuffer()
+	// Bytes 0..7: identify the genome to group anchors across all run files.
 	record = binary.LittleEndian.AppendUint64(record, a.batchGenomeIndex)
+	// Bytes 8..11 and 12..15: the two coordinates needed by chaining.
 	record = binary.LittleEndian.AppendUint32(record, uint32(a.qBegin))
 	record = binary.LittleEndian.AppendUint32(record, uint32(a.tBegin))
+	// Pack the two bool fields into bits 0 and 1 of byte 17.
 	var flags byte
 	if a.qrc {
 		flags |= 1
@@ -196,6 +447,7 @@ func writeSeedSpillAnchor(w *bufio.Writer, a seedAnchor) error {
 	if a.trc {
 		flags |= 2
 	}
+	// Bytes 16..19: length, packed flags, and two explicit reserved bytes.
 	record = append(record, a.length, flags, 0, 0)
 	_, err := w.Write(record)
 	return err
@@ -205,6 +457,8 @@ func writeSeedSpillAnchor(w *bufio.Writer, a seedAnchor) error {
 // io.EOF means a record boundary; a partial trailing record returns
 // io.ErrUnexpectedEOF. The returned value keeps no reference to the borrowed
 // Peek buffer, which the reader can reuse as soon as the record is discarded.
+// Decode the offsets documented above; bytes 18..19 are reserved and ignored.
+// uint32-to-int32 conversion restores the original signed coordinate bit pattern.
 func readSeedSpillAnchor(r *bufio.Reader) (seedAnchor, error) {
 	record, err := r.Peek(seedSpillRecordBytes)
 	if err != nil {
@@ -213,7 +467,14 @@ func readSeedSpillAnchor(r *bufio.Reader) (seedAnchor, error) {
 		}
 		return seedAnchor{}, err
 	}
-	a := seedAnchor{batchGenomeIndex: binary.LittleEndian.Uint64(record[:8]), qBegin: int32(binary.LittleEndian.Uint32(record[8:12])), tBegin: int32(binary.LittleEndian.Uint32(record[12:16])), length: record[16], qrc: record[17]&1 != 0, trc: record[17]&2 != 0}
+	a := seedAnchor{
+		batchGenomeIndex: binary.LittleEndian.Uint64(record[:8]),
+		qBegin:           int32(binary.LittleEndian.Uint32(record[8:12])),
+		tBegin:           int32(binary.LittleEndian.Uint32(record[12:16])),
+		length:           record[16],
+		qrc:              record[17]&1 != 0,
+		trc:              record[17]&2 != 0,
+	}
 	_, err = r.Discard(seedSpillRecordBytes)
 	return a, err
 }
@@ -223,6 +484,9 @@ func readSeedSpillAnchor(r *bufio.Reader) (seedAnchor, error) {
 // returned only after writing, flushing, and closing succeed. On error any
 // partial file stays inside s.dir for the deferred close to remove.
 // The writer buffer is reused across calls and detached from the file on return.
+// A file is just concatenated 20-byte records, with no header or per-genome
+// delimiter. It can contain many genomes, and one genome can span many runs.
+// The genome ID in each record supplies the grouping boundary during merging.
 func (s *seedSpillStore) writeRun(level int, order uint64, write func(*bufio.Writer) error) (seedSpillRun, error) {
 	if s.dir == "" {
 		var err error
@@ -266,9 +530,13 @@ func (s *seedSpillStore) flush() error {
 	if len(s.anchors) == 0 {
 		return nil
 	}
+	if notify := s.onFirstSpill; notify != nil {
+		s.onFirstSpill = nil
+		notify()
+	}
 	// Stable grouping and chronological run tie breaks preserve the incoming
 	// anchor order within each genome before the existing deduplication step.
-	slices.SortStableFunc(s.anchors, compareSeedAnchorGenome)
+	s.sortAnchors()
 	run, err := s.writeRun(0, s.nextRun, func(w *bufio.Writer) error {
 		for _, a := range s.anchors {
 			if err := writeSeedSpillAnchor(w, a); err != nil {
@@ -340,8 +608,8 @@ func (s *seedSpillStore) combine(runs []seedSpillRun) (seedSpillRun, error) {
 //
 // Without a spill, it sorts/iterates the collection array. With a spill, it writes
 // the tail, drops that array, compacts to at most 16 runs, and streams their merge.
-// The chaining caller separately collects one complete genome's anchors; this
-// method does not reconstruct a whole query in memory.
+// The chaining caller buffers complete genomes in bounded batches (or uses the
+// one-genome fallback); this method never reconstructs a whole query in memory.
 // Successful delivery must match count, detecting missing whole records that a
 // normal EOF cannot reveal. Files and the slot stay owned by the store until close.
 func (s *seedSpillStore) consume(emit func(seedAnchor) error) (err error) {
@@ -356,7 +624,8 @@ func (s *seedSpillStore) consume(emit func(seedAnchor) error) (err error) {
 		}
 	}()
 	if !s.spilled {
-		slices.SortStableFunc(s.anchors, compareSeedAnchorGenome)
+		s.sortAnchors()
+		s.sortScratch = nil
 		for _, a := range s.anchors {
 			if err := emit(a); err != nil {
 				return err
@@ -369,6 +638,7 @@ func (s *seedSpillStore) consume(emit func(seedAnchor) error) (err error) {
 	}
 	// The anchor array is no longer needed while reading/merging spilled runs.
 	s.anchors = nil
+	s.sortScratch = nil
 	// Collection can leave mixed levels. Combine chronological prefixes until
 	// the final merge can open every remaining input within the 16-reader limit.
 	for len(s.runs) > seedSpillMergeFanIn {
@@ -394,7 +664,9 @@ func (s *seedSpillStore) close() error {
 	}
 	s.closed = true
 	s.anchors = nil
+	s.sortScratch = nil
 	s.writer = nil
+	s.onFirstSpill = nil
 	clear(s.readers)
 	s.readers = nil
 	clear(s.runs)

@@ -29,15 +29,22 @@ Tips:
      This limit applies only to these output fields and is not a total process memory limit.
   4. Queries with very many seed matches in large indexes can run out of memory
      during seed collection. Reduce -J/--max-query-conc to lower the memory used
-     by concurrent queries. --max-seed-memory enables experimental seed spilling
+     by concurrent queries. --max-seed-memory enables seed spilling
      (disabled by default) to limit anchor collection buffers.
      The budget is divided among up to -J concurrent collection slots. Decoded seed data
      are delivered in small batches; anchors spill as sorted runs before a buffer growth
-     would exceed its query share. Runs are merged by genome for the existing chaining.
+     would exceed its query share. Each spill writes the entire current anchor buffer,
+     then reuses it for further collection. If any spill occurred, the final in-memory
+     batch is also written to disk after collection, and the collection arrays are released.
+     All anchors are then read from disk and merged into complete-genome batches for parallel chaining.
+     Queries that never spill use in-memory anchors and create no temporary seed files.
+     Tiny shares and single-thread searches chain one genome at a time.
      Final Top-N selection, including cutoff ties, still uses chaining scores.
      Files use the system temporary directory (TMPDIR) and are removed after chaining.
-     This budget excludes one genome's complete anchor array, chaining scratch,
-     fixed I/O buffers, candidate metadata, loaded index data, and alignment memory.
+     The budget covers producer/collection buffers, radix workspace, and normal chaining
+     batches. It excludes a single oversized genome or the serial fallback's complete
+     anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
+     loaded index data, and alignment memory.
      It is not a total RSS limit.
 
 Taxonomic operations:
@@ -151,10 +158,10 @@ Flags:
   -J, --max-query-conc int               ► Maximum number of concurrent queries. Bigger values do not
                                          improve the batch searching speed and consume much memory.
                                          Reduce this value when memory is limited. (default 8)
-      --max-seed-memory string           ► Experimental anchor collection buffer budget shared across
-                                         up to -J query slots (K/M/G/T suffixes; 0 disables spilling).
-                                         Uses TMPDIR for temporary files. Not a total memory limit. See
-                                         Tips in --help for details. (default "0")
+      --max-seed-memory string           ► Anchor collection buffer budget shared across up to -J
+                                         query slots (K/M/G/T suffixes; 0 disables spilling). Uses
+                                         TMPDIR for temporary files. Not a total memory limit. See Tips
+                                         in --help for details. (default "0")
   -Q, --min-qcov-per-genome float        ► Minimum query coverage (percentage) per genome.
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP.
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
