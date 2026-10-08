@@ -279,7 +279,6 @@ func (t *Tree) InsertBatch(entries []BatchEntry) {
 	if len(entries) == 0 {
 		return
 	}
-	K := t.k
 
 	// slowest:
 	// sort.Slice(entries, func(i, j int) bool {
@@ -300,6 +299,17 @@ func (t *Tree) InsertBatch(entries []BatchEntry) {
 	// sorts.Quicksort(BatchEntries(entries))
 	//
 	sorts.ByUint64(BatchEntries(entries))
+	t.InsertSortedBatch(entries)
+}
+
+// InsertSortedBatch builds an empty tree from entries already sorted by Key.
+// It preserves InsertBatch's duplicate-value order without modifying entries,
+// so concurrent callers can build private trees from one shared sorted slice.
+func (t *Tree) InsertSortedBatch(entries []BatchEntry) {
+	if len(entries) == 0 {
+		return
+	}
+	K := t.k
 
 	// Path stack: each entry is a node on the current rightmost path from
 	// root to the most recently inserted leaf. depth[i] is the cumulative

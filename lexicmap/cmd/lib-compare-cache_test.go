@@ -132,7 +132,7 @@ func TestCompareCacheLRUOrder(t *testing.T) {
 }
 
 // compareTestIndex uses the CLI's alignment settings without reading an index.
-func compareTestIndex(t *testing.T) *Index {
+func compareTestIndex(t testing.TB) *Index {
 	t.Helper()
 	idx, err := NewGenomeComparator("", &IndexSearchingOptions{NoIndex: true, ExtendLength2: 50, MaxEvalue: 1e-15})
 	if err != nil {

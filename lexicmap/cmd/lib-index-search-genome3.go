@@ -371,6 +371,8 @@ func alignQueryFragToSubjectSampled(
 	minQcov float64,
 	idx *Index,
 	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
+	queryIndexes *queryFragmentIndexes, // nil skips entry reuse in genome compare
+	fragmentIndex int,
 ) (int, int, int, float64, float64, bool) {
 	// Since we only use forward strand query k-mers and subject is a single concatenated
 	// sequence (forward + RC), we only need one set of anchors for unified chaining.
@@ -451,7 +453,7 @@ func alignQueryFragToSubjectSampled(
 	// Pre-index qfrag once for all chains.
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	defer idx.poolSeqComparator.Put(cpr)
-	if err := cpr.Index(qfrag); err != nil {
+	if err := queryIndexes.index(cpr, fragmentIndex, qfrag); err != nil {
 		return 0, 0, 0, 0, 0, false
 	}
 	defer cpr.RecycleIndex()
@@ -718,6 +720,8 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	for _, id := range toDelete {
 		delete(*genomeIds, id)
 	}
+	queryIndexes := newQueryFragmentIndexes(idx, len(*qfrags), len(*genomeIds))
+	defer queryIndexes.close()
 
 	// -----------------------------------------------------------
 	// process bar
@@ -909,6 +913,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 					chainer, algn, K, extLen, extLen2,
 					minPIdent, minQcovHSP, idx,
 					&fScoreAndEvalue,
+					queryIndexes, i,
 				)
 				if !ok {
 					// fmt.Printf("fail to align fragment %d: %s\n", i+1, qfrag)
@@ -1138,6 +1143,7 @@ func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *prep
 			chainer, algn, K, extLen, extLen2,
 			minPIdent, minQcovHSP, idx,
 			&fScoreAndEvalue,
+			nil, 0,
 		)
 		if !ok {
 			continue

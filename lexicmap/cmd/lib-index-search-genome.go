@@ -724,6 +724,8 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	for _, id := range toDelete {
 		delete(*genomeIds, id)
 	}
+	queryIndexes := newQueryFragmentIndexes(idx, len(*qfrags), len(*genomeIds))
+	defer queryIndexes.close()
 
 	// -----------------------------------------------------------
 	// process bar
@@ -895,7 +897,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 				// a) pseudo alignment
 				if !hasIndexedIA || ia != indexedIA {
 					cpr.RecycleIndex()
-					err = cpr.Index(a)
+					err = queryIndexes.index(cpr, int(ia), a)
 					if err != nil {
 						checkError(fmt.Errorf("fail to index query fragment: %s", err))
 					}

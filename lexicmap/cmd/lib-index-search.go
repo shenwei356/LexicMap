@@ -35,6 +35,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -204,6 +205,10 @@ type Index struct {
 	seqCompareOption  *SeqComparatorOptions
 	poolSeqComparator *sync.Pool
 	poolChainers2     *sync.Pool
+
+	// fragmentIndexBytes bounds sorted genome-search fragment entries across
+	// concurrent queries. Subject data and private tree/alignment scratch are extra.
+	fragmentIndexBytes atomic.Int64
 
 	alignmentPayloadBudget *alignmentPayloadBudget
 	// seedMemoryBudget is shared by Index.Search calls on this index. Nil selects

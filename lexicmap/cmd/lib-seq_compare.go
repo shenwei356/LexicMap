@@ -106,17 +106,27 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 
 // Index initializes the SeqComparator with the query sequence.
 func (cpr *SeqComparator) Index(s []byte) error {
+	entries, err := cpr.collectIndexEntries(s)
+	if err != nil {
+		return err
+	}
+	t := rtree.NewTree(cpr.options.K)
+	t.InsertBatch(entries)
+	cpr.tree = t
+	return nil
+}
+
+// collectIndexEntries preserves the filtering, positions, and strand flags
+// used by Index while allowing genome search to prepare entries once.
+func (cpr *SeqComparator) collectIndexEntries(s []byte) ([]rtree.BatchEntry, error) {
 	k := cpr.options.K
 	k8 := uint8(k)
 
 	// k-mer iterator
 	iter, err := iterator.NewKmerIterator(s, int(k))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// a reusable Radix tree for searching k-mers sharing at least n-base prefixes.
-	t := rtree.NewTree(k)
 
 	var kmer, kmerRC uint64
 	var ok bool
@@ -144,11 +154,15 @@ func (cpr *SeqComparator) Index(s []byte) error {
 		)
 	}
 
-	t.InsertBatch(entries)
 	cpr.entries = entries
-	cpr.tree = t
+	return entries, nil
+}
 
-	return nil
+// indexSortedEntries builds private tree scratch from immutable cached entries.
+func (cpr *SeqComparator) indexSortedEntries(entries []rtree.BatchEntry) {
+	t := rtree.NewTree(cpr.options.K)
+	t.InsertSortedBatch(entries)
+	cpr.tree = t
 }
 
 // SeqComparatorResult contains the details of a seq comparison result.
