@@ -165,8 +165,8 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	return wtr.N, nil
 }
 
-// seedPositionBufferSize bounds the scratch used to encode posting lists.
-const seedPositionBufferSize = 64 << 10
+// seedPositionBufferSize bounds the shared metadata and posting encoding scratch.
+const seedPositionBufferSize = 256 << 10
 
 // Writer is used for k-mer-value data for multiple mask
 type Writer struct {
@@ -174,11 +174,7 @@ type Writer struct {
 	ChunkIndex int   // index of the first mask in this chunk
 	ChunkSize  int   // the number of masks in this chunk
 
-	// bufers
-	bufVar []byte // needs at most 8+8=16
-	buf    []byte // needs at most 1+16+1+16=34
-
-	bufVals []byte // fixed-size posting scratch, reused across k-mer pairs
+	buf []byte // shared scratch for record metadata, postings and index entries
 
 	// for kv data
 	N  int // the number of bytes.
@@ -270,10 +266,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 		}},
 		getAnchor: AnchorExtracter(k, maskPrefix, anchorPrefix),
 
-		bufVar: make([]byte, 16),
-		buf:    make([]byte, 36),
-
-		bufVals: make([]byte, seedPositionBufferSize),
+		buf: make([]byte, seedPositionBufferSize),
 	}
 
 	// ---------------------------------------------------------------------------
@@ -354,8 +347,7 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	var offset uint64
 	var ctrlByteKey, ctrlByteVal byte
 	var nBytesKey, nBytesVal, n int
-	bufVar := wtr.bufVar // needs at most 8+8=16
-	buf := wtr.buf       // needs at most 1+16+1+16=34
+	buf := wtr.buf // encode metadata directly before its posting lists
 	var even bool
 	var i, nm1 int
 	var j int
@@ -455,31 +447,22 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		// 2 k-mers and numbers of values
 
 		// only save key2 - key1, which is small so it could be saved in few bytes
-		ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, key-preKey)
+		ctrlByteKey, nBytesKey = util.PutUint64s(buf[1:], preKey-offset, key-preKey)
 		if even && i == nm1 {
 			// fmt.Printf("write last two kmers: %s, %s\n",
 			// 	lexichash.MustDecode(preKey, k), lexichash.MustDecode(key, k))
 			ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask
 		}
 		buf[0] = ctrlByteKey
-		copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
 		n = nBytesKey + 1
 
 		// save lengths of values
-		ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), uint64(len(*v)))
+		ctrlByteVal, nBytesVal = util.PutUint64s(buf[n+1:], uint64(len(*preVal)), uint64(len(*v)))
 		buf[n] = ctrlByteVal
-		copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
 		n += nBytesVal + 1
 
-		_, err = w.Write(buf[:n])
-		if err != nil {
-			return err
-		}
-		wtr.N += n
-
-		// values
-
-		n, err = wtr.writeSeedPositions(preVal, v)
+		// Write metadata and positions together when they fit in the scratch.
+		n, err = wtr.writeSeedPositions(n, preVal, v)
 		if err != nil {
 			return err
 		}
@@ -514,28 +497,18 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		// 2 k-mers and numbers of values
 
 		// only save key2 - key1, which is small so it could be saved in few bytes
-		ctrlByteKey, nBytesKey = util.PutUint64s(bufVar, preKey-offset, 0)
+		ctrlByteKey, nBytesKey = util.PutUint64s(buf[1:], preKey-offset, 0)
 		ctrlByteKey |= 1 << 7 // it means this is the last record(s) for this mask.
 		ctrlByteKey |= 1 << 6 // it means this is the last single record
 		buf[0] = ctrlByteKey
-		copy(buf[1:nBytesKey+1], bufVar[:nBytesKey])
 		n = nBytesKey + 1
 
 		// save lengths of values
-		ctrlByteVal, nBytesVal = util.PutUint64s(bufVar, uint64(len(*preVal)), 0)
+		ctrlByteVal, nBytesVal = util.PutUint64s(buf[n+1:], uint64(len(*preVal)), 0)
 		buf[n] = ctrlByteVal
-		copy(buf[n+1:n+nBytesVal+1], bufVar[:nBytesVal])
 		n += nBytesVal + 1
 
-		_, err = w.Write(buf[:n])
-		if err != nil {
-			return err
-		}
-		wtr.N += n
-
-		// values
-
-		n, err = wtr.writeSeedPositions(preVal, nil)
+		n, err = wtr.writeSeedPositions(n, preVal, nil)
 		if err != nil {
 			return err
 		}
@@ -589,13 +562,16 @@ func (wtr *Writer) writeMaskIndex(p2o *[]uint64) error {
 	return nil
 }
 
-func (wtr *Writer) writeSeedPositions(values1, values2 *[]uint64) (int, error) {
+// writeSeedPositions appends one or two posting lists after buf[:headerSize],
+// writing the complete record together or splitting long lists into bounded chunks.
+// The returned byte count includes metadata and any bytes written before an error.
+func (wtr *Writer) writeSeedPositions(headerSize int, values1, values2 *[]uint64) (int, error) {
 	width := 8
 	if wtr.use3BytesForSeedPos {
 		width = 7
 	}
-	buf := wtr.bufVals
-	used, total := 0, 0
+	buf := wtr.buf
+	used, total := headerSize, 0
 	for list := 0; list < 2; list++ {
 		values := values1
 		if list == 1 {

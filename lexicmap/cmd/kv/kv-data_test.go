@@ -21,7 +21,12 @@
 package kv
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -29,6 +34,61 @@ import (
 
 	"github.com/shenwei356/lexichash"
 )
+
+// seedWriteCounter counts writes below a one-byte bufio.Writer, where each record
+// is forwarded directly to the file rather than combined by the I/O buffer.
+type seedWriteCounter struct {
+	writer io.Writer
+	calls  int
+}
+
+func (w *seedWriteCounter) Write(p []byte) (int, error) {
+	w.calls++
+	return w.writer.Write(p)
+}
+
+// TestSeedRecordWriteCalls checks that a small pair or odd tail is written once.
+func TestSeedRecordWriteCalls(t *testing.T) {
+	for _, narrow := range []bool{false, true} {
+		for _, count := range []int{0, 1, 2, 3, 4} {
+			t.Run(fmt.Sprintf("narrow%t/keys%d", narrow, count), func(t *testing.T) {
+				file := filepath.Join(t.TempDir(), "seeds")
+				wtr, err := NewWriter(32, 7, 1, file, 1, 2, narrow)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer wtr.fh.Close()
+				defer wtr.fhi.Close()
+				if err := wtr.w.Flush(); err != nil {
+					t.Fatal(err)
+				}
+				counter := &seedWriteCounter{writer: wtr.fh}
+				wtr.w = bufio.NewWriterSize(counter, 1)
+				data := make(map[uint64]*[]uint64)
+				for i := range count {
+					data[uint64(i)<<58] = &[]uint64{uint64(i)<<30 | 3, 1, 1}
+				}
+				if err := wtr.WriteDataOfAMask(data); err != nil {
+					t.Fatal(err)
+				}
+				if err := wtr.Close(); err != nil {
+					t.Fatal(err)
+				}
+				want := 1 + (count+1)/2 // mask count, then one write per record
+				if counter.calls != want {
+					t.Fatalf("seed writes: got %d, want %d", counter.calls, want)
+				}
+				info, err := os.Stat(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if int64(wtr.N) != info.Size() {
+					t.Fatalf("byte count: got %d, file size %d", wtr.N, info.Size())
+				}
+			})
+		}
+	}
+}
 
 func TestKVData(t *testing.T) {
 	var lenPrefix uint8 = 2 // mask prefix
@@ -362,7 +422,8 @@ func TestKVData(t *testing.T) {
 	}
 }
 
-func TestLargeSeedDataUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T) {
+// TestLargeSeedDataRoundTrip checks all positions in a large single posting list.
+func TestLargeSeedDataRoundTrip(t *testing.T) {
 	for _, useThreeBytes := range []bool{false, true} {
 		name := "eight-byte positions"
 		if useThreeBytes {
@@ -381,8 +442,8 @@ func TestLargeSeedDataUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(wtr.bufVals) != 64<<10 {
-				t.Fatalf("writer scratch: got %d bytes, want %d", len(wtr.bufVals), 64<<10)
+			if len(wtr.buf) != seedPositionBufferSize {
+				t.Fatalf("record scratch: got %d bytes, want %d", len(wtr.buf), seedPositionBufferSize)
 			}
 			if err = wtr.WriteDataOfAMask(data); err != nil {
 				t.Fatal(err)
@@ -422,8 +483,8 @@ func TestSeedPositionBufferPairBoundary(t *testing.T) {
 			width = 7
 		}
 		t.Run(fmt.Sprintf("%d-byte positions", width), func(t *testing.T) {
-			// The first list leaves room for one position; the second forces a refill.
-			first := make([]uint64, seedPositionBufferSize/width-1)
+			// Include metadata and leave room for one position from the second list.
+			first := make([]uint64, seedPositionBufferSize/width-2)
 			for i := range first {
 				first[i] = uint64(i)<<30 | uint64(i)<<2 | uint64(i&3)
 			}
@@ -457,5 +518,124 @@ func TestSeedPositionBufferPairBoundary(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestSeedRecordSmallScratch exercises refills with wide deltas and an empty odd tail.
+func TestSeedRecordSmallScratch(t *testing.T) {
+	first := make([]uint64, 100)
+	for i := range first {
+		first[i] = uint64(99-i)<<30 | uint64(i%7)<<2 | uint64(i&3)
+	}
+	data := map[uint64]*[]uint64{
+		0:                  &first,
+		1 << 63:            &[]uint64{7, 1, 1},
+		math.MaxUint64 - 2: &[]uint64{},
+		math.MaxUint64 - 1: &[]uint64{9, 2, 0},
+		math.MaxUint64:     &[]uint64{},
+	}
+	for _, narrow := range []bool{false, true} {
+		for _, size := range []int{34, 35, 64} {
+			t.Run(fmt.Sprintf("narrow%t/scratch%d", narrow, size), func(t *testing.T) {
+				file := filepath.Join(t.TempDir(), "seeds")
+				wtr, err := NewWriter(32, 7, 1, file, 1, 2, narrow)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer wtr.fh.Close()
+				defer wtr.fhi.Close()
+				wtr.buf = make([]byte, size)
+				if err := wtr.WriteDataOfAMask(data); err != nil {
+					t.Fatal(err)
+				}
+				if err := wtr.Close(); err != nil {
+					t.Fatal(err)
+				}
+				rdr, err := NewReader(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer rdr.Close()
+				got, err := rdr.ReadDataOfAMaskAsMap()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer RecycleKmerData(got)
+				if len(*got) != len(data) {
+					t.Fatalf("key count: got %d, want %d", len(*got), len(data))
+				}
+				for key, want := range data {
+					values, ok := (*got)[key]
+					if !ok || !slices.Equal(*values, *want) {
+						t.Fatalf("posting list for k-mer %d differs after refill", key)
+					}
+				}
+			})
+		}
+	}
+}
+
+// seedFailWriter returns a partial write and the supplied error at a byte limit.
+type seedFailWriter struct {
+	bytes.Buffer
+	limit int
+	err   error
+}
+
+func (w *seedFailWriter) Write(p []byte) (int, error) {
+	if w.limit >= 0 && len(p) > w.limit-w.Len() {
+		n, _ := w.Buffer.Write(p[:w.limit-w.Len()])
+		return n, w.err
+	}
+	return w.Buffer.Write(p)
+}
+
+// TestSeedRecordWriteError checks metadata preservation, partial counts and sticky errors.
+func TestSeedRecordWriteError(t *testing.T) {
+	for _, narrow := range []bool{false, true} {
+		width := 8
+		if narrow {
+			width = 7
+		}
+		header := []byte{0x80, 0x08, 0xaa}
+		first, second := make([]uint64, 12), []uint64{math.MaxUint64, 7, 1, 1}
+		for i := range first {
+			first[i] = uint64(12-i)<<30 | uint64(i)<<2 | uint64(i&3)
+		}
+		want := bytes.Clone(header)
+		var encoded [8]byte
+		for _, values := range [][]uint64{first, second} {
+			for _, value := range values {
+				be.PutUint64(encoded[:], value)
+				want = append(want, encoded[8-width:]...)
+			}
+		}
+		for _, size := range []int{9, 15, 64} {
+			for _, limit := range []int{-1, 0, 5, len(want) - 3} {
+				t.Run(fmt.Sprintf("narrow%t/scratch%d/limit%d", narrow, size, limit), func(t *testing.T) {
+					injected := errors.New("injected write error")
+					output := &seedFailWriter{limit: limit, err: injected}
+					wtr := &Writer{buf: make([]byte, size), w: bufio.NewWriterSize(output, 1), use3BytesForSeedPos: narrow}
+					copy(wtr.buf, header)
+					n, err := wtr.writeSeedPositions(len(header), &first, &second)
+					expected := want
+					if limit >= 0 {
+						expected = want[:limit]
+						if !errors.Is(err, injected) {
+							t.Fatalf("write error: got %v, want %v", err, injected)
+						}
+						// bufio.Writer retains the error and must not emit more data.
+						if n, err := wtr.writeSeedPositions(len(header), &first, &second); n != 0 || !errors.Is(err, injected) {
+							t.Fatalf("sticky error: got (%d, %v)", n, err)
+						}
+					} else if err != nil {
+						t.Fatal(err)
+					}
+					if n != len(expected) || !bytes.Equal(output.Bytes(), expected) {
+						t.Fatalf("encoded prefix or byte count differs: got %d, want %d", n, len(expected))
+					}
+				})
+			}
+		}
 	}
 }

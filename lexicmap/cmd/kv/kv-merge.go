@@ -306,7 +306,7 @@ func (m *Merger) WriteMask() error {
 		if hasSecond {
 			delta2 = key2 - key1
 		}
-		ctrl, n := util.PutUint64s(wtr.bufVar, key1-offset, delta2)
+		ctrl, n := util.PutUint64s(wtr.buf[1:], key1-offset, delta2)
 		if len(m.heap) == 0 {
 			ctrl |= 128
 		}
@@ -314,11 +314,9 @@ func (m *Merger) WriteMask() error {
 			ctrl |= 64
 		}
 		wtr.buf[0] = ctrl
-		copy(wtr.buf[1:n+1], wtr.bufVar[:n])
 		used := n + 1
-		ctrl, n = util.PutUint64s(wtr.bufVar, uint64(len(m.values[0])/m.width), uint64(len(m.values[1])/m.width))
+		ctrl, n = util.PutUint64s(wtr.buf[used+1:], uint64(len(m.values[0])/m.width), uint64(len(m.values[1])/m.width))
 		wtr.buf[used] = ctrl
-		copy(wtr.buf[used+1:used+n+1], wtr.bufVar[:n])
 		used += n + 1
 		if _, err = wtr.w.Write(wtr.buf[:used]); err != nil {
 			return err
