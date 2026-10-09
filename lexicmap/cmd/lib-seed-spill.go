@@ -502,7 +502,7 @@ func (s *seedSpillStore) writeRun(level int, order uint64, write func(*bufio.Wri
 		return seedSpillRun{}, err
 	}
 	if s.writer == nil {
-		s.writer = bufio.NewWriterSize(nil, 64<<10)
+		s.writer = bufio.NewWriterSize(nil, IOBufferSize)
 	}
 	w := s.writer
 	w.Reset(f)
@@ -729,7 +729,7 @@ func (s *seedSpillStore) mergeRuns(runs []seedSpillRun, emit func(seedAnchor) er
 		}
 		files = append(files, f)
 		if i == len(s.readers) {
-			s.readers = append(s.readers, bufio.NewReaderSize(nil, 32<<10))
+			s.readers = append(s.readers, bufio.NewReaderSize(nil, IOBufferSize))
 		}
 		r := s.readers[i]
 		r.Reset(f)

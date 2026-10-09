@@ -251,7 +251,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	if err != nil {
 		return err
 	}
-	bw := bufio.NewWriter(fhw)
+	bw := bufio.NewWriterSize(fhw, IOBufferSize)
 
 	// ---------------------------------------------------------------
 	// genomes.map file for mapping index to genome id
@@ -265,7 +265,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 
 	buf := make([]byte, 8)
 	var n, lenID int
@@ -503,7 +503,7 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 	checkError(err)
 	defer fh.Close()
 
-	br := bufio.NewReader(fh)
+	br := bufio.NewReaderSize(fh, IOBufferSize)
 
 	buf := make([]byte, 1<<16) // 64K
 	var n int

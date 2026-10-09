@@ -88,7 +88,7 @@ Tips:
 		if err != nil {
 			checkError(fmt.Errorf("%s", err))
 		}
-		bw := bufio.NewWriter(fhGI)
+		bw := bufio.NewWriterSize(fhGI, IOBufferSize)
 
 		// ----------------------------------
 
@@ -100,7 +100,7 @@ Tips:
 		}
 		defer fh.Close()
 
-		r := bufio.NewReader(fh)
+		r := bufio.NewReaderSize(fh, IOBufferSize)
 
 		buf := make([]byte, 8)
 		buf2 := make([]byte, 8)

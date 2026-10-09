@@ -203,7 +203,7 @@ Attention:
 		var config1 uint8
 		preChunk = -1
 
-		r := bufio.NewReaderSize(nil, 4096)
+		r := bufio.NewReaderSize(nil, 4096) // 4KB buffer, can't be too large
 
 		for _, mask = range masks {
 			startTime = time.Now()

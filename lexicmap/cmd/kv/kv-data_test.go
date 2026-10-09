@@ -21,8 +21,10 @@
 package kv
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/shenwei356/lexichash"
@@ -379,8 +381,8 @@ func TestLargeSeedDataUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(wtr.bufVals) != 32<<10 {
-				t.Fatalf("writer scratch: got %d bytes, want %d", len(wtr.bufVals), 32<<10)
+			if len(wtr.bufVals) != 64<<10 {
+				t.Fatalf("writer scratch: got %d bytes, want %d", len(wtr.bufVals), 64<<10)
 			}
 			if err = wtr.WriteDataOfAMask(data); err != nil {
 				t.Fatal(err)
@@ -402,6 +404,57 @@ func TestLargeSeedDataUsesBoundedWriterScratchAndExactReaderGrowth(t *testing.T)
 			seedData := *got[7]
 			if len(seedData) != len(values)+1 || seedData[0] != 999 || seedData[len(seedData)-1] != values[len(values)-1] {
 				t.Fatalf("unexpected merged seed data: len=%d first=%d last=%d", len(seedData), seedData[0], seedData[len(seedData)-1])
+			}
+			for i, value := range values {
+				if seedData[i+1] != value {
+					t.Fatalf("seed position %d: got %d, want %d", i, seedData[i+1], value)
+				}
+			}
+		})
+	}
+}
+
+// TestSeedPositionBufferPairBoundary covers a buffer refill in the second posting list.
+func TestSeedPositionBufferPairBoundary(t *testing.T) {
+	for _, useThreeBytes := range []bool{false, true} {
+		width := 8
+		if useThreeBytes {
+			width = 7
+		}
+		t.Run(fmt.Sprintf("%d-byte positions", width), func(t *testing.T) {
+			// The first list leaves room for one position; the second forces a refill.
+			first := make([]uint64, seedPositionBufferSize/width-1)
+			for i := range first {
+				first[i] = uint64(i)<<30 | uint64(i)<<2 | uint64(i&3)
+			}
+			second := []uint64{uint64(25_000)<<30 | 401, uint64(25_001)<<30 | 802}
+			data := map[uint64]*[]uint64{7: &first, 8: &second}
+			file := filepath.Join(t.TempDir(), "boundary.kv")
+			wtr, err := NewWriter(5, 0, 1, file, 1, 1, useThreeBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := wtr.WriteDataOfAMask(data); err != nil {
+				_ = wtr.Close()
+				t.Fatal(err)
+			}
+			if err := wtr.Close(); err != nil {
+				t.Fatal(err)
+			}
+			rdr, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rdr.Close()
+			got, err := rdr.ReadDataOfAMaskAsMap()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for key, want := range data {
+				values, ok := (*got)[key]
+				if !ok || !slices.Equal(*values, *want) {
+					t.Fatalf("posting list for k-mer %d differs after buffer refill", key)
+				}
 			}
 		})
 	}

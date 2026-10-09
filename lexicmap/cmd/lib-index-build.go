@@ -644,7 +644,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		if err != nil {
 			checkError(fmt.Errorf("%s", err))
 		}
-		bw := bufio.NewWriter(fhGI)
+		bw := bufio.NewWriterSize(fhGI, IOBufferSize)
 
 		var batchIDAndRefID, batchIDAndRefIDShift, refIdx uint64 // genome number
 		buf := make([]byte, 8)
@@ -1742,7 +1742,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	if err != nil {
 		checkError(fmt.Errorf("%s", err))
 	}
-	bw := bufio.NewWriter(fhGC)
+	bw := bufio.NewWriterSize(fhGC, IOBufferSize)
 	buf := make([]byte, 8)
 	var batchIDAndRefID uint64
 	for _, li := range mGenomeChunks {
@@ -1931,7 +1931,7 @@ func readGenomeMapIdx2Name(file string) (map[uint64][]byte, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	m := make(map[uint64][]byte, 1024)
 
 	buf := make([]byte, 8)
@@ -1982,7 +1982,7 @@ func readGenomeMapName2Idx(file string) (map[string]*[]uint64, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	m := make(map[string]*[]uint64, 1024)
 
 	buf := make([]byte, 8)
@@ -2040,7 +2040,7 @@ func readGenomeList(file string) ([]string, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	m := make([]string, 0, 1024)
 
 	buf := make([]byte, 8)
@@ -2092,7 +2092,7 @@ func readGenomeChunksMapBig2Small(file string) (map[uint64]map[uint64]struct{}, 
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	data := make(map[uint64]map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)
@@ -2158,7 +2158,7 @@ func readGenomeChunksLists(file string) ([][]uint64, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 
 	data := make([][]uint64, 0, 1024)
 
@@ -2215,7 +2215,7 @@ func readGenomeChunksMap(file string) (map[uint64]struct{}, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	data := make(map[uint64]struct{}, 1024)
 
 	buf := make([]byte, 8)

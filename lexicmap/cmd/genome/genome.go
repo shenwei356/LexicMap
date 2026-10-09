@@ -407,7 +407,7 @@ func NewReader(file string) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	bfh := bufio.NewReader(fh)
+	bfh := bufio.NewReaderSize(fh, 64<<10) // 64KB buffer
 
 	r.buf = resizeByteSlice(r.buf, 24)
 	buf := r.buf
@@ -476,7 +476,7 @@ func NewReader(file string) (*Reader, error) {
 		return nil, err
 	}
 
-	r.bufReader = bufio.NewReaderSize(nil, 4096)
+	r.bufReader = bufio.NewReaderSize(nil, 4096) // 4KB buffer, can't be too large
 
 	return r, nil
 }

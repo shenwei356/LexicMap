@@ -31,8 +31,8 @@ import (
 	gzip "github.com/klauspost/pgzip"
 )
 
-// BufferSize is size of buffer
-var BufferSize = 65536 // os.Getpagesize()
+// IOBufferSize is size of buffer for buffered I/O operations.
+var IOBufferSize = 65536 // os.Getpagesize()
 
 func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteCloser, *os.File, error) {
 	var w *os.File
@@ -60,9 +60,9 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("fail to write %s: %s", file, err)
 		}
-		return bufio.NewWriterSize(gw, BufferSize), gw, w, nil
+		return bufio.NewWriterSize(gw, IOBufferSize), gw, w, nil
 	}
-	return bufio.NewWriterSize(w, BufferSize), nil, w, nil
+	return bufio.NewWriterSize(w, IOBufferSize), nil, w, nil
 }
 
 func inStream(file string) (*bufio.Reader, *os.File, bool, error) {
@@ -81,7 +81,7 @@ func inStream(file string) (*bufio.Reader, *os.File, bool, error) {
 		}
 	}
 
-	br := bufio.NewReaderSize(r, BufferSize)
+	br := bufio.NewReaderSize(r, IOBufferSize)
 
 	if gzipped, err = isGzip(br); err != nil {
 		return nil, nil, gzipped, fmt.Errorf("fail to check is file (%s) gzipped: %s", file, err)
@@ -91,7 +91,7 @@ func inStream(file string) (*bufio.Reader, *os.File, bool, error) {
 		if err != nil {
 			return nil, r, gzipped, fmt.Errorf("fail to create gzip reader for %s: %s", file, err)
 		}
-		br = bufio.NewReaderSize(gr, BufferSize)
+		br = bufio.NewReaderSize(gr, IOBufferSize)
 	}
 	return br, r, gzipped, nil
 }

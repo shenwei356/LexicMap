@@ -36,6 +36,9 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 )
 
+// IOBufferSize is size of buffer for buffered I/O operations.
+var IOBufferSize = 65536 // os.Getpagesize()
+
 // Magic number for checking file format
 var Magic = [8]byte{'.', 'k', 'v', '-', 'd', 'a', 't', 'a'}
 
@@ -162,6 +165,9 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	return wtr.N, nil
 }
 
+// seedPositionBufferSize bounds the scratch used to encode posting lists.
+const seedPositionBufferSize = 64 << 10
+
 // Writer is used for k-mer-value data for multiple mask
 type Writer struct {
 	K          uint8 // kmer size
@@ -172,7 +178,7 @@ type Writer struct {
 	bufVar []byte // needs at most 8+8=16
 	buf    []byte // needs at most 1+16+1+16=34
 
-	bufVals []byte // bounded scratch for encoded seed data
+	bufVals []byte // fixed-size posting scratch, reused across k-mer pairs
 
 	// for kv data
 	N  int // the number of bytes.
@@ -237,12 +243,12 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	if err != nil {
 		return nil, err
 	}
-	w := bufio.NewWriter(fh)
+	w := bufio.NewWriterSize(fh, IOBufferSize)
 	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
 		return nil, err
 	}
-	wi := bufio.NewWriter(fhi)
+	wi := bufio.NewWriterSize(fhi, IOBufferSize)
 
 	wtr := &Writer{
 		K:          k,
@@ -267,7 +273,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 		bufVar: make([]byte, 16),
 		buf:    make([]byte, 36),
 
-		bufVals: make([]byte, 32<<10),
+		bufVals: make([]byte, seedPositionBufferSize),
 	}
 
 	// ---------------------------------------------------------------------------
@@ -658,7 +664,7 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 		return 0, -1, nil, 0, 0, 0, err
 	}
 	defer fh.Close()
-	r := bufio.NewReaderSize(fh, 16<<10)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	// r := poolBufReader.Get().(*bufio.Reader)
 	// r.Reset(fh)
 	// defer func() {
@@ -805,7 +811,7 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 	}
 	defer fh.Close()
 
-	r := bufio.NewReaderSize(fh, 16<<10)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 	buf8 := make([]byte, 8)
 	buf16 := make([]byte, 16)
 
@@ -872,7 +878,8 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 	if err != nil {
 		return 0, -1, 0, 0, 0, err
 	}
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, 4096) // 4KB buffer, can't be too large
+
 	defer fh.Close()
 
 	// ---------------------------------------------
@@ -1026,7 +1033,7 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 	}
 	defer fh.Close()
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 
 	// --------------------------------------------------------------------
 	// header information of kv-data file
@@ -1115,7 +1122,7 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 		return err
 	}
 	defer fhi.Close()
-	wi := bufio.NewWriter(fhi)
+	wi := bufio.NewWriterSize(fhi, IOBufferSize)
 
 	// 8-byte magic number
 	err = binary.Write(wi, be, MagicIdx)

@@ -63,7 +63,7 @@ func NewReader(file string) (*Reader, error) {
 		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 
 	rdr := &Reader{
 		file: file,
@@ -1024,7 +1024,7 @@ func NewIndexReader(file string) (*IndexReader, error) {
 		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
 
-	r := bufio.NewReader(fh)
+	r := bufio.NewReaderSize(fh, IOBufferSize)
 
 	rdr := &IndexReader{
 		fh:   fh,

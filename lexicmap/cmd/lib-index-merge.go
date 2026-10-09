@@ -226,13 +226,13 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		if err != nil {
 			checkError(fmt.Errorf("failed to write genome index mapping file: %s", err))
 		}
-		bw := bufio.NewWriter(fh)
+		bw := bufio.NewWriterSize(fh, IOBufferSize)
 		for _, db := range pathB {
 			fh1, err := os.Open(filepath.Join(db, FileGenomeIndex))
 			if err != nil {
 				checkError(fmt.Errorf("failed to open genome index mapping file: %s", err))
 			}
-			br := bufio.NewReader(fh1)
+			br := bufio.NewReaderSize(fh1, IOBufferSize)
 			_, err = io.Copy(bw, br)
 			if err != nil {
 				checkError(fmt.Errorf("failed to copy genome index mapping data: %s", err))
@@ -260,7 +260,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			if err != nil {
 				checkError(fmt.Errorf("failed to open genome chunk list file: %s", err))
 			}
-			br := bufio.NewReader(fh1)
+			br := bufio.NewReaderSize(fh1, IOBufferSize)
 			_, err = io.Copy(bw, br)
 			if err != nil {
 				checkError(fmt.Errorf("failed to copy genome chunk list data: %s", err))

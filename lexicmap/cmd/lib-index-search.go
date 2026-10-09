@@ -431,7 +431,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 			}
 			defer fh.Close()
 
-			r := bufio.NewReader(fh)
+			r := bufio.NewReaderSize(fh, IOBufferSize)
 
 			buf := make([]byte, 8)
 			var n, lenID int

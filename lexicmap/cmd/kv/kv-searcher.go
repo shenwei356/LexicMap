@@ -151,7 +151,7 @@ func newSearcher(file string, nWorkers int, selectedMasks []bool) (*Searcher, er
 			fh:      fh,
 			buf:     make([]byte, 64),
 			buf2048: make([]uint8, seedPosBatchSize<<3), // 256*8
-			r:       bufio.NewReaderSize(nil, 4096),
+			r:       bufio.NewReaderSize(nil, 4096),     // 4KB buffer, can't be too large
 		}
 	}
 
@@ -1323,8 +1323,3 @@ func (scr *Searcher) Close() error {
 // 	return fmt.Sprintf("batchIdx: %d, genomeIdx: %d, pos: %d, rc: %v",
 // 		int(v>>47), int(v<<17>>47), int(v<<34>>35), v&1 > 0)
 // }
-
-var poolBufReader = &sync.Pool{New: func() interface{} {
-	r := bufio.NewReaderSize(nil, 16384)
-	return r
-}}
