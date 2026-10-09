@@ -1,5 +1,6 @@
 ---
-title: 2sam
+title: lexicmap utils 2sam
+linkTitle: 2sam
 weight: 0.5
 ---
 

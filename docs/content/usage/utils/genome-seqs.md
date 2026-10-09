@@ -1,5 +1,6 @@
 ---
-title: genome-seqs
+title: lexicmap utils genome-seqs
+linkTitle: genome-seqs
 weight: 22
 ---
 

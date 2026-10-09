@@ -1,5 +1,6 @@
 ---
-title: edit-genome-ids
+title: lexicmap utils edit-genome-ids
+linkTitle: edit-genome-ids
 weight: 70
 ---
 

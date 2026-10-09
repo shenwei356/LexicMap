@@ -16,13 +16,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
     - **Faster speed (45% less time) and 30% lower memory by optimizing seed computation and merging**.
-    - Reduce time and memory use during batch merging with a streaming merge of sorted seed chunks.
-    - Avoid repeated k-mer decoding and full-mask resets when filling sketching deserts.
-    - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during
-      the first round of probe capture (k-mer masking)**.
+    - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
+      To keep compatibility, the old algorithm is used for index format (from v3.0 to v3.4).
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation and progress reporting.
@@ -30,29 +28,27 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
 - `lexicmap search`:
-    - **Faster searching speed for batch queries with -n/--top-n-genomes**.
-    - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a big value (such as 1/2 ~ 3/4 of the free available RAM) when queries have very many seed matches in large indexes and risk running out of memory during seed collection. See help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
-    - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
-    - Optimize chaining to reduce memory use and garbage collection overhead.
-    - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
-    - Faster pseudoalignment for long queries.
-    - Fixed a data race bug in extension of pseudoalignment region.
+    - **Faster searching speed, mainly for batch querying with `-n/--top-n-genomes`**.
+        - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
+        - Optimize chaining to reduce memory use and garbage collection overhead.
+        - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
+        - Faster pseudoalignment for long queries.
+    - **Add two flags to limit the memory usage when searching in huge indexes** such as Logan Project,
+      where there are very many seed matches and it can risk running run out of memory during seed collection.
+      See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
+        - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a large value (such as 1/2 to 3/4 of the available free RAM). See help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
+        - **Add `--max-align-result-memory` (default `1G`) to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - **Add `--max-align-result-memory` to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. The default global budget is 1 GiB; use `0` to disable spilling. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`; the number of retained candidates may exceed N.
     - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
     - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
-    - Added new flags `-g/--show-genome-name` `-s/--show-species-name` to add the taxonomic/species name as a prefix to sgenome fied.
-    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to sseqid values.
-    - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to alenHSP field.
+    - Added new flags `-g/--show-genome-name` `-s/--show-species-name` to add the taxonomic/species name as a prefix to `sgenome` fied.
+    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to `sseqid` values.
+    - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to `alenHSP` field.
     - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
-- `lexicmap genome compare`:
-    - Reuse genome sequences, fragments, sampled seeds and subject sketches, or sorted OrthoANI entries, across genome pairs.
-    - Add `--max-genome-cache-memory` (default `1G`, `0` disables reuse) to limit retained prepared genomes. Active uncached comparisons and alignment scratch use additional memory.
-- `lexicmap genome search/compare`:
-    - Speed up OrthoANI fragment-pair counting with dense row blocks using at most 64 MiB of counter scratch per worker. Avoid grouping maps and hash lookups during Top-N sorting while preserving duplicate k-mer counts and tie selection.
+    - Fixed a data race bug in extension of pseudoalignment region.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:

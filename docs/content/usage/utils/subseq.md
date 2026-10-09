@@ -1,5 +1,6 @@
 ---
-title: subseq
+title: lexicmap utils subseq
+linkTitle: subseq
 weight: 25
 ---
 

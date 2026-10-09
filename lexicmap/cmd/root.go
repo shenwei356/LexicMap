@@ -38,9 +38,9 @@ var RootCmd = &cobra.Command{
     Version: v%s
   Documents: https://bioinf.shenwei.me/LexicMap
 Source code: https://github.com/shenwei356/LexicMap
-Please cite: https://doi.org/10.1038/s41587-025-02812-8 Nature Biotechnology (2025)
+Please cite: https://doi.org/10.1038/s41587-025-02812-8
 
-`, VERSION),
+`, VersionWithCommit),
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

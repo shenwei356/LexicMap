@@ -1,5 +1,6 @@
 ---
-title: genome-details
+title: lexicmap utils genome-details
+linkTitle: genome-details
 weight: 21
 ---
 

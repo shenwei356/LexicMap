@@ -49,6 +49,13 @@ var VERSION = "0.10.0"
 // go build -trimpath -o=lexicmap -ldflags="-s -w -X github.com/shenwei356/LexicMap/lexicmap/cmd.COMMIT=$commit" -tags netgo
 var COMMIT = ""
 
+var VersionWithCommit = func() string {
+	if COMMIT == "" {
+		return VERSION
+	}
+	return fmt.Sprintf("%s (%s)", VERSION, COMMIT)
+}()
+
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
@@ -58,11 +65,8 @@ var versionCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		app := "LexicMap"
-		if COMMIT == "" {
-			fmt.Printf("%s v%s\n", app, VERSION)
-		} else {
-			fmt.Printf("%s v%s (%s)\n", app, VERSION, COMMIT)
-		}
+
+		fmt.Printf("%s v%s\n", app, VersionWithCommit)
 
 		if !cliutil.GetFlagBool(cmd, "check-update") {
 			return

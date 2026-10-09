@@ -1,5 +1,6 @@
 ---
-title: index
+title: lexicmap index
+linkTitle: index
 weight: 10
 ---
 
@@ -14,32 +15,6 @@ weight: 10
 ```plain
 $ lexicmap index -h
 Generate an index from FASTA/Q sequences
-
-Input:
- *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
-     in the file names.
-  2. Input plain or gzip/xz/zstd/bzip2/lz4 compressed FASTA/Q files can be given via positional arguments or
-     the flag -X/--infile-list with a list of input files.
-     Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
-  3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
-     sub-directories allowed. A regular expression for matching sequencing files is available via the flag
-     -r/--file-regexp.
-  4. Some non-isolate assemblies might have extremely large genomes (e.g., GCA_000765055.1, >150 mb).
-     The flag -g/--max-genome is used to skip these input files, and the file list would be written to a file
-     (-G/--big-genomes).
-     Changes since v0.5.0: 
-       - Genomes with any single contig larger than the threshold will be skipped as before.
-       - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
-         be split into chunks and alignments from these chunks will be merged in "lexicmap search".
-     You need to increase the value for indexing fungi genomes.
-  5. Maximum genome size: 268,435,456.
-     More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
-     1000-bp intervals of N’s to reduce the sequence scale to index.
-  6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
-  7. Soft-masked sequences are supported with --soft-masking.
-
-  Attention:
-   *1) ► You can rename the sequence filGenerate an index from FASTA/Q sequences
 
 Input:
  *1. Sequences of each reference genome should be saved in separate FASTA/Q files, with reference identifiers
@@ -137,6 +112,9 @@ Important parameters:
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
+                            ► "lexicmap index" currently creates primary seed indexes only. After indexing, run
+                            "lexicmap utils reindex-seeds2 -d <index>" to create adaptive idx15 secondary indexes,
+                            which can reduce seed-matching time.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
                             ► It's only used in merging indexes of multiple genome batches (minimum: 12).
                             Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
@@ -173,7 +151,7 @@ Flags:
                                   genomes larger than the threshold will be split into chunks and
                                   alignments from these chunks will be merged in "lexicmap search". The
                                   value needs to be smaller than the maximum supported genome size:
-                                  268435456. (default 15000000)
+                                  268435456. (default 20000000)
       --max-kmer-freq int         ► If a mask captures the same k-mer at more than N positions of a
                                   genome, only the first N positions will be retained. This option may
                                   reduce search sensitivity, but it's useful when simply checking

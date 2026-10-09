@@ -26,6 +26,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/shenwei356/util/stringutil"
@@ -34,7 +35,8 @@ import (
 
 // logStartupInfo logs the actual command line, software version, optional build
 // commit (using the same format as the version command), project URL, and current
-// working directory. The directory is printed immediately before the invocation.
+// working directory, and local date. The directory is printed immediately before
+// the invocation, and the date immediately after it.
 // Call it after configuring logging and checking whether informational logs are
 // enabled. It does not configure destinations or override the caller's quiet mode.
 // Shell-sensitive and empty argv entries are quoted for copying into a POSIX shell.
@@ -56,11 +58,12 @@ func logStartupInfo() {
 	log.Info()
 	pwd, err := os.Getwd()
 	if err != nil {
-		log.Warningf("CWD: unavailable (%s)", err)
+		log.Warningf(" CWD: unavailable (%s)", err)
 	} else {
-		log.Infof("CWD: %s", pwd)
+		log.Infof(" CWD: %s", pwd)
 	}
-	log.Infof("CMD: %s", strings.Join(invocation, " "))
+	log.Infof(" CMD: %s", strings.Join(invocation, " "))
+	log.Infof("DATE: %s", time.Now().Format("2006-01-02"))
 	log.Info()
 }
 

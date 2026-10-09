@@ -1,5 +1,6 @@
 ---
-title: kmers
+title: lexicmap utils kmers
+linkTitle: kmers
 weight: 10
 ---
 

@@ -273,7 +273,7 @@ We use a small dataset for demonstration.
 
         lexicmap index -I refs/ -O demo.lmi
 
-    It would take about 5 seconds and 1.5 GB RAM in a 16-CPU PC.
+    It would take about 2 seconds and 1.5 GB RAM in a 16-CPU PC.
 
     Optionally, we can also use **a file list** as the input.
 
@@ -291,83 +291,89 @@ We use a small dataset for demonstration.
     #    https://github.com/shenwei356/memusg/
 
     $ memusg -t -s "lexicmap index -I refs/ -O demo.lmi --batch-size 5"
-    10:02:25.535 [INFO] LexicMap v0.9.0
-    10:02:25.535 [INFO]   https://github.com/shenwei356/LexicMap
-    10:02:25.535 [INFO] 
-    10:02:25.535 [INFO] checking input files ...
-    10:02:25.535 [INFO]   scanning files from directory: refs/
-    10:02:25.536 [INFO]   15 input file(s) given
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] --------------------- [ main parameters ] ---------------------
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] input and output:
-    10:02:25.536 [INFO]   input directory: refs/
-    10:02:25.536 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    10:02:25.536 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
-    10:02:25.536 [INFO]     *regular expressions for filtering out sequences: []
-    10:02:25.536 [INFO]   min sequence length: 31
-    10:02:25.536 [INFO]   max genome size: 15000000
-    10:02:25.536 [INFO]   output directory: demo.lmi
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] mask generation:
-    10:02:25.536 [INFO]   k-mer size: 31
-    10:02:25.536 [INFO]   number of masks: 20000
-    10:02:25.536 [INFO]   rand seed: 1
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] seed data:
-    10:02:25.536 [INFO]   maximum sketching desert length: 100
-    10:02:25.536 [INFO]   distance of k-mers to fill deserts: 50
-    10:02:25.536 [INFO]   seeds data chunks: 16
-    10:02:25.536 [INFO]   seeds data indexing partitions: 4096
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] general:
-    10:02:25.536 [INFO]   genome batch size: 5
-    10:02:25.536 [INFO]   threads: 16
-    10:02:25.536 [INFO]   batch merge threads: 8
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] 
-    10:02:25.536 [INFO] --------------------- [ generating masks ] ---------------------
-    10:02:25.542 [INFO] 
-    10:02:25.542 [INFO] --------------------- [ building index ] ---------------------
-    10:02:25.701 [INFO] 
-    10:02:25.701 [INFO]   ------------------------[ batch 1/3 ]------------------------
-    10:02:25.701 [INFO]   building index for batch 1 with 5 files...
+    16:22:52.012 [INFO] LexicMap v0.10.0
+    16:22:52.012 [INFO]   https://github.com/shenwei356/LexicMap
+    16:22:52.012 [INFO] 
+    16:22:52.012 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+    16:22:52.012 [INFO]  CMD: lexicmap index -I refs/ -O demo.lmi --batch-size 5
+    16:22:52.012 [INFO] DATE: 2026-10-09
+    16:22:52.012 [INFO] 
+    16:22:52.013 [INFO] checking input files ...
+    16:22:52.013 [INFO]   scanning files from directory: refs/
+    16:22:52.013 [INFO]   15 input file(s) given
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] --------------------- [ main parameters ] ---------------------
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] input and output:
+    16:22:52.013 [INFO]   input directory: refs/
+    16:22:52.013 [INFO]     regular expression of input files: (?i)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    16:22:52.013 [INFO]     *regular expression for extracting reference name from file name: (?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$
+    16:22:52.013 [INFO]     *regular expressions for filtering out sequences: []
+    16:22:52.013 [INFO]   min sequence length: 31
+    16:22:52.013 [INFO]   max genome size: 20000000
+    16:22:52.013 [INFO]   output directory: demo.lmi
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] mask generation:
+    16:22:52.013 [INFO]   k-mer size: 31
+    16:22:52.013 [INFO]   number of masks: 20000
+    16:22:52.013 [INFO]   rand seed: 1
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] seed data:
+    16:22:52.013 [INFO]   maximum sketching desert length: 100
+    16:22:52.013 [INFO]   distance of k-mers to fill deserts: 50
+    16:22:52.013 [INFO]   seeds data chunks: 16
+    16:22:52.013 [INFO]   seeds data indexing partitions: 4096
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] general:
+    16:22:52.013 [INFO]   genome batch size: 5
+    16:22:52.013 [INFO]   threads: 16
+    16:22:52.013 [INFO]   batch merge threads: 8
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] 
+    16:22:52.013 [INFO] --------------------- [ generating masks ] ---------------------
+    16:22:52.017 [INFO] 
+    16:22:52.017 [INFO] --------------------- [ building index ] ---------------------
+    16:22:52.313 [INFO] 
+    16:22:52.313 [INFO]   ------------------------[ batch 1/3 ]------------------------
+    16:22:52.313 [INFO]   building index for batch 1 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    10:02:28.025 [INFO]   writing seeds...
-    10:02:28.109 [INFO]   finished writing seeds in 83.753228ms
-    10:02:28.109 [INFO]   finished building index for batch 1 in: 2.408534515s
-    10:02:28.136 [INFO] 
-    10:02:28.136 [INFO]   ------------------------[ batch 2/3 ]------------------------
-    10:02:28.136 [INFO]   building index for batch 2 with 5 files...
+    16:22:53.162 [INFO]   writing seeds...
+    16:22:53.235 [INFO]   finished writing seeds in 72.926598ms
+    16:22:53.235 [INFO]   finished building index for batch 1 in: 921.70147ms
+    16:22:53.261 [INFO] 
+    16:22:53.262 [INFO]   ------------------------[ batch 2/3 ]------------------------
+    16:22:53.262 [INFO]   building index for batch 2 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    10:02:30.651 [INFO]   writing seeds...
-    10:02:30.731 [INFO]   finished writing seeds in 79.893444ms
-    10:02:30.731 [INFO]   finished building index for batch 2 in: 2.59562701s
-    10:02:30.760 [INFO] 
-    10:02:30.760 [INFO]   ------------------------[ batch 3/3 ]------------------------
-    10:02:30.760 [INFO]   building index for batch 3 with 5 files...
+    16:22:54.174 [INFO]   writing seeds...
+    16:22:54.263 [INFO]   finished writing seeds in 88.10286ms
+    16:22:54.263 [INFO]   finished building index for batch 2 in: 1.001148132s
+    16:22:54.290 [INFO] 
+    16:22:54.290 [INFO]   ------------------------[ batch 3/3 ]------------------------
+    16:22:54.290 [INFO]   building index for batch 3 with 5 files...
     processed files:  5 / 5 [======================================] ETA: 0s. done
-    10:02:33.087 [INFO]   writing seeds...
-    10:02:33.162 [INFO]   finished writing seeds in 75.00336ms
-    10:02:33.162 [INFO]   finished building index for batch 3 in: 2.401368929s
-    10:02:33.217 [INFO] 
-    10:02:33.217 [INFO] merging 3 indexes...
-    10:02:33.217 [INFO]   [round 1]
-    10:02:33.217 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
-    10:02:33.367 [INFO]   [round 1] finished in 150.175526ms
-    10:02:33.367 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
-    10:02:33.382 [INFO] 
-    10:02:33.382 [INFO] finished building LexicMap index from 15 files with 20000 masks in 7.855422805s
-    10:02:33.382 [INFO] LexicMap index saved: demo.lmi
-    10:02:33.382 [INFO] 
-    10:02:33.382 [INFO] elapsed time: 7.855461916s
-    10:02:33.382 [INFO] 
+    16:22:55.158 [INFO]   writing seeds...
+    16:22:55.231 [INFO]   finished writing seeds in 72.762597ms
+    16:22:55.231 [INFO]   finished building index for batch 3 in: 940.67608ms
+    16:22:55.283 [INFO] 
+    16:22:55.283 [INFO] merging 3 indexes...
+    16:22:55.283 [INFO]   [round 1]
+    16:22:55.283 [INFO]     batch 1/1, merging 3 indexes to demo.lmi.tmp/r1_b1 with 8 threads...
+    16:22:55.367 [INFO]   [round 1] finished in 84.472031ms
+    16:22:55.367 [INFO] rename demo.lmi.tmp/r1_b1 to demo.lmi
+    16:22:55.381 [INFO] 
+    16:22:55.381 [INFO] finished building LexicMap index from 15 files with 20000 masks in 3.368742159s
+    16:22:55.381 [INFO] LexicMap index saved: demo.lmi
+    16:22:55.381 [INFO] 
+    16:22:55.381 [INFO] elapsed time: 3.368781691s
+    16:22:55.381 [INFO] 
 
-    elapsed time: 7.981s
-    peak rss: 1.3 GB
-
+    elapsed time: 3.541s
+    peak rss: 1.25 GB
     {{< /expand >}}
 
+From v0.10.0, it's is optional to create adaptive two-level indexes of seeds data.
+It can improves seed-matching performance for batch queries with `lexicmap search`.
+See the [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds2) for more details.
 
 ## Output
 
@@ -505,7 +511,8 @@ Index version information is available in the `info.toml` file of each LexicMap 
 LexicMap search and other utility commands check compatibility via the main version.
 
 |Index version|LexicMap version|Supported LexicMap versions|Date      |Changes                                                                                                                |
-|:-----------:|:--------------:|:-------------------------:|:--------:|:----------------------------------------------------------------------------------------------------------------------|
+|:------------|:---------------|:--------------------------|:---------|:----------------------------------------------------------------------------------------------------------------------|
+|3.5          |0.10.0          |0.6.0 +                    |2026-xx-xx|A small part of seeds are changed after fixing the lexichash computation.                                              |
 |3.4          |0.7.0           |0.6.0 +                    |2025-04-11|Fix filling the seed desert region behind the last seed of a genome.                                                   |
 |3.3          |0.6.0           |0.6.0 +                    |2025-03-25|Reduce index size for batches <= 512. Add the total bases of index to info.toml for computing the Evalue. Denser seeds.|
 |3.1          |0.5.0           |0.4.0 +                    |2024-12-18|Change the default partitions of seed data index.                                                                      |

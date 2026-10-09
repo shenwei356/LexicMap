@@ -1,5 +1,6 @@
 ---
-title: masks
+title: lexicmap utils masks
+linkTitle: masks
 weight: 5
 ---
 

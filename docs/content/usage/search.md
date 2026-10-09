@@ -1,5 +1,6 @@
 ---
-title: search
+title: lexicmap search
+linkTitle: search
 weight: 20
 ---
 

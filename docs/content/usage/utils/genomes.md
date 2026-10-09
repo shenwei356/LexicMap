@@ -1,5 +1,6 @@
 ---
-title: genomes
+title: lexicmap utils genomes
+linkTitle: genomes
 weight: 20
 ---
 

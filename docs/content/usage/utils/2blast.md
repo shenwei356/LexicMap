@@ -1,5 +1,6 @@
 ---
-title: 2blast
+title: lexicmap utils 2blast
+linkTitle: 2blast
 weight: 0
 ---
 

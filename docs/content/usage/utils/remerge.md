@@ -1,5 +1,6 @@
 ---
-title: remerge
+title: lexicmap utils remerge
+linkTitle: remerge
 weight: 60
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: seed-pos
+title: lexicmap utils seed-pos
+linkTitle: seed-pos
 weight: 30
 ---
 

@@ -1,5 +1,6 @@
 ---
-title: merge-search-results
+title: lexicmap utils merge-search-results
+linkTitle: merge-search-results
 weight: 1
 ---
 

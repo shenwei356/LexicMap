@@ -159,12 +159,19 @@ While for the query sequences, we don't convert them.
 
 LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (millions) of genomes.
 
-There are some ways to improve the search speed of `lexicmap search`: 
-http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed
-
-{{< button relref="/usage/search"  >}}Click{{< /button >}}  to read more detail of the usage.
+There are [some ways to improve the search speed](https://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed) of `lexicmap search`.
 
 ## How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index?
 
 LexicMap is under active development, but we are striving to preserve index compatibility as we implement new features and improvements. 
 The change history and compatibility information are available [here](https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog).
+
+## Out of memory during searching
+
+**Queries with very many seed matches in large indexes can run out of memory (200GB) during seed collection**.
+
+- This happens when searching in huge Logan Project indexes, where each sample (treated as a genome in LexicMap) has a large number of short contigs.
+- Searching with long queries, such as plasmids or even bacterial genomes in large indexes (GenBank or [AllTheBacteria](https://allthebacteria.org/)),
+  may consume hundreds of GB of memory.
+
+See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).

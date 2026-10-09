@@ -1,5 +1,6 @@
 ---
-title: reindex-seeds
+title: lexicmap utils reindex-seeds
+linkTitle: reindex-seeds
 weight: 50
 ---
 

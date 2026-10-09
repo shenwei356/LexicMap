@@ -1,23 +1,25 @@
 ---
 title: lexicmap
+linkTitle: lexicmap
 weight: 0
 ---
 
 ```plain
 $ lexicmap -h
 
-   LexicMap: efficient sequence alignment against millions of prokaryotic genomes
+   LexicMap: efficient sequence/genome alignment against millions of prokaryotic genomes
 
-    Version: v0.9.0
+    Version: v0.10.0
   Documents: https://bioinf.shenwei.me/LexicMap
 Source code: https://github.com/shenwei356/LexicMap
-Please cite: https://doi.org/10.1038/s41587-025-02812-8 Nature Biotechnology (2025)
+Please cite: https://doi.org/10.1038/s41587-025-02812-8
 
 Usage:
   lexicmap [command] 
 
 Available Commands:
   autocompletion Generate shell autocompletion scripts
+  genome         Commands for genome searching, prefilter, and comparison
   index          Generate an index from FASTA/Q sequences
   search         Search sequences against an index
   utils          Some utilities
@@ -34,5 +36,4 @@ Flags:
                              (default 16)
 
 Use "lexicmap [command] --help" for more information about a command.
-
 ```

@@ -62,23 +62,6 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - SSD disks are preferred to store the index size, while HDD disks are also fast enough.
     - Seed spilling (`--max-seed-memory`) and large `-a` output payloads (`--max-align-result-memory`) can use temporary files. Set `TMPDIR` to a fast disk with enough free space.
 
-### Limiting seed collection memory
-
-Queries with very many seed matches in large indexes can run out of memory during seed collection. Reduce `-J/--max-query-conc` to lower the memory used by concurrent queries. To limit anchor collection buffers, enable seed spilling with `--max-seed-memory` (disabled by default); no index rebuild is needed:
-
-```sh
-# the value of --max-seed-memory would be 1/2 ~ 3/4 of the free available RAM
-TMPDIR=/path/to/fast/tmp lexicmap search -d db.lmi query.fasta \
-    --max-seed-memory 10G -J 1 -o results.tsv
-```
-
-The budget is divided among up to `-J/--max-query-conc` concurrent collection slots. A query spills its anchors as sorted runs before buffer growth would exceed its share, then merges the runs by genome for chaining. KV data are decoded in small batches. No temporary seed files are created when the query fits in its collection buffer. With multiple queries, a query can spill even when other query slots are idle; use `-J 1` to give a single query the whole budget.
-
-Each decoded batch contains at most 257 `uint64` values encoding reference seed locations (genome identifiers, positions, and strand/reverse flags), together with query indices, the matching prefix/suffix length, and a suffix-match flag. The matched reference k-mer is used during lookup but is not retained in the batch. Query k-mers remain in the query's seed arrays. The batch is consumed before its buffer is reused, and its values are expanded into anchors for collection.
-
-The limit covers producer batches, collection anchor buffers (including both arrays during growth), radix-sort workspace, and normal chaining batches. Complete genomes are grouped into batches for parallel chaining. Tiny budget shares and single-thread searches chain one genome at a time. The complete anchor array for a single oversized genome or this serial fallback, worker chaining scratch, fixed I/O buffers, candidate metadata, loaded index data, and alignment/output memory are outside the budget. A genome with unusually many anchors can still exceed available RAM. This is not a total process memory limit.
-
-Large anchor buffers use stable radix sorting, preserving the order of anchors within each genome. Spilling adds sorting and disk I/O. Choose a disk-backed `TMPDIR`; a tmpfs directory stores temporary files in RAM. Each query uses at most 16 merge readers and one writer. Temporary runs are removed after chaining and on returned errors. Global Top-N selection remains based on chaining scores and retains cutoff ties; alignment, genome-chunk merging, filtering, and final sorting follow the existing path.
 
 ## Algorithm
 
@@ -149,15 +132,16 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 
 {{< tab "Alignment" >}}
 
-|Flag                             |Value       |Function                                                                                                                                                              |Comment|
-|:--------------------------------|:-----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|:------|
-|**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                                                                       |       |
-|**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                                                                          |       |
-|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                                                                              |       |
-|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                                                                                  |       |
-|`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                                                                           |       |
-|`--align-ext-len`                |Default 1000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.|       |
-|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                                                                         |       |
+|Flag                             |Value       |Function                                                                                                                                                                                                                                                                |
+|:--------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                                                                                                                                                                         |
+|**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                                                                                                                                                                            |
+|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                                                                                                                                                                                |
+|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                                                                                                                                                                                    |
+|`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                                                                                                                                                                             |
+|`--align-ext-len`                |Default 1000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.                                                                                                  |
+|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                                                                                                                                                                           |
+|` --max-align-result-memory`     |Default 1G  |Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).|
 
 
 {{< /tab>}}
@@ -170,7 +154,7 @@ LexicMap's searching speed is related to many factors:
 - **The number of similar sequences in the index/database**. More genome hits cost more time, e.g., 16S rRNA gene.
 - **The I/O performance and load**. LexicMap is I/O bound, because seeds matching (sequential reading) and extracting candidate subsequences for alignment (**random access**) require a large number of file readings in parallel.
 - **Similarity between query and subject sequences**. Alignment of diverse sequences is slightly slower than that of highly similar sequences.
-- **The length of query sequence**. Longer queries run with more time.
+- **The length of query sequence**. Longer queries might have more small matches.
 - **CPU frequency and the number of threads**. Faster CPUs and more threads cost less time.
 
 
@@ -178,13 +162,13 @@ Here are some tips to improve the search speed.
 
 - **Storing the index on SSD** (It would be very fast!)
 - **Returning less results**
-    - Bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
+    - Set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
       e.g., `-p 17 -P 19`,
       increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
       Don't worry if you only search highly similar matches or long queries.
-    - Setting `-n/--top-n-genomes` to keep the top N genome matches for a query (0 for all) in chaining phase. 
+    - Set `-n/--top-n-genomes` to keep the top N genome matches for a query (0 for all) in chaining phase. 
       For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
-    - Setting `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
+    - Set `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
       if you only need the most similar matches.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
      including `-q/--min-qcov-per-hsp`, `-Q/--min-qcov-per-genome`, and `-i/--align-min-match-pident`,
@@ -196,11 +180,71 @@ Here are some tips to improve the search speed.
         # Seeds (k-mer-value data) files
         chunks = 48
         ```
-    - Increasing the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
+    - Increase the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
     - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 8), which might help. This will increase the memory.
-- **Loading the entire seed data into memoy** (*If you have many queries and the index is not very big*. It's unnecessary if the index is stored on SSD)
-    - Setting `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
+- **Loading the entire seed data into memoy** (*ONLY if you have many queries and the index is small*. It's unnecessary if the index is stored on SSD)
+    - Set `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
+
+### Trade off speed for memory usage
+
+**Queries with very many seed matches in large indexes can run out of memory (200GB) during seed collection**.
+- This happens when searching in huge Logan Project indexes, where each sample (treated as a genome in LexicMap) has a large number of short contigs.
+- Searching with long queries, such as plasmids or even bacterial genomes in large indexes (GenBank or [AllTheBacteria](https://allthebacteria.org/)),
+  may consume hundreds of GB of memory.
+
+How to:
+
+1. First, please **use `--debug` to check which step did `lexicmap search` failed**.
+   Optionally, **use `--log log.txt` to write log** and [create an issue](https://github.com/shenwei356/LexicMap/issues).
+2. Meanwhile, please **reduce the value of `-J/--max-query-conc`** to lower the memory used by concurrent queries.
+3. **If it failed before the chaining step** (no `finished seed-matching` nor `finished chaining` shown), then it means there are too many matched seeds to be filled in RAM.
+    - Choice 1: You can set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17) to sacrifice some sensitivities.
+      If this does not work, go to choice 2.
+    - Choice 2: Limit seed/anchor collection buffers, enable seed spilling with `--max-seed-memory` (disabled by default):
+
+            # the value of --max-seed-memory could be 1/2 to 3/4 of the available free RAM
+            TMPDIR=/path/to/fast/tmp lexicmap search \
+                -d db.lmi query.fasta -o results.tsv.gz \
+                --max-seed-memory 10G \
+                --max-query-conc 1 
+
+        Notes:
+        - No temporary seed files are created when the query fits in its collection buffer.
+        So you can set a large value for `--max-seed-memory`, such as 1/2 to 3/4 of the available free RAM, just in case.
+        - Choose a disk-backed `TMPDIR`; a tmpfs directory still stores temporary files in RAM. Temporary files are removed after chaining and on returned errors.
+        - The budget is divided among up to `-J/--max-query-conc` concurrent collection slots. With multiple queries, a query can spill even when other query slots are idle; use `-J 1` to give a single query the whole budget.
+        - Global Top-N selection remains based on chaining scores and retains cutoff ties; alignment, genome-chunk merging, filtering, and final sorting follow the existing path.
+        - Because of disk writing and reading with massive data, search speed would be much slower.
+            
+   See the [usage](https://bioinf.shenwei.me/LexicMap/usage/search/) for more details.
+
+4. **If it failed during the alignment step** (`finished chaining` is shown, but not `finished alignment`), **and you used `-a/--all`**,
+   then set the flag `--max-align-result-memory` (default value `1G`).
+   
+   For searches with `-a/--all`, LexicMap retains up to 1 GiB of CIGAR strings, aligned
+   query/subject sequences, and alignment text in memory by default.
+   This limit applies only to these output fields and is not a total process memory limit.
+   On Unix, set `TMPDIR` to choose a temporary directory on a fast disk with sufficient free space.
+   See the [usage](https://bioinf.shenwei.me/LexicMap/usage/search/) for more details.
+   
+        TMPDIR=/path/to/fast/tmp lexicmap search \
+            -d db.lmi query.fasta -o results.tsv.gz \
+            --all --max-align-result-memory 10G \
+            --max-query-conc 1     
+
+5. **If it failed after the chaining step and you did not used `-a/--all`**. Then return less results:
+    - Set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
+      e.g., `-p 17 -P 19`,
+      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
+      Don't worry if you only search highly similar matches or long queries.
+    - Sett `-n/--top-n-genomes` to keep the top `N` genome matches for a query (0 for all) in chaining phase. 
+      For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
+    - Set `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
+      if you only need the most similar matches.
+    
+6. The last choice is rebuilding small indexes each with few input genomes,
+   and [merge results after sequences](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/).
 
 ### Searching with plasmids or other longer queries
 
@@ -219,12 +263,16 @@ The reasons are:
 - Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
   Therefore, a plasmid might be aligned to multiple contigs with small `qcovHSP`.
   
-If you have tens (or more) of plasmids to search, the memory usage would be 100 or 200 GB, as there would be a large number of possible short matches between the query and EACH candidate genome. In this case, it's better to decrease the number of concurrent queries (`-J/--max-query-conc`, default 8). You can also use a smaller value for GC interval (`--gc-interval`, default 64), which forces garbage collection every N queries. See [more factors affecting the memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
-    
+**If you have tens (or more) of plasmids to search, the memory usage would be 100 or 200 GB**, as there would be a large number of possible short matches between the query and EACH candidate genome. In this case, it's better to decrease the number of concurrent queries (`-J/--max-query-conc`, default 8). You can also use a smaller value for GC interval (`--gc-interval`, default 64), which forces garbage collection every N queries.
+- See [more factors affecting the memory usage](#hardware-requirements).
+- See how to [trade off speed for memory usage](#trade-off-speed-for-memory-usage) if it failed due to out of memory.
+
+
+
 ## Steps
 
 
-- For short queries like genes or long reads, returning top N hits.
+- **For short queries like genes or long reads, returning top N hits**.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
           --align-min-match-pident 80 \
@@ -232,7 +280,7 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
           --min-qcov-per-genome 70 \
           --top-n-genomes 10000
 
-- For longer queries like plasmids, returning all hits.
+- **For longer queries like plasmids, returning all hits**.
 
       lexicmap search -d db.lmi query.fasta -o query.fasta.lexicmap.tsv \
           --align-min-match-pident 70 \
@@ -244,43 +292,42 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
 
 {{< expand "Click to show the log of a demo run." "..." >}}
 
-    10:12:13.965 [INFO] LexicMap v0.9.0
-    10:12:13.965 [INFO]   https://github.com/shenwei356/LexicMap
-    10:12:13.965 [INFO] 
-    10:12:13.965 [INFO] checking input files ...
-    10:12:13.965 [INFO]   1 input file given: q.gene.fasta
-    10:12:13.965 [INFO] 
-    10:12:13.965 [INFO] loading index: demo.lmi/
-    10:12:13.965 [INFO]   reading masks...
-    10:12:13.968 [INFO]   reading indexes of seeds (k-mer-value) data...
-    10:12:14.806 [INFO]   creating reader pools for 3 genome batches, each with 16 readers...
-    10:12:14.806 [INFO] index loaded in 841.087872ms
-    10:12:14.806 [INFO] 
-    10:12:14.806 [INFO] searching with 16 threads...
-    10:12:14.806 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
-    10:12:14.816 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): start to search
-    10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished seed-matching (15 genome hits) in 10.652643ms
-    10:12:14.827 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished chaining (15 genome hits) in 349.626µs
-    checked genomes:  15 / 15 [======================================] ETA: 0s. done
-    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished alignment (15 genome hits) in 28.559443ms
-    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished sorting alignment results (15 genome hits) in 13.2µs
-    10:12:14.856 [DEBU] NC_000913.3:4166659-4168200 (1,542 bp): finished searching in 0.040 seconds
+    $ lexicmap search -d demo.lmi/  q.gene.fasta -o q.gene.fasta.lexicmap.tsv
+    15:13:46.090 [INFO] LexicMap v0.10.0
+    15:13:46.090 [INFO]   https://github.com/shenwei356/LexicMap
+    15:13:46.090 [INFO] 
+    15:13:46.090 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+    15:13:46.090 [INFO]  CMD: lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap.tsv
+    15:13:46.090 [INFO] DATE: 2026-10-09
+    15:13:46.090 [INFO] 
+    15:13:46.090 [INFO] checking input files ...
+    15:13:46.090 [INFO]   1 input file given: q.gene.fasta
+    15:13:46.090 [INFO] 
+    15:13:46.090 [INFO] loading index: demo.lmi/
+    15:13:46.091 [INFO]   reading masks...
+    15:13:46.092 [INFO]   reading indexes of seeds (k-mer-value) data...
+    15:13:46.092 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+    15:13:46.389 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    15:13:46.389 [INFO] index loaded in 298.870684ms
+    15:13:46.389 [INFO] 
+    15:13:46.389 [INFO] searching with 16 threads...
+    15:13:46.389 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
 
-    10:12:14.856 [INFO] 
-    10:12:14.856 [INFO] processed queries: 1, speed: 1197.806 queries per minute
-    10:12:14.856 [INFO] 100.0000% (1/1) queries matched
-    10:12:14.856 [INFO] done searching
-    10:12:14.856 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
-    10:12:14.856 [INFO] 
-    10:12:14.856 [INFO] elapsed time: 891.52111ms
-    10:12:14.856 [INFO]
+    15:13:46.424 [INFO] 
+    15:13:46.424 [INFO] processed queries: 1, speed: 1709.413 queries per minute
+    15:13:46.424 [INFO] 100.0000% (1/1) queries matched
+    15:13:46.424 [INFO] done searching
+    15:13:46.424 [INFO] search results saved to: q.gene.fasta.lexicmap.tsv
+    15:13:46.425 [INFO] 
+    15:13:46.425 [INFO] elapsed time: 334.465362ms
+    15:13:46.425 [INFO] 
 
 {{< /expand >}}
 
-- Extracting similar sequences for a query gene.
+- **Extracting matched sequences for a query gene**.
 
     ```plain
-    # Extracting similar sequences for a query gene.
+    # Extracting matched sequences for a query gene.
 
     # search matches with query coverage >= 90%
     lexicmap search -d demo.lmi/ bench/b.gene_E_faecalis_SecY.fasta -o results.tsv \
@@ -295,7 +342,7 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
     ACAGTTTTAATCTTGTTTGTATTTCGCCTAGGTGCGCACATTACTGTGCCCGGGGTGAAT
     ```
 
-- Exporting blast-like alignment text.
+- **Exporting blast-like alignment text**.
 
     From file:
 
@@ -348,7 +395,7 @@ If you have tens (or more) of plasmids to search, the memory usage would be 100 
     Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
     ```
 
-- Merge a query's search results in multiple indexes with `lexicmap utils merge-search-results`
+- **Merge a query's search results in multiple indexes** with `lexicmap utils merge-search-results`
   ([usage](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/)).
   Add `-n/--top-n-genomes` to retain the top N genomes by each genome's highest alignment
   `bitscore * pident`, including all ties at the cutoff score. This ranks alignment results;
