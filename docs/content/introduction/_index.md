@@ -38,19 +38,19 @@ Please cite:
 
 ## Features
 
-1. **The accuracy of LexicMap is comparable with Blastn, MMseqs2, and Minimap2**. It
+1. **The accuracy of LexicMap is comparable to Blastn, MMseqs2, and Minimap2**. It
     - **performs base-level alignment**, with `qcovGnm`, `qcovHSP`, `pident`, `evalue` and `bitscore` returned,
-      both in TSV and pairwise alignment format ([output format](https://bioinf.shenwei.me/LexicMap/tutorials/search/#output)).
+      in both TSV and pairwise alignment formats ([output format](https://bioinf.shenwei.me/LexicMap/tutorials/search/#output)).
         - provides a genome-wide query coverage metric (`qcovGnm`), 
-          which enables accurate interpretation of search results - particularly for [circular queries (such as plasmid, virus, and mtDNA)](https://bioinf.shenwei.me/LexicMap/tutorials/search/#searching-with-plasmids-or-other-longer-queries)
+          which enables accurate interpretation of search results - particularly for [circular queries (such as plasmids, viruses, and mtDNA)](https://bioinf.shenwei.me/LexicMap/tutorials/search/#searching-with-plasmids-or-other-longer-queries)
            against both complete and fragmented assemblies.
     - **returns all possible matches**, including multiple copies of a gene in a genome.
-1. **The alignment is fast and memory-efficient, scalable to up to millions of prokaryotic genomes**.
-1. LexicMap is **easy to [install](http://bioinf.shenwei.me/LexicMap/installation/),
-   we provide [binary files](https://github.com/shenwei356/LexicMap/releases/)** with no dependencies for Linux, Windows, MacOS (x86 and arm CPUs).
-2. LexicMap is **easy to use** (see [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/), [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/), and [FAQs](https://bioinf.shenwei.me/LexicMap/faqs/)).
+1. **The alignment is fast and memory-efficient, scalable to millions of prokaryotic genomes**.
+1. LexicMap is **easy to [install](http://bioinf.shenwei.me/LexicMap/installation/):
+   we provide [binary files](https://github.com/shenwei356/LexicMap/releases/)** with no dependencies for Linux, Windows, and macOS (x86 and ARM CPUs).
+2. LexicMap is **easy to use** (see [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/), [usage](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/), and [FAQs](https://bioinf.shenwei.me/LexicMap/faqs/)).
     - [Database building](https://bioinf.shenwei.me/LexicMap/tutorials/index/) requires only a simple command, accepting input from files, a file list, or even a directory.
-    - [Sequence searching](https://bioinf.shenwei.me/LexicMap/tutorials/search/) supports limiting search by TaxId(s), provides a progress bar.
+    - [Sequence searching](https://bioinf.shenwei.me/LexicMap/tutorials/search/) supports limiting searches by TaxId(s) and provides a progress bar.
     - [Several utility commands](https://bioinf.shenwei.me/LexicMap/usage/utils/) are available to resume unfinished indexing, explore the index data, merge search results, extract matched subsequences and more.
 
 ## Introduction
@@ -62,13 +62,13 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. Alignment-free large-scale sequence searching tools only return the matched genomes,
    without the vital positional information for downstream analysis.
 1. Mapping tools, or those utilizing compressed full-text indexes, return only the most similar matches.
-1. Prefilter+Align strategies have the sensitivity issue in the prefiltering step.
+1. Prefilter+Align strategies have sensitivity issues in the prefiltering step.
 
 **Methods**: ([algorithm overview](#algorithm-overview))
 
 1. A [rewritten and improved version](https://github.com/shenwei356/lexichash) of the sequence sketching method [LexicHash](https://doi.org/10.1093/bioinformatics/btad652) is adopted to compute alignment seeds accurately and efficiently.
     - **We solved the [sketching deserts](https://www.biorxiv.org/content/10.1101/2024.01.25.577301v1) problem of LexicHash seeds to provide a [window guarantee](https://doi.org/10.1093/bioinformatics/btab790)**.
-    - **We added the support of suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched.
+    - **We added support for suffix matching of seeds, making seeds much more tolerant to mutations**. Any 31-bp seed with a common ≥15 bp prefix or suffix can be matched.
 2. **A hierarchical index enables fast and low-memory variable-length seed matching** (prefix + suffix matching).
 3. A pseudo alignment algorithm is used to find similar sequence regions from chaining results for alignment.
 4. A [reimplemented](https://github.com/shenwei356/wfa) [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777) is used for base-level alignment.
@@ -78,7 +78,7 @@ However, given the increasing rate at which genomes are sequenced, **existing to
 1. LexicMap enables efficient indexing and searching of both RefSeq+GenBank and the [AllTheBacteria](https://www.biorxiv.org/content/10.1101/2024.03.08.584059v1) datasets (**2.3 and 1.9 million prokaryotic assemblies** respectively).
 1. When searching in all **2,340,672 Genbank+Refseq prokaryotic genomes**, *Blastn is unable to run with this dataset on common servers as it requires >2000 GB RAM*.  (see [performance](#performance)).
     
-    **With LexicMap v0.7.0** (48 CPUs, indexes and queries queries in HDDs),
+    **With LexicMap v0.7.0** (48 CPUs, indexes and queries on HDDs),
 
     |Query               |Genome hits|Genome hits<br/>(high-similarity)|Genome hits<br/>(medium-similarity)|Genome hits<br/>(low-similarity)|Time       |RAM     |
     |:-------------------|----------:|--------------------------------:|----------------------------------:|-------------------------------:|----------:|-------:|
@@ -88,17 +88,17 @@ However, given the increasing rate at which genomes are sequenced, **existing to
     |1003 AMR genes      |30,967,882 |7,636,386                        |4,858,063                          |18,473,433                      |15h:52m:08s|24.86 GB|
     
     Notes:
-    1. Default paramters are used, for returning all possible matches.
-    1. Only the best alignment of a genome is used to evaluate alignment similarity:
+    1. Default parameters are used to return all possible matches.
+    1. Only the best alignment for each genome is used to evaluate alignment similarity:
         - high-similarity: (a) qcov >= 90% (genes) or 70% (plasmids), (b) pident>=90%.
-        - medium-similarity: (a) not belong to high-similarity, (b) qcov >= 50% (genes) or 30% (plasmids), (c) pident>=80%.
-        - low-similarity: the remaining.
+        - medium-similarity: (a) does not belong to high-similarity, (b) qcov >= 50% (genes) or 30% (plasmids), (c) pident>=80%.
+        - low-similarity: the remaining hits.
     1. **The search time varies in different computing environments and mainly depends on the I/O speed and the number of threads.**
-    1. **The memory use is lower since v0.8.0.**
+    1. **Memory use has been lower since v0.8.0.**
 
 ## Quick start
 
-Building an index (see the tutorial of [building an index](http://bioinf.shenwei.me/LexicMap/tutorials/index/)).
+Building an index (see the tutorial on [building an index](http://bioinf.shenwei.me/LexicMap/tutorials/index/)).
 
 ```plain
 # From a directory with multiple genome files
@@ -108,7 +108,7 @@ lexicmap index -I genomes/ -O db.lmi
 lexicmap index -S -X files.txt -O db.lmi
 ```
 
-Querying (see the tutorial of [searching](http://bioinf.shenwei.me/LexicMap/tutorials/search/)).
+Querying (see the tutorial on [searching](http://bioinf.shenwei.me/LexicMap/tutorials/search/)).
 
 ```plain
 # For short queries like genes or long reads, returning top N hits.
@@ -150,7 +150,7 @@ ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858 
 ERR5396170.1000001   2505   3      GCF_013394085.1   NZ_CP040910.1       30.858    4     4     3.713     93        93.548   0      2257     2349   1104581   1104673   -      1887974   5.09e-30    141
 ```
 
-CIGAR string, aligned query and subject sequences can be outputted as extra columns via the flag `-a/--all`.
+The CIGAR string and aligned query and subject sequences can be output as extra columns via the flag `-a/--all`.
 
 Extracting matched sequences:
 
@@ -212,7 +212,7 @@ Export SAM format, see [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/2s
 
 Learn more: [demo](https://github.com/shenwei356/LexicMap/tree/main/demo),
 [tutorials](http://bioinf.shenwei.me/LexicMap/tutorials/index/),
-or [usages](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
+or [usage](http://bioinf.shenwei.me/LexicMap/usage/lexicmap/).
 
 ## Performance
 
@@ -220,15 +220,15 @@ See the [paper](#citation).
 
 ## Installation
 
-LexicMap is implemented in [Go](https://go.dev/) programming language,
+LexicMap is implemented in the [Go](https://go.dev/) programming language;
 executable binary files **for most popular operating systems** are freely available
-in [release page](https://github.com/shenwei356/lexicmap/releases).
+on the [release page](https://github.com/shenwei356/lexicmap/releases).
 
 Or install with conda or pixi:
 
     conda install -c bioconda lexicmap
 
-**We also provide [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10), with new features and improvements**.
+**We also provide [pre-release binaries](https://github.com/shenwei356/LexicMap/issues/10) with new features and improvements**.
 
 ## Algorithm overview
 
@@ -247,18 +247,18 @@ See the [paper](#citation) for details.
 - The queries need to be longer than 100 bp, though some shorter ones can also be aligned.
   [Does LexicMap support short reads?](https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-short-reads)
 - LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented.
-- LexicMap is slow for batch searching with more than hundreds of queries. However, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
+- LexicMap is slow for batch searching with hundreds of queries or more. However, there are [some ways to improve the search speed of lexicmap search](http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed), such as keeping the top N genome matches via `-n/--top-n-genomes` or storing the index on solid state drives (SSDs).
 
 ## Terminology differences
 
 - In the LexicMap source code and command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
 - In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
-  Because these masks, which consist of thousands of designed k-mers and they capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
+  These masks consist of thousands of designed k-mers and capture k-mers from sequences through prefix matching, functioning similarly to DNA probes in molecular biology.
 
 ## Support
 
 Please [open an issue](https://github.com/shenwei356/LexicMap/issues) to report bugs,
-propose new functions or ask for help.
+propose new features or ask for help.
 
 ## License
 

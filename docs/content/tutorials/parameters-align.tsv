@@ -1,9 +1,9 @@
 Flag	Value	Function
 **`-Q/--min-qcov-per-genome`**	Default 0	Minimum query coverage (percentage) per genome.
 **`-q/--min-qcov-per-hsp`**	Default 0	Minimum query coverage (percentage) per HSP.
-**`-l/--align-min-match-len`**	Default 50	Minimum aligned length in a HSP segment.
-**`-i/--align-min-match-pident`**	Default 70	Minimum base identity (percentage) in a HSP segment.
+**`-l/--align-min-match-len`**	Default 50	Minimum aligned length in an HSP segment.
+**`-i/--align-min-match-pident`**	Default 70	Minimum base identity (percentage) in an HSP segment.
 `--align-band`	Default 100	Band size in backtracking the score matrix.
-`--align-ext-len`	Default 1000	Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.
-`--align-max-gap`	Default 20	Maximum gap in a HSP segment.
+`--align-ext-len`	Default 1000	Length to extend upstream and downstream of seed regions when extracting query and target sequences for alignment. It should be <= the contig interval length in the database.
+`--align-max-gap`	Default 20	Maximum gap in an HSP segment.
 ` --max-align-result-memory`	Default 1G	Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).

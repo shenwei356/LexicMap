@@ -12,14 +12,14 @@ weight: 15
 ### Run on EC2
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/LaunchingAndUsingInstances.html)
-   **in Europe London region (eu-west-2)** where the index is located.
+   **in the Europe (London) region (eu-west-2)** where the index is located.
     - OS: Amazon Linux 2023 64-bit (**Arm**)
     - Instance type (You might need to [increase the limit of CPUs](http://aws.amazon.com/contact-us/ec2-request)):
         - c7g.8xlarge (32 vCPU, 64 GiB memory, 15 Gigabit, 1.3738 USD per Hour)
         - c6gn.12xlarge (48 vCPU, 96 GiB memory, 75 Gigabit, 2.46 USD per Hour) (**recommended**)
     - Storage: 20 GiB General purpose (gp3), only for storing queries and results.
 
-2. [Connect to the instance via online console or a ssh client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).
+2. [Connect to the instance via the online console or an SSH client](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connect.html).
 
 3. Mount the LexicMap index with [mount-s3](https://github.com/awslabs/mountpoint-s3) (it's fast but still slower than local disks):
 
@@ -64,9 +64,9 @@ weight: 15
 
         sudo umount atb.lmi
 
-### Only download it and run locally
+### Download the index and run locally {#only-download-it-and-run-locally}
 
-Install `awscli` by
+Install `awscli` with
 
     conda install -c conda-forge awscli
     
@@ -112,7 +112,7 @@ Info:
 After v0.2, AllTheBacteria releases incremental datasets periodically, with all data stored at [OSF](https://osf.io/xv7q9/).
 
 
-1. Downloading the list file of all [assemblies](https://osf.io/zxfmy/) in the latest version (v0.2 plus incremental versions).
+1. Download the list file of all [assemblies](https://osf.io/zxfmy/) in the latest version (v0.2 plus incremental versions).
 
         mkdir -p atb;
         cd atb;
@@ -122,10 +122,10 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         # This url is for v0.2 + incr_202408 + incr_202505.
         wget https://osf.io/download/3xs6h/ -O file_list.all.latest.tsv.gz
 
-    If you only need to add assemblies from an incremental version.
-    Please manually download the file list in the path `AllTheBacteria/Assembly/OSF Storage/File_lists`.
+    If you only need to add assemblies from an incremental version,
+    please manually download the file list in the path `AllTheBacteria/Assembly/OSF Storage/File_lists`.
 
-2. Downloading assembly tarball files.
+2. Download assembly tarball files.
 
         # tarball file names and their URLs
         zcat file_list.all.latest.tsv.gz | awk -F'\t' 'NR>1 {print $4"\t"$5}' | sort | uniq > tar2url.tsv
@@ -133,15 +133,15 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
         # download
         cat tar2url.tsv | rush --eta -j 4 -c -C download.rush 'wget -O {1} {2}'
 
-3. Decompressing all tarballs. The decompressed genomes are stored in plain text,
-   so we use `gzip` (can be replaced with faster `pigz` ) to compress them to save disk space.
+3. Decompress all tarballs. The decompressed genomes are stored in plain text,
+   so we use `gzip` (can be replaced with the faster `pigz`) to compress them to save disk space.
 
         # {^tar.xz} is for removing the suffix "tar.xz"
         ls *.tar.xz | rush --eta -c -C decompress.rush 'tar -Jxf {}; gzip -f {^.tar.xz}/*.fa'
 
         cd ..
 
-    After that, the assemblies directory would have multiple subdirectories.
+    After that, the assemblies directory will have multiple subdirectories.
     When you give the directory to `lexicmap index -I`, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.
     You can also give a file list with selected assemblies.
 
@@ -169,13 +169,13 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
             atb/atb.assembly.r0.2.batch.1/SAMD00013333.fa.gz
             atb/atb.assembly.r0.2.batch.1/SAMD00049594.fa.gz
 
-    - (Optional) Only keep assemblies of high-quality.
+    - (Optional) Only keep high-quality assemblies.
       Please [click this link](https://osf.io/download/m26zn/) to download the `hq_set.sample_list.txt.gz` file,
       or from [this page](https://osf.io/h7wzy/files/osfstorage).
 
             find atb/ -name "*.fa.gz" | grep -w -f <(zcat hq_set.sample_list.txt.gz) > files.txt
 
-5. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
+5. Create a LexicMap index (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
 
         lexicmap index -S -X files.txt -O atb.lmi -b 25000 --log atb.lmi.log
         
@@ -194,7 +194,7 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
    
    It took 66h18m and 125GB RAM with 48 CPUs for 2.44m ATB genomes, with LexicMap v0.8.0 on my server.
    
-6. (Optional) Prepare Taxonomy data to limit TaxId in `lexicmap search` since LexicMap v0.7.1.
+6. (Optional) Prepare taxonomy data for filtering by TaxId in `lexicmap search` since LexicMap v0.7.1.
 
         # Download species_calls.tsv.gz file in the directory (Latest_2025-05) of this page:
         # https://osf.io/h7wzy/files/osfstorage#
@@ -217,7 +217,7 @@ After v0.2, AllTheBacteria releases incremental datasets periodically, with all 
 
 ## Steps for v0.2 hosted at EBI ftp
 
-1. Downloading assemblies tarballs here (except these starting with `unknown__`) to a directory (like `atb`):
+1. Download assembly tarballs here (except those starting with `unknown__`) to a directory (like `atb`):
 https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
 
         mkdir -p atb;
@@ -235,15 +235,15 @@ https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
         # list of high-quality samples
         wget https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/metadata/hq_set.sample_list.txt.gz
 
-1. Decompressing all tarballs. The decompressed genomes are stored in plain text,
-   so we use `gzip` (can be replaced with faster `pigz` ) to compress them to save disk space.
+1. Decompress all tarballs. The decompressed genomes are stored in plain text,
+   so we use `gzip` (can be replaced with the faster `pigz`) to compress them to save disk space.
 
         # {^asm.tar.xz} is for removing the suffix "asm.tar.xz"
         ls *.tar.xz | rush --eta -c -C decompress.rush 'tar -Jxf {}; gzip -f {^asm.tar.xz}/*.fa'
 
         cd ..
 
-    After that, the assemblies directory would have multiple subdirectories.
+    After that, the assemblies directory will have multiple subdirectories.
     When you give the directory to `lexicmap index -I`, it can recursively scan (plain or gz/xz/zstd-compressed) genome files.
     You can also give a file list with selected assemblies.
 
@@ -264,7 +264,7 @@ https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
         $ du -sh atb --apparent-size
         2.1T    atb
 
-2. Creating a LexicMap index. (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
+2. Create a LexicMap index (more details: https://bioinf.shenwei.me/LexicMap/tutorials/index/)
 
         # file paths of all samples
         find atb/ -name "*.fa.gz" > atb_all.txt
@@ -303,6 +303,6 @@ https://ftp.ebi.ac.uk/pub/databases/AllTheBacteria/Releases/0.2/assembly/
         312.53 KiB      masks.bin
              332 B      info.toml
 
-    Note that, there's a tmp directory `atb_hq.lmi` being created during indexing.
-    In the tmp directory, the seed data would be bigger than the final size of `seeds` directory,
-    however, the genome files are simply moved to the final index.
+    Note that a temporary directory `atb_hq.lmi` is created during indexing.
+    In the temporary directory, the seed data may be larger than the final size of the `seeds` directory;
+    the genome files are simply moved to the final index.

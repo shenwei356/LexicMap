@@ -5,7 +5,7 @@ weight: 20
 
 Info:
 
-- [GlobDB](https://globdb.org/) , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot.
+- [GlobDB](https://globdb.org/), a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets.
 - https://x.com/daanspeth/status/1822964436950192218
 
 Data:
@@ -29,7 +29,7 @@ Indexing with LexicMap
     # peak rss: 89.99 GB
     lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48
     
-Taxonomy data for limiting TaxId in `lexicmap search` since LexicMap v0.8.0.
+Taxonomy data for filtering by TaxId in `lexicmap search` since LexicMap v0.8.0.
 
     wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_taxonomy.tsv.gz
     
@@ -43,7 +43,7 @@ Taxonomy data for limiting TaxId in `lexicmap search` since LexicMap v0.8.0.
     # It has a file mapping assembly accession to TaxId (below the species rank)
     ln -s taxdump/taxid.map
     
-How does the taxdump data look like?
+What does the taxdump data look like?
 
     $ echo Escherichia coli | taxonkit name2taxid --data-dir taxdump/
     Escherichia coli        599451526

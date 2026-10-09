@@ -29,14 +29,14 @@ geekdocAnchor: false
 
 ### Easy to install
 
-Linux, Windows, MacOS and more OS are supported.
+Linux, Windows, macOS, and other operating systems are supported.
 
 Both x86 and ARM CPUs are supported.
 
 Just [download](https://github.com/shenwei356/lexicmap/releases) the binary files and run!
 
 
-Or install it by
+Or install it with
 
     conda install -c bioconda lexicmap
 
@@ -60,14 +60,14 @@ Step 2: searching
 to explore the index data, merge search results, extract matched subsequences and more.
 
 {{< button size="small" relref="tutorials/index" >}}Tutorials{{< /button >}}
-{{< button size="small" relref="usage/lexicmap" >}}Usages{{< /button >}}
+{{< button size="small" relref="usage/lexicmap" >}}Usage{{< /button >}}
 {{< button size="small" relref="faqs" >}}FAQs{{< /button >}}
 
 <--->
 
 ### Accurate and efficient alignment
 
-Using LexicMap v0.7.0 to align against the whole **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
+Using LexicMap v0.7.0 to align against all **2,340,672** Genbank+Refseq prokaryotic genomes with 48 CPUs.
 
 |Query            |Genome hits|Time   |RAM(GB)|
 |:----------------|----------:|------:|------:|

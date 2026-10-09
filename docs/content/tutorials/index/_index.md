@@ -8,7 +8,7 @@ Terminology differences:
 
 - On this page and in the LexicMap command line options, the term **"mask"** is used, following the terminology in the LexicHash paper.
 - In the LexicMap manuscript, however, we use **"probe"** as it is easier to understand.
-  Because these masks, which consist of thousands of k-mers and capture k-mers from sequences through prefix matching, function similarly to DNA probes in molecular biology.
+  These masks consist of thousands of k-mers and capture k-mers from sequences through prefix matching, functioning similarly to DNA probes in molecular biology.
 {{< /hint >}}
 
 ## Table of contents
@@ -18,13 +18,13 @@ Terminology differences:
 ## TL;DR
 
 1. Prepare input files:
-    - **Sequences of each reference genome should be saved in separate FASTA files, with identifiers (no tab symbols) in the file names**.
+    - **Sequences of each reference genome should be saved in a separate FASTA file, with identifiers (no tab symbols) in the file names**.
       E.g., GCF_000006945.2.fna.gz
-        - A regular expression is also available to extract reference id from the file name.
+        - A regular expression is also available to extract the reference ID from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
         - Even if you forgot to use `-N/--ref-name-regexp`,
-          [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without re-building the index.
-    - While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
+          [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without rebuilding the index.
+    - If you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search results can help distinguish target genomes.
 2. Run:
     - From a directory with multiple genome files:
 
@@ -46,53 +46,53 @@ More precisely:
 
     $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456
 
-as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.
+as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.
 
 {{< /hint >}}
 
 
-<font color="red">**Sequences of each reference genome should be saved in separate FASTA files, with identifiers in the file names**.</font> 
-While if you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search result can help to distinguish target genomes.
+<font color="red">**Sequences of each reference genome should be saved in a separate FASTA file, with identifiers in the file names**.</font>
+If you save *a few* **small** (viral) **complete** genomes (one sequence per genome) in each file, it's feasible as sequence IDs in search results can help distinguish target genomes.
 
 - **File type**: FASTA/Q files, in **plain text or gzip/xz/zstd/bzip2/lz4 compressed** formats.
-- **File name**: "Genome ID" + "File extention". E.g., `GCF_000006945.2.fna.gz`.
-    - **Genome ID**: **they must not contain tab ("\t") symbols, and should be distinct for accurate result interpretation**, which will be shown in the search result.
-        - A regular expression is also available to extract reference id from the file name.
+- **File name**: "Genome ID" + "File extension". E.g., `GCF_000006945.2.fna.gz`.
+    - **Genome ID**: **IDs must not contain tab ("\t") symbols and should be distinct for accurate interpretation of results**. They will be shown in the search results.
+        - A regular expression is also available to extract the reference ID from the file name.
           E.g., `--ref-name-regexp '^(\w{3}_\d{9}\.\d+)'` extracts `GCF_000006945.2` from GenBank assembly file `GCF_000006945.2_ASM694v2_genomic.fna.gz`.
         - **If you forgot to use `-N/--ref-name-regexp`,
-        [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without re-building the index**.
-- **File extention**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
-      The default value supports common sequence file extentions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
+        [lexicmap utils edit-genome-ids](https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/) (available since v0.8.0) can fix this without rebuilding the index**.
+- **File extension**: a regular expression set by the flag `-r/--file-regexp` is used to match input files.
+      The default value supports common sequence file extensions, e.g., `.fa`, `.fasta`, `.fna`, `.fa.gz`, `.fasta.gz`, `.fna.gz`, `fasta.xz`, `fasta.zst`, and `fasta.bz2`.
 - **Sequences**:
     - **Only DNA or RNA sequences are supported**.
-       - **Soft-masked sequences** are supported since v0.9.0 with the flag `--soft-masking`.
+       - **Soft-masked sequences** have been supported since v0.9.0 with the flag `--soft-masking`.
          Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded,
          while they will be saved for base-level alignment.
-    - **Sequence IDs** should be distinct for accurate result interpretation, which will be shown in the search result.
-    - Sequence description (text behind sequence ID) is not saved. If you do need it, you can create a mapping file
-      (`cat files.txt | seqkit seq -n -X - | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add description in search result](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
+    - **Sequence IDs** should be distinct for accurate interpretation of results. They will be shown in the search results.
+    - Sequence descriptions (text after the sequence ID) are not saved. If you do need them, you can create a mapping file
+      (`cat files.txt | seqkit seq -n -X - | sed -E 's/\s+/\t/' > id2desc.tsv`) and use it to [add descriptions to search results](https://bioinf.shenwei.me/LexicMap/tutorials/search/#summarizing-results).
     - **One or more sequences (contigs) in each file are allowed**.
         - **Unwanted sequences** (such as plasmids) can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
-    - **Genome size limit**. Some none-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
+    - **Genome size limit**. Some non-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
         - **Changes since v0.5.0**:
             - Genomes with any single contig larger than the threshold will be skipped as before.
-            - However, **fragmented (with many contigs) genomes with the total bases larger than the threshold will
+            - However, **fragmented (with many contigs) genomes with a total number of bases larger than the threshold will
               be split into chunks** and alignments from these chunks will be merged in `lexicmap search`.
-        - **For fungi genomes, please increase the value of `-g/--max-genome`**.
+        - **For fungal genomes, please increase the value of `-g/--max-genome`**.
     - **Minimum sequence length**. A flag `-l/--min-seq-len` can filter out sequences shorter than the threshold (default is the `k` value).
 - **At most 17,179,869,184 (2<sup>34</sup>) genomes are supported**. For more genomes, please create a file list and split it into multiple parts, and build an index for each part.
 
-**Input files can be given via one of the following ways:**
+**Input files can be given in one of the following ways:**
 
 - **Positional arguments**. For a few input files.
 - A **file list** via the flag `-X/--infile-list`  with one file per line.
   **It can be STDIN (`-`)**, e.g., you can filter a file list and pass it to `lexicmap index`.
-    - **The flag `-S/--skip-file-check` is optional for skiping input file checking if you believe these files do exist**.
-    Because, by default, LexicMap checks the existence of all input files, which would take tens of minutes for >1M files.
+    - **The flag `-S/--skip-file-check` is optional and skips input file checks if you are sure these files exist**.
+    By default, LexicMap checks the existence of all input files, which would take tens of minutes for >1M files.
 - A **directory** containing input files via the flag `-I/--in-dir`.
-    - **Multiple-level directories are supported**. So you don't need to saved hundreds of thousand files into one directoy.
+    - **Multiple-level directories are supported**. So you don't need to save hundreds of thousands of files in one directory.
     - **Directory and file symlinks are followed**.
 
 ## Hardware requirements
@@ -103,23 +103,23 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
 
 - **CPU:**
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
-    - More is better as LexicMap is a CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
+    - More is better as LexicMap is CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
     - More RAM (> 200 GB for >2 million genomes) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
         - **The number of genomes**. Generally, more genomes consume more memory, but we can reduce it by using smaller genome batch sizes (see below).
-        - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory occupation.
+        - **The genome batch size**  (`-b/--batch-size`, default 5,000). <font color="red">This is the main parameter to adjust **memory usage**</font>. Bigger values increase indexing memory usage.
         - **The divergence between genome sequences in each batch**. Diverse genomes consume more memory.
         - **The maximum seed distance** or **the maximum sketching desert size** (`-D/--seed-max-desert`, default 100),
           and the distance of k-mers to fill deserts (`-d/--seed-in-desert-dist`, default 50).
           <font color="#ff5733">These are the main parameters to adjust **search sensitivity**.</font>
-          Bigger `-D/--seed-max-desert` values decrease the search sensitivity, speed up the indexing speed,
-          decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
+          Bigger `-D/--seed-max-desert` values decrease the search sensitivity, speed up indexing,
+          decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.
     - **If the RAM is not sufficient**. Please:
-        - **Use a smaller genome batch size**. It decreases indexing memory occupation and has little affection on searching performance.
+        - **Use a smaller genome batch size**. It decreases indexing memory usage and has little effect on search performance.
 - **Disk**
     - More is better. LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance. See [some examples](#index-size).
-        - **Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genomes bring smaller compression rates.
+        - **Note that index size grows sublinearly with the number of genomes**. Because seed data are compressed with the VARINT-GB algorithm, more genomes lead to smaller compression ratios.
     - SSD disks are preferred, while HDD disks are also fast enough.
 
 ## Algorithm
@@ -133,10 +133,10 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 1. **Generating *m* [LexicHash masks](https://doi.org/10.1093/bioinformatics/btad652)**.
 
     1. Generate *m* prefixes.
-        1. Generating all permutations of *p*-bp prefixes that can cover all possible k-mers, *p* is the biggest value for 4<sup>*p*</sup> <= *m* (desired number of masks), e.g., *p*=7 for 20,000 masks. (4<sup>*7*</sup> = 16384)
+        1. Generating all permutations of *p*-bp prefixes that can cover all possible k-mers; *p* is the largest value for 4<sup>*p*</sup> <= *m* (desired number of masks), e.g., *p*=7 for 20,000 masks. (4<sup>*7*</sup> = 16384)
         3. Duplicating these prefixes to *m* prefixes.
     2. For each prefix,
-        1. Randomly generating left *k*-*p* bases.
+        1. Randomly generating the remaining *k*-*p* bases.
         3. If the mask is duplicated, re-generating.
 
 2. **Building an index for each genome batch** (`-b/--batch-size`, default 5,000, max 131,072).
@@ -148,18 +148,18 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
         4. Capturing the most similar k-mer (in non-gap and non-interval regions) for each mask and recording the k-mer and its location(s) and strand information. Base N is treated as A.
         5. Filling sketching deserts (genome regions longer than `--seed-max-desert` [default 100] without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.
-           As a result, for a query similar to seqs in this region, all captured k-mers can’t match the correct seeds.
+           As a result, for a query similar to sequences in this region, none of the captured k-mers can match the correct seeds.
             1. For a desert region (`start`, `end`), masking the extended region (`start-1000`, `end+1000`) with the masks.
-            2. Starting from `start`, every around `--seed-in-desert-dist` (default 50) bp, finding a k-mer which is captured by some mask, and adding the k-mer and its position information into the index of that mask.
+            2. Starting from `start`, approximately every `--seed-in-desert-dist` (default 50) bp, finding a k-mer which is captured by some mask, and adding the k-mer and its position information into the index of that mask.
         6. Saving the concatenated genome sequence (bit-packed, 2 bits for one base, N is treated as A) and genome information (genome ID, size, and lengths of all sequences) into the genome data file, and creating an index file for the genome data file for fast random subsequence extraction.
-    2. Duplicate and reverse all k-mers, and save each reversed k-mer along with the duplicated position information in the seed data of the closest (sharing the longgest prefix) mask. This is for suffix matching of seeds.
-    2. Compressing k-mers and the corresponding data (k-mer-data, or seeds data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
-    3. Writing summary information into `info.toml` file.
+    2. Duplicate and reverse all k-mers, and save each reversed k-mer along with the duplicated position information in the seed data of the closest (sharing the longest prefix) mask. This is for suffix matching of seeds.
+    2. Compressing k-mers and the corresponding data (k-mer-data, or seed data, including genome batch, genome number, location, and strand) into chunks of files, and creating an index file for each k-mer-data file for fast seeding.
+    3. Writing summary information into the `info.toml` file.
 
 3. **Merging indexes of multiple batches**.
     1. For each k-mer-data chunk file (belonging to a list of masks), serially reading data of each mask from all batches,
-      merging them and writting to a new file.
-    2. For genome data files, just moving them.
+      merging them and writing them to a new file.
+    2. For genome data files, just move them.
     3. Concatenating `genomes.map.bin`, which maps each genome ID to its batch ID and index in the batch.
     4. Update the index summary file.
 
@@ -172,10 +172,10 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 
 **LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default**.
 
-**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. It will increase the indexing time and increase the index size. Don't worry, if you have a small scale of genomes, like < 10,000.
+**If you want to search some short reads, you need to build the index with small values of `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as < 10,000.
 
-If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
-speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
+If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease search sensitivity for distant targets, speed up
+indexing, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.
 
 Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 {{< /hint >}}
@@ -190,7 +190,7 @@ Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment mi
 
 |Flag              |Value                      |Function                     |Comment                                                                                                                                                 |
 |:-----------------|:--------------------------|:----------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------|
-|**`-j/--threads`**|Default: all available CPUs|Number of CPU cores to use.  |► If the value is smaller than the number of available CPUs, make sure set the same value to `-c/--chunks`.                                             |
+|**`-j/--threads`**|Default: all available CPUs|Number of CPU cores to use.  |► If the value is smaller than the number of available CPUs, make sure to use the same value for `-c/--chunks`.                                            |
 |`--soft-masking`  |Default: false             |Support soft-masked sequences|► Lowercase bases in soft-masked low-complexity regions will be treated as A's and won't be seeded, while they will be saved for base-level alignment.  |
 
 {{< /tab>}}
@@ -199,7 +199,7 @@ Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment mi
 
 | Flag                  | Value                      | Function                                | Comment                                                                                                                                                                                                                                                                                                                                                                       |
 | :-------------------- | :------------------------- | :-------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`-b/--batch-size`** | Max: 131072, default: 5000 | Maximum number of genomes in each batch | If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory occupation and increase batch searching speed, while single query searching speed is not affected. |
+| **`-b/--batch-size`** | Max: 131072, default: 5000 | Maximum number of genomes in each batch | If the number of input files exceeds this number, input files are split into multiple batches and indexes are built for all batches. In the end, seed files are merged, while genome data files are kept unchanged and collected. ■ Bigger values increase indexing memory usage and increase batch searching speed, while single-query search speed is not affected.    |
 
 {{< /tab>}}
 
@@ -207,7 +207,7 @@ Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment mi
 
 | Flag             | Value                | Function               | Comment                                                                                                                                                                                    |
 | :--------------- | :------------------- | :--------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-M/--mask-file` | A file               | File with custom masks | File with custom masks, which could be exported from an existing index or newly generated by "lexicmap utils masks". This flag oversides `-k/--kmer`, `-m/--masks`, `-s/--rand-seed`, etc. |
+| `-M/--mask-file` | A file               | File with custom masks | File with custom masks, which can be exported from an existing index or newly generated by "lexicmap utils masks". This flag overrides `-k/--kmer`, `-m/--masks`, `-s/--rand-seed`, etc.   |
 | **`-k/--kmer`**  | Max: 32, default: 31 | K-mer size             | ■ Bigger values improve the search specificity and do not increase the index size.                                                                                                         |
 | **`-m/--masks`** | Default: 20,000      | Number of masks        | ■ Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.                 |
 
@@ -219,10 +219,10 @@ Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment mi
 
 | Flag                         | Value                                        | Function                                                                         | Comment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | :--------------------------- | :------------------------------------------- | :------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`--seed-max-desert`**      | Default: 100                                 | Maximum length of distances between seeds                                        | The default value of 100 guarantees queries >=200 bp would match at least two seeds. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up the indexing speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected. |
-| **`-c/--chunks`**            | Maximum: 128, default: value of -j/--threads | Number of seed file chunks                                                       | Bigger values accelerate the search speed at the cost of a high disk reading load. ► The value should not exceed the maximum number of open files set by the operating systems. ► Make sure the value of `-j/--threads` in `lexicmap search` is >= this value.                                                                                                                                                                                                                                                           |
-| **`-J/--seed-data-threads`** | Maximum: -c/--chunks, default: 8             | Number of threads for writing seed data and merging seed chunks from all batches | Merging reserves 8 open files. The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)), where $inputs is the number of batches in the current group (at most --max-open-files - 10). ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.                                                                                                                                                                                                                                               |
-| `-p/--partitions`            | Default: 4096                                | Number of partitions for indexing each seed file                                 | Bigger values bring a little higher memory occupation. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seeds data with  another value of this flag.                                                                                                                                                                                                                                                                                                                                          |
+| **`--seed-max-desert`**      | Default: 100                                 | Maximum length of distances between seeds                                        | The default value of 100 guarantees that queries >=200 bp will match at least two seeds. ► Large regions with no seeds are called sketching deserts. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist (50 by default) bases. ■ Bigger values decrease the search sensitivity for distant targets, speed up indexing, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected. |
+| **`-c/--chunks`**            | Maximum: 128, default: value of -j/--threads | Number of seed file chunks                                                       | Bigger values accelerate the search speed at the cost of a higher disk read load. ► The value should not exceed the maximum number of open files set by the operating system. ► Make sure the value of `-j/--threads` in `lexicmap search` is >= this value.                                                                                                                                                                                                                                                             |
+| **`-J/--seed-data-threads`** | Maximum: -c/--chunks, default: 8             | Number of threads for writing seed data and merging seed chunks from all batches | Merging reserves 8 open files. The actual number of merging threads is min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)), where $inputs is the number of batches in the current group (at most --max-open-files - 10). ■ Bigger values increase indexing speed at the cost of slightly higher memory usage.                                                                                                                                                                                                                                      |
+| `-p/--partitions`            | Default: 4096                                | Number of partitions for indexing each seed file                                 | Bigger values slightly increase memory usage. ► After indexing, `lexicmap utils reindex-seeds` can be used to reindex the seed data with another value of this flag.                                                                                                                                                                                                                                                                                                                                               |
 | **`--max-open-files`**       | Default: 1024                                | Maximum number of open files                                                     | Used in merging indexes of multiple genome batches (minimum: 12), including 8 reserved files. Large batch counts are merged in multiple rounds. Increasing the budget can allow more merging threads; set `ulimit -n` at least this high.                                                                                                                                                                                                                                                                                                                          |
 
 {{< /tab>}}
@@ -237,7 +237,7 @@ Also see the [usage](https://bioinf.shenwei.me/LexicMap/usage/#index) of `lexicm
 
     $num_input_files / --batch-size
 
-E.g, for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
+E.g., for GenBank prokaryotic genomes: 2,340,672 / 5000 (default)  = 468.
 The number is too big, and **it would slow down the seed-data merging step in `lexicmap index`** and **candidate sequence extraction in `lexicmap search`**.
 
 Therefore, if you have enough memory, you can set a bigger `--batch-size` (e.g., 2,340,672 / 25000 = 93.6).
@@ -245,13 +245,13 @@ Therefore, if you have enough memory, you can set a bigger `--batch-size` (e.g.,
 If the batch number is still big (e.g. 300), you can set bigger `--max-open-files` (e.g., `4096`) and `-J/--seed-data-threads` (e.g., `12`. 12 <= 4096/300 = 13.6)
 to accelerate the merging step. Meanwhile, don't forget to increase the maximum open files per process via `ulimit -n 4096`.
 
-If you forgot these setting, you can rerun the merging step for an unfinished index via [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/)
+If you forgot these settings, you can rerun the merging step for an unfinished index via [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/)
 (available since v0.5.0, also see [FAQ: how to resume the indexing](https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step)). Other cases to use this command:
 - Only one thread is used for merging indexes, which happens when there are
-a lot (>200 batches) of batches (`$inpu_files / --batch-size`) and the value
-of `--max-open-files` is not big enough.
-- The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
-- Disk quota is reached in the merging step.
+many batches (>200) (`$inpu_files / --batch-size`) and the value
+of `--max-open-files` is not large enough.
+- The Slurm/PBS job time limit is almost reached and the merging step won't finish in time.
+- The disk quota is reached during the merging step.
 
 ## Steps
 
@@ -273,7 +273,7 @@ We use a small dataset for demonstration.
 
         lexicmap index -I refs/ -O demo.lmi
 
-    It would take about 2 seconds and 1.5 GB RAM in a 16-CPU PC.
+    It would take about 2 seconds and 1.5 GB RAM on a 16-CPU PC.
 
     Optionally, we can also use **a file list** as the input.
 
@@ -371,8 +371,8 @@ We use a small dataset for demonstration.
     peak rss: 1.25 GB
     {{< /expand >}}
 
-From v0.10.0, it's is optional to create adaptive two-level indexes of seeds data.
-It can improves seed-matching performance for batch queries with `lexicmap search`.
+From v0.10.0, it is optional to create adaptive two-level indexes of seed data.
+It can improve seed-matching performance for batch queries with `lexicmap search`.
 See the [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds2) for more details.
 
 ## Output
@@ -406,7 +406,7 @@ The LexicMap index is a directory with multiple files.
 
 LexicMap index size is related to the number of input genomes, the divergence between genome sequences, the number of masks, and the maximum seed distance.
 
-**Note that the index size is not linear with the number of genomes, it's sublinear**. Because the seed data are compressed with VARINT-GB algorithm, more genome bring smaller compression rates (smaller is good).
+**Note that index size grows sublinearly with the number of genomes**. Because seed data are compressed with the VARINT-GB algorithm, more genomes lead to smaller compression ratios (smaller is better).
 
 {{< tabs "t2" >}}
 
@@ -502,7 +502,7 @@ We provide several commands to explore the index data and extract indexed subseq
 1. `lexicmap utils seed-pos` can help to explore the seed positions,
     see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/).
     Before that, the flag `--save-seed-pos` needs to be added to `lexicmap index`.
-1. `lexicmap utils subseq` can extract subsequence via 1) reference name, sequence ID, position and strand, or 2) search result,
+1. `lexicmap utils subseq` can extract subsequences via 1) reference name, sequence ID, position and strand, or 2) search result,
     see the [usage and example](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
 
 ## Index format changelog
@@ -512,7 +512,7 @@ LexicMap search and other utility commands check compatibility via the main vers
 
 |Index version|LexicMap version|Supported LexicMap versions|Date      |Changes                                                                                                                |
 |:------------|:---------------|:--------------------------|:---------|:----------------------------------------------------------------------------------------------------------------------|
-|3.5          |0.10.0          |0.6.0 +                    |2026-xx-xx|A small part of seeds are changed after fixing the lexichash computation.                                              |
+|3.5          |0.10.0          |0.6.0 +                    |2026-xx-xx|A small fraction of seeds change after fixing the lexichash computation.                                              |
 |3.4          |0.7.0           |0.6.0 +                    |2025-04-11|Fix filling the seed desert region behind the last seed of a genome.                                                   |
 |3.3          |0.6.0           |0.6.0 +                    |2025-03-25|Reduce index size for batches <= 512. Add the total bases of index to info.toml for computing the Evalue. Denser seeds.|
 |3.1          |0.5.0           |0.4.0 +                    |2024-12-18|Change the default partitions of seed data index.                                                                      |

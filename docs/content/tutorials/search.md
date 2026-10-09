@@ -33,7 +33,7 @@ weight: 10
 
 LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default.
 
-**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. 
+**If you want to search some short reads, you need to build the index with small values of `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**.
 
 Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 {{< /hint >}}
@@ -43,13 +43,11 @@ Input should be (gzipped) FASTA or FASTQ records from files or STDIN.
 
 ## Hardware requirements
 
-See [benchmark of index building](https://bioinf.shenwei.me/LexicMap/introduction/#searching).
-
 LexicMap is designed to provide fast and low-memory sequence alignment against millions of prokaryotic genomes.
 
 - **CPU:**
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
-    - More is better as LexicMap is a CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
+    - More is better as LexicMap is CPU-intensive software. It uses all CPUs by default (`-j/--threads`).
 - **RAM**
     - More RAM (>= 16 GB) is preferred. The memory usage in searching is mainly related to:
         - The number and length of query sequences.
@@ -57,9 +55,9 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
         - Similarities between query and target sequences.
         - The number of threads. It uses all CPUs by default (`-j/--threads`).
         - (Batch searching) The number of concurrent queries (`-J/--max-query-conc`, default 8).
-        - (Batch searching) Garbage collection interval (`--gc-interval`, default 64, 0 for disable).
+        - (Batch searching) Garbage collection interval (`--gc-interval`, default 64, 0 to disable).
 - **Disk**
-    - SSD disks are preferred to store the index size, while HDD disks are also fast enough.
+    - SSD disks are preferred for storing the index, while HDD disks are also fast enough.
     - Seed spilling (`--max-seed-memory`) and large `-a` output payloads (`--max-align-result-memory`) can use temporary files. Set `TMPDIR` to a fast disk with enough free space.
 
 
@@ -72,12 +70,12 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 {{< expand "Click to show details." "..." >}}
 
 1. **Masking:**
-   Query sequence is masked by the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.
+   The query sequence is masked using the masks of the index. In other words, each mask captures the most similar k-mer which shares the longest prefix with the mask, and stores its position and strand information.
 1. **Seeding:**
-   For each mask, the captured k-mer is used to search seeds (captured k-mers in reference genomes) sharing **prefixes or suffixes** of at least *p* bases.
+   For each mask, the captured k-mer is used to search for seeds (captured k-mers in reference genomes) sharing **prefixes or suffixes** of at least *p* bases.
     1. Prefix matching
         1. **Setting the search range**: Since the seeded k-mers are stored in lexicographic order, the k-mer matching turns into a range query.
-        For example, for a query `CATGCT` requiring matching at least 4-bp prefix is equal to extract k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
+        For example, for a query `CATGCT`, requiring a match of at least a 4-bp prefix is equivalent to extracting k-mers ranging from `CATGAA`, `CATGAC`, `CATGAG`, ...,  to `CATGTT`.
         2. **Retrieving search start point**: The index file of each seed data file stores some k-mers' offsets in the data file, and the index is loaded in RAM.
         3. **Retrieving seed data**: Seed k-mers are read from the file and checked one by one, and k-mers in the search range are returned, along with the k-mer information (genome batch, genome number, location, and strand).
     1. Suffix matching
@@ -86,9 +84,9 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
     1. Seeding results, i.e., anchors (matched k-mers from the query and subject sequence), are summarized by genome, and deduplicated.
     2. Performing chaining (see the paper).
 1. **Alignment** for each chain.
-    1. Extending the anchor region. for extracting sequences from the query and reference genome. For example, extending 1 kb in upstream and downstream of anchor region.
-    1. Performing pseudo-alignment with extended query and subject sequences, for find similar regions.
-       - For these similar regions that accross more than one reference sequences, splitting them into multiple ones.
+    1. Extending the anchor region to extract sequences from the query and reference genome. For example, extending 1 kb upstream and downstream of the anchor region.
+    1. Performing pseudo-alignment with extended query and subject sequences, to find similar regions.
+       - For similar regions that span more than one reference sequence, splitting them into multiple ones.
     2. Fast alignment of query and subject sequence regions with [our implementation](https://github.com/shenwei356/wfa) of [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
     3. Filtering alignments based on user options.
 
@@ -105,14 +103,14 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 |Flag                    |Value                      |Function                                                                                                       |Comment                                                                                                                                                                                                                                                                  |
 |:-----------------------|:--------------------------|:--------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |**`-d/--index`**        |                           |Index directory created by "lexicmap index".                                                                   |                                                                                                                                                                                                                                                                         |
-|**`-o/--out-file`**     |Default: - (stdout)        |Out file, supports a ".gz" suffix ("-" for stdout).                                                            |                                                                                                                                                                                                                                                                         |
-|**`-j/--threads`**      |Default: all available cpus|Number of CPU cores to use.                                                                                    |The value should be >= the number of seed chunk files (“chunks” in info.toml, set by `-c/--chunks` in `lexicmap index`).                                                                                                                                                 |
+|**`-o/--out-file`**     |Default: - (stdout)        |Output file; supports a ".gz" suffix ("-" for stdout).                                                         |                                                                                                                                                                                                                                                                         |
+|**`-j/--threads`**      |Default: all available CPUs|Number of CPU cores to use.                                                                                    |The value should be >= the number of seed chunk files (“chunks” in info.toml, set by `-c/--chunks` in `lexicmap index`).                                                                                                                                                 |
 |**`-a/--all`**          |                           |Output more columns, e.g., matched sequences.                                                                  |Use this if you want to output blast-style format with "lexicmap utils 2blast"                                                                                                                                                                                           |
-|**`-n/--top-n-genomes`**|Default 0, 0 for all       |Keep the top N genome matches for a query in the chaining phase, including all matches tied at the cutoff score|The number of retained candidates may exceed N when scores are tied. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 5. Some retained candidates may fail to pass the criteria in the alignment step.|
-|`-J/--max-query-conc`   |Default 8, 0 for all       |Maximum number of concurrent queries                                                                           |Bigger values do not improve the batch searching speed and consume much memory. Reduce this value when memory is limited.                                                                                                                                                |
-|`--gc-interval`         |Default 64, 0 for disable  |Force garbage collection every N queries.                                                                      |The value can't be too small.                                                                                                                                                                                                                                            |
-|`--max-open-files`      |Default: 1024              |Maximum number of open files                                                                                   |It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger `ulimit -n` in shell if the value is > 1024.                                                  |
-|`-w/--load-whole-seeds` |                           |Load the whole seed data into memory for faster batch searching                                                |Use this if the index is not big and many queries are needed to search.                                                                                                                                                                                                  |
+|**`-n/--top-n-genomes`**|Default 0, 0 for all       |Keep the top N genome matches for a query in the chaining phase, including all matches tied at the cutoff score|The number of retained candidates may exceed N when scores are tied. Value 1 is not recommended as the best chaining result does not always yield the best alignment, so it should be >= 5. Some retained candidates may fail to pass the criteria in the alignment step.|
+|`-J/--max-query-conc`   |Default 8, 0 for all       |Maximum number of concurrent queries                                                                           |Bigger values do not improve batch search speed and consume more memory. Reduce this value when memory is limited.                                                                                                                                                       |
+|`--gc-interval`         |Default 64, 0 to disable  |Force garbage collection every N queries.                                                                      |The value can't be too small.                                                                                                                                                                                                                                            |
+|`--max-open-files`      |Default: 1024              |Maximum number of open files                                                                                   |It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forget to set a larger `ulimit -n` in the shell if the value is > 1024.                                              |
+|`-w/--load-whole-seeds` |                           |Load the whole seed data into memory for faster batch searching                                                |Use this if the index is not big and many queries need to be searched.                                                                                                                                                                                                   |
 |`--debug`               |                           |Print debug information, including a progress bar.                                                             |Recommended when searching with one query.                                                                                                                                                                                                                               |
 
 {{< /tab>}}
@@ -121,11 +119,11 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 
 |Flag                              |Value              |Function                                                                                                       |Comment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 |:---------------------------------|:------------------|:--------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|**`-p, --seed-min-prefix`**       |Default 15         |Minimum (prefix) length of matched seeds (anchors).                                                            |Smaller values produce more results at the cost of slow speed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|**`-P, --seed-min-single-prefix`**|Default 17         |Minimum (prefix) length of matched seeds (anchors) if there's only one pair of seeds matched.                  |Smaller values produce more results at the cost of slow speed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-|`--seed-max-dist`                 |Default 1000       |Max distance between seeds in seed chaining. It should be <= contig interval length in database.               |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|**`-p, --seed-min-prefix`**       |Default 15         |Minimum (prefix) length of matched seeds (anchors).                                                            |Smaller values produce more results at the cost of slower searches.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|**`-P, --seed-min-single-prefix`**|Default 17         |Minimum (prefix) length of matched seeds (anchors) if only one pair of seeds matches.                          |Smaller values produce more results at the cost of slower searches.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|`--seed-max-dist`                 |Default 1000       |Max distance between seeds in seed chaining. It should be <= the contig interval length in the database.       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 |`--seed-max-gap`                  |Default 50         |Max gap in seed chaining.                                                                                      |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|**`--top-n-chains`**              |Default 0          |Keep the top N chains in a genome for the query (0 for all) in the chaining phase                              |Set a non-zero value if you only need the most similar matches. Value 1 is not recommended as the best chaining result does not always bring the best alignment, so it better be >= 10.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|**`--top-n-chains`**              |Default 0          |Keep the top N chains in a genome for the query (0 for all) in the chaining phase                              |Set a non-zero value if you only need the most similar matches. Value 1 is not recommended as the best chaining result does not always yield the best alignment, so it should be >= 10.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 |`--max-seed-memory`               |Default 0, disabled|Anchor collection buffer budget across up to -J concurrent query slots; supports K/M/G/T suffixes.|Queries with very many seed matches in large indexes can run out of memory during seed collection. Reduce -J/--max-query-conc to lower the memory used by concurrent queries. A positive value streams seed data and spills sorted anchors before buffer growth exceeds a query share. Covers producer/collection buffers, radix workspace, and normal parallel chaining batches. Excludes a single oversized genome or the serial fallback's complete anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata, loaded index data, and alignment memory. Not a total RSS limit. Use TMPDIR for temporary files.|
 
 {{< /tab>}}
@@ -136,11 +134,11 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 |:--------------------------------|:-----------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 |**`-Q/--min-qcov-per-genome`**   |Default 0   |Minimum query coverage (percentage) per genome.                                                                                                                                                                                                                         |
 |**`-q/--min-qcov-per-hsp`**      |Default 0   |Minimum query coverage (percentage) per HSP.                                                                                                                                                                                                                            |
-|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in a HSP segment.                                                                                                                                                                                                                                |
-|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in a HSP segment.                                                                                                                                                                                                                    |
+|**`-l/--align-min-match-len`**   |Default 50  |Minimum aligned length in an HSP segment.                                                                                                                                                                                                                                |
+|**`-i/--align-min-match-pident`**|Default 70  |Minimum base identity (percentage) in an HSP segment.                                                                                                                                                                                                                    |
 |`--align-band`                   |Default 100 |Band size in backtracking the score matrix.                                                                                                                                                                                                                             |
-|`--align-ext-len`                |Default 1000|Extend length of upstream and downstream of seed regions, for extracting query and target sequences for alignment. It should be <= contig interval length in database.                                                                                                  |
-|`--align-max-gap`                |Default 20  |Maximum gap in a HSP segment.                                                                                                                                                                                                                                           |
+|`--align-ext-len`                |Default 1000|Length to extend upstream and downstream of seed regions when extracting query and target sequences for alignment. It should be <= the contig interval length in the database.                                                                                          |
+|`--align-max-gap`                |Default 20  |Maximum gap in an HSP segment.                                                                                                                                                                                                                                           |
 |` --max-align-result-memory`     |Default 1G  |Maximum memory for retaining CIGAR, query sequence, subject sequence, and alignment text across concurrent queries. When the global budget is exceeded, the affected query spills these fields to a temporary file. This is not a total RSS limit (0 disables spilling).|
 
 
@@ -151,23 +149,23 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 ### Improving searching speed
 
 LexicMap's searching speed is related to many factors:
-- **The number of similar sequences in the index/database**. More genome hits cost more time, e.g., 16S rRNA gene.
-- **The I/O performance and load**. LexicMap is I/O bound, because seeds matching (sequential reading) and extracting candidate subsequences for alignment (**random access**) require a large number of file readings in parallel.
+- **The number of similar sequences in the index/database**. More genome hits take more time, e.g., 16S rRNA gene.
+- **The I/O performance and load**. LexicMap is I/O bound, because seed matching (sequential reading) and extracting candidate subsequences for alignment (**random access**) require a large number of file reads in parallel.
 - **Similarity between query and subject sequences**. Alignment of diverse sequences is slightly slower than that of highly similar sequences.
-- **The length of query sequence**. Longer queries might have more small matches.
-- **CPU frequency and the number of threads**. Faster CPUs and more threads cost less time.
+- **The length of the query sequence**. Longer queries might have more small matches.
+- **CPU frequency and the number of threads**. Faster CPUs and more threads reduce search time.
 
 
 Here are some tips to improve the search speed.
 
 - **Storing the index on SSD** (It would be very fast!)
-- **Returning less results**
+- **Returning fewer results**
     - Set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
       e.g., `-p 17 -P 19`,
-      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
+      to increase search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
       Don't worry if you only search highly similar matches or long queries.
-    - Set `-n/--top-n-genomes` to keep the top N genome matches for a query (0 for all) in chaining phase. 
-      For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
+    - Set `-n/--top-n-genomes` to keep the top N genome matches for a query (0 for all) in the chaining phase.
+      For queries with a large number of genome hits, a reasonable value such as 1000 would significantly reduce the computation time.
     - Set `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
       if you only need the most similar matches.
     - **Note that**: alignment result filtering is performed in the final phase, so stricter filtering criteria,
@@ -175,14 +173,14 @@ Here are some tips to improve the search speed.
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools such as [csvtk](https://github.com/shenwei356/csvtk).
 - **Increasing the concurrency number**
-    - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ than the number of seed chunk file (default: all available CPUs in the indexing step), which can be found in `info.toml` file, e.g,
+    - Make sure that the value of `-j/--threads` (default: all available CPUs) is ≥ the number of seed chunk files (default: all available CPUs in the indexing step), which can be found in the `info.toml` file, e.g.,
         ```
         # Seeds (k-mer-value data) files
         chunks = 48
         ```
     - Increase the value of `--max-open-files` (default 1024). You might also need to [change the open files limit](https://stackoverflow.com/questions/34588/how-do-i-change-the-number-of-open-files-limit-in-linux).
-    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 8), which might help. This will increase the memory.
-- **Loading the entire seed data into memoy** (*ONLY if you have many queries and the index is small*. It's unnecessary if the index is stored on SSD)
+    - (If you have many queries) Increase the value of `-J/--max-query-conc` (default 8), which might help. This will increase memory usage.
+- **Loading the entire seed data into memory** (*ONLY if you have many queries and the index is small*. It's unnecessary if the index is stored on SSD)
     - Set `-w/--load-whole-seeds` to load the whole seed data into memory for faster seed matching. For example, for ~85,000 GTDB representative genomes, the memory would be ~260 GB with default parameters.
 
 
@@ -195,11 +193,11 @@ Here are some tips to improve the search speed.
 
 How to:
 
-1. First, please **use `--debug` to check which step did `lexicmap search` failed**.
-   Optionally, **use `--log log.txt` to write log** and [create an issue](https://github.com/shenwei356/LexicMap/issues).
+1. First, please **use `--debug` to check at which step `lexicmap search` failed**.
+   Optionally, **use `--log log.txt` to write a log** and [create an issue](https://github.com/shenwei356/LexicMap/issues).
 2. Meanwhile, please **reduce the value of `-J/--max-query-conc`** to lower the memory used by concurrent queries.
-3. **If it failed before the chaining step** (no `finished seed-matching` nor `finished chaining` shown), then it means there are too many matched seeds to be filled in RAM.
-    - Choice 1: You can set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17) to sacrifice some sensitivities.
+3. **If it failed before the chaining step** (no `finished seed-matching` nor `finished chaining` shown), then it means there are too many matched seeds to fit in RAM.
+    - Choice 1: You can set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17) at the cost of some sensitivity.
       If this does not work, go to choice 2.
     - Choice 2: Limit seed/anchor collection buffers, enable seed spilling with `--max-seed-memory` (disabled by default):
 
@@ -215,7 +213,7 @@ How to:
         - Choose a disk-backed `TMPDIR`; a tmpfs directory still stores temporary files in RAM. Temporary files are removed after chaining and on returned errors.
         - The budget is divided among up to `-J/--max-query-conc` concurrent collection slots. With multiple queries, a query can spill even when other query slots are idle; use `-J 1` to give a single query the whole budget.
         - Global Top-N selection remains based on chaining scores and retains cutoff ties; alignment, genome-chunk merging, filtering, and final sorting follow the existing path.
-        - Because of disk writing and reading with massive data, search speed would be much slower.
+        - Reading and writing large amounts of data on disk can make searches much slower.
             
    See the [usage](https://bioinf.shenwei.me/LexicMap/usage/search/) for more details.
 
@@ -233,18 +231,18 @@ How to:
             --all --max-align-result-memory 10G \
             --max-query-conc 1     
 
-5. **If it failed after the chaining step and you did not used `-a/--all`**. Then return less results:
+5. **If it failed after the chaining step and you did not use `-a/--all`**, return fewer results:
     - Set bigger `-p/--seed-min-prefix` (default 15) and `-P/--seed-min-single-prefix` (default 17),
       e.g., `-p 17 -P 19`,
-      increase the search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
+      to increase search speed at the cost of decreased sensitivity for distant matches (similarity < 90%) or short queries.
       Don't worry if you only search highly similar matches or long queries.
-    - Sett `-n/--top-n-genomes` to keep the top `N` genome matches for a query (0 for all) in chaining phase. 
-      For queries with a large number of genome hits, a resonable value such as 1000 would significantly reduce the computation time.
+    - Set `-n/--top-n-genomes` to keep the top `N` genome matches for a query (0 for all) in the chaining phase.
+      For queries with a large number of genome hits, a reasonable value such as 1000 would significantly reduce the computation time.
     - Set `-N/--top-n-chains` to keep the top N chains in a genome for the query (0 for all) in the chaining phase,
       if you only need the most similar matches.
     
-6. The last choice is rebuilding small indexes each with few input genomes,
-   and [merge results after sequences](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/).
+6. The last option is to rebuild smaller indexes, each with fewer input genomes,
+   and [merge results after searching](https://bioinf.shenwei.me/LexicMap/usage/utils/merge-search-results/).
 
 ### Searching with plasmids or other longer queries
 
@@ -254,18 +252,18 @@ For long queries, such as plasmids, a few parameters can be adjusted for better 
       e.g., `-p 19 -P 21`. The search sensitivity will not be affected for long queries or high similarity subjects.
 - Bigger `-l/--align-min-match-len` (default 50), such as `1000`, because small matches are less informative.
 
-When searching with plasmids, it's recommended to use a strict criterion of `-Q/--min-qcov-per-genome` (`qcovGnm`, default 0), such as 80,
-and further filter results with a loose criterion of `-q/--min-qcov-per-hsp` (`qcovHSP`, default 0) after searching, such as 50/60/70.
+When searching with plasmids, it's recommended to use a strict threshold for `-Q/--min-qcov-per-genome` (`qcovGnm`, default 0), such as 80,
+and further filter results with a loose threshold for `-q/--min-qcov-per-hsp` (`qcovHSP`, default 0) after searching, such as 50/60/70.
 The reasons are:
 
 - Plasmids are circular, while they are stored linearly. 
   The different starting positions in query and subject sequences would result in two alignment segments (small `qcovHSP`).
-- Assemblies can be fragmented, with many contigs, especially these assembled from short reads.
+- Assemblies can be fragmented, with many contigs, especially those assembled from short reads.
   Therefore, a plasmid might be aligned to multiple contigs with small `qcovHSP`.
   
 **If you have tens (or more) of plasmids to search, the memory usage would be 100 or 200 GB**, as there would be a large number of possible short matches between the query and EACH candidate genome. In this case, it's better to decrease the number of concurrent queries (`-J/--max-query-conc`, default 8). You can also use a smaller value for GC interval (`--gc-interval`, default 64), which forces garbage collection every N queries.
 - See [more factors affecting the memory usage](#hardware-requirements).
-- See how to [trade off speed for memory usage](#trade-off-speed-for-memory-usage) if it failed due to out of memory.
+- See how to [trade off speed for memory usage](#trade-off-speed-for-memory-usage) if it failed due to insufficient memory.
 
 
 
@@ -425,7 +423,7 @@ and a query's search results in multiple indexes can be merged with `lexicmap ut
             ├── HSP cluster (a cluster of neighboring HSPs)
                 ├── High-Scoring segment Pair (HSP)
 
-Here, the defination of HSP is similar with that in BLAST. Actually there are small gaps in HSPs.
+Here, the definition of HSP is similar to that in BLAST. However, HSPs can contain small gaps.
 
 > A High-scoring Segment Pair (HSP) is a local alignment with no gaps that achieves one of the highest alignment scores in a given search.
 > https://www.ncbi.nlm.nih.gov/books/NBK62051/
@@ -463,7 +461,7 @@ Tab-delimited format with 20+ columns, with 1-based positions.
 
 **Result ordering:**
 
-  For a HSP cluster, `SimilarityScore = max(bit_score * pident)`.
+  For an HSP cluster, `SimilarityScore = max(bit_score * pident)`.
   1. Within each HSP cluster, HSPs are sorted by `sstart`.
   2. Within each subject genome, HSP clusters are sorted in descending order by `SimilarityScore`.
   3. Results of multiple subject genomes are sorted by the highest `SimilarityScore` of HSP clusters.
@@ -610,7 +608,7 @@ Search results (TSV format) above are formatted with [csvtk pretty](https://gith
 
 If you would like to summarize alignment results, e.g., the number of species, here's the method.
 
-1. Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to any information (such as species name).
+1. Prepare a two-column tab-delimited file for mapping reference (genome) or sequence IDs to additional information (such as species names).
    
         # for GTDB/GenBank/RefSeq genomes downloaded with genome_updater
         cut -f 1,8 assembly_summary.txt > ass2species.tsv

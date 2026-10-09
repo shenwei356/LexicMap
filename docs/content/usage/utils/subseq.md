@@ -117,7 +117,7 @@ Global Flags:
     ```
 
 
-1. Extracting subsequence with genome ID, sequence ID, position range and strand information.
+1. Extracting subsequences with genome ID, sequence ID, position range and strand information.
 
 
         $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -s NZ_CP033092.2 -r 4591684:4593225 -R
@@ -149,7 +149,7 @@ Global Flags:
         AGCTTAACCTTCGGGAGGGCGCTTACCACTTTGTGATTCATGACTGGGGTGAAGTCGTAA
         CAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA
 
-1. If the sequence ID (`-s/--seq-id`) is not given, the positions are these in the concatenated sequence.
+1. If the sequence ID (`-s/--seq-id`) is not given, the positions refer to the concatenated sequence.
 
     Checking sequence lengths of a genome with [seqkit](https://github.com/shenwei356/seqkit).
 

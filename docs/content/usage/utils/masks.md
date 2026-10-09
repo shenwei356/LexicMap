@@ -65,7 +65,7 @@ $ lexicmap utils masks --quiet -d demo.lmi/ -m 12345
 12345   GCTGCACACGCAAAGACTCACGTCTTCAACG
 ```
 
-Freqency of prefixes.
+Frequency of prefixes.
 
 ```
 $ lexicmap utils masks --quiet -d demo.lmi/ \
@@ -99,8 +99,8 @@ AAAAATC 1
 AAAAATG 1
 ```
 
-Frequency of frequencies. i.e., for 20,000 masks, 4<sup>*7*</sup> = 16384.
-In them, 3,616 of them are duplicated 2 times. 12768 + 2 * 3616 = 20000.
+Frequency of frequencies, i.e., for 20,000 masks, 4<sup>*7*</sup> = 16384.
+Of these, 3,616 occur twice. 12768 + 2 * 3616 = 20000.
 
 ```
 $ lexicmap utils masks --quiet -d demo.lmi/ \

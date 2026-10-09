@@ -75,7 +75,7 @@ Global Flags:
 
         $ lexicmap index -I refs/ -O demo.lmi --save-seed-pos --force
 
-2. Listing seed position of one genome.
+2. Listing seed positions of one genome.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
@@ -119,11 +119,11 @@ Global Flags:
         ---------------   -----------   -------   -------   ------   --------
         GCF_000017205.1   NC_009656.1   168652    168652    +        126 
 
-    Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.
+    Plot a histogram of distances between seeds and a histogram of the number of seeds in sliding windows.
 
         $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance -w 250
 
-    In the plot below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default.
+    In the plot below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) spaced 50 bp apart by default.
 
     <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
 
@@ -137,7 +137,7 @@ Global Flags:
         GCF_000017205.1   NC_009656.1   160       160       -        70         6         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTCTTGGT...
         GCF_000017205.1   NC_009656.1   209       209       -        49         5         CATTAGGGGCGGGCATTTCCCATGGGCAAAAGGTTGT...
 
-    Or only list records with seed distance longer than a threshold.
+    Or only list records with seed distances longer than a threshold.
 
        $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
             | csvtk pretty -t -W 40
@@ -186,7 +186,7 @@ Global Flags:
                                                                                            TCAAGACTCAAGACTCAAGACTCAAGACTCAAGACTCAAG
                                                                                            AC 
 
-3. Listing seed position of all genomes.
+3. Listing seed positions of all genomes.
 
         $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz
 
@@ -234,7 +234,7 @@ Global Flags:
         GCF_000392875.1.seed_number.png  GCF_001457655.1.seed_number.png  GCF_003697165.2.seed_number.png
 
 
-    In the plots below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.
+    In the plots below, there's a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) spaced 50 bp apart by default. And they show that the seed number, seed distance and seed density are related to genome sizes.
 
     - GCF_000392875.1 (genome size: 2.9 Mb)
 
@@ -252,5 +252,5 @@ Global Flags:
         <img src="/LexicMap/GCF_000017205.1.seed_number.png" alt="" width="400"/>
 
 The output (TSV format) is formatted with [csvtk pretty](https://github.com/shenwei356/csvtk).
-[SeqKit](https://github.com/shenwei356/seqkit) is used to locating subsequences from fasta files.
+[SeqKit](https://github.com/shenwei356/seqkit) is used to locate subsequences in FASTA files.
 [lexicmap utils subseq](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/) can also be used to extract subsequences from the index.

@@ -39,7 +39,7 @@ Global Flags:
 
 ## Examples
 
-1. The default output is captured k-mers of the first mask.
+1. The default output contains k-mers captured by the first mask.
 
         $ lexicmap utils kmers --quiet -d demo.lmi/ | head -n 20 | csvtk pretty -t
         mask   kmer                              prefix   number   ref               pos       strand   reversed
@@ -124,7 +124,7 @@ Global Flags:
         NZ_KN046818.1   CTGCTACATGCTTTCACCGGGGAACACGTCG   CTGCTACATGCTTTCACCGGGGAACACGTCG   +        3888020   3888050
 
 
-1. For all masks. The result might be very big, therefore, writing to gzip format is recommended.
+1. For all masks. The result might be very large, so writing in gzip format is recommended.
 
 
         $ lexicmap utils kmers -d demo.lmi/ --mask 0 -o kmers.tsv.gz

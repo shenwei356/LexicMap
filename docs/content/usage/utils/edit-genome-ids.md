@@ -53,17 +53,17 @@ Suppose that we have one genome.
     $ ls GCF_009818595.1_ASM981859v1_genomic.fna.gz 
     GCF_009818595.1_ASM981859v1_genomic.fna.gz
 
-During the indexing, one might use the default parameters and **forgot to set `-N/--ref-name-regexp` to extract the genome ID from the sequence file**.
+During the indexing, one might use the default parameters and **forget to set `-N/--ref-name-regexp` to extract the genome ID from the sequence file**.
 
     $ lexicmap index GCF_009818595.1_ASM981859v1_genomic.fna.gz -O t.lmi
     
-So the genome ids in the index are something like this.
+So the genome IDs in the index are something like this.
 
     $ lexicmap utils genomes -d t.lmi/ | csvtk pretty -Ht
     ref                                   chunked
     GCF_009818595.1_ASM981859v1_genomic 
     
-Well, those IDs will be in the search result, which are too long and not convenient for downstream analyis.
+Well, those IDs will appear in the search results; they are too long and inconvenient for downstream analysis.
 
     $ lexicmap search -d t.lmi/ b.gene_E_coli_16S.fasta --quiet \
         | csvtk cut -t -f 1-11 \

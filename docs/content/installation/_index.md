@@ -3,10 +3,10 @@ title: Installation
 weight: 20
 ---
 
-LexicMap can be installed via [conda](#conda), downloading [executable binary files](#binary-files),
-or [compiling from the source](#compile-from-the-source).
+LexicMap can be installed via [conda](#conda), by downloading [executable binary files](#binary-files),
+or by [compiling from the source](#compile-from-the-source).
 
-Besides, it supports [shell completion](#shell-completion), which could help accelerate typing.
+It also supports [shell completion](#shell-completion), which can speed up typing.
 
 ## Conda/Pixi
 
@@ -24,7 +24,7 @@ Or use [pixi](https://pixi.sh/), which is even faster.
     pixi config channels add bioconda
     pixi add lexicmap
 
-Linux and MacOS (both x86 and arm CPUs) are supported.
+Linux and macOS (both x86 and ARM CPUs) are supported.
 
 ## Binary files
 
@@ -43,15 +43,15 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         tar -zxvf lexicmap_linux_amd64.tar.gz
 
-3. If you have the root privilege, simply copy it to `/usr/local/bin`:
+3. If you have root privileges, simply copy it to `/usr/local/bin`:
 
         sudo cp lexicmap /usr/local/bin/
 
-4. If you don't have the root privilege, copy it to any directory in the environment variable `PATH`:
+4. If you don't have root privileges, copy it to any directory listed in the environment variable `PATH`:
 
         mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
 
-   And optionally add the directory into the environment variable `PATH` if it's not in.
+   Optionally, add the directory to the environment variable `PATH` if it is not already included.
 
         # bash
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
@@ -77,7 +77,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
         mkdir -p $HOME/bin/; cp lexicmap $HOME/bin/
 
-   And optionally add the directory into the environment variable `PATH` if it's not in.
+   Optionally, add the directory to the environment variable `PATH` if it is not already included.
 
         # bash
         echo export PATH=\$PATH:\$HOME/bin/ >> $HOME/.bashrc
@@ -133,7 +133,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 {{< tab "Others" >}}
 
 - Please [open an issue](https://github.com/shenwei356/LexicMap/issues) to request binaries for other platforms.
-- Or [compiling from the source](#compile-from-the-source).
+- Or [compile from the source](#compile-from-the-source).
 
 {{< /tab>}}
 
@@ -188,7 +188,7 @@ Linux and MacOS (both x86 and arm CPUs) are supported.
 
 ## Shell-completion
 
-Supported shell: bash|zsh|fish|powershell
+Supported shells: bash|zsh|fish|powershell
 
 Bash:
 

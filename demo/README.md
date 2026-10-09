@@ -2,7 +2,7 @@
 
 ### Reference genomes
 
-We choose 15 bacterial genomes for demonstration.
+We use 15 bacterial genomes for demonstration.
 
 Taxonomy information (NCBI Taxonomy):
 
@@ -65,7 +65,7 @@ Overview
 
 ## Building an index
 
-Buiding
+Building
 
     $ lexicmap index -I refs -O demo.lmi
     15:03:45.351 [INFO] LexicMap v0.10.0
@@ -152,8 +152,8 @@ Overview of index files:
          375 B      genomes.map.bin
            0 B      genomes.chunks.bin
            
-From v0.10.0, it's is optional to create adaptive two-level indexes of seeds data.
-It can improves seed-matching performance for batch queries with `lexicmap search`.
+From v0.10.0, it is optional to create adaptive two-level indexes of seed data.
+It can improve seed-matching performance for batch queries with `lexicmap search`.
 See the [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds2) for more details.
 
     $ lexicmap utils reindex-seeds2 -d demo.lmi/
@@ -207,7 +207,7 @@ See the [usage](https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds2) f
     15:13:46.425 [INFO] 
 
 Result preview.
-Here we create a `species` column from the genome ID column (`sgenome`) and replace the assemby accessions with species names.
+Here we create a `species` column from the genome ID column (`sgenome`) and replace the assembly accessions with species names.
 
     $ csvtk head -n 21 q.gene.fasta.lexicmap.tsv \
         | csvtk mutate -t -n species -f sgenome \
@@ -389,8 +389,8 @@ Sbjct  460059  CAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA  460100
 ### Simulated Oxford Nanopore R10.4.1 long-reads
 
 Here we accelerate searching by
-- using the flag `--top-n-genomes 5`, which return only the top genome matches.
-- using the flag `--top-n-chains 1` , which return only the best match in a genome.
+- using the flag `--top-n-genomes 5`, which returns only the top genome matches.
+- using the flag `--top-n-chains 1`, which returns only the best match in a genome.
 
         $ lexicmap search -d demo.lmi/ q.long-reads.fasta.gz -o q.long-reads.fasta.gz.lexicmap.tsv.gz \
             --min-qcov-per-hsp 70 \

@@ -10,17 +10,17 @@ weight: 60
 
 **LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default**.
 
-**If you want to search some short reads, you need to build the index with small `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. It will increase the indexing time and increase the index size. Don't worry this, if you have a small scale of genomes, like < 10,000.
+**If you want to search some short reads, you need to build the index with small values of `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as < 10,000.
 
 If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
-speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.
+process, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.
 
 Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment might be fragmented**.
 
-## Does LexicMap support fungi genomes?
+## Does LexicMap support fungal genomes? {#does-lexicmap-support-fungi-genomes}
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-**Fungi can also be supported, just remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
+**Fungal genomes are also supported; remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
 which is used to skip genomes larger than 15Mb by default**.
 
 ```
@@ -32,20 +32,20 @@ Maximum genome size is about 268 Mb (268,435,456). More precisely:
 
     $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456
 
-as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.
+as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.
 
-For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.
+For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap alignment can be slow.
 Since v0.9.0, you can set a small value of `-N, --top-n-chains` to keep a few matches if you only want to check if sequences match any position in a human genome, which would be faster.
 
 
-## How's the hardware requirement?
+## What are the hardware requirements? {#hows-the-hardware-requirement}
 
-- For index building. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
-- For seaching. See details [hardware requirement](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
+- For index building, see the [hardware requirements](https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements).
+- For searching, see the [hardware requirements](https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements).
 
 
 
-## How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?
+## How can I resume indexing when a Slurm job is near its time limit during merging? {#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step}
 
 Use [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/) (available since v0.5.0), which reruns the merging step for an unfinished index.
 
@@ -56,20 +56,20 @@ Use [lexicmap utils remerge](https://bioinf.shenwei.me/LexicMap/usage/utils/reme
 > - The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
 > - Disk quota is reached in the merging step.
 
-So you can stop the indexing command by press `Ctrl` + `C` (**make sure it is in the merging step**, see example below), and run `lexicmap utils remerge -d index.lmi`,
+So you can stop the indexing command by pressing `Ctrl` + `C` (**make sure it is in the merging step**, see the example below), and run `lexicmap utils remerge -d index.lmi`,
 where `index.lmi` is the output index directory in `lexicmap index`.
 
 Optionally, you might set bigger values of
-flag `--max-open-files` and `-J/--seed-data-threads` if you have hundreds of thousands of input genomes or have set
+the flags `--max-open-files` and `-J/--seed-data-threads` if you have hundreds of thousands of input genomes or have set
 a small batch size with `-b/--batch-size`. E.g.,
 
     22:54:24.420 [INFO] merging 297 indexes...
     22:54:24.455 [INFO]   [round 1]
     22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 
-There's only one thread was used for seed data merging, it would take a long time.
+Only one thread was used for seed data merging, so it would take a long time.
 So we can set a larger `--max-open-files`, e.g., `4096`,
-and it would allow `4096 / (297+2) = 13.7` threads for merging, let's set `--seed-data-threads 12`.
+and it would allow `4096 / (297+2) = 13.7` threads for merging. Let's set `--seed-data-threads 12`.
 
     # specify the maximum open files per process
     ulimit -n 4096
@@ -110,7 +110,7 @@ Yes, `lexicmap search` has a flag
                                        want to output blast-style format with "lexicmap utils 2blast".
 ```
 
-to output CIGAR string, aligned query and subject sequences.
+to output the CIGAR string and aligned query and subject sequences.
 
     21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
     22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
@@ -142,8 +142,8 @@ see [examples](https://bioinf.shenwei.me/LexicMap/usage/utils/2blast/#examples).
 ## How can I extract the upstream and downstream flanking sequences of matched regions?
 
 [lexicmap utils subseq](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/)
-can extract subsequencess via genome ID, sequence ID and positions.
-So you can use these information from the search result and expand the region positions to extract flanking sequences.
+can extract subsequences via genome ID, sequence ID and positions.
+So you can use this information from the search result and extend the regions to extract flanking sequences.
 
 **Update: since v0.8.0, you can extract the extended aligned region with `lexicmap utils subseq`**.
 See [more examples](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
@@ -151,8 +151,8 @@ See [more examples](https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/).
 ## Why isn't the pident 100% when aligning with a sequence from the reference genomes?
 
 It happens if there are some degenerate bases (e.g., `N`) in the query sequence.
-In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., `N` is converted to `A`.
-While for the query sequences, we don't convert them.
+In the indexing step, all degenerate bases are converted to their lexicographically first bases. E.g., `N` is converted to `A`.
+For query sequences, we don't convert them.
 
 
 ## Why is LexicMap slow for batch searching?

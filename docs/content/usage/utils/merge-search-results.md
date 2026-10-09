@@ -96,7 +96,7 @@ is known, then written with the correct `hits` value. No temporary files are use
 This also supports standard input. The buffer includes all ties at the cutoff score,
 so its size depends on the number and size of retained alignments, not only N.
 
-If some files contain search results of multiple queries, then specify one query to merge.
+If some files contain search results for multiple queries, specify one query to merge.
 
 ```text
 # search with multiple queries

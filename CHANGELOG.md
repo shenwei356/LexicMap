@@ -8,19 +8,19 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
     - All commands check that the log file differs from the output file before opening it.
 - New commands:
-    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seeds data, which speeds up seed matching for large indexes.**
+    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up seed matching for large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
-    - **Faster speed (45% less time) and 30% lower memory by optimizing seed computation and merging**.
+    - **Faster indexing (45% less time) and 30% lower memory usage by optimizing seed computation and merging**.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
-      To keep compatibility, the old algorithm is used for index format (from v3.0 to v3.4).
+      To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation and progress reporting.
@@ -34,9 +34,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
         - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
         - Faster pseudoalignment for long queries.
     - **Add two flags to limit the memory usage when searching in huge indexes** such as Logan Project,
-      where there are very many seed matches and it can risk running run out of memory during seed collection.
+      where the large number of seed matches can cause memory exhaustion during seed collection.
       See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
-        - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a large value (such as 1/2 to 3/4 of the available free RAM). See help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
+        - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a large value (such as 1/2 to 3/4 of the available free RAM). See the help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
         - **Add `--max-align-result-memory` (default `1G`) to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
@@ -44,11 +44,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`; the number of retained candidates may exceed N.
     - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
     - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
-    - Added new flags `-g/--show-genome-name` `-s/--show-species-name` to add the taxonomic/species name as a prefix to `sgenome` fied.
+    - Added new flags `-g/--show-genome-name` and `-s/--show-species-name` to add the taxonomic/species name as a prefix to the `sgenome` field.
     - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to `sseqid` values.
-    - Added a new flag `--show-avg-qual` to add average quality of the aligned region as a suffix to `alenHSP` field.
+    - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
     - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
-    - Fixed a data race bug in extension of pseudoalignment region.
+    - Fixed a data race when extending the pseudoalignment region.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
@@ -106,18 +106,18 @@ No changes to the index format (see [Index format changelog](https://bioinf.shen
     - **`lexicmap utils edit-genome-ids`: Edit genome IDs in the index via a regular expression**.
       It's helpful when users forgot to use the flag `-N/--ref-name-regexp`
       to extract the genome ID from the sequence file during indexing.
-      This command help to fix it without rebuilding the index.
+      This command helps fix this without rebuilding the index.
 - `lexicmap index`:
     - **Significantly reduce the memory usage (by up to 25%)** in the merge step.
-      Also reduce some for huge data, such as long-reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
+      Also reduce memory usage for huge datasets, such as long reads or contigs in the [Logan project](https://github.com/IndexThePlanet/Logan).
 - `lexicmap search`:
     - **Reduce memory usage, particularly for batch searching (by up to 50%)**.
     - **Improve search speed, mainly for batch searching**.
     - **Support limiting search by TaxId(s)** via `-t/--taxids` or `--taxid-file`.
       Only genomes with descendant TaxIds of the specific ones or themselves are searched,
-      in a similar way with BLAST+ 2.15.0 or later versions.
-      Negative values are allowed as a black list.
-      For example, searching non-Escherichia (561) genera of Enterobacteriaceae (543) family with `-t 543,-561`.
+      in a similar way to BLAST+ 2.15.0 or later versions.
+      Negative values are allowed as a blacklist.
+      For example, searching non-Escherichia (561) genera of the Enterobacteriaceae (543) family with `-t 543,-561`.
       Users only need to provide NCBI-format taxdump files (`-T/--taxdump`, can also create from
       any taxonomy data with [TaxonKit](https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump))
       and a genome-ID-to-TaxId mapping file (`-G/--genome2taxid`).
@@ -125,7 +125,7 @@ No changes to the index format (see [Index format changelog](https://bioinf.shen
     - Check if the output file and the log file are the same.
     - Reduce the time of seed matching when using `-w`.
     - Change the default value of `--max-query-conc` from 12 to 8.
-    - New flag `--gc-interval` (default 64, 0 for disable) for forcing garbage collection every N queries. This decreases memory usage a lot.
+    - New flag `--gc-interval` (default 64, 0 to disable) for forcing garbage collection every N queries. This decreases memory usage a lot.
 - `lexicmap utils subseq`:
     - **Accept the output file of `lexicmap search` as the input**.
       So one can extract matched sequences (including flanking regions) from the index, after alignment with `lexicmap search` with or without using the flag `-a/--all`.
@@ -156,11 +156,11 @@ but rebuilding the index is recommended for more accurate results on short queri
 However, indexes created by this version are not compatible with previous versions when the number of batches is <= 512.
 
 - `lexicmap index`:
-    - **Change default option values to bring a higher sensitivity for short (<=500, especially <=250) queries,
-      faster indexing speed, and faster seed-matching speed<s>, at a cost of slightly larger index</s>**.
+    - **Change default option values to provide higher sensitivity for short (<=500, especially <=250) queries,
+      faster indexing speed, and faster seed-matching speed<s>, at the cost of a slightly larger index</s>**.
         - `-m/--masks`: 40,000 -> 20,000. 
            40k is unnecessary especially for small genomes, where seeds would be very crowded,
-           with a big proportion of seed distance being between 0-50 bp.
+           with a large proportion of seed distances between 0 and 50 bp.
         - `-D/--seed-max-desert`: 200 -> 100. This provides a smaller seed window guarantee.
     - **Reduce index size by using 3 bytes rather than 4 for saving seed data when the number of batches is <= 512**,
       which requires only 9 (17 minus 8) bits to store the batch index. 
@@ -183,9 +183,9 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
     - **`lexicmap utils remerge`: Rerun the merging step for an unfinished index**.
 - `lexicmap index`:
     - **Big genomes with thousands of contigs (big yet fragmented assemblies) are automatically split into multiple chunks, and alignments from these chunks will be merged.**
-    - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed-matching speed at the cost of 2 GiB more memory occupation**.
+    - **Change the default value of `--partitions` from 1024 to 4096, which increases the seed-matching speed at the cost of 2 GiB of additional memory**.
       For existing lexicmap indexes, just run `lexicmap utils reindex-seeds --partitions 4096` to re-create seed indexes.
-    - **Do not save seeds of low-complexity**.
+    - **Do not save low-complexity seeds**.
     - Fix high memory usage in writing seed data.
     - Change the default value of `-c/--chunks` from all available CPUs to the value of `-j/--threads`.
     - Change the default value of `--max-open-files` from 512 to 1024.
@@ -194,10 +194,10 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
     - **Improving chaining, pseudoalignment, and alignment for highly repetitive sequences**.
     - **More accurate chaining score with better chaining of overlapped anchors, this produces more accurate results with `-n/--top-n-genomes`**: 
          - Merging two overlapped non-gapped anchors into a longer one.
-         - For these with gaps, only the non-overlapped part of the second anchor is used to compute the weight.
+         - For those with gaps, only the non-overlapping part of the second anchor is used to compute the weight.
          - Using the score of the best chain (rather than the sum) for sorting genomes when using `-n`.
     - Fix positions and alignment texts for queries with highly repetitive sequences in end regions. [#9](https://github.com/shenwei356/LexicMap/issues/9)
-    - Skip seeds of low-complexity.
+    - Skip low-complexity seeds.
     - Change the default value of `--max-open-files` from 512 to 1024.
     - Change the default value of `--align-band` from 50 to 100.
     - Improve the speed of anchor deduplication, genome information extraction, and result ordering.
@@ -234,28 +234,28 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
 - `lexicmap search`:
     - **Fix chaining for highly-repetitive regions**.
     - **Perform more accurate alignment with [WFA](https://github.com/shenwei356/wfa)**.
-    - Use buffered reader for seeds file reading.
+    - Use a buffered reader for reading seed files.
     - Fix object recycling and reduce memory usage.
     - Fix alignment against genomes with many short contigs.
     - Fix early quit when meeting a sequence shorter than k.
-    - Add a new option `-J/--max-query-conc` to limit the miximum number of concurrent queries,
-      with a default valule of 12 instead of the number of CPUs, which reduces the memory usage
+    - Add a new option `-J/--max-query-conc` to limit the maximum number of concurrent queries,
+      with a default value of 12 instead of the number of CPUs, which reduces the memory usage
       in batch searching.
     - Result format:
         - Cluster alignments of each target sequence.
         - Remove the column `seeds`.
-        - Add columns `gaps`, `cigar`, `align`, which can be reformated with `lexicmap utils 2blast`.
+        - Add columns `gaps`, `cigar`, `align`, which can be reformatted with `lexicmap utils 2blast`.
 - `lexicmap utils kmers`:
     - Fix the progress bar.
     - Fix a bug where some masks do not have any k-mer.
-    - Add a new column `prefix` to show the length of common prefix between the seed and the probe.
+    - Add a new column `prefix` to show the length of the common prefix between the seed and the probe.
     - Add a new column `reversed` to indicate if the k-mer is reversed for suffix matching.
 - `lexicmap utils masks`:
-    - Add the support of only outputting a specific mask.
+    - Add support for outputting only a specific mask.
 - `lexicmap utils seed-pos`:
     - New columns: `sseqid` and `pos_seq`.
     - More accurate seed distance.
-    - Add histograms of numbers of seed in sliding windows.
+    - Add histograms of numbers of seeds in sliding windows.
 - `lexicmap utils subseq`:
     - Fix a bug when the given end position is larger than the sequence length.
     - Add the strand ("+" or "-") in the sequence header.
@@ -267,17 +267,17 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
     - **Use longer (1000bp N's, previous: k-1) intervals between contigs**.
     - Fix a concurrency bug between genome data writing and k-mer-value data collecting.
     - Change the format of k-mer-value index file, and fix the computation of index partitions.
-    - Optionally save seed positions which can be outputted by `lexicmap utils seed-pos`.
+    - Optionally save seed positions which can be output by `lexicmap utils seed-pos`.
 - `lexicmap search`:
     - **Improved seed-chaining algorithm**.
-    - **Better support of long queries**.
+    - **Better support for long queries**.
     - **Add a new flag `-w/--load-whole-seeds` for loading the whole seed data into memory for faster search**.
     - **Parallelize alignment in each query**, so it's faster for a single query.
-    - **Optional outputing matched query and subject sequences**.
+    - **Optional output of matched query and subject sequences**.
     - 2-5X searching speed with a faster masking method.
     - Change output format.
     - Add output of query start and end positions.
-    - Fix a target sequence extracting bug.
+    - Fix a target sequence extraction bug.
     - Keep indexes of genome data in memory.
 - `lexicmap utils kmers`:
     - Fix a little bug, wrong number of k-mers for the second k-mer in each k-mer pair.
@@ -285,13 +285,13 @@ This version is compatible with indexes created by LexicMap v0.4.0, but rebuildi
     - `lexicmap utils gen-masks` for generating masks from the top N largest genomes.
     - `lexicmap utils seed-pos` for extracting seed positions via reference names.
     - `lexicmap utils reindex-seeds` for recreating indexes of k-mer-value (seeds) data.
-    - `lexicmap utils genomes` for list genomes IDs in the index.
+    - `lexicmap utils genomes` for listing genome IDs in the index.
 
 ### v0.2.0 - 2024-02-02
 
-- Software architecture and index formats are redesigned to reduce searching memory occupation.
+- Software architecture and index formats are redesigned to reduce searching memory usage.
 - Indexing: genomes are processed in batches to reduce RAM usage, then indexes of all batches are merged.
-- Searching: seeds matching is performed on disk yet it's ultra-fast.
+- Searching: seed matching is performed on disk, yet it's ultra-fast.
 
 ### v0.1.0 - 2024-01-15
 

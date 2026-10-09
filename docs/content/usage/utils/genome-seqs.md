@@ -83,7 +83,7 @@ $ seqkit sum demo/refs/GCF_001544255.1.fa.gz
 seqkit.v0.1_DLS_k0_4369d22ee7050db2833ae66e78aa28a6     demo/refs/GCF_001544255.1.fa.gz
 ```
 
-But note that, Lexicmap does not store description in the header line.
+Note that LexicMap does not store descriptions from the header lines.
 
 ```text
 $ lexicmap utils genome-seqs -d demo/demo.lmi/ -n GCF_001544255.1 | seqkit seq -n | head -n 3
