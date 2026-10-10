@@ -147,9 +147,9 @@ Linux and macOS (both x86 and ARM CPUs) are supported.
 
 1. [Install go](https://go.dev/doc/install) (go 1.22 or later versions).
 
-        wget https://go.dev/dl/go1.27.1.linux-amd64.tar.gz
+        wget https://go.dev/dl/go1.27.2.linux-amd64.tar.gz
 
-        tar -zxf go1.27.1.linux-amd64.tar.gz -C $HOME/
+        tar -zxf go1.27.2.linux-amd64.tar.gz -C $HOME/
 
         # or
         #   echo "export PATH=$PATH:$HOME/go/bin" >> ~/.bashrc

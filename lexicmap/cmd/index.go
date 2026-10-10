@@ -149,7 +149,7 @@ Important parameters:
 
 		defer setupCommandLog(opt, "")()
 		outputLog := opt.Verbose || opt.Log2File
-		
+
 		timeStart := time.Now()
 
 		// ---------------------------------------------------------------
@@ -600,7 +600,7 @@ func init() {
 		formatFlagUsage(fmt.Sprintf(`Maximum number of genomes in each batch (maximum value: %d)`, 1<<BITS_GENOME_IDX)))
 
 	indexCmd.Flags().IntP("seed-data-threads", "J", 8,
-		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files.`))
+		formatFlagUsage(`Number of threads for merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files. Bigger values increase I/O load in HDDs for large batch counts.`))
 
 	indexCmd.Flags().IntP("contig-interval", "", 1000,
 		formatFlagUsage(`Length of interval (N's) between contigs in a genome. It can't be too small (<1000) or some alignments might be fragmented`))

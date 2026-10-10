@@ -1816,7 +1816,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	chunkSize := (nMasks + chunks - 1) / opt.Chunks
 	var j, begin, end int
 	k8 := uint8(lh.K)
-	tokens = make(chan int, opt.MergeThreads)
+	tokens = make(chan int, opt.NumCPUs)
 
 	for j = 0; j < chunks; j++ { // each chunk
 		begin = j * chunkSize
