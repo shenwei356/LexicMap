@@ -87,7 +87,12 @@ func TestIndexSeedIndex2(t *testing.T) {
 			}
 			// One case uses the default 8K threshold; the other overrides it to 4K.
 			threshold := "8K"
-			adaptiveArgs := append(append([]string{}, buildArgs...), "--seed-index2", "-O", adaptive)
+			// Exercise the numeric shorthand in the constrained multi-batch build.
+			seedIndex2Flag := "--seed-index2"
+			if maxOpenFiles == 13 {
+				seedIndex2Flag = "-2"
+			}
+			adaptiveArgs := append(append([]string{}, buildArgs...), seedIndex2Flag, "-O", adaptive)
 			if batchSize == 1 {
 				threshold = "4K"
 				adaptiveArgs = append(adaptiveArgs, "--seed-index2-threshold", threshold)

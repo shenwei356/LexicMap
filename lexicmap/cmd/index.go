@@ -135,7 +135,7 @@ Important parameters:
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-                            ► Use --seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
+                            ► Use -2/--seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
                             These indexes speed up prefix matching in large indexes by using longer prefixes to locate
                             seeds within large data blocks. Overall gains are most noticeable for batch queries with
                             "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching
@@ -605,7 +605,7 @@ func init() {
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Max: 128. Default: the value of -j/--threads.`))
 	indexCmd.Flags().IntP("partitions", "", 4096,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
-	indexCmd.Flags().Bool("seed-index2", false,
+	indexCmd.Flags().BoolP("seed-index2", "2", false,
 		formatFlagUsage(`Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds. Speeds up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks. Overall gains are most noticeable for batch queries with "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime. Produces the same indexes as "utils reindex-seeds2". Uses --partitions (power of 4, at least 4); K - primary-prefix must be in [2, 20].`))
 	indexCmd.Flags().String("seed-index2-threshold", "8K",
 		formatFlagUsage(`Minimum seed block size for creating a secondary index with --seed-index2. Higher values reduce .idx15 size but limit the speedup. Minimum: 4K. The default 8K is recommended.`))

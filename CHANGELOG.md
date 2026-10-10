@@ -15,13 +15,13 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
-    - **Faster indexing (45% less time) and 30% lower memory usage by optimizing seed computation and merging**.
+    - **Faster indexing (30-45% less time) and ~30% lower memory usage by optimizing seed computation and merging**.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
       To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
-    - **Add `--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
+    - **Add `-2/--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
       with `--seed-index2-threshold` (default `8K`, minimum `4K`) controlling the minimum block size.
       These indexes speed up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks.
       Overall gains are most noticeable for batch queries with `lexicmap search` when `-n/--top-n-genomes` limits downstream alignments,

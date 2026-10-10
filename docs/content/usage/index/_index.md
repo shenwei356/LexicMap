@@ -113,7 +113,7 @@ Important parameters:
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-                            ► Use --seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
+                            ► Use -2/--seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
                             These indexes speed up prefix matching in large indexes by using longer prefixes to locate
                             seeds within large data blocks. Overall gains are most noticeable for batch queries with
                             "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching
@@ -186,7 +186,7 @@ Flags:
                                        --max-open-files. Bigger values increase I/O load in HDDs for
                                        large batch counts. (default 8)
   -d, --seed-in-desert-dist int        ► Distance of k-mers to fill deserts. (default 50)
-      --seed-index2                    ► Write adaptive two-level seed indexes (.idx and .idx15)
+  -2, --seed-index2                    ► Write adaptive two-level seed indexes (.idx and .idx15)
                                        alongside the final seeds. Speeds up prefix matching in large
                                        indexes by using longer prefixes to locate seeds within large
                                        data blocks. Overall gains are most noticeable for batch queries
