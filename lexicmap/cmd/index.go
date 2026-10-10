@@ -126,19 +126,24 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
-                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs.
-                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)),
-                            where $inputs is the number of batches in the current merge group (at most --max-open-files - 10).
+                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs,
+                            or three outputs in the final merge with --seed-index2.
+                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + $outputs)),
+                            where $inputs is the current group size and $outputs is 2, or 3 for a final adaptive merge.
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-                            ► "lexicmap index" currently creates primary seed indexes only. After indexing, run
-                            "lexicmap utils reindex-seeds2 -d <index>" to create adaptive idx15 secondary indexes,
-                            which can reduce seed-matching time.
+                            ► Use --seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
+                            These indexes speed up prefix matching in large indexes by using longer prefixes to locate
+                            seeds within large data blocks. Overall gains are most noticeable for batch queries with
+                            "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching
+                            a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
+                            --seed-index2-threshold controls the minimum block size (default: 8K, minimum: 4K).
+                            Higher thresholds reduce .idx15 size but limit the speedup; the default is recommended.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches (minimum: 12).
+                            ► It's only used in merging indexes of multiple genome batches (minimum: 12, or 13 with --seed-index2).
                             Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
                             Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
@@ -187,6 +192,13 @@ Important parameters:
 			mergeThreads = chunks
 		}
 		partitions := getFlagPositiveInt(cmd, "partitions")
+		// A zero threshold keeps the default single-level seed indexes.
+		var seedIndex2Threshold uint64
+		if getFlagBool(cmd, "seed-index2") {
+			var err error
+			seedIndex2Threshold, err = parseIndex15Threshold(getFlagString(cmd, "seed-index2-threshold"))
+			checkError(err)
+		}
 		batchSize := getFlagPositiveInt(cmd, "batch-size")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
 
@@ -328,6 +340,8 @@ Important parameters:
 			// k-mer-value data
 			Chunks:     chunks,
 			Partitions: partitions,
+
+			SeedIndex2Threshold: seedIndex2Threshold,
 
 			// genome batches
 			GenomeBatchSize: batchSize,
@@ -473,6 +487,9 @@ Important parameters:
 			}
 			log.Infof("  seeds data chunks: %d", chunks)
 			log.Infof("  seeds data indexing partitions: %d", partitions)
+			if seedIndex2Threshold > 0 {
+				log.Infof("  adaptive seed index block threshold: %d bytes", seedIndex2Threshold)
+			}
 			log.Info()
 			log.Info("general:")
 			log.Infof("  genome batch size: %d", batchSize)
@@ -588,8 +605,12 @@ func init() {
 		formatFlagUsage(`Number of chunks for storing seeds (k-mer-value data) files. Max: 128. Default: the value of -j/--threads.`))
 	indexCmd.Flags().IntP("partitions", "", 4096,
 		formatFlagUsage(`Number of partitions for indexing seeds (k-mer-value data) files. The value needs to be the power of 4.`))
+	indexCmd.Flags().Bool("seed-index2", false,
+		formatFlagUsage(`Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds. Speeds up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks. Overall gains are most noticeable for batch queries with "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime. Produces the same indexes as "utils reindex-seeds2". Uses --partitions (power of 4, at least 4); K - primary-prefix must be in [2, 20].`))
+	indexCmd.Flags().String("seed-index2-threshold", "8K",
+		formatFlagUsage(`Minimum seed block size for creating a secondary index with --seed-index2. Higher values reduce .idx15 size but limit the speedup. Minimum: 4K. The default 8K is recommended.`))
 	indexCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
+		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches, or 13 with --seed-index2). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
 
 	indexCmd.Flags().BoolP("save-seed-pos", "", false,
 		formatFlagUsage(`Save seed positions, which can be inspected with "lexicmap utils seed-pos".`))

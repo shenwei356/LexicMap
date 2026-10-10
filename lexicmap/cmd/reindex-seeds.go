@@ -36,14 +36,14 @@ import (
 
 var reindexSeedsCmd = &cobra.Command{
 	Use:   "reindex-seeds",
-	Short: "Recreate primary indexes of seeds data",
+	Short: "Recreate the primary indexes of seeds data",
 	Long: `Recreate the primary indexes of seeds data.
 
 The seeds files are not changed. Different seeds files are processed in
 parallel using -j/--threads, and --partitions controls the number of anchor
 partitions in each primary index.
 
-This command writes single-level .idx files. Searches will not use existing
+This command writes single-level .idx files and removes their corresponding
 .idx15 files afterward. Use "lexicmap utils reindex-seeds2" to create adaptive
 two-level indexes that can reduce seed-matching time for large primary-prefix
 blocks.
@@ -167,7 +167,7 @@ blocks.
 		}
 
 		if outputLog {
-			log.Infof("update index information file: %s", fileInfo)
+			log.Infof("updating index information file: %s", fileInfo)
 		}
 		info.Partitions = partitions
 		err = writeIndexInfo(fileInfo, info)
@@ -175,7 +175,7 @@ blocks.
 			checkError(fmt.Errorf("failed to write info file: %s", err))
 		}
 		if outputLog {
-			log.Infof("  finished updating the index information file: %s", fileInfo)
+			log.Infof("finished updating the index information file: %s", fileInfo)
 		}
 	},
 }

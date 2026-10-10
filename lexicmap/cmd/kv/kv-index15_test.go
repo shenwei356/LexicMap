@@ -368,6 +368,13 @@ func TestCreateKVIndex15PreservesSearchResults(t *testing.T) {
 	if expected := [][2]uint64{{0, 1}, {1, 1}}; !reflect.DeepEqual(progress, expected) {
 		t.Fatalf("unexpected primary-index mask progress: got %v, expected %v", progress, expected)
 	}
+	if _, err := os.Stat(idx15File); !os.IsNotExist(err) {
+		t.Fatalf("obsolete secondary index was not removed: %v", err)
+	}
+	// Rebuilding a single-level index again must also work without a sidecar.
+	if err := CreateKVIndex(file, 4096); err != nil {
+		t.Fatal(err)
+	}
 	legacyReindexed, err := NewSearcher(file, 1)
 	if err != nil {
 		t.Fatal(err)

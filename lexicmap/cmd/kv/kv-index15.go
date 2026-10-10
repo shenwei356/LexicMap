@@ -86,7 +86,7 @@ var magicIndex15 = [8]byte{'.', 'k', 'v', 'i', 'd', 'x', '1', '5'}
 //	46      2      build ID shared with the primary .idx file
 //
 // The build ID is a nonzero random 16-bit pairing token generated separately
-// for each seeds chunk whenever reindex-seeds2 runs. The same value is written
+// for each seeds chunk whenever adaptive indexes are created or rebuilt. The same value is written
 // to the primary .idx header and this .idx15 header. A reader rejects unequal
 // values, which detects a stale or incorrectly paired sidecar, including the
 // state left if replacement stops after renaming only one of the two files.
@@ -110,7 +110,7 @@ var magicIndex15 = [8]byte{'.', 'k', 'v', 'i', 'd', 'x', '1', '5'}
 // relative offset reuses the pair-first checkpoint, which handles two
 // subprefixes or primary blocks sharing the same encoded k-mer pair.
 
-// Index15Stats summarizes one reindexed seeds file.
+// Index15Stats summarizes one adaptively indexed seeds chunk.
 type Index15Stats struct {
 	TotalBlocks    uint64
 	NonEmptyBlocks uint64
@@ -324,6 +324,19 @@ func index15PrefixLengths(k, maskPrefix, anchorPrefix uint8) (uint8, uint8, erro
 	return primaryPrefix, primaryPrefix + 2, nil
 }
 
+// CheckIndex15Options validates adaptive index settings before seed data is built.
+func CheckIndex15Options(k, maskPrefix uint8, partitions int, threshold uint64) error {
+	if threshold < MinIndex15Threshold {
+		return fmt.Errorf("idx15 threshold should be at least %d bytes", MinIndex15Threshold)
+	}
+	anchorPrefix, err := anchorPrefixForPartitions(partitions)
+	if err != nil {
+		return err
+	}
+	_, _, err = index15PrefixLengths(k, maskPrefix, anchorPrefix)
+	return err
+}
+
 func discardSeedPositions(r io.Reader, count, bytesPerPosition uint64, offset *uint64) error {
 	if count == 0 {
 		return nil
@@ -348,14 +361,18 @@ func discardSeedPositions(r io.Reader, count, bytesPerPosition uint64, offset *u
 
 // CreateKVIndex15 recreates the primary index and the adaptive second-level
 // index while leaving the seeds file unchanged.
+// Longer secondary prefixes locate seeds within large data blocks in large
+// indexes, reducing scanning during prefix matching. Overall gains are most
+// noticeable for batch lexicmap search queries when -n/--top-n-genomes limits
+// downstream alignments, making seed matching a larger share of runtime.
+// Without this limit, sequence alignment often dominates runtime.
 func CreateKVIndex15(file string, partitions int, threshold uint64) (Index15Stats, error) {
 	return CreateKVIndex15WithProgress(file, partitions, threshold, nil)
 }
 
 // CreateKVIndex15WithProgress is CreateKVIndex15 with per-mask progress
 // reporting for one seeds chunk.
-func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, progress Index15ProgressFunc) (Index15Stats, error) {
-	var stats Index15Stats
+func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, progress Index15ProgressFunc) (stats Index15Stats, err error) {
 	if threshold < MinIndex15Threshold {
 		return stats, fmt.Errorf("idx15 threshold should be at least %d bytes", MinIndex15Threshold)
 	}
@@ -474,18 +491,12 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 	if err = writeIndex15Header(w15, k, primaryPrefix, secondaryPrefix, chunkIndex, chunkSize, seedsSize, buildID); err != nil {
 		return stats, err
 	}
-	stats.Index15Bytes = index15HeaderSize
-	idx15Offset := uint64(index15HeaderSize)
-	getPrimary := AnchorExtracter(k, maskPrefix, anchorPrefix)
-	index15BlockBuffer := make([]byte, index15BlockFixedBytes+15*8)
-
-	type indexEntry struct {
-		checkpoint uint64
-		offset     uint64
-	}
+	builder := newIndex15Builder(wi, w15, k, maskPrefix, anchorPrefix, chunkSize, threshold)
+	defer func() { stats = builder.stats }()
 	var offset uint64 = 32
 	var decodedKmers uint64
 	for mask := uint64(0); mask < chunkSize; mask++ {
+		builder.beginMask()
 		if _, err = io.ReadFull(r, buf8); err != nil {
 			return stats, err
 		}
@@ -502,69 +513,8 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 			continue
 		}
 
-		entries := make([]indexEntry, 0, partitions+1)
-		var block index15BuildBlock
-		var hasBlock bool
 		var previousKmer uint64
 		decodedKmers = 0
-
-		finalizeBlock := func(endOffset uint64) error {
-			if !hasBlock {
-				return nil
-			}
-			block.endOffset = endOffset
-			stats.NonEmptyBlocks++
-			indexOffset, err := MakeSeedsOffset(block.baseOffset, block.baseIsSecond)
-			if err != nil {
-				return err
-			}
-			if block.endOffset-block.baseOffset >= threshold {
-				indexOffset, err = MakeIndex15Offset(idx15Offset)
-				if err != nil {
-					return err
-				}
-				width, size, err := writeIndex15Block(w15, &block, index15BlockBuffer)
-				if err != nil {
-					return err
-				}
-				stats.IndexedBlocks++
-				stats.WidthCounts[width-1]++
-				stats.Index15Bytes += uint64(size)
-				idx15Offset += uint64(size)
-			}
-			entries = append(entries, indexEntry{block.indexKmer, indexOffset})
-			return nil
-		}
-
-		startBlock := func(kmer, pairKmer, pairOffset, pairEnd uint64, isSecond bool) {
-			block = index15BuildBlock{
-				prefix:              getPrimary(kmer),
-				indexKmer:           kmer,
-				pairFirstCheckpoint: pairKmer,
-				baseOffset:          pairOffset,
-				endOffset:           pairEnd,
-				baseIsSecond:        isSecond,
-			}
-			hasBlock = true
-			block.add(kmer, pairKmer, pairOffset, pairEnd, k, primaryPrefix, secondaryPrefix)
-		}
-
-		addKmer := func(kmer, pairKmer, pairOffset, pairEnd, previousEnd uint64, isSecond bool) error {
-			prefix := getPrimary(kmer)
-			if !hasBlock {
-				startBlock(kmer, pairKmer, pairOffset, pairEnd, isSecond)
-				return nil
-			}
-			if prefix != block.prefix {
-				if err := finalizeBlock(previousEnd); err != nil {
-					return err
-				}
-				startBlock(kmer, pairKmer, pairOffset, pairEnd, isSecond)
-				return nil
-			}
-			block.add(kmer, pairKmer, pairOffset, pairEnd, k, primaryPrefix, secondaryPrefix)
-			return nil
-		}
 
 		for {
 			pairOffset := offset
@@ -614,21 +564,11 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 			}
 			pairEnd := offset
 
-			if len(entries) == 0 && !hasBlock {
-				seedOffset, err := MakeSeedsOffset(pairOffset, false)
-				if err != nil {
-					return stats, err
-				}
-				entries = append(entries, indexEntry{kmer1, seedOffset})
-			}
-			if err = addKmer(kmer1, kmer1, pairOffset, pairEnd, pairOffset, false); err != nil {
+			if err = builder.addPair(kmer1, kmer2, hasKmer2, pairOffset, pairEnd); err != nil {
 				return stats, err
 			}
 			decodedKmers++
 			if hasKmer2 {
-				if err = addKmer(kmer2, kmer1, pairOffset, pairEnd, pairEnd, true); err != nil {
-					return stats, err
-				}
 				decodedKmers++
 			}
 			if lastPair {
@@ -638,19 +578,8 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 		if decodedKmers != nKmers {
 			return stats, fmt.Errorf("number of k-mers mismatch for mask %d: expected %d, got %d", chunkIndex+mask, nKmers, decodedKmers)
 		}
-		if err = finalizeBlock(offset); err != nil {
+		if err = builder.endMask(offset); err != nil {
 			return stats, err
-		}
-		be.PutUint64(buf8, uint64(len(entries)))
-		if _, err = wi.Write(buf8); err != nil {
-			return stats, err
-		}
-		for _, entry := range entries {
-			be.PutUint64(buf16[:8], entry.checkpoint)
-			be.PutUint64(buf16[8:], entry.offset)
-			if _, err = wi.Write(buf16); err != nil {
-				return stats, err
-			}
 		}
 		if progress != nil {
 			progress(mask+1, chunkSize)
@@ -761,6 +690,10 @@ func (idx *index15) close() error {
 	return idx.data.Unmap()
 }
 
+// lookup uses a longer prefix to locate the query's sub-block within a large
+// primary block in a large index, reducing the seed data scanned during prefix
+// matching.
+// Shorter queries retain the primary block's starting checkpoint and offset.
 func (idx *index15) lookup(taggedOffset, query uint64, prefixLength uint8) (uint64, uint64, bool, error) {
 	if !IsIndex15Offset(taggedOffset) {
 		return 0, 0, false, ErrInvalidFileFormat

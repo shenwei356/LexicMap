@@ -43,6 +43,11 @@ const indexMergeReservedFiles = 8
 // opens one seed file per input and two output files. Groups must shrink on every
 // round, even when the configured file budget is small.
 func planIndexMerge(nIndexes, maxOpenFiles, mergeThreads int) (batchSize, workers int, err error) {
+	return planIndexMergeWithOutputs(nIndexes, maxOpenFiles, mergeThreads, 2)
+}
+
+// planIndexMergeWithOutputs also accounts for the secondary output in an adaptive final merge.
+func planIndexMergeWithOutputs(nIndexes, maxOpenFiles, mergeThreads, outputFiles int) (batchSize, workers int, err error) {
 	if nIndexes < 1 {
 		return 0, 0, fmt.Errorf("no indexes to merge")
 	}
@@ -50,13 +55,13 @@ func planIndexMerge(nIndexes, maxOpenFiles, mergeThreads int) (batchSize, worker
 		return 0, 0, fmt.Errorf("invalid number of merge threads: %d, should be >= 1", mergeThreads)
 	}
 	// Multiple inputs need a fan-in of at least two to make progress.
-	minFiles := indexMergeReservedFiles + 2 + min(nIndexes, 2)
+	minFiles := indexMergeReservedFiles + outputFiles + min(nIndexes, 2)
 	if maxOpenFiles < minFiles {
 		return 0, 0, fmt.Errorf("invalid max open files for merging: %d, should be >= %d (including %d reserved files)", maxOpenFiles, minFiles, indexMergeReservedFiles)
 	}
 	budget := maxOpenFiles - indexMergeReservedFiles // descriptors available to seed-merging workers
-	batchSize = min(nIndexes, budget-2)
-	workers = min(mergeThreads, budget/(batchSize+2))
+	batchSize = min(nIndexes, budget-outputFiles)
+	workers = min(mergeThreads, budget/(batchSize+outputFiles))
 	return batchSize, workers, nil
 }
 
@@ -73,7 +78,22 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	if err != nil {
 		return err
 	}
+	// Use the ordinary fan-in for intermediate rounds. If all inputs fit, reserve
+	// the third output for a final adaptive merge, splitting this round if needed.
+	if opt.SeedIndex2Threshold > 0 && chunkSize == nIndexes {
+		chunkSize, _, err = planIndexMergeWithOutputs(nIndexes, opt.MaxOpenFiles, opt.MergeThreads, 3)
+		if err != nil {
+			return err
+		}
+	}
 	batches := (len(paths) + chunkSize - 1) / chunkSize
+	// Only the final output gets adaptive indexes, never temporary merge groups.
+	threshold := uint64(0)
+	outputFiles := 2
+	if batches == 1 && opt.SeedIndex2Threshold > 0 {
+		threshold = opt.SeedIndex2Threshold
+		outputFiles++
+	}
 
 	var j, begin, end int
 	tmpIndexes := make([]string, 0, 8)
@@ -91,7 +111,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		}
 		pathB = paths[begin:end]
 
-		_, mergeThreads, err = planIndexMerge(len(pathB), opt.MaxOpenFiles, opt.MergeThreads)
+		_, mergeThreads, err = planIndexMergeWithOutputs(len(pathB), opt.MaxOpenFiles, opt.MergeThreads, outputFiles)
 		if err != nil {
 			return err
 		}
@@ -152,14 +172,14 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 					checkError(fmt.Errorf("failed to read info from an index file: %s", err))
 				}
 				// Only the header fields are needed; release this descriptor before
-				// opening the input seed files and the two output files.
+				// opening the input seed files and the output files.
 				if err = rdrIdx.Close(); err != nil {
 					checkError(fmt.Errorf("failed to close seed index file: %s", err))
 				}
 
 				// outfile
 				file := filepath.Join(dirSeeds, chunkFile(chunk))
-				wtr, err := kv.NewWriter(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, maskPrefix, anchorPrefix, rdrIdx.Use3BytesForSeedPos)
+				wtr, err := kv.NewWriterWithIndex15(rdrIdx.K, rdrIdx.ChunkIndex, rdrIdx.ChunkSize, file, maskPrefix, anchorPrefix, rdrIdx.Use3BytesForSeedPos, threshold)
 				if err != nil {
 					checkError(fmt.Errorf("failed to write a k-mer data file: %s", err))
 				}

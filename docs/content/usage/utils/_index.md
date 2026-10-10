@@ -41,7 +41,7 @@ Available Commands:
   kmers                View k-mers captured by the masks
   masks                View masks of the index or generate new masks randomly
   merge-search-results Merge a query's search results from multiple indexes
-  reindex-seeds        Recreate primary indexes of seeds data
+  reindex-seeds        Recreate the primary indexes of seeds data
   reindex-seeds2       Recreate adaptive two-level indexes of seeds data
   remerge              Rerun the merging step for an unfinished index
   seed-pos             Extract and plot seed positions via reference name(s)

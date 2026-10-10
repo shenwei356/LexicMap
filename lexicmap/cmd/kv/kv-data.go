@@ -131,6 +131,12 @@ var ErrVersionMismatch = errors.New("k-mer-value data: version mismatch")
 //	k-mer: nAnchors
 //	offset: offset of the first k-mer
 func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool) (int, error) {
+	return WriteKVDataWithIndex15(k, MaskOffset, data, file, maskPrefix, anchorPrefix, nbatches, clearData, 0)
+}
+
+// WriteKVDataWithIndex15 writes seeds and their adaptive indexes in one pass.
+// A zero threshold keeps the ordinary single-level index.
+func WriteKVDataWithIndex15(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool, threshold uint64) (int, error) {
 	if len(data) == 0 {
 		return 0, errors.New("k-mer-value data: no data given")
 	}
@@ -143,7 +149,7 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 
 	use3BytesForSeedPos := nbatches <= 512 // 17-8=9, 1<<9=512
 
-	wtr, err := NewWriter(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix, use3BytesForSeedPos)
+	wtr, err := NewWriterWithIndex15(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix, use3BytesForSeedPos, threshold)
 	if err != nil {
 		return 0, err
 	}
@@ -151,6 +157,11 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 	for _, m := range data {
 		err = wtr.WriteDataOfAMask(*m)
 		if err != nil {
+			wtr.fh.Close()
+			wtr.fhi.Close()
+			if wtr.fh15 != nil {
+				wtr.fh15.Close()
+			}
 			return 0, err
 		}
 		if clearData {
@@ -190,11 +201,23 @@ type Writer struct {
 	anchorPrefix uint8
 	poolP2O      *sync.Pool
 	getAnchor    func(uint64) uint64
+	indexPrefix  uint64      // preceding anchor while writing an ordinary mask index
+	indexFirst   bool        // whether the mask has not recorded its first anchor yet
 	maskCounts   []maskCount // deferred header patches for streamed masks
+
+	fh15    *os.File        // optional secondary output, opened only for final seed chunks
+	w15     *bufio.Writer   // buffered secondary output
+	index15 *index15Builder // block metadata shared with standalone reindexing
 }
 
 // Close is very important
 func (wtr *Writer) Close() (err error) {
+	// Flush errors must still release all output descriptors.
+	defer wtr.fh.Close()
+	defer wtr.fhi.Close()
+	if wtr.fh15 != nil {
+		defer wtr.fh15.Close()
+	}
 	err = wtr.w.Flush()
 	if err != nil {
 		return err
@@ -213,6 +236,19 @@ func (wtr *Writer) Close() (err error) {
 	if err != nil {
 		return err
 	}
+	if wtr.index15 != nil {
+		if err = wtr.w15.Flush(); err != nil {
+			return err
+		}
+		// Only the final seeds size is unknown at header creation time.
+		be.PutUint64(wtr.buf[:8], uint64(wtr.N))
+		if _, err = wtr.fh15.WriteAt(wtr.buf[:8], 32); err != nil {
+			return err
+		}
+		if err = wtr.fh15.Close(); err != nil {
+			return err
+		}
+	}
 	err = wtr.fhi.Close()
 	if err != nil {
 		return err
@@ -227,6 +263,20 @@ const MaskHasIndex15 uint8 = 1 << 1
 
 // NewWriter returns a new writer
 func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool) (*Writer, error) {
+	return NewWriterWithIndex15(k, MaskOffset, chunkSize, file, maskPrefix, anchorPrefix, use3BytesForSeedPos, 0)
+}
+
+// NewWriterWithIndex15 creates a writer that builds adaptive indexes while
+// encoding seed pairs. A zero threshold selects the ordinary single-level writer.
+func NewWriterWithIndex15(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool, threshold uint64) (*Writer, error) {
+	if threshold > 0 {
+		if anchorPrefix >= 32 {
+			return nil, fmt.Errorf("anchor prefix is too large: %d", anchorPrefix)
+		}
+		if err := CheckIndex15Options(k, maskPrefix, int(uint64(1)<<(anchorPrefix<<1)), threshold); err != nil {
+			return nil, err
+		}
+	}
 	if maskPrefix+anchorPrefix > k {
 		return nil, fmt.Errorf("maskPrefix + anchorPrefix should be <= k")
 	}
@@ -239,8 +289,21 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	if err != nil {
 		return nil, err
 	}
+	created := false // descriptors transfer to Writer only after all headers are written
+	var fhi, fh15 *os.File
+	defer func() {
+		if !created {
+			fh.Close()
+			if fhi != nil {
+				fhi.Close()
+			}
+			if fh15 != nil {
+				fh15.Close()
+			}
+		}
+	}()
 	w := bufio.NewWriterSize(fh, IOBufferSize)
-	fhi, err := os.Create(filepath.Clean(file) + KVIndexFileExt)
+	fhi, err = os.Create(filepath.Clean(file) + KVIndexFileExt)
 	if err != nil {
 		return nil, err
 	}
@@ -267,6 +330,25 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 		getAnchor: AnchorExtracter(k, maskPrefix, anchorPrefix),
 
 		buf: make([]byte, seedPositionBufferSize),
+	}
+
+	var buildID uint16 // random pairing token shared by the two adaptive index headers
+	if threshold > 0 {
+		buildID, err = randomIndexBuildID()
+		if err != nil {
+			return nil, err
+		}
+		fh15, err = os.Create(filepath.Clean(file) + KVIndex15FileExt)
+		if err != nil {
+			return nil, err
+		}
+		wtr.fh15 = fh15
+		wtr.w15 = bufio.NewWriterSize(fh15, IOBufferSize)
+		wtr.index15 = newIndex15Builder(wi, wtr.w15, k, maskPrefix, anchorPrefix, uint64(chunkSize), threshold)
+		if err = writeIndex15Header(wtr.w15, k, maskPrefix+anchorPrefix, maskPrefix+anchorPrefix+2,
+			uint64(MaskOffset), uint64(chunkSize), 0, buildID); err != nil {
+			return nil, err
+		}
 	}
 
 	// ---------------------------------------------------------------------------
@@ -307,7 +389,12 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, k, maskPrefix, anchorPrefix, config1})
+	indexMeta := [8]uint8{MainVersion, MinorVersion, k, maskPrefix, anchorPrefix, config1} // seeds format remains independent
+	if threshold > 0 {
+		indexMeta = [8]uint8{IndexMainVersionTagged, 0, k, maskPrefix, anchorPrefix,
+			config1 | MaskHasIndex15, byte(buildID >> 8), byte(buildID)}
+	}
+	err = binary.Write(wi, be, indexMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +408,7 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 	// ---------------------------------------------------------------------------
 
 	wtr.N = N
+	created = true
 	return wtr, nil
 }
 
@@ -350,7 +438,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	buf := wtr.buf // encode metadata directly before its posting lists
 	var even bool
 	var i, nm1 int
-	var j int
 
 	nKmers := len(m)
 
@@ -377,11 +464,16 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		return nil
 	}
 
-	p2o := wtr.poolP2O.Get().(*[]uint64)
-	clear(*p2o)
-	(*p2o)[1] = uint64(wtr.N) << 1 // offset of the first k-mer
+	p2o := wtr.beginMaskIndex()
+	// writeMaskIndex returns the directory on success; release it on failures too.
+	defer func() {
+		if err != nil && p2o != nil {
+			wtr.poolP2O.Put(p2o)
+		}
+	}()
 
 	keys := poolUint64s.Get().(*[]uint64)
+	defer poolUint64s.Put(keys)
 	// sort keys
 	*keys = (*keys)[:0]
 	for key = range m {
@@ -394,12 +486,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	even = len(*keys)&1 == 0 // the number of kmers is even
 	nm1 = len(*keys) - 1     // idx of the last element
 
-	j = 0
-
-	getAnchor := wtr.getAnchor
-	var prefix, prefixPre uint64
-	first := true
-
 	for i, key = range *keys {
 		v = m[key]
 
@@ -410,39 +496,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 
 			continue
 		}
-
-		// ------------------------------------------------------------------------
-		// index anchor
-
-		// key 1
-		prefix = getAnchor(preKey)
-		// if preKey == 2233842599699997050 {
-		// 	fmt.Printf("i:%d, key1:%s, prefix:%s, v:%d, offset:%d\n", i, lexichash.MustDecode(preKey, wtr.K), lexichash.MustDecode(prefix, wtr.anchorPrefix), preVal, wtr.N)
-		// }
-		if first || prefix != prefixPre { // the first new prefix
-			first = false
-
-			j = int(prefix<<1) + 2
-			(*p2o)[j], (*p2o)[j+1] = preKey, uint64(wtr.N)<<1
-			// fmt.Printf("  %d, record %s, %d\n", j, lexichash.MustDecode(preKey, wtr.K), wtr.N)
-
-			prefixPre = prefix
-		}
-
-		// key 2
-		prefix = getAnchor(key)
-		// if key == 2233842599699997050 {
-		// 	fmt.Printf("i:%d, key2:%s, prefix:%s, v:%d, offset:%d\n", i, lexichash.MustDecode(key, wtr.K), lexichash.MustDecode(prefix, wtr.anchorPrefix), v, wtr.N)
-		// }
-		if prefix != prefixPre { // the first new prefix
-			j = int(prefix<<1) + 2
-			(*p2o)[j], (*p2o)[j+1] = key, uint64(wtr.N)<<1|1 // add a flag to mark it's the second k-mer
-			// fmt.Printf("  %d, record %s, %d\n", j, lexichash.MustDecode(key, wtr.K), wtr.N)
-
-			prefixPre = prefix
-		}
-
-		// ------------------------------------------------------------------------
 
 		// 2 k-mers and numbers of values
 
@@ -462,11 +515,15 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		n += nBytesVal + 1
 
 		// Write metadata and positions together when they fit in the scratch.
+		pairOffset := uint64(wtr.N) // first byte of this encoded pair
 		n, err = wtr.writeSeedPositions(n, preVal, v)
 		if err != nil {
 			return err
 		}
 		wtr.N += n
+		if err = wtr.indexSeedPair(p2o, preKey, key, true, pairOffset); err != nil {
+			return err
+		}
 
 		// update
 
@@ -475,25 +532,6 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 	}
 
 	if hasPrev { // the last single one
-		// ------------------------------------------------------------------------
-		// index anchor
-
-		// key 1
-		prefix = getAnchor(preKey)
-		if first || prefix != prefixPre { // the first new prefix
-			first = false
-
-			j = int(prefix<<1) + 2
-			(*p2o)[j], (*p2o)[j+1] = preKey, uint64(wtr.N)<<1
-
-			prefixPre = prefix
-		}
-
-		// ------------------------------------------------------------------------
-
-		// fmt.Printf("write the last two kmer: %s\n",
-		// 	lexichash.MustDecode(preKey, k))
-
 		// 2 k-mers and numbers of values
 
 		// only save key2 - key1, which is small so it could be saved in few bytes
@@ -508,21 +546,65 @@ func (wtr *Writer) WriteDataOfAMask(m map[uint64]*[]uint64) (err error) {
 		buf[n] = ctrlByteVal
 		n += nBytesVal + 1
 
+		pairOffset := uint64(wtr.N) // odd masks end with a single-key pair
 		n, err = wtr.writeSeedPositions(n, preVal, nil)
 		if err != nil {
 			return err
 		}
 		wtr.N += n
+		if err = wtr.indexSeedPair(p2o, preKey, 0, false, pairOffset); err != nil {
+			return err
+		}
 	}
-
-	poolUint64s.Put(keys)
 
 	// -----------------------------------------
 	// save index
-	return wtr.writeMaskIndex(p2o)
+	maskIndex := p2o
+	p2o = nil
+	return wtr.writeMaskIndex(maskIndex)
 }
 
+// beginMaskIndex allocates the legacy directory or resets the adaptive block builder.
+func (wtr *Writer) beginMaskIndex() *[]uint64 {
+	if wtr.index15 != nil {
+		wtr.index15.beginMask()
+		return nil
+	}
+	p2o := wtr.poolP2O.Get().(*[]uint64)
+	clear(*p2o)
+	(*p2o)[1] = uint64(wtr.N) << 1
+	wtr.indexFirst = true
+	return p2o
+}
+
+// indexSeedPair records checkpoints using the actual encoded pair boundaries.
+func (wtr *Writer) indexSeedPair(p2o *[]uint64, key1, key2 uint64, hasSecond bool, pairOffset uint64) error {
+	if wtr.index15 != nil {
+		return wtr.index15.addPair(key1, key2, hasSecond, pairOffset, uint64(wtr.N))
+	}
+	prefix := wtr.getAnchor(key1) // preserve each prefix transition, including repeated anchor slots
+	j := int(prefix<<1) + 2
+	if wtr.indexFirst || prefix != wtr.indexPrefix {
+		(*p2o)[j], (*p2o)[j+1] = key1, pairOffset<<1
+		wtr.indexPrefix, wtr.indexFirst = prefix, false
+	}
+	if hasSecond {
+		prefix = wtr.getAnchor(key2)
+		j = int(prefix<<1) + 2
+		if prefix != wtr.indexPrefix {
+			(*p2o)[j], (*p2o)[j+1] = key2, pairOffset<<1|1
+			wtr.indexPrefix = prefix
+		}
+	}
+	return nil
+}
+
+// writeMaskIndex writes one completed mask's primary index and returns its directory.
+
 func (wtr *Writer) writeMaskIndex(p2o *[]uint64) error {
+	if wtr.index15 != nil {
+		return wtr.index15.endMask(uint64(wtr.N))
+	}
 	defer wtr.poolP2O.Put(p2o)
 	buf, wi := wtr.buf, wtr.wi
 	var err error
@@ -1419,5 +1501,9 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 		return err
 	}
 
+	// Remove the obsolete secondary index only after the single-level index is complete.
+	if err = os.Remove(filepath.Clean(file) + KVIndex15FileExt); err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "removing obsolete secondary seed index")
+	}
 	return nil
 }

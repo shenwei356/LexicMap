@@ -140,6 +140,8 @@ type IndexBuildingOptions struct {
 	Chunks     int // the number of chunks for storing k-mer data
 	Partitions int // the number of partitions for indexing k-mer data
 
+	SeedIndex2Threshold uint64 // minimum block size for adaptive seed indexes; zero disables them
+
 	// genome batches
 
 	GenomeBatchSize int // the maximum number of genomes of a batch
@@ -235,7 +237,11 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
 	// Reject insufficient merge budgets before allocating masks or building batches.
 	if nBatches > 1 {
-		if _, _, err := planIndexMerge(nBatches, opt.MaxOpenFiles, opt.MergeThreads); err != nil {
+		outputFiles := 2 // final chunks have a seeds file and a primary index
+		if opt.SeedIndex2Threshold > 0 {
+			outputFiles++ // the final merge also writes the secondary index
+		}
+		if _, _, err := planIndexMergeWithOutputs(nBatches, opt.MaxOpenFiles, opt.MergeThreads, outputFiles); err != nil {
 			return err
 		}
 	}
@@ -268,6 +274,12 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	maskPrefix--
 	if maskPrefix < 1 {
 		maskPrefix = 1
+	}
+	// Validate against the loaded masks, which may override K and the mask count.
+	if opt.SeedIndex2Threshold > 0 {
+		if err := kv.CheckIndex15Options(uint8(lh.K), uint8(maskPrefix), opt.Partitions, opt.SeedIndex2Threshold); err != nil {
+			return err
+		}
 	}
 
 	anchorPrefix := 0
@@ -1829,6 +1841,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		tokens <- 1
 		go func(chunk, begin, end int) { // a chunk of masks
 			file := filepath.Join(dirSeeds, chunkFile(chunk))
+			// Intermediate batches retain ordinary indexes; only final seeds need idx15.
+			threshold := uint64(0)
+			if nbatches == 1 {
+				threshold = opt.SeedIndex2Threshold
+			}
 
 			// for m, data := range (*datas)[begin:end] {
 			// 	for key, values := range data {
@@ -1839,7 +1856,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVData(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches, true)
+			_, err := kv.WriteKVDataWithIndex15(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches, true, threshold)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}

@@ -8,7 +8,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
     - All commands check that the log file differs from the output file before opening it.
 - New commands:
-    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up seed matching for large indexes.**
+    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
@@ -21,6 +21,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
       To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
+    - **Add `--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
+      with `--seed-index2-threshold` (default `8K`, minimum `4K`) controlling the minimum block size.
+      These indexes speed up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks.
+      Overall gains are most noticeable for batch queries with `lexicmap search` when `-n/--top-n-genomes` limits downstream alignments,
+      making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation and progress reporting.
@@ -60,7 +65,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed data races in seed-position reader creation and error handling.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
-- `lexicmap util reindex-seeds`:
+- `lexicmap utils reindex-seeds`:
+    - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
     - Added progress bars to all seed chunks.
 
 ### v0.9.0 - 2026-03-13

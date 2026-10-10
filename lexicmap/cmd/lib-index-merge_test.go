@@ -155,3 +155,24 @@ func TestMergeIndexesMultipleRoundsMatchesSingleRound(t *testing.T) {
 		})
 	}
 }
+
+// TestAdaptiveIndexMergeFileBudget checks the third output at minimum and large budgets.
+func TestAdaptiveIndexMergeFileBudget(t *testing.T) {
+	for _, tc := range [][5]int{{2, 13, 8, 2, 1}, {3, 13, 8, 2, 1}, {10, 32, 8, 10, 1}, {2, 32, 8, 2, 4}, {1, 12, 8, 1, 1}} {
+		batch, workers, err := planIndexMergeWithOutputs(tc[0], tc[1], tc[2], 3)
+		if err != nil || batch != tc[3] || workers != tc[4] || workers*(batch+3)+indexMergeReservedFiles > tc[1] {
+			t.Fatalf("adaptive plan %v: batch=%d workers=%d err=%v", tc, batch, workers, err)
+		}
+	}
+	if _, _, err := planIndexMergeWithOutputs(2, 12, 1, 3); err == nil {
+		t.Fatal("accepted a budget too small for two inputs and three outputs")
+	}
+	outdir := filepath.Join(t.TempDir(), "index")
+	opt := &IndexBuildingOptions{GenomeBatchSize: 1, MaxOpenFiles: 12, MergeThreads: 1, SeedIndex2Threshold: kv.MinIndex15Threshold}
+	if err := BuildIndex(outdir, []string{"missing1.fa", "missing2.fa"}, opt); err == nil {
+		t.Fatal("started adaptive construction before validating the merge budget")
+	}
+	if _, err := os.Stat(outdir + ExtTmpDir); !os.IsNotExist(err) {
+		t.Fatalf("created batches before validating the budget: %v", err)
+	}
+}

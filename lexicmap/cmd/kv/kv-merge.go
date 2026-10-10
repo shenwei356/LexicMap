@@ -259,18 +259,15 @@ func (m *Merger) WriteMask() error {
 	if len(m.heap) == 0 {
 		return binary.Write(wtr.wi, be, uint64(0))
 	}
-	p2o := wtr.poolP2O.Get().(*[]uint64)
-	clear(*p2o)
-	(*p2o)[1] = uint64(wtr.N) << 1
+	p2o := wtr.beginMaskIndex()
 	// Return the directory on errors too; writeMaskIndex owns it on success.
 	indexWritten := false
 	defer func() {
-		if !indexWritten {
+		if !indexWritten && p2o != nil {
 			wtr.poolP2O.Put(p2o)
 		}
 	}()
-	var offset, prefixPre, count uint64
-	first := true
+	var offset, count uint64
 	for len(m.heap) > 0 {
 		key1, err := m.next(0)
 		if err != nil {
@@ -286,21 +283,6 @@ func (m *Merger) WriteMask() error {
 				return err
 			}
 			count++
-		}
-		prefix := wtr.getAnchor(key1)
-		if first || prefix != prefixPre {
-			first = false
-			j := int(prefix<<1) + 2
-			(*p2o)[j], (*p2o)[j+1] = key1, uint64(wtr.N)<<1
-			prefixPre = prefix
-		}
-		if hasSecond {
-			prefix = wtr.getAnchor(key2)
-			if prefix != prefixPre {
-				j := int(prefix<<1) + 2
-				(*p2o)[j], (*p2o)[j+1] = key2, uint64(wtr.N)<<1|1
-				prefixPre = prefix
-			}
 		}
 		delta2 := uint64(0)
 		if hasSecond {
@@ -318,6 +300,7 @@ func (m *Merger) WriteMask() error {
 		ctrl, n = util.PutUint64s(wtr.buf[used+1:], uint64(len(m.values[0])/m.width), uint64(len(m.values[1])/m.width))
 		wtr.buf[used] = ctrl
 		used += n + 1
+		pairOffset := uint64(wtr.N) // offsets refer to the encoded pair header
 		if _, err = wtr.w.Write(wtr.buf[:used]); err != nil {
 			return err
 		}
@@ -328,6 +311,9 @@ func (m *Merger) WriteMask() error {
 			if err != nil {
 				return err
 			}
+		}
+		if err = wtr.indexSeedPair(p2o, key1, key2, hasSecond, pairOffset); err != nil {
+			return err
 		}
 		offset = key2
 	}

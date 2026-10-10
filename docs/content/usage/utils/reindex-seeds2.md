@@ -1,14 +1,17 @@
 ---
-title: lexicmap utils reindex-seeds
-linkTitle: reindex-seeds
+title: lexicmap utils reindex-seeds2
+linkTitle: reindex-seeds2
 weight: 55
 ---
 
 ## Usage
 
 ```plain
-$ lexicmap utils reindex-seeds -h
+$ lexicmap utils reindex-seeds2 -h
 Recreate adaptive two-level indexes of seeds data.
+
+These indexes speed up prefix matching in large indexes by using longer prefixes
+to locate seeds within large data blocks.
 
 The seeds files are not changed. The primary prefix length is the mask prefix
 plus log4(partitions), and the secondary prefix adds 2 bases. With the standard
@@ -18,11 +21,9 @@ the original linear-scan path. The command rewrites each primary .idx file and
 creates its matching .idx15 file. Different seeds files are processed in
 parallel using -j/--threads.
 
-This index primarily improves seed-matching performance for batch queries with
-"lexicmap search". The end-to-end speedup is most noticeable when
--n/--top-n-genomes limits the number of candidates passed to downstream
-alignment; searches dominated by alignment, especially single-query searches,
-may see only a small overall gain.
+Overall gains are most noticeable for batch queries with "lexicmap search" when
+-n/--top-n-genomes limits downstream alignments, making seed matching a larger
+share of runtime. Without this limit, sequence alignment often dominates runtime.
 
 Usage:
   lexicmap utils reindex-seeds2 [flags] 
@@ -36,8 +37,9 @@ Flags:
                            primary-prefix <= 20. The default 4096 produces 13/15-bp prefixes with the
                            standard 7-bp mask prefix. (default 4096)
       --threshold string   ► Minimum size of a primary-prefix seeds block for creating its secondary
-                           index. The minimum is 4K because seed readers use 4 KiB buffers; the default
-                           is 8K. (default "8K")
+                           index. Higher values reduce .idx15 size but limit the speedup. The minimum is
+                           4K because seed readers use 4 KiB buffers. The default 8K is recommended.
+                           (default "8K")
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
@@ -48,6 +50,13 @@ Global Flags:
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
 ```
+
+New databases can write these indexes alongside the final seed files with `lexicmap index --seed-index2`, without rereading the seeds.
+The index command uses `--partitions` and `--seed-index2-threshold` (default `8K`, minimum `4K`).
+
+The additional `.idx15` files are typically similar in size to the `.idx` files, and often smaller.
+Their size depends mainly on `--threshold` for this command or `--seed-index2-threshold` for `lexicmap index`.
+Higher thresholds reduce `.idx15` size but limit the speedup. The default `8K` is recommended (minimum: `4K`).
 
 ## Examples
 

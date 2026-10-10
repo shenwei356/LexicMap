@@ -104,19 +104,24 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
-                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs.
-                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + 2)),
-                            where $inputs is the number of batches in the current merge group (at most --max-open-files - 10).
+                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs,
+                            or three outputs in the final merge with --seed-index2.
+                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + $outputs)),
+                            where $inputs is the current group size and $outputs is 2, or 3 for a final adaptive merge.
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
                             ► Bigger values bring a little higher memory occupation.
                             ► After indexing, "lexicmap utils reindex-seeds" can be used to reindex the seeds data
                             with another value of this flag.
-                            ► "lexicmap index" currently creates primary seed indexes only. After indexing, run
-                            "lexicmap utils reindex-seeds2 -d <index>" to create adaptive idx15 secondary indexes,
-                            which can reduce seed-matching time.
+                            ► Use --seed-index2 to create adaptive two-level seed indexes (.idx and .idx15).
+                            These indexes speed up prefix matching in large indexes by using longer prefixes to locate
+                            seeds within large data blocks. Overall gains are most noticeable for batch queries with
+                            "lexicmap search" when -n/--top-n-genomes limits downstream alignments, making seed matching
+                            a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
+                            --seed-index2-threshold controls the minimum block size (default: 8K, minimum: 4K).
+                            Higher thresholds reduce .idx15 size but limit the speedup; the default is recommended.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches (minimum: 12).
+                            ► It's only used in merging indexes of multiple genome batches (minimum: 12, or 13 with --seed-index2).
                             Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
                             Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
@@ -124,67 +129,85 @@ Usage:
   lexicmap index [flags] [-k <k>] [-m <masks>] {-I <seqs dir> | [-S] -X <file list>} -O <index.lmi>
 
 Flags:
-  -b, --batch-size int            ► Maximum number of genomes in each batch (maximum value: 131072)
-                                  (default 5000)
-  -G, --big-genomes string        ► Out file of skipped files with $total_bases + ($num_contigs - 1) *
-                                  $contig_interval >= -g/--max-genome. The second column is one of the
-                                  skip types: no_valid_seqs, too_large_genome, too_many_seqs.
-  -c, --chunks int                ► Number of chunks for storing seeds (k-mer-value data) files. Max:
-                                  128. Default: the value of -j/--threads. (default 16)
-      --contig-interval int       ► Length of interval (N's) between contigs in a genome. It can't be
-                                  too small (<1000) or some alignments might be fragmented (default 1000)
-      --debug                     ► Print debug information.
-  -r, --file-regexp string        ► Regular expression for matching sequence files in -I/--in-dir,
-                                  case ignored. Attention: use double quotation marks for patterns
-                                  containing commas, e.g., -p '"A{2,}"'. (default
-                                  "\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
-      --force                     ► Overwrite existing output directory.
-  -h, --help                      help for index
-  -I, --in-dir string             ► Input directory containing FASTA/Q files. Directory and file
-                                  symlinks are followed.
-  -k, --kmer int                  ► Maximum k-mer size. K needs to be <= 32. (default 31)
-  -M, --mask-file string          ► File of custom masks. This flag oversides -k/--kmer, -m/--masks,
-                                  -s/--rand-seed etc.
-  -m, --masks int                 ► Number of LexicHash masks. (default 20000)
-  -g, --max-genome int            ► Maximum genome size. Genomes with any single contig larger than
-                                  the threshold will be skipped, while fragmented (with many contigs)
-                                  genomes larger than the threshold will be split into chunks and
-                                  alignments from these chunks will be merged in "lexicmap search". The
-                                  value needs to be smaller than the maximum supported genome size:
-                                  268435456. (default 20000000)
-      --max-kmer-freq int         ► If a mask captures the same k-mer at more than N positions of a
-                                  genome, only the first N positions will be retained. This option may
-                                  reduce search sensitivity, but it's useful when simply checking
-                                  whether a query matches any position in a genome that contains many
-                                  tandem repeat sequences. (0 for no filtering)
-      --max-open-files int        ► Maximum open files for merging indexes, including 8 reserved files
-                                  (minimum: 12 for multiple batches). Large batch counts are merged in
-                                  multiple rounds. Set "ulimit -n" at least this high. (default 1024)
-  -l, --min-seq-len int           ► Maximum sequence length to index. The value would be k for values
-                                  <= 0. (default -1)
-      --no-desert-filling         ► Disable sketching desert filling (only for debug).
-  -O, --out-dir string            ► Output LexicMap index directory.
-      --partitions int            ► Number of partitions for indexing seeds (k-mer-value data) files.
-                                  The value needs to be the power of 4. (default 4096)
-  -s, --rand-seed int             ► Rand seed for generating random masks. (default 1)
-  -N, --ref-name-regexp string    ► Regular expression (must contains "(" and ")") for extracting the
-                                  reference name from the filename. Attention: use double quotation
-                                  marks for patterns containing commas, e.g., -p '"A{2,}"'. (default
-                                  "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
-      --save-seed-pos             ► Save seed positions, which can be inspected with "lexicmap utils
-                                  seed-pos".
-  -J, --seed-data-threads int     ► Number of threads for writing seed data and merging seed chunks
-                                  from all batches, in range [1, -c/--chunks]. Merging threads are
-                                  limited by --max-open-files. (default 8)
-  -d, --seed-in-desert-dist int   ► Distance of k-mers to fill deserts. (default 50)
-  -D, --seed-max-desert int       ► Maximum length of sketching deserts, or maximum seed distance.
-                                  Deserts with seed distance larger than this value will be filled by
-                                  choosing k-mers roughly every --seed-in-desert-dist bases. (default 100)
-  -B, --seq-name-filter strings   ► List of regular expressions for filtering out sequences by
-                                  contents in FASTA/Q header/name, case ignored.
-  -S, --skip-file-check           ► Skip input file checking when given files or a file list.
-      --soft-masking              ► Support soft-masked genomes. Lowercase bases in soft-masked
-                                  low-complexity regions will be treated as A's, and won't be seeded.
+  -b, --batch-size int                 ► Maximum number of genomes in each batch (maximum value:
+                                       131072) (default 5000)
+  -G, --big-genomes string             ► Out file of skipped files with $total_bases + ($num_contigs -
+                                       1) * $contig_interval >= -g/--max-genome. The second column is
+                                       one of the skip types: no_valid_seqs, too_large_genome, too_many_seqs.
+  -c, --chunks int                     ► Number of chunks for storing seeds (k-mer-value data) files.
+                                       Max: 128. Default: the value of -j/--threads. (default 16)
+      --contig-interval int            ► Length of interval (N's) between contigs in a genome. It
+                                       can't be too small (<1000) or some alignments might be fragmented
+                                       (default 1000)
+      --debug                          ► Print debug information.
+  -r, --file-regexp string             ► Regular expression for matching sequence files in
+                                       -I/--in-dir, case ignored. Attention: use double quotation marks
+                                       for patterns containing commas, e.g., -p '"A{2,}"'. (default
+                                       "\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
+      --force                          ► Overwrite existing output directory.
+  -h, --help                           help for index
+  -I, --in-dir string                  ► Input directory containing FASTA/Q files. Directory and file
+                                       symlinks are followed.
+  -k, --kmer int                       ► Maximum k-mer size. K needs to be <= 32. (default 31)
+  -M, --mask-file string               ► File of custom masks. This flag oversides -k/--kmer,
+                                       -m/--masks, -s/--rand-seed etc.
+  -m, --masks int                      ► Number of LexicHash masks. (default 20000)
+  -g, --max-genome int                 ► Maximum genome size. Genomes with any single contig larger
+                                       than the threshold will be skipped, while fragmented (with many
+                                       contigs) genomes larger than the threshold will be split into
+                                       chunks and alignments from these chunks will be merged in
+                                       "lexicmap search". The value needs to be smaller than the maximum
+                                       supported genome size: 268435456. (default 20000000)
+      --max-kmer-freq int              ► If a mask captures the same k-mer at more than N positions of
+                                       a genome, only the first N positions will be retained. This
+                                       option may reduce search sensitivity, but it's useful when simply
+                                       checking whether a query matches any position in a genome that
+                                       contains many tandem repeat sequences. (0 for no filtering)
+      --max-open-files int             ► Maximum open files for merging indexes, including 8 reserved
+                                       files (minimum: 12 for multiple batches, or 13 with
+                                       --seed-index2). Large batch counts are merged in multiple rounds.
+                                       Set "ulimit -n" at least this high. (default 1024)
+  -l, --min-seq-len int                ► Maximum sequence length to index. The value would be k for
+                                       values <= 0. (default -1)
+      --no-desert-filling              ► Disable sketching desert filling (only for debug).
+  -O, --out-dir string                 ► Output LexicMap index directory.
+      --partitions int                 ► Number of partitions for indexing seeds (k-mer-value data)
+                                       files. The value needs to be the power of 4. (default 4096)
+  -s, --rand-seed int                  ► Rand seed for generating random masks. (default 1)
+  -N, --ref-name-regexp string         ► Regular expression (must contains "(" and ")") for extracting
+                                       the reference name from the filename. Attention: use double
+                                       quotation marks for patterns containing commas, e.g., -p
+                                       '"A{2,}"'. (default
+                                       "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
+      --save-seed-pos                  ► Save seed positions, which can be inspected with "lexicmap
+                                       utils seed-pos".
+  -J, --seed-data-threads int          ► Number of threads for merging seed chunks from all batches,
+                                       in range [1, -c/--chunks]. Merging threads are limited by
+                                       --max-open-files. Bigger values increase I/O load in HDDs for
+                                       large batch counts. (default 8)
+  -d, --seed-in-desert-dist int        ► Distance of k-mers to fill deserts. (default 50)
+      --seed-index2                    ► Write adaptive two-level seed indexes (.idx and .idx15)
+                                       alongside the final seeds. Speeds up prefix matching in large
+                                       indexes by using longer prefixes to locate seeds within large
+                                       data blocks. Overall gains are most noticeable for batch queries
+                                       with "lexicmap search" when -n/--top-n-genomes limits downstream
+                                       alignments, making seed matching a larger share of runtime.
+                                       Without this limit, sequence alignment often dominates runtime.
+                                       Produces the same indexes as "utils reindex-seeds2". Uses
+                                       --partitions (power of 4, at least 4); K - primary-prefix must be
+                                       in [2, 20].
+      --seed-index2-threshold string   ► Minimum seed block size for creating a secondary index with
+                                       --seed-index2. Higher values reduce .idx15 size but limit the
+                                       speedup. Minimum: 4K. The default 8K is recommended. (default "8K")
+  -D, --seed-max-desert int            ► Maximum length of sketching deserts, or maximum seed
+                                       distance. Deserts with seed distance larger than this value will
+                                       be filled by choosing k-mers roughly every --seed-in-desert-dist
+                                       bases. (default 100)
+  -B, --seq-name-filter strings        ► List of regular expressions for filtering out sequences by
+                                       contents in FASTA/Q header/name, case ignored.
+  -S, --skip-file-check                ► Skip input file checking when given files or a file list.
+      --soft-masking                   ► Support soft-masked genomes. Lowercase bases in soft-masked
+                                       low-complexity regions will be treated as A's, and won't be seeded.
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
