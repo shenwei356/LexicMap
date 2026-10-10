@@ -724,12 +724,13 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	defer queryIndexes.close()
 
 	// -----------------------------------------------------------
-	// process bar
+	// Progress reporting respects quiet mode, independently of debug logging.
+	showProgressBar := debug && idx.opt.Verbose
 	var pbs *mpb.Progress
 	var bar *mpb.Bar
 	var chDuration chan time.Duration
 	var doneDuration chan int
-	if debug {
+	if showProgressBar {
 		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
 		bar = pbs.AddBar(int64(len(*genomeIds)),
 			mpb.PrependDecorators(
@@ -795,7 +796,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 			timeStart := time.Now()
 
 			defer func() {
-				if debug {
+				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 				}
 				<-tokens
@@ -967,7 +968,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	close(ch)
 	<-done
 
-	if debug {
+	if showProgressBar {
 		close(chDuration)
 		<-doneDuration
 		pbs.Wait()

@@ -2013,12 +2013,13 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		})
 	}
 
-	// process bar
+	// Progress reporting respects quiet mode, independently of debug logging.
+	showProgressBar := debug && idx.opt.Verbose
 	var pbs *mpb.Progress
 	var bar *mpb.Bar
 	var chDuration chan time.Duration
 	var doneDuration chan int
-	if debug {
+	if showProgressBar {
 		pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
 		bar = pbs.AddBar(int64(len(*rs)),
 			mpb.PrependDecorators(
@@ -2051,7 +2052,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		timeStart := time.Now()
 		defer func() {
 			<-tokens
-			if debug {
+			if showProgressBar {
 				chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 			}
 			wg.Done()
@@ -2859,7 +2860,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	close(ch2)
 	<-done
 	// process bar
-	if debug {
+	if showProgressBar {
 		close(chDuration)
 		<-doneDuration
 		pbs.Wait()

@@ -533,12 +533,13 @@ Output format:
 		}
 
 		// -----------------------------------------------------------
-		// process bar
+		// Progress reporting respects quiet mode, independently of debug logging.
+		showProgressBar := debug && opt.Verbose
 		var pbs *mpb.Progress
 		var bar *mpb.Bar
 		var chDuration chan time.Duration
 		var doneDuration chan int
-		if debug {
+		if showProgressBar {
 			pbs = mpb.New(mpb.WithWidth(40), mpb.WithOutput(os.Stderr))
 			bar = pbs.AddBar(int64(nPairs),
 				mpb.PrependDecorators(
@@ -594,7 +595,7 @@ Output format:
 			go func() {
 				timeStart := time.Now()
 				defer func() {
-					if debug {
+					if showProgressBar {
 						chDuration <- time.Duration(float64(time.Since(timeStart)) / fcpus)
 					}
 					<-tokens
@@ -714,7 +715,7 @@ Output format:
 		wg.Wait()
 
 		// -----------------------------------------------------------
-		if debug {
+		if showProgressBar {
 			close(chDuration)
 			<-doneDuration
 			pbs.Wait()
@@ -724,7 +725,7 @@ Output format:
 		<-done
 
 		if genomeCache != nil && outputLog {
-			log.Infof("genome cache: %d loads, %d reuses, %d evictions, peak charged memory %s (budget %s)",
+			log.Infof("  genome cache: %d loads, %d reuses, %d evictions, peak charged memory %s (budget %s)",
 				genomeCache.loads, genomeCache.hits, genomeCache.evictions,
 				humanize.IBytes(uint64(genomeCache.peak)), humanize.IBytes(uint64(cacheBudget)))
 		}

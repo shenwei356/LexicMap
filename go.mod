@@ -26,6 +26,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.16.1
+	golang.org/x/sys v0.47.0
 	gonum.org/v1/gonum v0.17.0
 	gonum.org/v1/plot v0.17.0
 )
@@ -55,6 +56,5 @@ require (
 	github.com/ulikunitz/xz v0.5.16 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
 	golang.org/x/image v0.45.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )

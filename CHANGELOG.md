@@ -7,6 +7,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap`:
     - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
     - All commands check that the log file differs from the output file before opening it.
+    - Progress bars in `search`, `genome search`, and `genome compare` respect `--quiet`, including when `--debug` is enabled.
 - New commands:
     - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
