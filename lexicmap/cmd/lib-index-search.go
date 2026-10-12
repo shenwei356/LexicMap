@@ -70,7 +70,9 @@ type IndexSearchingOptions struct {
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
 	// MinMatchedBases uint8 // the total matched bases
-	TopN       int // keep the top N chaining scores, including cutoff ties
+	// TopN keeps the top N chaining matches with cutoff ties in search; genome
+	// search keeps the top N distinct screening scores, then ANI percentages printed to 4 decimals.
+	TopN       int
 	TopNChains int // keep the top N chains
 
 	// seeds chaining

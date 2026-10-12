@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/shenwei356/bio/taxdump"
@@ -124,37 +126,156 @@ func TestWindowSkipRegionsClipsAndTranslatesCoordinates(t *testing.T) {
 	}
 }
 
-func TestTrimGSearchScreenResultsKeepsCutoffTies(t *testing.T) {
-	rs := []*GSearchScreenResultDetail{
-		{BatchGenomeIndex: []uint64{8}, SumPrefix: 80},
-		{BatchGenomeIndex: []uint64{4}, SumPrefix: 90},
-		{BatchGenomeIndex: []uint64{3}, SumPrefix: 90},
-		{BatchGenomeIndex: []uint64{1}, SumPrefix: 100},
+// TestTrimGSearchScreenResultsKeepsDistinctScores covers score groups, stable
+// ordering, and recycling candidates outside the selected score groups.
+func TestTrimGSearchScreenResultsKeepsDistinctScores(t *testing.T) {
+	tests := []struct {
+		name    string
+		scores  []uint64
+		topN    int
+		wantIDs []uint64
+	}{
+		{"three score groups", []uint64{10, 10, 10, 10, 9, 9, 9, 8, 7, 6}, 3, []uint64{1, 2, 3, 4, 5, 6, 7, 8}},
+		{"ties above cutoff", []uint64{10, 10, 9, 9, 8}, 2, []uint64{1, 2, 3, 4}},
+		{"top group only", []uint64{10, 10, 9, 8}, 1, []uint64{1, 2}},
+		{"all tied", []uint64{10, 10, 10}, 2, []uint64{1, 2, 3}},
+		{"fewer score groups", []uint64{10, 10, 9, 9, 9}, 3, []uint64{1, 2, 3, 4, 5}},
+		{"distinct scores", []uint64{6, 8, 10, 9, 7}, 3, []uint64{3, 4, 2}},
+		{"unlimited", []uint64{8, 10, 9, 9}, 0, []uint64{2, 3, 4, 1}},
+		{"larger than candidates", []uint64{9, 10}, 10, []uint64{2, 1}},
+		{"empty", nil, 3, []uint64{}},
 	}
-
-	trimGSearchScreenResults(&rs, 2, nil)
-	if got, want := len(rs), 3; got != want {
-		t.Fatalf("result count: got %d, want %d", got, want)
-	}
-	got := []uint64{rs[0].BatchGenomeIndex[0], rs[1].BatchGenomeIndex[0], rs[2].BatchGenomeIndex[0]}
-	want := []uint64{1, 3, 4}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("ordered candidates: got %v, want %v", got, want)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rs := make([]*GSearchScreenResultDetail, len(test.scores))
+			for i, score := range test.scores {
+				// Reverse input to test sorting by score and internal genome index.
+				rs[len(rs)-1-i] = &GSearchScreenResultDetail{
+					BatchGenomeIndex: []uint64{uint64(i + 1)},
+					SumPrefix:        score,
+					LongestMatches:   []uint8{uint8(score)},
+				}
+			}
+			original := append([]*GSearchScreenResultDetail(nil), rs...)
+			backing := rs // retain the full slice to check cleared discarded slots
+			idx := &Index{poolGSearchDetailResult: &sync.Pool{}}
+			trimGSearchScreenResults(&rs, test.topN, idx)
+			got := make([]uint64, len(rs))
+			kept := make(map[*GSearchScreenResultDetail]bool, len(rs))
+			for i, r := range rs {
+				got[i] = r.BatchGenomeIndex[0]
+				kept[r] = true
+				if r.SumPrefix != test.scores[got[i]-1] {
+					t.Fatalf("retained candidate %d was reset", got[i])
+				}
+			}
+			if !reflect.DeepEqual(got, test.wantIDs) {
+				t.Fatalf("ordered candidates: got %v, want %v", got, test.wantIDs)
+			}
+			for _, r := range original {
+				if !kept[r] && (r.SumPrefix != 0 || len(r.BatchGenomeIndex) != 0 || r.LongestMatches[0] != 0) {
+					t.Fatalf("discarded candidate was not recycled: %+v", r)
+				}
+			}
+			for _, r := range backing[len(rs):] {
+				if r != nil {
+					t.Fatal("discarded slot still retains a candidate")
+				}
+			}
+		})
 	}
 }
 
-func TestTrimGSearchResultsKeepsStrictTopN(t *testing.T) {
-	rs := []*GSearchResult{
-		{BatchGenomeIndex: 8, ANI: 0.90, AFq: 0.8, AFs: 0.7},
-		{BatchGenomeIndex: 4, ANI: 0.95, AFq: 0.8, AFs: 0.7},
-		{BatchGenomeIndex: 3, ANI: 0.95, AFq: 0.8, AFs: 0.7},
+// TestTrimGSearchResultsKeepsDistinctANI checks printed ANI groups,
+// rounded-ANI sorting, and clearing and recycling discarded results.
+func TestTrimGSearchResultsKeepsDistinctANI(t *testing.T) {
+	tests := []struct {
+		name    string
+		anis    []float64
+		topN    int
+		wantIDs []uint64
+	}{
+		{"three ANI groups", []float64{1, 1, 1, 1, .99, .99, .99, .98, .97, .96}, 3, []uint64{1, 2, 3, 4, 5, 6, 7, 8}},
+		{"ties above cutoff", []float64{1, 1, .99, .99, .98}, 2, []uint64{1, 2, 3, 4}},
+		{"top group only", []float64{1, 1, .99}, 1, []uint64{1, 2}},
+		{"all tied", []float64{1, 1, 1}, 2, []uint64{1, 2, 3}},
+		{"fewer ANI groups", []float64{1, 1, .99, .99, .99}, 3, []uint64{1, 2, 3, 4, 5}},
+		{"distinct ANI", []float64{.96, .98, 1, .99, .97}, 3, []uint64{3, 4, 2}},
+		{"equal after output rounding", []float64{.9999900, .9999901, .9999900}, 1, []uint64{1, 2, 3}},
+		{"different integer widths", []float64{.09, .1, 1, .99}, 3, []uint64{3, 4, 2}},
+		{"distinct at four decimals", []float64{.999960, .999964}, 1, []uint64{2}},
+		{"rounding boundary", []float64{.99996449, .99996451, .99996448}, 1, []uint64{2}},
+		{"lower rounded group", []float64{.99996449, .99996451, .99996448}, 2, []uint64{2, 1, 3}},
+		{"zero ANI", []float64{0, 0, 0}, 1, []uint64{1, 2, 3}},
+		{"unlimited", []float64{.98, 1, .99, .99}, 0, []uint64{2, 3, 4, 1}},
+		{"larger than candidates", []float64{.99, 1}, 10, []uint64{2, 1}},
+		{"empty", nil, 3, []uint64{}},
 	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			rs := make([]*GSearchResult, len(test.anis))
+			for i, ani := range test.anis {
+				// Reverse input to check stable ordering within an ANI group.
+				rs[len(rs)-1-i] = &GSearchResult{BatchGenomeIndex: uint64(i + 1), ANI: ani, AFq: .8, AFs: .7}
+			}
+			original := append([]*GSearchResult(nil), rs...)
+			backing := rs // full slice for checking discarded pointer slots
+			trimGSearchResults(&rs, test.topN)
+			got := make([]uint64, len(rs))
+			kept := make(map[*GSearchResult]bool, len(rs))
+			printedGroups := make(map[string]struct{}) // group keys from the actual output format
+			for i, r := range rs {
+				got[i] = r.BatchGenomeIndex
+				kept[r] = true
+				printedGroups[fmt.Sprintf("%.4f", r.ANI*100)] = struct{}{}
+				if r.ANI != test.anis[got[i]-1] || r.AFq != .8 || r.AFs != .7 {
+					t.Fatalf("retained result was reset: %+v", r)
+				}
+			}
+			if !reflect.DeepEqual(got, test.wantIDs) {
+				t.Fatalf("ordered results: got %v, want %v", got, test.wantIDs)
+			}
+			if test.topN > 0 {
+				allGroups := make(map[string]struct{})
+				for _, ani := range test.anis {
+					allGroups[fmt.Sprintf("%.4f", ani*100)] = struct{}{}
+				}
+				if want := min(test.topN, len(allGroups)); len(printedGroups) != want {
+					t.Fatalf("printed ANI groups: got %d, want %d", len(printedGroups), want)
+				}
+			}
+			for _, r := range original {
+				if !kept[r] && (r.ANI != 0 || r.AFq != 0 || r.AFs != 0 || r.BatchGenomeIndex != ^uint64(0)) {
+					t.Fatalf("discarded result was not reset: %+v", r)
+				}
+			}
+			for _, r := range backing[len(rs):] {
+				if r != nil {
+					t.Fatal("discarded slot still retains a result")
+				}
+			}
+		})
+	}
+}
 
-	trimGSearchResults(&rs, 2)
-	got := []uint64{rs[0].BatchGenomeIndex, rs[1].BatchGenomeIndex}
-	want := []uint64{3, 4}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("ordered ANI results: got %v, want %v", got, want)
+// TestTrimGSearchResultsSortsANIQueryAFSubjectAF checks every sorting key and
+// compares AF within a printed ANI group despite differences in unrounded ANI.
+func TestTrimGSearchResultsSortsANIQueryAFSubjectAF(t *testing.T) {
+	rs := []*GSearchResult{
+		{BatchGenomeIndex: 6, ANI: .99, AFq: 1, AFs: 1},
+		{BatchGenomeIndex: 5, ANI: .9999604, AFq: .8, AFs: .9},
+		{BatchGenomeIndex: 4, ANI: .9999603, AFq: .9, AFs: .7},
+		{BatchGenomeIndex: 3, ANI: .9999602, AFq: .9, AFs: .8},
+		{BatchGenomeIndex: 2, ANI: .9999601, AFq: .9, AFs: .8},
+		{BatchGenomeIndex: 1, ANI: .9999600, AFq: 1, AFs: .6},
+	}
+	trimGSearchResults(&rs, 1)
+	got := make([]uint64, len(rs))
+	for i, r := range rs {
+		got[i] = r.BatchGenomeIndex
+	}
+	if want := []uint64{1, 2, 3, 4, 5}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("ordered results: got %v, want %v", got, want)
 	}
 }
 

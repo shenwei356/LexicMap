@@ -14,6 +14,9 @@ Algorithm:
   1. Genome screening: candidate genomes are screened by the total length of shared seeds
      (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
      the genomes in the index, with lexichash masking.
+     Flag -n/--top-n-genomes keeps all genomes with the top N distinct screening scores
+     (0 for all). For example, -n 3 keeps all genomes scoring 10, 9, or 8 when scores are
+     10, 10, 10, 10, 9, 9, 9, 8, 7, 6.
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -21,6 +24,10 @@ Algorithm:
      b) (OrthoANI mode): cut both the query genome and candidate genomes into non-overlapping
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
+     Results are sorted by ANI percentages rounded to four decimal places, then by
+     full-precision qAF and sAF (descending).
+     Flag -n/--top-n-genomes keeps all matches with the top N distinct ANI percentages
+     as printed with four decimal places. Both stages may retain more than N genomes.
 
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
@@ -153,9 +160,10 @@ Flags:
   -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
                                        in the chaining phase. Value 1 is not recommended as the best
                                        chaining result does not always bring the best alignment. (default 5)
-  -n, --top-n-genomes int              ► Keep the top N genome matches for a query (0 for all).
-                                       Screening includes all candidates tied with the Nth score; ANI
-                                       ranking then returns at most N matches. (default 10)
+  -n, --top-n-genomes int              ► Keep all genomes with the top N distinct screening scores,
+                                       then all matches with the top N distinct ANI percentages as
+                                       printed with four decimal places (0 for all). May return more
+                                       than N genomes. (default 10)
       --windows int                    ► The number of windows in lexichash masking, for genome
                                        screening (1 is sufficient). (default 1)
 
@@ -176,13 +184,13 @@ Examples:
         $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz \
             | csvtk pretty -t
     
-        query             subject           ANI       qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
-        ---------------   ---------------   -------   -------   -------   --------   -------   --------   -------   -----
-        GCF_003697165.2   GCF_003697165.2   100.000   100.000   100.000   2          5034834   2          5034834        
-        GCF_003697165.2   GCF_002949675.1   96.821    67.230    73.932    2          5034834   2          4578459        
-        GCF_003697165.2   GCF_002950215.1   96.735    72.831    74.255    2          5034834   3          4938295        
-        GCF_003697165.2   GCF_000006945.2   81.614    54.733    55.655    2          5034834   2          4951383        
-        GCF_003697165.2   GCF_000742135.1   80.588    45.868    41.642    2          5034834   5          5545784        
+        query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
+        ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   -----
+        GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834        
+        GCF_003697165.2   GCF_002949675.1   96.8214    67.230    73.932    2          5034834   2          4578459        
+        GCF_003697165.2   GCF_002950215.1   96.7354    72.831    74.255    2          5034834   3          4938295        
+        GCF_003697165.2   GCF_000006945.2   81.6144    54.733    55.655    2          5034834   2          4951383        
+        GCF_003697165.2   GCF_000742135.1   80.5884    45.868    41.642    2          5034834   5          5545784        
         
 2. Show genome names
     
@@ -190,10 +198,10 @@ Examples:
               --taxdump ~/.taxonkit --genome2taxid taxid.map --show-genome-name  \
             | csvtk pretty -t
 
-        query             subject           ANI       qAF       sAF       qcontigs   qsize     scontigs   ssize     sname                
-        ---------------   ---------------   -------   -------   -------   --------   -------   --------   -------   ---------------------
-        GCF_003697165.2   GCF_003697165.2   100.000   100.000   100.000   2          5034834   2          5034834   Escherichia coli     
-        GCF_003697165.2   GCF_002949675.1   96.821    67.230    73.932    2          5034834   2          4578459   Shigella dysenteriae 
-        GCF_003697165.2   GCF_002950215.1   96.735    72.831    74.255    2          5034834   3          4938295   Shigella flexneri    
-        GCF_003697165.2   GCF_000006945.2   81.614    54.733    55.655    2          5034834   2          4951383   Salmonella enterica  
-        GCF_003697165.2   GCF_000742135.1   80.588    45.868    41.642    2          5034834   5          5545784   Klebsiella pneumoniae
+        query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname                
+        ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   ---------------------
+        GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834   Escherichia coli     
+        GCF_003697165.2   GCF_002949675.1   96.8214    67.230    73.932    2          5034834   2          4578459   Shigella dysenteriae 
+        GCF_003697165.2   GCF_002950215.1   96.7354    72.831    74.255    2          5034834   3          4938295   Shigella flexneri    
+        GCF_003697165.2   GCF_000006945.2   81.6144    54.733    55.655    2          5034834   2          4951383   Salmonella enterica  
+        GCF_003697165.2   GCF_000742135.1   80.5884    45.868    41.642    2          5034834   5          5545784   Klebsiella pneumoniae

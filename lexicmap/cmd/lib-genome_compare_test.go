@@ -222,12 +222,13 @@ func TestFragmentPairsConcurrentImmutableEntries(t *testing.T) {
 
 // BenchmarkFragmentPairs isolates counting and Top-N selection with real
 // contig-aware, sampled OrthoANI entries; FASTA reading and indexing are excluded.
+// Both genomes are loaded from the Git-tracked demo/refs fixtures.
 func BenchmarkFragmentPairs(b *testing.B) {
 	options := &FragmentComparatorOptions{K: 11, Scaled: 4, TopNFragments: 5,
 		MinSharedKmers: max(3, MinSharedKmersThresholdExact(1020, 11, 4, 0.80, 0.99))}
 	cpr := NewFragmentComparator(options, nil)
 	load := func(file string) []rtree.BatchEntry {
-		q, err := ReadGenomeFromFile("../t.demo/"+file+".fa", nil, false)
+		q, err := ReadGenomeFromFile("../../demo/refs/"+file+".fa.gz", nil, false)
 		if err != nil {
 			b.Fatal(err)
 		}

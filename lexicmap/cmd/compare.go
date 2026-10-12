@@ -58,7 +58,8 @@ Input:
     The LexicMap index must be given by '-d/--index', and '-H' skips header lines.
 
 Output format:
-  Tab-delimited format with 11 columns.
+  Tab-delimited format with 11 columns. ANI values are printed with four decimal places
+  and AF values with three.
 
     1.  genome1,  Genome 1.
     2.  genome2,  Genome 2.
@@ -434,7 +435,7 @@ Output format:
 				tani = float64(gr1.AlignedMatches+gr1.AlignedMatches) / float64(g1.genomeSize+g2.genomeSize) * 100
 			}
 
-			fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
+			fmt.Fprintf(outfh, "%s\t%s\t%.4f\t%.4f\t%.4f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\n",
 				g1.id, g2.id,
 				tani,
 				ani1, ani2,

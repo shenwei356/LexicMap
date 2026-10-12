@@ -48,6 +48,9 @@ Algorithm:
   1. Genome screening: candidate genomes are screened by the total length of shared seeds
      (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
      the genomes in the index, with lexichash masking.
+     Flag -n/--top-n-genomes keeps all genomes with the top N distinct screening scores
+     (0 for all). For example, -n 3 keeps all genomes scoring 10, 9, or 8 when scores are
+     10, 10, 10, 10, 9, 9, 9, 8, 7, 6.
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -55,6 +58,10 @@ Algorithm:
      b) (OrthoANI mode): cut both the query genome and candidate genomes into non-overlapping
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
+     Results are sorted by ANI percentages rounded to four decimal places, then by
+     full-precision qAF and sAF (descending).
+     Flag -n/--top-n-genomes keeps all matches with the top N distinct ANI percentages
+     as printed with four decimal places. Both stages may retain more than N genomes.
 
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
@@ -432,7 +439,7 @@ Output format:
 				log.Infof("  screen genomes with seed data of all the %d masks", _nMasks)
 			}
 			if sopt.TopN > 0 {
-				log.Infof("    keep the top %d genomes", sopt.TopN)
+				log.Infof("    keep all genomes with the top %d distinct screening scores", sopt.TopN)
 			}
 			// if sopt.TopNChains > 0 {
 			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
@@ -569,11 +576,11 @@ Output format:
 						vSgenome = ""
 					}
 					if adjustANIByQuality {
-						fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\t%.3f\n",
+						fmt.Fprintf(outfh, "%s\t%s\t%.4f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\t%.4f\n",
 							q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
 							len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome, gr.ANIAdjusted*100)
 					} else {
-						fmt.Fprintf(outfh, "%s\t%s\t%.3f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\n",
+						fmt.Fprintf(outfh, "%s\t%s\t%.4f\t%.3f\t%.3f\t%d\t%d\t%d\t%d\t%s\n",
 							q.id, id2name[gr.BatchGenomeIndex], gr.ANI*100, gr.AFq*100, gr.AFs*100,
 							len(q.seqs), q.genomeSize, gr.NumSeqs, gr.GenomeSize, vSgenome)
 					}
@@ -782,7 +789,7 @@ func init() {
 		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
-		formatFlagUsage(`Keep the top N genome matches for a query (0 for all). Screening includes all candidates tied with the Nth score; ANI ranking then returns at most N matches.`))
+		formatFlagUsage(`Keep all genomes with the top N distinct screening scores, then all matches with the top N distinct ANI percentages as printed with four decimal places (0 for all). May return more than N genomes.`))
 
 	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 20,
 		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))

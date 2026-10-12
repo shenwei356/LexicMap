@@ -21,11 +21,13 @@
 package cmd
 
 import (
+	"bytes"
 	"cmp"
 	"fmt"
 	"math"
 	"os"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 	"unsafe"
@@ -574,8 +576,8 @@ func canonicalScreenGenomeIndex(r *GSearchScreenResultDetail) uint64 {
 	return id
 }
 
-// trimGSearchScreenResults retains all candidates tied with the Nth screening
-// score. The deterministic secondary order makes repeated searches stable.
+// trimGSearchScreenResults retains all candidates with the top N distinct
+// screening scores. The deterministic secondary order makes repeated searches stable.
 func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *Index) {
 	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
 		if d := cmp.Compare(b.SumPrefix, a.SumPrefix); d != 0 {
@@ -587,9 +589,15 @@ func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *I
 		return
 	}
 
-	cutoff := (*rs)[topN-1].SumPrefix
-	end := topN
-	for end < len(*rs) && (*rs)[end].SumPrefix == cutoff {
+	end := 1
+	scoreGroups := 1 // number of distinct screening scores retained
+	for end < len(*rs) {
+		if (*rs)[end].SumPrefix != (*rs)[end-1].SumPrefix {
+			if scoreGroups == topN {
+				break
+			}
+			scoreGroups++
+		}
 		end++
 	}
 	if idx != nil {
@@ -1153,10 +1161,22 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	return nil
 }
 
+// trimGSearchResults retains all matches with the top N distinct ANI percentages
+// as printed with four decimal places. Sorting uses printed ANI and full-precision AF.
 func trimGSearchResults(rs *[]*GSearchResult, topN int) {
 	slices.SortFunc(*rs, func(a, b *GSearchResult) int {
-		if d := cmp.Compare(b.ANI, a.ANI); d != 0 {
-			return d
+		if a.ANI != b.ANI {
+			var bufferA, bufferB [32]byte
+			printedA := strconv.AppendFloat(bufferA[:0], a.ANI*100, 'f', 4, 64)
+			printedB := strconv.AppendFloat(bufferB[:0], b.ANI*100, 'f', 4, 64)
+			// Nonnegative percentages have equal fractional widths, so compare
+			// integer widths first, then digits, to preserve numeric ordering.
+			if d := cmp.Compare(len(printedB), len(printedA)); d != 0 {
+				return d
+			}
+			if d := bytes.Compare(printedB, printedA); d != 0 {
+				return d
+			}
 		}
 		if d := cmp.Compare(b.AFq, a.AFq); d != 0 {
 			return d
@@ -1169,12 +1189,28 @@ func trimGSearchResults(rs *[]*GSearchResult, topN int) {
 	if topN <= 0 || len(*rs) <= topN {
 		return
 	}
-	for _, r := range (*rs)[topN:] {
+	end := 1
+	aniGroups := 1 // number of distinct printed ANI percentages retained
+	// Format group keys exactly like output ANI, reusing stack buffers to avoid allocations.
+	var previousBuffer, nextBuffer [32]byte
+	previousANI := strconv.AppendFloat(previousBuffer[:0], (*rs)[0].ANI*100, 'f', 4, 64)
+	for end < len(*rs) {
+		nextANI := strconv.AppendFloat(nextBuffer[:0], (*rs)[end].ANI*100, 'f', 4, 64)
+		if !bytes.Equal(previousANI, nextANI) {
+			if aniGroups == topN {
+				break
+			}
+			aniGroups++
+			previousANI = append(previousANI[:0], nextANI...)
+		}
+		end++
+	}
+	for _, r := range (*rs)[end:] {
 		r.Reset()
 		poolGSearchResult.Put(r)
 	}
-	clear((*rs)[topN:])
-	*rs = (*rs)[:topN]
+	clear((*rs)[end:])
+	*rs = (*rs)[:end]
 }
 
 var poolFragAlignResultMap = &sync.Pool{New: func() interface{} {
