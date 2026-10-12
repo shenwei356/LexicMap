@@ -48,9 +48,10 @@ Algorithm:
   1. Genome screening: candidate genomes are screened by the total length of shared seeds
      (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
      the genomes in the index, with lexichash masking.
-     Flag -n/--top-n-genomes keeps all genomes with the top N distinct screening scores
-     (0 for all). For example, -n 3 keeps all genomes scoring 10, 9, or 8 when scores are
-     10, 10, 10, 10, 9, 9, 9, 8, 7, 6.
+     Flag -n/--top-n-genomes keeps score groups in descending order until their total
+     genome count reaches or exceeds N, including the entire cutoff group (0 for all).
+     For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
+     -n 5 keeps those four plus the three genomes scoring 9.
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -439,7 +440,7 @@ Output format:
 				log.Infof("  screen genomes with seed data of all the %d masks", _nMasks)
 			}
 			if sopt.TopN > 0 {
-				log.Infof("    keep all genomes with the top %d distinct screening scores", sopt.TopN)
+				log.Infof("    keep the top %d screened genomes, including all ties at the cutoff score", sopt.TopN)
 			}
 			// if sopt.TopNChains > 0 {
 			// 	log.Infof("  keep the top %d chains", sopt.TopNChains)
@@ -537,6 +538,8 @@ Output format:
 			RecycleGQuery(q)
 		}
 
+		var nRecords int
+
 		printResult := func(q *GQuery) {
 			total++
 			if !((q.result != nil && len(*q.result) != 0) ||
@@ -588,6 +591,7 @@ Output format:
 			} else {
 				var hitMasks uint64
 				var v uint8
+				nRecords += len(*q.screenDetails)
 				for _, gr := range *q.screenDetails {
 					if showSpeciesName {
 						vSgenome = tax.Name(idx.genomeIdx2TaxId[gr.BatchGenomeIndex[0]])
@@ -739,6 +743,9 @@ Output format:
 			log.Infof("")
 			log.Infof("processed queries: %d, speed: %.3f queries per minute\n", total, speed)
 			log.Infof("%.4f%% (%d/%d) queries matched", float64(matched)/float64(total)*100, matched, total)
+			if onlyGenomeScreening {
+				log.Infof("screening results contain %d genomes", nRecords)
+			}
 			log.Infof("done searching")
 			if outFile != "-" {
 				log.Infof("search results saved to: %s", outFile)
@@ -789,7 +796,7 @@ func init() {
 		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
-		formatFlagUsage(`Keep all genomes with the top N distinct screening scores, then all matches with the top N distinct ANI percentages as printed with four decimal places (0 for all). May return more than N genomes.`))
+		formatFlagUsage(`Keep the top N screened genomes, including all ties at the cutoff score, then all matches with the top N distinct ANI percentages as printed with four decimal places (0 for all). May return more than N genomes.`))
 
 	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 20,
 		formatFlagUsage(`Maximum size of subject genomes to be considered (in MB).`))

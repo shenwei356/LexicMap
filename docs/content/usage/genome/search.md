@@ -14,9 +14,10 @@ Algorithm:
   1. Genome screening: candidate genomes are screened by the total length of shared seeds
      (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
      the genomes in the index, with lexichash masking.
-     Flag -n/--top-n-genomes keeps all genomes with the top N distinct screening scores
-     (0 for all). For example, -n 3 keeps all genomes scoring 10, 9, or 8 when scores are
-     10, 10, 10, 10, 9, 9, 9, 8, 7, 6.
+     Flag -n/--top-n-genomes keeps score groups in descending order until their total
+     genome count reaches or exceeds N, including the entire cutoff group (0 for all).
+     For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
+     -n 5 keeps those four plus the three genomes scoring 9.
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -160,10 +161,10 @@ Flags:
   -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
                                        in the chaining phase. Value 1 is not recommended as the best
                                        chaining result does not always bring the best alignment. (default 5)
-  -n, --top-n-genomes int              ► Keep all genomes with the top N distinct screening scores,
-                                       then all matches with the top N distinct ANI percentages as
-                                       printed with four decimal places (0 for all). May return more
-                                       than N genomes. (default 10)
+  -n, --top-n-genomes int              ► Keep the top N screened genomes, including all ties at the
+                                       cutoff score, then all matches with the top N distinct ANI
+                                       percentages as printed with four decimal places (0 for all). May
+                                       return more than N genomes. (default 10)
       --windows int                    ► The number of windows in lexichash masking, for genome
                                        screening (1 is sufficient). (default 1)
 

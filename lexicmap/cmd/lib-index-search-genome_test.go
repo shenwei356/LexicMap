@@ -126,23 +126,26 @@ func TestWindowSkipRegionsClipsAndTranslatesCoordinates(t *testing.T) {
 	}
 }
 
-// TestTrimGSearchScreenResultsKeepsDistinctScores covers score groups, stable
-// ordering, and recycling candidates outside the selected score groups.
-func TestTrimGSearchScreenResultsKeepsDistinctScores(t *testing.T) {
+// TestTrimGSearchScreenResultsKeepsCutoffTies covers counting genomes, retaining
+// the complete cutoff score group, stable ordering, and recycling discarded candidates.
+func TestTrimGSearchScreenResultsKeepsCutoffTies(t *testing.T) {
 	tests := []struct {
 		name    string
 		scores  []uint64
 		topN    int
 		wantIDs []uint64
 	}{
-		{"three score groups", []uint64{10, 10, 10, 10, 9, 9, 9, 8, 7, 6}, 3, []uint64{1, 2, 3, 4, 5, 6, 7, 8}},
-		{"ties above cutoff", []uint64{10, 10, 9, 9, 8}, 2, []uint64{1, 2, 3, 4}},
+		{"cutoff in top group", []uint64{10, 10, 10, 10, 9, 9, 9, 8, 7, 6}, 3, []uint64{1, 2, 3, 4}},
+		{"cutoff in second group", []uint64{10, 10, 10, 10, 9, 9, 9, 8, 7, 6}, 5, []uint64{1, 2, 3, 4, 5, 6, 7}},
+		{"cutoff after earlier ties", []uint64{10, 10, 9, 9, 8}, 3, []uint64{1, 2, 3, 4}},
+		{"exact group boundary", []uint64{10, 10, 9, 9, 8}, 2, []uint64{1, 2}},
 		{"top group only", []uint64{10, 10, 9, 8}, 1, []uint64{1, 2}},
 		{"all tied", []uint64{10, 10, 10}, 2, []uint64{1, 2, 3}},
-		{"fewer score groups", []uint64{10, 10, 9, 9, 9}, 3, []uint64{1, 2, 3, 4, 5}},
+		{"multiple groups with cutoff ties", []uint64{10, 10, 9, 9, 9}, 3, []uint64{1, 2, 3, 4, 5}},
 		{"distinct scores", []uint64{6, 8, 10, 9, 7}, 3, []uint64{3, 4, 2}},
 		{"unlimited", []uint64{8, 10, 9, 9}, 0, []uint64{2, 3, 4, 1}},
 		{"larger than candidates", []uint64{9, 10}, 10, []uint64{2, 1}},
+		{"equal to candidates", []uint64{9, 10, 10}, 3, []uint64{2, 3, 1}},
 		{"empty", nil, 3, []uint64{}},
 	}
 	for _, test := range tests {
@@ -151,7 +154,8 @@ func TestTrimGSearchScreenResultsKeepsDistinctScores(t *testing.T) {
 			for i, score := range test.scores {
 				// Reverse input to test sorting by score and internal genome index.
 				rs[len(rs)-1-i] = &GSearchScreenResultDetail{
-					BatchGenomeIndex: []uint64{uint64(i + 1)},
+					// Multiple chunks of one genome still count as one candidate.
+					BatchGenomeIndex: []uint64{uint64(i + 1), uint64(i + 101)},
 					SumPrefix:        score,
 					LongestMatches:   []uint8{uint8(score)},
 				}

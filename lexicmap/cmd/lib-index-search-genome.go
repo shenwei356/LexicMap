@@ -576,8 +576,8 @@ func canonicalScreenGenomeIndex(r *GSearchScreenResultDetail) uint64 {
 	return id
 }
 
-// trimGSearchScreenResults retains all candidates with the top N distinct
-// screening scores. The deterministic secondary order makes repeated searches stable.
+// trimGSearchScreenResults retains the top N genomes and all ties at the cutoff
+// screening score. The deterministic secondary order makes repeated searches stable.
 func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *Index) {
 	slices.SortFunc(*rs, func(a, b *GSearchScreenResultDetail) int {
 		if d := cmp.Compare(b.SumPrefix, a.SumPrefix); d != 0 {
@@ -589,15 +589,9 @@ func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *I
 		return
 	}
 
-	end := 1
-	scoreGroups := 1 // number of distinct screening scores retained
-	for end < len(*rs) {
-		if (*rs)[end].SumPrefix != (*rs)[end-1].SumPrefix {
-			if scoreGroups == topN {
-				break
-			}
-			scoreGroups++
-		}
+	end := topN
+	cutoff := (*rs)[topN-1].SumPrefix // score of the Nth genome, after merging genome chunks
+	for end < len(*rs) && (*rs)[end].SumPrefix == cutoff {
 		end++
 	}
 	if idx != nil {
