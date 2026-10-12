@@ -11,13 +11,31 @@ $ lexicmap genome search -h
 Search genomes against an index, with ANI and AF computed
 
 Algorithm:
-  1. Genome screening: candidate genomes are screened by the total length of shared seeds
-     (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
-     the genomes in the index, with lexichash masking.
+  1. Genome screening:
+     Candidate genomes are screened by the total length of shared seeds (k-mers longer
+     than the value of -p/--seed-min-prefix) between the query genome and the genomes
+     in the index, with lexichash masking.
+
      Flag -n/--top-n-genomes keeps score groups in descending order until their total
      genome count reaches or exceeds N, including the entire cutoff group (0 for all).
      For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
      -n 5 keeps those four plus the three genomes scoring 9.
+
+     For highly redundant databases such as AllTheBacteria, which may contain hundreds of
+     thousands of highly similar genomes, the screening parameters can be moderately tuned
+     together to improve discrimination. For example: -p 31 -m 4096 -n 100
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Flag   Controls               Effect of a larger value
+     ──────────────────────────────────────────────────────────────────────────────────
+     -p     Minimum seed prefix    Better discrimination and lower memory use; gains
+            length                 may be limited with many highly similar genomes.
+     -m     Number of masks        Better discrimination; slower screening and much
+                                   higher memory use.
+     -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
+            retained               at the cutoff score are retained.
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -45,9 +63,9 @@ Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
      mapping file (-G/--genome2taxid), are needed for filtering genomes by TaxId(s) and/or
      showing taxonomic names.
-     
+
      Taxdump files can be createted from any taxonomy data with TaxonKit, see
-     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump 
+     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump
 
      If -T and -G are not provided, it will try to find them in the index directory,
      in the subdirectory "taxdump" and the file "taxdump/taxid.map", respectively.
@@ -206,3 +224,17 @@ Examples:
         GCF_003697165.2   GCF_002950215.1   96.7354    72.831    74.255    2          5034834   3          4938295   Shigella flexneri    
         GCF_003697165.2   GCF_000006945.2   81.6144    54.733    55.655    2          5034834   2          4951383   Salmonella enterica  
         GCF_003697165.2   GCF_000742135.1   80.5884    45.868    41.642    2          5034834   5          5545784   Klebsiella pneumoniae
+
+3. Only genome screening results
+
+        $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz \
+              --taxdump ~/.taxonkit --genome2taxid taxid.map --show-genome-name -S \
+            | csvtk pretty -t
+        
+        query             subject           minPrefix   fracMasks   nMasks   sumPrefix   avgPrefix   sname                
+        ---------------   ---------------   ---------   ---------   ------   ---------   ---------   ---------------------
+        GCF_003697165.2   GCF_003697165.2   21          1.0000      1024     31744       31.00       Escherichia coli     
+        GCF_003697165.2   GCF_002949675.1   21          0.3330      341      10235       30.01       Shigella dysenteriae 
+        GCF_003697165.2   GCF_002950215.1   21          0.3291      337      10073       29.89       Shigella flexneri    
+        GCF_003697165.2   GCF_000742135.1   21          0.0166      17       498         29.29       Klebsiella pneumoniae
+        GCF_003697165.2   GCF_000006945.2   21          0.0156      16       447         27.94       Salmonella enterica  

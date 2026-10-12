@@ -45,13 +45,31 @@ var gsearchCmd = &cobra.Command{
 	Long: `Search genomes against an index, with ANI and AF computed
 
 Algorithm:
-  1. Genome screening: candidate genomes are screened by the total length of shared seeds
-     (k-mers longer than the value of -p/--seed-min-prefix) between the query genome and
-     the genomes in the index, with lexichash masking.
+  1. Genome screening:
+     Candidate genomes are screened by the total length of shared seeds (k-mers longer
+     than the value of -p/--seed-min-prefix) between the query genome and the genomes
+     in the index, with lexichash masking.
+
      Flag -n/--top-n-genomes keeps score groups in descending order until their total
      genome count reaches or exceeds N, including the entire cutoff group (0 for all).
      For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
      -n 5 keeps those four plus the three genomes scoring 9.
+
+     For highly redundant databases such as AllTheBacteria, which may contain hundreds of
+     thousands of highly similar genomes, the screening parameters can be moderately tuned
+     together to improve discrimination. For example: -p 31 -m 4096 -n 100
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     Flag   Controls               Effect of a larger value
+     ──────────────────────────────────────────────────────────────────────────────────
+     -p     Minimum seed prefix    Better discrimination and lower memory use; gains
+            length                 may be limited with many highly similar genomes.
+     -m     Number of masks        Better discrimination; slower screening and much
+                                   higher memory use.
+     -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
+            retained               at the cutoff score are retained.
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
         the candidate genomes with an approach similar to that used in 'lexicmap search',
@@ -79,9 +97,9 @@ Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
      mapping file (-G/--genome2taxid), are needed for filtering genomes by TaxId(s) and/or
      showing taxonomic names.
-     
+
      Taxdump files can be createted from any taxonomy data with TaxonKit, see
-     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump 
+     https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump
 
      If -T and -G are not provided, it will try to find them in the index directory,
      in the subdirectory "taxdump" and the file "taxdump/taxid.map", respectively.
@@ -114,7 +132,7 @@ Output format:
     9.  ssize,    Size of the subject genome.
     10. sname,    Taxonomic name of the subject name.
     11. ANIadj,   Quality-adjusted ANI (optional, experimental feature).
- 
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)

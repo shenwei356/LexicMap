@@ -1,0 +1,4 @@
+Flag	Controls	Effect of a larger value
+-p	Minimum seed prefix length	Better discrimination and lower memory use; gains may be limited with many highly similar genomes.
+-m	Number of masks	Better discrimination; slower screening and much higher memory use.
+-n	Candidate genomes retained	Higher sensitivity but slower alignment; all ties at the cutoff score are retained.
