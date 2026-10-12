@@ -69,6 +69,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap utils reindex-seeds`:
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
     - Added progress bars to all seed chunks.
+- `lexicmap utils remerge`:
+    - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
 
 ### v0.9.0 - 2026-03-13
 

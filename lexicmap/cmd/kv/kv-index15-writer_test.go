@@ -176,6 +176,9 @@ func TestIndex15WriterMatchesReindex(t *testing.T) {
 				if threshold == MinIndex15Threshold && stats.IndexedBlocks == 0 {
 					t.Fatal("fixture produced no indexed blocks")
 				}
+				if got := writer.Index15Stats(); got != stats {
+					t.Fatalf("merged writer statistics differ from reindexing: got %+v, want %+v", got, stats)
+				}
 				for _, file := range []string{direct, merged} {
 					for _, ext := range []string{"", KVIndexFileExt, KVIndex15FileExt} {
 						if !bytes.Equal(readComparableIndex15File(t, plain, ext), readComparableIndex15File(t, file, ext)) {

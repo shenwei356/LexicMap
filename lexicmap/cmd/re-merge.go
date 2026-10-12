@@ -61,6 +61,10 @@ When to use this command?
 Large batch counts are merged in multiple rounds within --max-open-files,
 including 8 files reserved for standard streams, logging, and runtime use.
 
+Use -2/--seed-index2 to write adaptive two-level seed indexes during the final
+merge, as in "lexicmap index". Set --seed-index2-threshold to the threshold used
+for the original build. Prefix lengths are read from the existing batch indexes.
+
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -88,6 +92,11 @@ including 8 files reserved for standard streams, logging, and runtime use.
 		mergeThreads := getFlagPositiveInt(cmd, "seed-data-threads")
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+		var seedIndex2Threshold uint64 // zero retains the ordinary single-level merge
+		if getFlagBool(cmd, "seed-index2") {
+			seedIndex2Threshold, err = parseIndex15Threshold(getFlagString(cmd, "seed-index2-threshold"))
+			checkError(err)
+		}
 
 		// ---------------------------------------------------------------
 		// check indexes of all batches
@@ -156,15 +165,22 @@ including 8 files reserved for standard streams, logging, and runtime use.
 		if mergeThreads > kvChunks {
 			mergeThreads = kvChunks
 		}
+		if seedIndex2Threshold > 0 {
+			checkError(kv.CheckIndex15Options(info.K, maskPrefix, 1<<(anchorPrefix<<1), seedIndex2Threshold))
+			// Validate the final merge's third output before moving any batch data.
+			_, _, err = planIndexMergeWithOutputs(len(batchDirs), maxOpenFiles, mergeThreads, 3)
+			checkError(err)
+		}
 
-		// opt *IndexBuildingOptions,               create one, used: opt.Verbose, opt.Log2File, opt.MaxOpenFiles, opt.MergeThreads
+		// Reuse the same merge options and final adaptive writer as index.
 		bopt := &IndexBuildingOptions{
 			// general
-			NumCPUs:      opt.NumCPUs,
-			Verbose:      opt.Verbose,
-			Log2File:     opt.Log2File,
-			MaxOpenFiles: maxOpenFiles,
-			MergeThreads: mergeThreads,
+			NumCPUs:             opt.NumCPUs,
+			Verbose:             opt.Verbose,
+			Log2File:            opt.Log2File,
+			MaxOpenFiles:        maxOpenFiles,
+			MergeThreads:        mergeThreads,
+			SeedIndex2Threshold: seedIndex2Threshold,
 		}
 
 		// outdir string,                           dbDir
@@ -195,7 +211,11 @@ func init() {
 		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files.`))
 
 	remergeCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
+		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches, or 13 with --seed-index2). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
+	remergeCmd.Flags().BoolP("seed-index2", "2", false,
+		formatFlagUsage(`Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in "lexicmap index --seed-index2". Prefix lengths are read from the existing batch indexes.`))
+	remergeCmd.Flags().String("seed-index2-threshold", "8K",
+		formatFlagUsage(`Minimum seed block size for creating a secondary index with --seed-index2. Use the threshold from the original build. Minimum: 4K. The default 8K is recommended.`))
 
 	remergeCmd.SetUsageTemplate(usageTemplate("[flags] -d <index path>"))
 }

@@ -102,6 +102,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	var wg sync.WaitGroup
 
 	var pathB []string
+	chunkStats := make([]kv.Index15Stats, kvChunks) // independent final-chunk counters, read after wg.Wait
 
 	for j = 0; j < batches; j++ { // each chunk for storing kmer-value data
 		begin = j * chunkSize
@@ -213,6 +214,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				if err != nil {
 					checkError(fmt.Errorf("failed to close kv-data file: %s", err))
 				}
+				chunkStats[chunk] = wtr.Index15Stats()
 
 			}(chunk)
 		}
@@ -334,9 +336,23 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	}
 
 	if len(tmpIndexes) == 1 {
+		if opt.Verbose || opt.Log2File {
+			log.Info()
+		}
+
+		// stats of idx15
+		// aggregate only the final merge, excluding intermediate rounds
+		if threshold > 0 && (opt.Verbose || opt.Log2File) {
+			var total kv.Index15Stats
+			for _, stats := range chunkStats {
+				total.Add(stats)
+			}
+			logIndex15Stats(total)
+		}
+
 		// move it to outdir
 		if opt.Verbose || opt.Log2File {
-			log.Infof("rename %s to %s", tmpIndexes[0], outdir)
+			log.Infof("  rename %s to %s", tmpIndexes[0], outdir)
 		}
 
 		// delete old one, actually it's empty

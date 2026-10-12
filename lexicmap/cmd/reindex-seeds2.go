@@ -211,21 +211,26 @@ func reindexSeeds2(dbDir string, partitions int, threshold uint64, opt *Options)
 	}
 
 	if outputLog {
-		percentage := float64(0)
-		if total.NonEmptyBlocks > 0 {
-			percentage = float64(total.IndexedBlocks) / float64(total.NonEmptyBlocks) * 100
-		}
-		log.Infof("primary-prefix blocks: %s total, %s non-empty, %s indexed (%.2f%% of non-empty)",
-			humanize.Comma(int64(total.TotalBlocks)), humanize.Comma(int64(total.NonEmptyBlocks)),
-			humanize.Comma(int64(total.IndexedBlocks)), percentage)
-		log.Infof("idx15 size: %s", humanize.IBytes(total.Index15Bytes))
-		for width, count := range total.WidthCounts {
-			if count > 0 {
-				log.Infof("  offset width %d byte(s): %d blocks", width+1, count)
-			}
-		}
+		logIndex15Stats(total)
 	}
 	return nil
+}
+
+// logIndex15Stats reports the same adaptive summary for builds, merges, and reindexing.
+func logIndex15Stats(total kv.Index15Stats) {
+	percentage := float64(0)
+	if total.NonEmptyBlocks > 0 {
+		percentage = float64(total.IndexedBlocks) / float64(total.NonEmptyBlocks) * 100
+	}
+	log.Infof("  idx15 stats:primary-prefix blocks: %s total, %s non-empty, %s indexed (%.2f%% of non-empty)",
+		humanize.Comma(int64(total.TotalBlocks)), humanize.Comma(int64(total.NonEmptyBlocks)),
+		humanize.Comma(int64(total.IndexedBlocks)), percentage)
+	log.Infof("  idx15 size: %s", humanize.IBytes(total.Index15Bytes))
+	for width, count := range total.WidthCounts {
+		if count > 0 {
+			log.Infof("  offset width %d byte(s): %d blocks", width+1, count)
+		}
+	}
 }
 
 func init() {

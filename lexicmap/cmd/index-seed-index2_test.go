@@ -44,6 +44,25 @@ func runSeedIndexCommand(t *testing.T, args ...string) []byte {
 	return output.Bytes()
 }
 
+// readIndex15Summary extracts adaptive counters without timestamps or unrelated build messages.
+func readIndex15Summary(t *testing.T, file string) []string {
+	t.Helper()
+	data, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var summary []string
+	for _, line := range strings.Split(string(data), "\n") {
+		for _, marker := range []string{"primary-prefix blocks:", "idx15 size:", "offset width "} {
+			if i := strings.Index(line, marker); i >= 0 {
+				summary = append(summary, line[i:])
+				break
+			}
+		}
+	}
+	return summary
+}
+
 // TestIndexSeedIndex2 matches integrated builds against a separate reindex-seeds2 run.
 func TestIndexSeedIndex2(t *testing.T) {
 	root := t.TempDir()
@@ -77,7 +96,11 @@ func TestIndexSeedIndex2(t *testing.T) {
 			dir := t.TempDir()
 			plain, adaptive := filepath.Join(dir, "plain.lmi"), filepath.Join(dir, "adaptive.lmi")
 			buildArgs := []string{"index", "--quiet", "-j", "1", "-c", "2", "-m", "64", "-k", "16", "--partitions", "4", "-b", strconv.Itoa(batchSize), "--max-open-files", strconv.Itoa(maxOpenFiles)}
-			runSeedIndexCommand(t, append(append([]string{}, buildArgs...), append([]string{"-O", plain}, files...)...)...)
+			plainLog, adaptiveLog, reindexLog := filepath.Join(dir, "plain.log"), filepath.Join(dir, "adaptive.log"), filepath.Join(dir, "reindex.log")
+			runSeedIndexCommand(t, append(append([]string{}, buildArgs...), append([]string{"-O", plain, "--log", plainLog}, files...)...)...)
+			if summary := readIndex15Summary(t, plainLog); len(summary) != 0 {
+				t.Fatalf("single-level build logged adaptive counters: %v", summary)
+			}
 			search := func(db string) []byte {
 				return runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "12", "-P", "12", "-n", "1", "-N", "1", query)
 			}
@@ -92,7 +115,7 @@ func TestIndexSeedIndex2(t *testing.T) {
 			if maxOpenFiles == 13 {
 				seedIndex2Flag = "-2"
 			}
-			adaptiveArgs := append(append([]string{}, buildArgs...), seedIndex2Flag, "-O", adaptive)
+			adaptiveArgs := append(append([]string{}, buildArgs...), seedIndex2Flag, "-O", adaptive, "--log", adaptiveLog)
 			if batchSize == 1 {
 				threshold = "4K"
 				adaptiveArgs = append(adaptiveArgs, "--seed-index2-threshold", threshold)
@@ -109,7 +132,11 @@ func TestIndexSeedIndex2(t *testing.T) {
 					t.Fatalf("default build created a secondary index: %v", err)
 				}
 			}
-			runSeedIndexCommand(t, "utils", "reindex-seeds2", "--quiet", "-j", "2", "-d", plain, "--partitions", "4", "--threshold", threshold)
+			runSeedIndexCommand(t, "utils", "reindex-seeds2", "--quiet", "-j", "2", "-d", plain, "--partitions", "4", "--threshold", threshold, "--log", reindexLog)
+			gotSummary, wantSummary := readIndex15Summary(t, adaptiveLog), readIndex15Summary(t, reindexLog)
+			if len(wantSummary) < 3 || strings.Join(gotSummary, "\n") != strings.Join(wantSummary, "\n") {
+				t.Fatalf("build statistics differ from reindexing:\ngot: %v\nwant: %v", gotSummary, wantSummary)
+			}
 			var secondaryBytes int
 			for chunk := 0; chunk < 2; chunk++ {
 				for _, ext := range []string{"", kv.KVIndexFileExt, kv.KVIndex15FileExt} {

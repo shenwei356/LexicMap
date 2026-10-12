@@ -137,8 +137,14 @@ func WriteKVData(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file str
 // WriteKVDataWithIndex15 writes seeds and their adaptive indexes in one pass.
 // A zero threshold keeps the ordinary single-level index.
 func WriteKVDataWithIndex15(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool, threshold uint64) (int, error) {
+	n, _, err := WriteKVDataWithIndex15Stats(k, MaskOffset, data, file, maskPrefix, anchorPrefix, nbatches, clearData, threshold)
+	return n, err
+}
+
+// WriteKVDataWithIndex15Stats also returns the adaptive statistics collected during writing.
+func WriteKVDataWithIndex15Stats(k uint8, MaskOffset int, data []*map[uint64]*[]uint64, file string, maskPrefix uint8, anchorPrefix uint8, nbatches int, clearData bool, threshold uint64) (int, Index15Stats, error) {
 	if len(data) == 0 {
-		return 0, errors.New("k-mer-value data: no data given")
+		return 0, Index15Stats{}, errors.New("k-mer-value data: no data given")
 	}
 
 	// some masks might do not capture any k-mers from a short genome
@@ -151,7 +157,7 @@ func WriteKVDataWithIndex15(k uint8, MaskOffset int, data []*map[uint64]*[]uint6
 
 	wtr, err := NewWriterWithIndex15(k, MaskOffset, len(data), file, maskPrefix, anchorPrefix, use3BytesForSeedPos, threshold)
 	if err != nil {
-		return 0, err
+		return 0, Index15Stats{}, err
 	}
 
 	for _, m := range data {
@@ -162,7 +168,7 @@ func WriteKVDataWithIndex15(k uint8, MaskOffset int, data []*map[uint64]*[]uint6
 			if wtr.fh15 != nil {
 				wtr.fh15.Close()
 			}
-			return 0, err
+			return 0, Index15Stats{}, err
 		}
 		if clearData {
 			clear(*m) // clear it after dumping to files, but don't recycle it!
@@ -170,10 +176,10 @@ func WriteKVDataWithIndex15(k uint8, MaskOffset int, data []*map[uint64]*[]uint6
 	}
 	err = wtr.Close()
 	if err != nil {
-		return 0, err
+		return 0, Index15Stats{}, err
 	}
 
-	return wtr.N, nil
+	return wtr.N, wtr.Index15Stats(), nil
 }
 
 // seedPositionBufferSize bounds the shared metadata and posting encoding scratch.
@@ -208,6 +214,15 @@ type Writer struct {
 	fh15    *os.File        // optional secondary output, opened only for final seed chunks
 	w15     *bufio.Writer   // buffered secondary output
 	index15 *index15Builder // block metadata shared with standalone reindexing
+}
+
+// Index15Stats returns the counters collected so far; they are complete after Close succeeds.
+// Writers using a single-level index return zero counters.
+func (wtr *Writer) Index15Stats() Index15Stats {
+	if wtr.index15 == nil {
+		return Index15Stats{}
+	}
+	return wtr.index15.stats
 }
 
 // Close is very important

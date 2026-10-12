@@ -1829,6 +1829,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	var j, begin, end int
 	k8 := uint8(lh.K)
 	tokens = make(chan int, opt.NumCPUs)
+	chunkStats := make([]kv.Index15Stats, chunks) // independent chunk counters, read after all writers finish
 
 	for j = 0; j < chunks; j++ { // each chunk
 		begin = j * chunkSize
@@ -1856,10 +1857,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// 	}
 			// }
 
-			_, err := kv.WriteKVDataWithIndex15(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches, true, threshold)
+			_, stats, err := kv.WriteKVDataWithIndex15Stats(k8, begin, (*datas)[begin:end], file, uint8(maskPrefix), uint8(anchorPrefix), nbatches, true, threshold)
 			if err != nil {
 				checkError(fmt.Errorf("failed to write seeds data: %s", err))
 			}
+			chunkStats[chunk] = stats
 
 			// if opt.Verbose || opt.Log2File {
 			// 	log.Infof("    seeds file of chunk %d saved", chunk)
@@ -1872,6 +1874,14 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	wg.Wait() // all k-mer-value data are saved.
 	if opt.Verbose || opt.Log2File {
 		log.Infof("  finished writing seeds in %s", time.Since(timeStart2))
+		if nbatches == 1 && opt.SeedIndex2Threshold > 0 {
+			var total kv.Index15Stats // final single-batch summary, excluding temporary batches
+			for _, stats := range chunkStats {
+				total.Add(stats)
+			}
+			log.Info()
+			logIndex15Stats(total)
+		}
 	}
 
 	<-doneInfo // info file

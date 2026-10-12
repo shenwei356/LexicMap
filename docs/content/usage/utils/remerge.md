@@ -29,18 +29,29 @@ When to use this command?
 Large batch counts are merged in multiple rounds within --max-open-files,
 including 8 files reserved for standard streams, logging, and runtime use.
 
+Use -2/--seed-index2 to write adaptive two-level seed indexes during the final
+merge, as in "lexicmap index". Set --seed-index2-threshold to the threshold used
+for the original build. Prefix lengths are read from the existing batch indexes.
+
 Usage:
   lexicmap utils remerge [flags] [flags] -d <index path>
 
 Flags:
-  -h, --help                    help for remerge
-  -d, --index string            ► Index directory created by "lexicmap index".
-      --max-open-files int      ► Maximum open files for merging indexes, including 8 reserved files
-                                (minimum: 12 for multiple batches). Large batch counts are merged in
-                                multiple rounds. Set "ulimit -n" at least this high. (default 1024)
-  -J, --seed-data-threads int   ► Number of threads for writing seed data and merging seed chunks from
-                                all batches, in range [1, -c/--chunks]. Merging threads are limited by
-                                --max-open-files. (default 8)
+  -h, --help                           help for remerge
+  -d, --index string                   ► Index directory created by "lexicmap index".
+      --max-open-files int             ► Maximum open files for merging indexes, including 8 reserved
+                                       files (minimum: 12 for multiple batches, or 13 with
+                                       --seed-index2). Large batch counts are merged in multiple rounds.
+                                       Set "ulimit -n" at least this high. (default 1024)
+  -J, --seed-data-threads int          ► Number of threads for writing seed data and merging seed
+                                       chunks from all batches, in range [1, -c/--chunks]. Merging
+                                       threads are limited by --max-open-files. (default 8)
+  -2, --seed-index2                    ► Write adaptive two-level seed indexes (.idx and .idx15)
+                                       alongside the final seeds, as in "lexicmap index --seed-index2".
+                                       Prefix lengths are read from the existing batch indexes.
+      --seed-index2-threshold string   ► Minimum seed block size for creating a secondary index with
+                                       --seed-index2. Use the threshold from the original build.
+                                       Minimum: 4K. The default 8K is recommended. (default "8K")
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
