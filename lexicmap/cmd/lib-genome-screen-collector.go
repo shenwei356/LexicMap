@@ -20,11 +20,7 @@
 
 package cmd
 
-import (
-	"sync"
-
-	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
-)
+import "sync"
 
 const (
 	gsearchScreenBatchSize     = 512
@@ -203,70 +199,6 @@ func (c *gsearchScreenCollector) matchCount() uint64 {
 		n += count
 	}
 	return n
-}
-
-func collectGSearchScreenResultsSerial(
-	idx *Index,
-	ch <-chan *[]kv.SearchResult,
-	screenMaskSlots []int32,
-	screenMaskCount int,
-) ([]*GSearchScreenResultDetail, uint64) {
-	m := idx.poolGSearchDetailResultsMap.Get().(*map[uint64]*GSearchScreenResultDetail)
-	var nMatches uint64
-	var filter *map[uint64]bool
-	if idx.filterByTaxId {
-		filter = idx.poolTaxIDfilter.Get().(*map[uint64]bool)
-	}
-
-	for srs := range ch {
-		for i := range *srs {
-			sr := &(*srs)[i]
-			iMask := sr.IQuery
-			if screenMaskSlots != nil {
-				iMask = int(screenMaskSlots[iMask])
-				if iMask < 0 {
-					continue
-				}
-			}
-			for _, refpos := range sr.Values {
-				batchGenomeIndex := refpos >> BITS_NONE_IDX
-				if filter != nil && !idx.keepGenomeByTaxID(filter, batchGenomeIndex) {
-					continue
-				}
-				nMatches++
-
-				r := (*m)[batchGenomeIndex]
-				if r == nil {
-					r = idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
-					r.BatchGenomeIndex = append(r.BatchGenomeIndex, batchGenomeIndex)
-					r.SumPrefix = 0
-					if r.LongestMatches == nil {
-						r.LongestMatches = make([]uint8, screenMaskCount)
-					}
-					(*m)[batchGenomeIndex] = r
-				}
-
-				previous := r.LongestMatches[iMask]
-				if previous < sr.Len {
-					r.LongestMatches[iMask] = sr.Len
-					r.SumPrefix += uint64(sr.Len - previous)
-				}
-			}
-		}
-		kv.RecycleSearchResults(srs)
-	}
-
-	if filter != nil {
-		clear(*filter)
-		idx.poolTaxIDfilter.Put(filter)
-	}
-	results := make([]*GSearchScreenResultDetail, 0, len(*m))
-	for _, r := range *m {
-		results = append(results, r)
-	}
-	clear(*m)
-	idx.poolGSearchDetailResultsMap.Put(m)
-	return results, nMatches
 }
 
 func clearGSearchScreenResults(results [][]*GSearchScreenResultDetail) {
