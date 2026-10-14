@@ -56,20 +56,19 @@ Algorithm:
      -n 5 keeps those four plus the three genomes scoring 9.
 
      For highly redundant databases such as AllTheBacteria, which may contain hundreds of
-     thousands of highly similar genomes, tune these parameters to balance recall,
-     runtime, and memory use. For example, test -p 31 -m 4096 -n 100, and compare recall
-     with lower -p values.
+     thousands of highly similar genomes, the screening parameters can be moderately tuned
+     together to improve discrimination. For example: -p 21 -m 4096 -n 100
 
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     Flag   Controls               Effect of a larger value
-     ──────────────────────────────────────────────────────────────────────────────────
-     -p     Minimum seed prefix    Fewer seed matches and lower memory use; may lose
-            length                 shorter matches and reduce nearest-neighbor recall.
-     -m     Number of masks        Better discrimination; slower screening and much
-                                   higher memory use.
-     -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
-            retained               at the cutoff score are retained.
-     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     -----------------------------------------------------------------------------------
+      Flag   Controls               Effect of a larger value
+     -----------------------------------------------------------------------------------
+      -p     Minimum seed prefix    Fewer seed matches and lower memory use; may lose
+             length                 shorter matches and reduce nearest-neighbor recall.
+      -m     Number of masks        Better discrimination; slower screening and much
+                                    higher memory use.
+      -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
+             retained               at the cutoff score are retained.
+     -----------------------------------------------------------------------------------
 
   2. Alignment:
      a) (default): cut the query genome into non-overlapping fragments and align them to
