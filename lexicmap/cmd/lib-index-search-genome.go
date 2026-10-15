@@ -603,7 +603,7 @@ func maskIndexSelected(maskIndexes map[int]struct{}, index int) bool {
 
 // GSearchAlignOrthoANI align fragments of a query to candidates genomes.
 // Different from GSearchAlign, this method directly extract candidates genomes for alignment.
-func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
+func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	if debug {
@@ -618,14 +618,14 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 	// --------------------------------------------------------------------------------
 	// Step 1. cut query genome into fragments and pre-compute their k-mer entries
 
-	qfrags, qqualFrags, qfragLens, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minFragLen)
+	qfrags, qqualFrags, _, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minSeedLen)
 	if err != nil {
 		return fmt.Errorf("failed to cut query sequences and qualities into fragments: %w", err)
 	}
 	if len(*qfrags) == 0 {
 		recycleFragments(qfrags)
 		recycleFragments(qqualFrags)
-		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the fragment size?")
+		return fmt.Errorf("no nonempty query fragments for alignment")
 	}
 	defer recycleFragments(qfrags)
 	defer recycleFragments(qqualFrags)
@@ -795,7 +795,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 			// -------------------------------------------------------------
 			// 2. find similar fragment pairs
 
-			sfrags, sfragLens := seqs2fragments(&g.Seqs, fragLen, minFragLen)
+			sfrags, _ := seqs2fragments(&g.Seqs, fragLen, minSeedLen)
 
 			sfragsRC := poolFragments.Get().(*[][]byte)
 			n := len(*sfrags)
@@ -1044,11 +1044,11 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minFragLen in
 					gr.ANIAdjusted = gr.PidentsAdjustedSum / float64(gr.AlignedFragments) / 100
 				}
 			}
-			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
 			if gr.AFq > 1 {
 				gr.AFq = 1
 			}
-			gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
+			gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
 			if gr.AFs > 1 {
 				gr.AFs = 1
 			}

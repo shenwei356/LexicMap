@@ -9,6 +9,21 @@ import (
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 )
 
+// TestFragmentComparatorRetainsUnseedableFragment checks that a short
+// terminal fragment does not abort OrthoANI seed collection.
+func TestFragmentComparatorRetainsUnseedableFragment(t *testing.T) {
+	short := []byte("ACGT")
+	frags := [][]byte{short}
+	cpr := &FragmentComparator{options: &FragmentComparatorOptions{K: 11, Scaled: 1}}
+	entries, err := cpr.collectEntries(&frags, 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("short fragment: got %d k-mer entries, want 0", len(entries))
+	}
+}
+
 // legacyFragmentPairs is an independent oracle for the original uint16
 // cross-product counts and count-only, unstable Top-N sorting. Row order is
 // normalized by callers, just as both alignment paths sort their returned pairs.
@@ -233,7 +248,7 @@ func BenchmarkFragmentPairs(b *testing.B) {
 			b.Fatal(err)
 		}
 		defer RecycleGQuery(q)
-		fragments, _ := seqs2fragments(&q.seqs, 1020, 1020)
+		fragments, _ := seqs2fragments(&q.seqs, 1020, orthoANISeedK)
 		defer recycleFragments(fragments)
 		entries, err := cpr.IndexA(fragments)
 		if err != nil {

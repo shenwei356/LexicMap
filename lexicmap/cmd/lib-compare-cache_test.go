@@ -163,11 +163,15 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 	q := &GQuery{seqs: []*[]byte{&a1, &a2}, genomeSize: len(seq)}
 	s := &GQuery{seqs: []*[]byte{&b1, &b2}, genomeSize: len(other)}
 	for _, ortho := range []bool{false, true} {
-		qp, err := idx.prepareCompareGenome(q, 1020, 100, ortho)
+		minSeedLen := gsa3SampledK
+		if ortho {
+			minSeedLen = orthoANISeedK
+		}
+		qp, err := idx.prepareCompareGenome(q, 1020, minSeedLen, ortho)
 		if err != nil {
 			t.Fatal(err)
 		}
-		sp, err := idx.prepareCompareGenome(s, 1020, 100, ortho)
+		sp, err := idx.prepareCompareGenome(s, 1020, minSeedLen, ortho)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,14 +182,14 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 			oldQ, oldS := *qp.genome, *sp.genome
 			newQ, newS := oldQ, oldS
 			if ortho {
-				err = idx.CompareTwoGenomesOrthoANI(&oldQ, &oldS, 1020, 100, 0, .7)
+				err = idx.CompareTwoGenomesOrthoANI(&oldQ, &oldS, 1020, minSeedLen, 0, .7)
 				if err == nil {
-					err = idx.compareTwoGenomesOrthoANIPrepared(&newQ, &newS, qp, sp, 1020, 100, 0, .7)
+					err = idx.compareTwoGenomesOrthoANIPrepared(&newQ, &newS, qp, sp, 1020, minSeedLen, 0, .7)
 				}
 			} else {
-				err = idx.CompareTwoGenomes(&oldQ, &oldS, 1020, 100, 0, .7)
+				err = idx.CompareTwoGenomes(&oldQ, &oldS, 1020, minSeedLen, 0, .7)
 				if err == nil {
-					err = idx.compareTwoGenomesPrepared(&newQ, &newS, qp, sp, 1020, 100, 0, .7)
+					err = idx.compareTwoGenomesPrepared(&newQ, &newS, qp, sp, 1020, minSeedLen, 0, .7)
 				}
 			}
 			if err != nil {
@@ -224,9 +228,9 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 				cq, cs := *qp.genome, *sp.genome
 				var err error
 				if ortho {
-					err = idx.compareTwoGenomesOrthoANIPrepared(&cq, &cs, qp, sp, 1020, 100, 0, .7)
+					err = idx.compareTwoGenomesOrthoANIPrepared(&cq, &cs, qp, sp, 1020, minSeedLen, 0, .7)
 				} else {
-					err = idx.compareTwoGenomesPrepared(&cq, &cs, qp, sp, 1020, 100, 0, .7)
+					err = idx.compareTwoGenomesPrepared(&cq, &cs, qp, sp, 1020, minSeedLen, 0, .7)
 				}
 				if err == nil && (cq.result == nil || len(*cq.result) != 1) {
 					err = errors.New("missing concurrent alignment")

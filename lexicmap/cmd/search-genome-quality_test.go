@@ -25,11 +25,11 @@ func TestSeqs2FragmentsWithQual(t *testing.T) {
 	defer recycleFragments(frags)
 	defer recycleFragments(qualFrags)
 
-	if n != 15 {
-		t.Fatalf("fragment bases: got %d, want 15", n)
+	if n != 17 {
+		t.Fatalf("fragment bases: got %d, want 17", n)
 	}
-	wantSeqs := []string{"AAAA", "CCCC", "TTTT", "AAA"}
-	wantQuals := []string{"1234", "5678", "ABCD", "EFG"}
+	wantSeqs := []string{"AAAA", "CCCCGG", "TTTT", "AAA"}
+	wantQuals := []string{"1234", "567890", "ABCD", "EFG"}
 	if len(*frags) != len(wantSeqs) || len(*qualFrags) != len(wantQuals) {
 		t.Fatalf("fragment counts: got %d sequences and %d qualities", len(*frags), len(*qualFrags))
 	}
@@ -39,6 +39,27 @@ func TestSeqs2FragmentsWithQual(t *testing.T) {
 		}
 		if got := string((*qualFrags)[i]); got != wantQuals[i] {
 			t.Errorf("quality fragment %d: got %q, want %q", i, got, wantQuals[i])
+		}
+	}
+}
+
+// TestSeqs2FragmentsRetainsShortEnds checks that a seedless tail joins its
+// preceding fragment while a short whole contig stays separate.
+func TestSeqs2FragmentsRetainsShortEnds(t *testing.T) {
+	seq1, seq2 := []byte("AAAAC"), []byte("TT")
+	seqs := []*[]byte{&seq1, &seq2}
+	frags, n := seqs2fragments(&seqs, 4, 3)
+	defer recycleFragments(frags)
+	if n != 7 {
+		t.Fatalf("fragment bases: got %d, want 7", n)
+	}
+	want := []string{"AAAAC", "TT"}
+	if len(*frags) != len(want) {
+		t.Fatalf("fragment count: got %d, want %d", len(*frags), len(want))
+	}
+	for i, seq := range want {
+		if got := string((*frags)[i]); got != seq {
+			t.Errorf("fragment %d: got %q, want %q", i, got, seq)
 		}
 	}
 }

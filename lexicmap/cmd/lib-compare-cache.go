@@ -16,25 +16,24 @@ import (
 // It has no alignment results; fragments borrow genome sequences. Cache-owned
 // buffers are dropped on eviction instead of being retained in sync.Pool.
 type preparedCompareGenome struct {
-	genome        *GQuery            // sequences and metadata, never a pair's result
-	fragments     *[][]byte          // contig-aware fragments
-	fragmentBases int                // AF denominator for the query role
-	seeds         [][]uint64         // sampled query seeds in ordinary ANI mode
-	concat        []byte             // subject forward sequence, gap, and RC
-	sketch        *subjectSketch     // ordinary ANI subject lookup
-	entries       []rtree.BatchEntry // sorted canonical entries in OrthoANI mode
-	bytes         int64              // conservative retained-memory charge
+	genome    *GQuery            // sequences and metadata, never a pair's result
+	fragments *[][]byte          // contig-aware fragments
+	seeds     [][]uint64         // sampled query seeds in ordinary ANI mode
+	concat    []byte             // subject forward sequence, gap, and RC
+	sketch    *subjectSketch     // ordinary ANI subject lookup
+	entries   []rtree.BatchEntry // sorted canonical entries in OrthoANI mode
+	bytes     int64              // conservative retained-memory charge
 }
 
 // prepareCompareGenome prepares both roles once using fixed command options.
-func (idx *Index) prepareCompareGenome(q *GQuery, fragLen, minFragLen int, orthoANI bool) (*preparedCompareGenome, error) {
+func (idx *Index) prepareCompareGenome(q *GQuery, fragLen, minSeedLen int, orthoANI bool) (*preparedCompareGenome, error) {
 	if q == nil {
 		return nil, nil // empty FASTA: skip its pairs
 	}
 	p := &preparedCompareGenome{genome: q}
-	p.fragments, p.fragmentBases = seqs2fragments(&q.seqs, fragLen, minFragLen)
+	p.fragments, _ = seqs2fragments(&q.seqs, fragLen, minSeedLen)
 	if p.fragments == nil || len(*p.fragments) == 0 {
-		return nil, fmt.Errorf("no fragments for alignment (minimum fragment length: %d bp)", minFragLen)
+		return nil, fmt.Errorf("no nonempty genome fragments for alignment")
 	}
 	if orthoANI {
 		cpr := idx.poolFragmentComparator.Get().(*FragmentComparator)

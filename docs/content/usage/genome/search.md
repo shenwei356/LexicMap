@@ -88,10 +88,10 @@ Output format:
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
     3.  ANI,      Average nucleotide identity.
-    4.  qAF,      Align fraction of the query genome (sum_aligned_length / sum_fragment_length).
-    5.  sAF,      Align fraction of the subject genome.
-                  Default mode : sum_aligned_length / sum_fragment_length)
-                  OrthoANI mode: sum_aligned_length / genome size)
+    4.  qAF,      Align fraction of the query genome (sum_aligned_length / query_genome_size).
+    5.  sAF,      Align fraction of the subject genome (sum_aligned_length / subject_genome_size).
+                  Terminal pieces shorter than half a fragment join the preceding fragment
+                  of the same contig. Contigs shorter than the seed length cannot be seeded.
     6.  qctgs,    Number of contigs in the query genome.
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.
@@ -150,8 +150,6 @@ Flags:
                                        than this value (percentage). (default 15)
   -I, --min-ani float                  ► Only output results where one genome has ANI > than this
                                        value (percentage). (default 70)
-      --min-frag-size int              ► The minimum length of fragments in the end of a sequence
-                                       during cutting fragments. (default 100)
   -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP. (default 30)
   -S, --only-genome-screening          ► Only perform genome screening, no ANI computation.
   -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")

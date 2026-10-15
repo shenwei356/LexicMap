@@ -15,6 +15,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
+- `lexicmap genome search/compare`:
+    - Retain terminal sequence by merging tails shorter than half a fragment into the preceding fragment, calculate AF relative to full genome sizes, and remove the unused `--min-frag-size` flag.
+    - Check additional seed-supported candidate positions when chaining yields a partial alignment, improving ANI and AF for highly similar genomes in default mode.
 - `lexicmap index`:
     - **Faster indexing (30-45% less time) and ~30% lower memory usage by optimizing seed computation and merging**.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.

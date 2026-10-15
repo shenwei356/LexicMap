@@ -32,8 +32,10 @@ Output format:
                   by the total genome sizes of two genomes.
     4.  ANI1,     Average nucleotide identity when aligning genome 1 to genome 2.
     5.  ANI2,     Average nucleotide identity when aligning genome 2 to genome 1.
-    6.  AF1,      Align fraction of genome 1 (sum_aligned_length / sum_fragment_length).
-    7.  AF2,      Align fraction of genome 2 (sum_aligned_length / sum_fragment_length).
+    6.  AF1,      Align fraction of genome 1 (sum_aligned_length / genome1_size).
+    7.  AF2,      Align fraction of genome 2 (sum_aligned_length / genome2_size).
+                  Terminal pieces shorter than half a fragment join the preceding fragment
+                  of the same contig. Contigs shorter than the seed length cannot be seeded.
     8.  ctgs1,    Number of contigs in genome 1.
     9.  size1,    Size of the genome 1.
     10. ctgs2,    Number of contigs in genome 2.
@@ -78,8 +80,6 @@ Flags:
                                          > than this value (percentage).
   -I, --min-ani float                    ► Only output results where one genome has ANI > than this
                                          value (percentage). (default 70)
-      --min-frag-size int                ► The minimum length of fragments in the end of a sequence
-                                         during cutting fragments. (default 100)
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP. (default 30)
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
                                          (default "-")

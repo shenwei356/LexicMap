@@ -31,6 +31,9 @@ import (
 	"github.com/twotwotwo/sorts"
 )
 
+// orthoANISeedK is the fragment-pair seed length used by both genome commands.
+const orthoANISeedK = 11
+
 // FragmentComparatorOptions defines the options for comparing two sets
 // of genome fragments by counting shared k-mers. See FragmentComparator for details.
 type FragmentComparatorOptions struct {
@@ -183,6 +186,11 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 	var kmer, kmerRC, canon uint64
 	var ok bool
 	for i, s := range *frags {
+		// Keep fragments shorter than k in the genome size, even though they
+		// cannot contribute a seed to fragment-pair screening.
+		if len(s) < int(k) {
+			continue
+		}
 		iter, err := iterator.NewKmerIterator(s, int(k))
 		if err != nil {
 			return nil, err

@@ -68,8 +68,10 @@ Output format:
                   by the total genome sizes of two genomes.
     4.  ANI1,     Average nucleotide identity when aligning genome 1 to genome 2.
     5.  ANI2,     Average nucleotide identity when aligning genome 2 to genome 1.
-    6.  AF1,      Align fraction of genome 1 (sum_aligned_length / sum_fragment_length).
-    7.  AF2,      Align fraction of genome 2 (sum_aligned_length / sum_fragment_length).
+    6.  AF1,      Align fraction of genome 1 (sum_aligned_length / genome1_size).
+    7.  AF2,      Align fraction of genome 2 (sum_aligned_length / genome2_size).
+                  Terminal pieces shorter than half a fragment join the preceding fragment
+                  of the same contig. Contigs shorter than the seed length cannot be seeded.
     8.  ctgs1,    Number of contigs in genome 1.
     9.  size1,    Size of the genome 1.
     10. ctgs2,    Number of contigs in genome 2.
@@ -133,9 +135,9 @@ Output format:
 			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
 		}
 
-		minFragLen := getFlagPositiveInt(cmd, "min-frag-size")
-		if minFragLen < 100 {
-			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
+		minSeedLen := gsa3SampledK // default-mode query seed length
+		if orthoANI {
+			minSeedLen = orthoANISeedK // OrthoANI fragment-pair seed length
 		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 		minANI := getFlagNonNegativeFloat64(cmd, "min-ani") / 100
@@ -190,9 +192,8 @@ Output format:
 		}
 		if orthoANI {
 			minQcovChain /= 2
-			minFragLen = fragSize
 			if outputLog {
-				log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%d)", minQcovChain, fragSize)
+				log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%)", minQcovChain)
 			}
 		}
 
@@ -337,7 +338,7 @@ Output format:
 			MinIdentity:        minIdent,
 		})
 
-		kf := 11
+		kf := orthoANISeedK
 		minSharedKmers := MinSharedKmersThresholdExact(fragSize, uint8(kf), uint32(samplingScale), 0.80, 0.99)
 		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
 			K:              uint8(kf),
@@ -584,7 +585,7 @@ Output format:
 				if readErr != nil {
 					return nil, readErr
 				}
-				return idx.prepareCompareGenome(q, fragSize, minFragLen, orthoANI)
+				return idx.prepareCompareGenome(q, fragSize, minSeedLen, orthoANI)
 			})
 			defer genomeCache.close()
 		}
@@ -671,9 +672,9 @@ Output format:
 				go func() {
 					var compareErr error
 					if orthoANI {
-						compareErr = idx.compareTwoGenomesOrthoANIPrepared(q.g1, q.g2, p1, p2, fragSize, minFragLen, minAF, minANI)
+						compareErr = idx.compareTwoGenomesOrthoANIPrepared(q.g1, q.g2, p1, p2, fragSize, minSeedLen, minAF, minANI)
 					} else {
-						compareErr = idx.compareTwoGenomesPrepared(q.g1, q.g2, p1, p2, fragSize, minFragLen, minAF, minANI)
+						compareErr = idx.compareTwoGenomesPrepared(q.g1, q.g2, p1, p2, fragSize, minSeedLen, minAF, minANI)
 					}
 					if compareErr != nil {
 						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, compareErr))
@@ -684,9 +685,9 @@ Output format:
 				go func() {
 					if orthoANI {
 						// unnecessary
-						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minFragLen, minAF, minANI)
+						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minSeedLen, minAF, minANI)
 					} else {
-						compareErr := idx.compareTwoGenomesPrepared(q.g2, q.g1, p2, p1, fragSize, minFragLen, minAF, minANI)
+						compareErr := idx.compareTwoGenomesPrepared(q.g2, q.g1, p2, p1, fragSize, minSeedLen, minAF, minANI)
 						if compareErr != nil {
 							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, compareErr))
 						}
@@ -790,8 +791,6 @@ func init() {
 
 	compareCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
-	compareCmd.Flags().IntP("min-frag-size", "", 100,
-		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	compareCmd.Flags().IntP("max-genome-size", "", 20,
 		formatFlagUsage(`Maximum size of genomes to be considered (in MB) when reading genome from an index.`))

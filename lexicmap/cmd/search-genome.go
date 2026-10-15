@@ -122,10 +122,10 @@ Output format:
     1.  query,    Query genome ID.
     2.  subject,  Subject genome ID.
     3.  ANI,      Average nucleotide identity.
-    4.  qAF,      Align fraction of the query genome (sum_aligned_length / sum_fragment_length).
-    5.  sAF,      Align fraction of the subject genome.
-                  Default mode : sum_aligned_length / sum_fragment_length)
-                  OrthoANI mode: sum_aligned_length / genome size)
+    4.  qAF,      Align fraction of the query genome (sum_aligned_length / query_genome_size).
+    5.  sAF,      Align fraction of the subject genome (sum_aligned_length / subject_genome_size).
+                  Terminal pieces shorter than half a fragment join the preceding fragment
+                  of the same contig. Contigs shorter than the seed length cannot be seeded.
     6.  qctgs,    Number of contigs in the query genome.
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.
@@ -180,10 +180,6 @@ Output format:
 			checkError(fmt.Errorf("the value of flag --frag-size should be >= 100"))
 		}
 
-		minFragLen := getFlagPositiveInt(cmd, "min-frag-size")
-		if minFragLen < 100 {
-			checkError(fmt.Errorf("the value of flag --min-frag-size should be >= 100"))
-		}
 		minAF := getFlagNonNegativeFloat64(cmd, "min-af") / 100
 		minANI := getFlagNonNegativeFloat64(cmd, "min-ani") / 100
 		adjustANIByQuality := getFlagBool(cmd, "adjust-ani-by-quality")
@@ -202,6 +198,10 @@ Output format:
 		maxSubjectGenomeSize := getFlagNonNegativeInt(cmd, "max-subject-genome-size") * 1000 * 1000
 
 		orthoANI := getFlagBool(cmd, "OrthoANI")
+		minSeedLen := gsa3SampledK // default-mode query seed length
+		if orthoANI {
+			minSeedLen = orthoANISeedK // OrthoANI fragment-pair seed length
+		}
 		samplingScale := getFlagPositiveInt(cmd, "kmer-scale")
 		if samplingScale != 2 && samplingScale != 4 && samplingScale != 8 {
 			checkError(fmt.Errorf("the value of flag --kmer-scale (%d) should be one of 2, 4, or 8", samplingScale))
@@ -258,8 +258,7 @@ Output format:
 		}
 		if orthoANI {
 			minQcovChain /= 2
-			minFragLen = fragSize
-			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%) and the value of --min-frag-size is set with the value of --frag-size (%d)", minQcovChain, fragSize)
+			log.Warningf("When using OrthoANI mode, the value of -q/--min-qcov-per-hsp is halved (%.2f%%)", minQcovChain)
 		} else {
 			// maxDesert := getFlagPositiveInt(cmd, "seed-max-desert")
 			// seedInDesertDist := getFlagPositiveInt(cmd, "seed-in-desert-dist")
@@ -436,7 +435,7 @@ Output format:
 			MinIdentity:        minIdent,
 		})
 
-		kf := 11
+		kf := orthoANISeedK
 		minSharedKmers := MinSharedKmersThresholdExact(fragSize, uint8(kf), uint32(samplingScale), 0.80, 0.99)
 		idx.SetFragmentCompareOptions(&FragmentComparatorOptions{
 			K:              uint8(kf),
@@ -729,12 +728,12 @@ Output format:
 
 				if genomeIds != nil {
 					// 3. search fragments for the query
-					// err = idx.GSearchAlign(query, fragSize, minFragLen, genomeIds, minAF, minANI, maxQueryConcurrency, gcInterval)
+					// err = idx.GSearchAlign(query, fragSize, minSeedLen, genomeIds, minAF, minANI, maxQueryConcurrency, gcInterval)
 					var alignErr error
 					if orthoANI {
-						alignErr = idx.GSearchAlignOrthoANI(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
+						alignErr = idx.GSearchAlignOrthoANI(query, fragSize, minSeedLen, genomeIds, minAF, minANI, threadsPerQuery)
 					} else {
-						alignErr = idx.GSearchAlign3Sampled(query, fragSize, minFragLen, genomeIds, minAF, minANI, threadsPerQuery)
+						alignErr = idx.GSearchAlign3Sampled(query, fragSize, minSeedLen, genomeIds, minAF, minANI, threadsPerQuery)
 					}
 
 					checkError(alignErr)
@@ -810,8 +809,6 @@ func init() {
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening (1 is sufficient).`))
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
-	gsearchCmd.Flags().IntP("min-frag-size", "", 100,
-		formatFlagUsage(`The minimum length of fragments in the end of a sequence during cutting fragments.`))
 
 	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
 		formatFlagUsage(`Keep the top N screened genomes, including all ties at the cutoff score, then all matches with the top N distinct ANI percentages as printed with four decimal places (0 for all). May return more than N genomes.`))

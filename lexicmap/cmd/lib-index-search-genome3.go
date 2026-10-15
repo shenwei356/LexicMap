@@ -474,8 +474,8 @@ func alignQueryFragToSubjectSampled(
 		)
 
 		if ok {
-			score := matched * aligned
-			if score > bestScore {
+			score := matched * (aligned - gaps)
+			if score > bestScore || (score == bestScore && pident > bestPident) {
 				bestScore = score
 				bestMatched = matched
 				bestAligned = aligned
@@ -486,12 +486,130 @@ func alignQueryFragToSubjectSampled(
 		}
 	}
 	RecycleChaining2Result(chains)
+	if bestMatched < len(qfrag) || bestAligned-bestGaps < len(qfrag) || bestPident < 100 {
+		// A partial chain can hide a better placement in repetitive sequence.
+		minVotes := min(40, max(3, len(qSeeds)/16))
+		matched, aligned, gaps, pident, pidentAdjusted, ok := alignVotedWindow(
+			qfrag, qqual, allSubs, sketch, concat, algn, extLen2,
+			minVotes, bestPident, minPIdent, minQcov, idx, fScoreAndEvalue,
+		)
+		if ok {
+			score := matched * (aligned - gaps)
+			if score > bestScore || score == bestScore && pident > bestPident {
+				bestScore = score
+				bestMatched, bestAligned, bestGaps = matched, aligned, gaps
+				bestPident, bestPidentAdjusted = pident, pidentAdjusted
+			}
+		}
+	}
 
 	if bestScore <= 0 {
 		return 0, 0, 0, 0, 0, false
 	}
 
 	return bestMatched, bestAligned, bestGaps, bestPident, bestPidentAdjusted, true
+}
+
+// alignVotedWindow checks additional seed-supported diagonals when chaining
+// selects a partial hit in repetitive sequence. It uses sequence similarity to
+// choose a candidate, then obtains all statistics from WFA's CIGAR.
+func alignVotedWindow(
+	qfrag, qqual []byte,
+	subs *[]SubstrPair,
+	sketch *subjectSketch,
+	subjectSeq []byte,
+	algn *wfa.Aligner,
+	extLen, minVotes int,
+	currentPIdent, minPIdent, minQcov float64,
+	idx *Index,
+	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
+) (int, int, int, float64, float64, bool) {
+	if len(*subs) < minVotes || len(qfrag) == 0 {
+		return 0, 0, 0, 0, 0, false
+	}
+	counts := make(map[int]int, min(len(*subs), 1024))
+	for _, sub := range *subs {
+		counts[int(sub.TBegin-sub.QBegin)]++
+	}
+	maxVotes := 0
+	for _, count := range counts {
+		maxVotes = max(maxVotes, count)
+	}
+	if maxVotes < minVotes && currentPIdent < 98 {
+		return 0, 0, 0, 0, 0, false
+	}
+
+	bestStart, bestMatches := -1, 0
+	qLen := len(qfrag)
+	// Check strongly supported diagonals first. A complete match cannot be
+	// improved, so it avoids scanning weaker repetitive candidates.
+	for pass := 0; pass < 2 && bestMatches < qLen; pass++ {
+		for start, votes := range counts {
+			if pass == 0 && votes < minVotes || pass == 1 && votes >= minVotes {
+				continue
+			}
+			if start < 0 || start > len(subjectSeq)-qLen {
+				continue
+			}
+			contigStart, contigEnd := subjectContigBounds(sketch, start)
+			if start < contigStart || start+qLen > contigEnd {
+				continue
+			}
+			// A short, evenly spaced check avoids scanning unrelated windows.
+			sampledMatches := 0
+			for i := 0; i < 16; i++ {
+				pos := i * qLen / 16
+				if qfrag[pos] == subjectSeq[start+pos] {
+					sampledMatches++
+				}
+			}
+			if sampledMatches < 12 {
+				continue
+			}
+			matched := 0
+			for i, base := range qfrag {
+				if base == subjectSeq[start+i] {
+					matched++
+				}
+			}
+			if matched > bestMatches || matched == bestMatches && (bestStart < 0 || start < bestStart) {
+				bestMatches, bestStart = matched, start
+			}
+			if bestMatches == qLen {
+				break
+			}
+		}
+	}
+	// This fallback targets near-collinear sequence; indel-rich hits remain on
+	// the normal pseudo-alignment path.
+	if bestStart < 0 || bestMatches*100 < qLen*95 {
+		return 0, 0, 0, 0, 0, false
+	}
+	contigStart, contigEnd := subjectContigBounds(sketch, bestStart)
+	qseq, tseq, _, _, _, _, err := extendMatch(
+		qfrag, subjectSeq, 0, qLen, bestStart, bestStart+qLen,
+		extLen, bestStart-contigStart, contigEnd-bestStart-qLen, false,
+	)
+	if err != nil {
+		return 0, 0, 0, 0, 0, false
+	}
+	cigar, err := algn.Align(qseq, tseq)
+	if err != nil {
+		return 0, 0, 0, 0, 0, false
+	}
+	defer wfa.RecycleAlignmentResult(cigar)
+	_, _, evalue := (*fScoreAndEvalue)(len(qseq), cigar)
+	matched, aligned, gaps := int(cigar.Matches), int(cigar.AlignLen), int(cigar.Gaps)
+	if aligned == 0 {
+		return 0, 0, 0, 0, 0, false
+	}
+	pident := float64(matched) / float64(aligned) * 100
+	if evalue > idx.opt.MaxEvalue || pident < minPIdent ||
+		float64(aligned-gaps)/float64(qLen)*100 < minQcov {
+		return 0, 0, 0, 0, 0, false
+	}
+	return matched, aligned, gaps, pident,
+		adjustedPIdentForAlignment(pident, qqual, 0, cigar), true
 }
 
 func adjustedPIdentForAlignment(pident float64, qqual []byte, extendedQueryStart int, cigar *wfa.AlignmentResult) float64 {
@@ -558,7 +676,7 @@ func alignChain(
 	// Locate the contig containing the chain on either concatenated strand.
 	contigStart, contigEnd := subjectContigBounds(sketch, chain.TBegin)
 
-	// Expand the chain region by extLen.
+	// Expand the seed chain before pseudo-alignment.
 	tExpBegin := max(chain.TBegin-extLen, contigStart)
 	tExpEnd := min(chain.TEnd+extLen, contigEnd-1)
 	tSubseq := subjectSeq[tExpBegin : tExpEnd+1]
@@ -593,14 +711,11 @@ func alignChain(
 			break
 		}
 
-		cTBegin := c.TBegin
-		cMaxExtLen := len(tSubseq) - 1 - c.TEnd
-
 		_qseq, _tseq, qLeftExt, _, _, _, extErr := extendMatch(
 			qfrag, tSubseq,
 			c.QBegin, c.QEnd+1,
 			c.TBegin, c.TEnd+1,
-			extLen2, cTBegin, cMaxExtLen, false,
+			extLen2, c.TBegin, len(tSubseq)-1-c.TEnd, false,
 		)
 		if extErr != nil {
 			continue
@@ -610,7 +725,6 @@ func alignChain(
 		if alignErr != nil {
 			continue
 		}
-
 		// score and e-value
 		_, _, evalue := (*fScoreAndEvalue)(len(_qseq), cigar)
 		if evalue > maxEvalue {
@@ -668,7 +782,7 @@ func subjectContigBounds(sketch *subjectSketch, position int) (int, int) {
 
 // GSearchAlign3Sampled is a simplified version of GSearchAlign3 that uses
 // sampled fixed-length k-mers instead of LexicHash masking.
-func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
+func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minSeedLen int, genomeIds *map[uint64]*[]uint64, minAF, minANI float64, maxQueryConcurrency int) error {
 	debug := idx.opt.Debug
 
 	startTime0 := time.Now()
@@ -678,14 +792,14 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 	}
 
 	// 1) Cut the query into fragments.
-	qfrags, qqualFrags, qfragLens, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minFragLen)
+	qfrags, qqualFrags, _, err := seqs2fragmentsWithQual(&query.seqs, &query.quals, fragLen, minSeedLen)
 	if err != nil {
 		return fmt.Errorf("failed to cut query sequences and qualities into fragments: %w", err)
 	}
 	defer recycleFragments(qfrags)
 	defer recycleFragments(qqualFrags)
 	if len(*qfrags) == 0 {
-		return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+		return fmt.Errorf("no nonempty query fragments for alignment")
 	}
 
 	// 2) Sample k-mers from each query fragment.
@@ -936,7 +1050,7 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minFragLen in
 					gr.ANIAdjusted = gr.PidentsAdjustedSum / float64(gr.AlignedFragments) / 100
 				}
 			}
-			gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+			gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
 			if gr.AFq > 1 {
 				gr.AFq = 1
 			}
@@ -1067,23 +1181,22 @@ func (idx *Index) buildComparisonSubject(subject *GQuery, fragLen int, pooled bo
 
 // CompareTwoGenomes compares two genomes directly without using an index.
 // It's adapted from GSearchAlign3Sampled but compares query vs subject directly.
-func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
-	return idx.compareTwoGenomesPrepared(query, subject, nil, nil, fragLen, minFragLen, minAF, minANI)
+func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minSeedLen int, minAF, minANI float64) error {
+	return idx.compareTwoGenomesPrepared(query, subject, nil, nil, fragLen, minSeedLen, minAF, minANI)
 }
 
 // compareTwoGenomesPrepared borrows cached data while keeping results pair-local.
-func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minFragLen int, minAF, minANI float64) error {
+func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minSeedLen int, minAF, minANI float64) error {
 	var qfrags *[][]byte
-	var qfragLens int
 	var qSeeds *[][]uint64
 	if qp != nil {
-		qfrags, qfragLens, qSeeds = qp.fragments, qp.fragmentBases, &qp.seeds
+		qfrags, qSeeds = qp.fragments, &qp.seeds
 	} else {
 		// 1) Cut the query into fragments.
-		qfrags, qfragLens = seqs2fragments(&query.seqs, fragLen, minFragLen)
+		qfrags, _ = seqs2fragments(&query.seqs, fragLen, minSeedLen)
 		defer recycleFragments(qfrags)
 		if qfrags == nil || len(*qfrags) == 0 {
-			return fmt.Errorf("no fragments for alignment, are the genome too fragmented with all sequences shorter than the minimum fragment length (%d bp)?", minFragLen)
+			return fmt.Errorf("no nonempty query fragments for alignment")
 		}
 
 		// 2) Sample k-mers from each query fragment.
@@ -1159,7 +1272,7 @@ func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *prep
 	if gr.AlignedFragments > 0 {
 		gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 	}
-	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
+	gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
 	gr.AFs = float64(gr.AlignedLength) / float64(gr.GenomeSize)
 	if gr.AFq > 1 {
 		gr.AFq = 1
@@ -1248,28 +1361,27 @@ func (idx *Index) ReadGenome(batchIDAndRefIDs *[]uint64, genomeID string) (*GQue
 // This method cuts both query and subject genomes into fragments and only uses
 // orthologous fragment pairs (reciprocal best hits) for ANI/AF calculation.
 // Based on GSearchAlign2 from lib-index-search-genome.go.
-func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minFragLen int, minAF, minANI float64) error {
-	return idx.compareTwoGenomesOrthoANIPrepared(query, subject, nil, nil, fragLen, minFragLen, minAF, minANI)
+func (idx *Index) CompareTwoGenomesOrthoANI(query, subject *GQuery, fragLen int, minSeedLen int, minAF, minANI float64) error {
+	return idx.compareTwoGenomesOrthoANIPrepared(query, subject, nil, nil, fragLen, minSeedLen, minAF, minANI)
 }
 
 // compareTwoGenomesOrthoANIPrepared borrows sorted entries without changing pair selection.
-func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minFragLen int, minAF, minANI float64) error {
+func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minSeedLen int, minAF, minANI float64) error {
 	var qfrags, sfrags *[][]byte
-	var qfragLens, sfragLens int
 	if qp != nil {
-		qfrags, qfragLens = qp.fragments, qp.fragmentBases
+		qfrags = qp.fragments
 	} else {
-		qfrags, qfragLens = seqs2fragments(&query.seqs, fragLen, minFragLen)
+		qfrags, _ = seqs2fragments(&query.seqs, fragLen, minSeedLen)
 		defer recycleFragments(qfrags)
 	}
 	if sp != nil {
-		sfrags, sfragLens = sp.fragments, sp.fragmentBases
+		sfrags = sp.fragments
 	} else {
-		sfrags, sfragLens = seqs2fragments(&subject.seqs, fragLen, minFragLen)
+		sfrags, _ = seqs2fragments(&subject.seqs, fragLen, minSeedLen)
 		defer recycleFragments(sfrags)
 	}
 	if qfrags == nil || len(*qfrags) == 0 || sfrags == nil || len(*sfrags) == 0 {
-		return fmt.Errorf("no fragments for alignment (minimum fragment length: %d bp)", minFragLen)
+		return fmt.Errorf("no nonempty genome fragments for alignment")
 	}
 
 	fcpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
@@ -1523,8 +1635,8 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 	if gr.AlignedFragments > 0 {
 		gr.ANI = gr.PidentsSum / float64(gr.AlignedFragments) / 100
 	}
-	gr.AFq = float64(gr.AlignedLength) / float64(qfragLens)
-	gr.AFs = float64(gr.AlignedLength) / float64(sfragLens)
+	gr.AFq = float64(gr.AlignedLength) / float64(query.genomeSize)
+	gr.AFs = float64(gr.AlignedLength) / float64(subject.genomeSize)
 	if gr.AFq > 1 {
 		gr.AFq = 1
 	}
