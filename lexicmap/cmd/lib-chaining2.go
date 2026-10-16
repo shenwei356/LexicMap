@@ -63,6 +63,7 @@ type Chainer2 struct {
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
 	maxPotential  []int64  // largest zero-gap predecessor score in each prefix
+	qGroupStarts  []int32  // first anchor of each equal-query-position group
 
 	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
 }
@@ -244,12 +245,41 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	// coordinates. Bound scores only when the gap stays nonnegative.
 	minQ, maxQ := (*subs)[0].QBegin, (*subs)[0].QBegin
 	minT, maxT := (*subs)[0].TBegin, (*subs)[0].TBegin
-	for _, sub := range *subs {
+	querySorted, groupTargetSorted, repeatedQ := true, true, false
+	previousQ, previousT := (*subs)[0].QBegin, (*subs)[0].TBegin
+	for index, sub := range *subs {
+		if sub.QBegin < previousQ {
+			querySorted = false
+		}
+		if index > 0 && sub.QBegin == previousQ && sub.TBegin < previousT {
+			groupTargetSorted = false
+		}
+		if index > 0 && sub.QBegin == previousQ {
+			repeatedQ = true
+		}
+		previousQ = sub.QBegin
+		previousT = sub.TBegin
 		minQ, maxQ = min(minQ, sub.QBegin), max(maxQ, sub.QBegin)
 		minT, maxT = min(minT, sub.TBegin), max(maxT, sub.TBegin)
 	}
 	usePotential = int64(maxQ)-int64(minQ) <= math.MaxInt32/2 &&
 		int64(maxT)-int64(minT) <= math.MaxInt32/2
+	// The genome seed path orders equal-Q anchors by target position. Store
+	// group boundaries only for such inputs; other callers keep the scan.
+	var qGroupStarts []int32
+	if querySorted && groupTargetSorted && repeatedQ && n <= thresholdNSubsLong {
+		if cap(ce.qGroupStarts) < n {
+			ce.qGroupStarts = make([]int32, n)
+		}
+		qGroupStarts = ce.qGroupStarts[:n]
+		start := 0
+		for index, sub := range *subs {
+			if index > 0 && sub.QBegin != (*subs)[index-1].QBegin {
+				start = index
+			}
+			qGroupStarts[index] = int32(start)
+		}
+	}
 	if usePotential {
 		maxPotential = append(maxPotential, int64((*subs)[0].Len)*2)
 	}
@@ -267,6 +297,7 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	// (*scores)[0] = (*subs)[0].Len
 	var aQBegin, aTBegin, bQBegin, bTBegin int32
 	var qDiff, tDiff int32
+	var sameQStart int
 
 	for i = 1; i < n; i++ {
 		a = &(*subs)[i] // current seed/anchor
@@ -278,10 +309,17 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 
 		// Cache frequently accessed fields to reduce memory access overhead
 		aQBegin, aTBegin = a.QBegin, a.TBegin
+		if querySorted && aQBegin != (*subs)[i-1].QBegin {
+			sameQStart = i
+		}
 
 		// this old one can't handle some frequent k-mers properly, which have many hits in other place.
 		// for _b = 1; _b <= band; _b++ { // check previous $band seeds
 		j = i
+		if querySorted {
+			// Equal query starts form one group and never contribute to a chain.
+			j = sameQStart
+		}
 		_bCount = 0
 		// fmt.Printf("i: %d, %s\n", i, a.String())
 		for {
@@ -312,7 +350,27 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 
 			// no need to compare
 			// filter out messed/crossed anchors
-			if bQBegin == aQBegin || bTBegin > aTBegin {
+			if bQBegin == aQBegin {
+				continue
+			}
+			if bTBegin > aTBegin {
+				if qGroupStarts != nil {
+					start := int(qGroupStarts[j])
+					if j-start >= 8 {
+						// T starts are sorted within this Q group. Find its
+						// last anchor that can precede the current target.
+						low, high := start, j
+						for low < high {
+							mid := low + (high-low)/2
+							if (*subs)[mid].TBegin <= aTBegin {
+								low = mid + 1
+							} else {
+								high = mid
+							}
+						}
+						j = low // the loop decrements before inspecting this index
+					}
+				}
 				continue
 			}
 

@@ -194,6 +194,8 @@ Global Flags:
                              (default 16)
 ```
 
+Repeated sequences can produce many k-mer matches, so alignment time can differ substantially between genomes of similar sizes.
+
 Examples:
 
 1. Simple search

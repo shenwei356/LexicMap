@@ -146,6 +146,50 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 	}
 }
 
+// TestChainer2TargetIndexMatchesReference exercises long crossed runs, equal
+// query starts, and both ordering fallbacks for the target group index.
+func TestChainer2TargetIndexMatchesReference(t *testing.T) {
+	for _, order := range []string{"sorted", "target-unsorted", "query-unsorted"} {
+		subs := make([]SubstrPair, 0, 64*64)
+		for group := 0; group < 64; group++ {
+			for copy := 0; copy < 64; copy++ {
+				target := int32(100000 + group*25 + copy)
+				if copy == 0 {
+					target = int32(group * 25)
+				}
+				subs = append(subs, SubstrPair{QBegin: int32(group * 25), TBegin: target, Len: 13})
+			}
+		}
+		if order == "target-unsorted" {
+			// Retain Q groups but break their target order.
+			subs[65], subs[127] = subs[127], subs[65]
+		}
+		if order == "query-unsorted" {
+			// Break query grouping without changing the original scan contract.
+			subs[65], subs[128] = subs[128], subs[65]
+		}
+		opt := DefaultChaining2Options
+		opt.MinScore, opt.MinAlignLen = 1, 1
+		got, ref := NewChainer2(&opt), NewChainer2(&opt)
+		g, gm, gq, gt, gqb, gqe, gtb, gte := got.Chain(&subs)
+		r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
+		if (len(got.qGroupStarts) > 0) != (order == "sorted") {
+			t.Fatalf("order=%s: unexpected target group index state", order)
+		}
+		if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
+			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
+			!reflect.DeepEqual(denseChain2Summary(g, len(subs)), denseChain2Summary(r, len(subs))) {
+			t.Fatalf("order=%s: chaining differs from reference", order)
+		}
+		if g != nil {
+			RecycleChaining2Result(g)
+		}
+		if r != nil {
+			RecycleChaining2Result(r)
+		}
+	}
+}
+
 func BenchmarkDenseChaining(b *testing.B) {
 	for _, n := range []int{32, 256, 2048} {
 		subs := make([]SubstrPair, n)
