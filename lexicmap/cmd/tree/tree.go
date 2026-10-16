@@ -67,8 +67,28 @@ type Tree struct {
 	nodes  nodeArena
 	leaves leafArena
 
+	// The optional prefix directory skips repeated traversal from the root.
+	// Each bucket stores the parent and depth before a compressed edge, so
+	// lookup still checks that edge before visiting the same ordered leaves.
+	// BuildPrefixDirectory chooses its size from the number of distinct keys:
+	//
+	//   distinct keys   prefix bases   memory on 64-bit platforms
+	//   < 256           none           root lookup
+	//   256..1023       4              4 KiB
+	//   1024..4095      5              16 KiB
+	//   4096..16383     6              64 KiB
+	//   16384..65535    7              256 KiB
+	//   >= 65536        8              1 MiB
+	//
+	// Short genome fragments repeatedly rebuild small trees. prefixSmall keeps
+	// their 4–5-base directories for reuse; rebuilding clears old buckets so
+	// absent prefixes cannot reuse stale nodes. Larger directories are released
+	// on recycling rather than retained by trees later used for short fragments.
+	// Build after insertion and before concurrent reads; insertion invalidates
+	// the active directory, and searches never modify it.
 	prefixBases  uint8   // indexed prefix length; zero means use the root
 	prefixStarts []frame // parent and depth before the edge crossing prefixBases
+	prefixSmall  []frame // reusable 4–16 KiB directory for short query fragments
 }
 
 // Each tree owns its own chunked arenas for nodes and leaves so that all
@@ -146,8 +166,8 @@ func NewTree(k uint8) *Tree {
 	return t
 }
 
-// RecycleTree recycles the tree object. Node and leaf memory stays with
-// the tree's arenas for reuse on the next NewTree from the pool.
+// RecycleTree recycles the tree object. Arenas and small directory storage stay
+// with the tree for reuse on the next NewTree from the pool.
 func RecycleTree(t *Tree) {
 	// Do not retain a large query's directory in trees reused for short fragments.
 	t.prefixBases, t.prefixStarts = 0, nil
@@ -429,11 +449,11 @@ type frame struct {
 	depth uint8
 }
 
-// BuildPrefixDirectory prepares read-only jump points for large query trees.
-// Call after insertion and before concurrent searches. Small trees keep root
-// lookup; the directory uses 64 KiB, 256 KiB, or 1 MiB on 64-bit platforms.
+// BuildPrefixDirectory prepares read-only jump points after insertion and before
+// concurrent searches. Trees with fewer than 256 keys keep root lookup; larger
+// trees use 4–8 prefix bases (4 KiB–1 MiB on 64-bit platforms).
 func (t *Tree) BuildPrefixDirectory() {
-	const minPrefixBases, maxPrefixBases = 6, 8
+	const minPrefixBases, maxPrefixBases = 4, 8
 	uniqueKeys := t.leaves.cur*leafChunkSize + t.leaves.pos
 	if t.prefixBases != 0 || t.k < minPrefixBases || t.k > 32 || uniqueKeys < 1<<(2*minPrefixBases) {
 		return
@@ -442,7 +462,20 @@ func (t *Tree) BuildPrefixDirectory() {
 	for depth < maxPrefixBases && depth < t.k && uniqueKeys >= 1<<(2*(depth+1)) {
 		depth++
 	}
-	t.prefixStarts = make([]frame, 1<<(2*depth))
+	if depth <= 5 {
+		// Genome comparisons rebuild thousands of short fragment trees. Reuse
+		// their small directories so lookup savings do not create allocation
+		// and GC work. Clear old buckets: the new fragment may lack a prefix
+		// present in the previous fragment, even when their sizes are equal.
+		size := 1 << (2 * depth)
+		if cap(t.prefixSmall) < size {
+			t.prefixSmall = make([]frame, size)
+		}
+		t.prefixStarts = t.prefixSmall[:size]
+		clear(t.prefixStarts)
+	} else {
+		t.prefixStarts = make([]frame, 1<<(2*depth))
+	}
 	t.fillPrefixStarts(t.root, 0, 0, depth)
 	t.prefixBases = depth
 }

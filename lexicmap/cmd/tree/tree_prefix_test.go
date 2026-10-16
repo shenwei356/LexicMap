@@ -20,9 +20,13 @@ func TestPrefixDirectoryMatchesRoot(t *testing.T) {
 		compressed bool
 		depth      uint8
 	}{
-		{5, 1024, false, 0}, {6, 4096, false, 6},
-		{31, 4095, false, 0}, {31, 4096, false, 6},
+		{3, 64, false, 0}, {4, 256, false, 4},
+		{5, 1024, false, 5}, {6, 4096, false, 6},
+		{31, 255, false, 0}, {31, 256, false, 4},
+		{31, 1023, false, 4}, {31, 1024, false, 5},
+		{31, 4095, false, 5}, {31, 4096, false, 6},
 		{31, 16384, false, 7}, {31, 65536, false, 8},
+		{31, 256, true, 4}, {31, 1024, true, 5},
 		{31, 4096, true, 6}, {32, 4096, false, 6},
 	} {
 		t.Run(fmt.Sprintf("k=%d/n=%d/compressed=%v", tc.k, tc.n, tc.compressed), func(t *testing.T) {
@@ -43,7 +47,10 @@ func TestPrefixDirectoryMatchesRoot(t *testing.T) {
 				}
 				entries = append(entries, BatchEntry{key, uint32(i*2 + 1)}, BatchEntry{key, uint32(i * 2)})
 				if i < 128 {
-					queries = append(queries, key, key^(uint64(1)<<(2*tc.k-9)), key^1)
+					queries = append(queries, key, key^(uint64(1)<<(2*tc.k-3)), key^1)
+					if tc.k >= 5 {
+						queries = append(queries, key^(uint64(1)<<(2*tc.k-9)))
+					}
 				}
 			}
 			tr.InsertBatch(entries)
@@ -117,6 +124,47 @@ func TestPrefixDirectoryMatchesRoot(t *testing.T) {
 			}
 			wg.Wait()
 		})
+	}
+}
+
+// A reused directory must forget prefixes from previous fragments, including
+// when its active length shrinks and later grows within the retained capacity.
+func TestPrefixDirectorySmallReuse(t *testing.T) {
+	var scratch []frame
+	for trial, size := range []int{2048, 256, 1024, 255, 4096, 512, 2048} {
+		tr := NewTree(31)
+		// Carry scratch explicitly so this test also covers reuse when the race
+		// detector deliberately drops objects returned to sync.Pool.
+		tr.prefixSmall = scratch
+		entries := make([]BatchEntry, size)
+		for i := range entries {
+			// All keys share one first base, leaving other prefixes absent. Move
+			// that base between fragments to expose stale directory buckets.
+			entries[i] = BatchEntry{Key: uint64(trial%4)<<60 | uint64(i)*7919, Val: uint32(i)}
+		}
+		tr.InsertBatch(entries)
+		tr.BuildPrefixDirectory()
+		if len(scratch) > 0 && &scratch[0] != &tr.prefixSmall[0] {
+			t.Fatal("small directory was reallocated within its capacity")
+		}
+		for _, entry := range entries {
+			for base := uint64(0); base < 4; base++ {
+				q := entry.Key&((uint64(1)<<60)-1) | base<<60
+				for _, prefix := range []uint8{1, 4, 5, 6, 11, 31} {
+					if tr.searchNode(q, prefix) != tr.searchNodeFromRoot(q, prefix) {
+						t.Fatalf("trial %d q=%x p=%d: stale directory changed target", trial, q, prefix)
+					}
+				}
+			}
+		}
+		scratch = tr.prefixSmall
+		if len(scratch) > 1<<10 {
+			t.Fatal("retained directory exceeds the short-fragment limit")
+		}
+		// Transfer scratch ownership to the next tree; pooled trees must not
+		// share writable directories when reused concurrently.
+		tr.prefixSmall = nil
+		RecycleTree(tr)
 	}
 }
 
