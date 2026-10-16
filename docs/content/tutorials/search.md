@@ -86,6 +86,7 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 1. **Alignment** for each chain.
     1. Extending the anchor region to extract sequences from the query and reference genome. For example, extending 1 kb upstream and downstream of the anchor region.
     1. Performing pseudo-alignment with extended query and subject sequences, to find similar regions.
+       - Large query trees use an in-memory prefix directory to reduce repeated tree traversal during k-mer matching. Short query fragments keep the original tree lookup.
        - For similar regions that span more than one reference sequence, splitting them into multiple ones.
     2. Fast alignment of query and subject sequence regions with [our implementation](https://github.com/shenwei356/wfa) of [Wavefront alignment algorithm](https://doi.org/10.1093/bioinformatics/btaa777).
     3. Filtering alignments based on user options.

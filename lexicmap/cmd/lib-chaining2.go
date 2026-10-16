@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"math"
+	"math/bits"
 	"sync"
 )
 
@@ -63,6 +64,7 @@ type Chainer2 struct {
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
 	maxPotential  []int64  // largest zero-gap predecessor score in each prefix
+	diagonalSeen  []uint64 // reusable approximate set of earlier anchor diagonals
 	qGroupStarts  []int32  // first anchor of each equal-query-position group
 
 	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
@@ -307,6 +309,33 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	var qDiff, tDiff int32
 	var sameQStart int
 
+	// An earlier anchor can pass the gap test only if its T-Q diagonal is
+	// within MaxGap of the current diagonal. Folding bins into a bitmap can
+	// create false positives, never false negatives. An empty range therefore
+	// proves that scanning predecessors cannot change this row's score or tie.
+	// For increasing Q and T starts, the gap is exactly |(aT-aQ)-(bT-bQ)|:
+	//
+	// diagonal:    ... [ d-MaxGap ........ d+MaxGap ] ...
+	// earlier bins:      empty    empty    empty
+	//                            ^ current d
+	//
+	// No earlier diagonal in this range means no link can pass the gap test.
+	// Small inputs keep the scan to avoid bitmap setup and lookup overhead.
+	const diagonalBits = 1 << 16 // 8 KiB per active chainer, allocated on demand
+	useDiagonals := n >= 512 && querySorted && equalLengths && usePotential && maxGap >= 0 && maxGap <= math.MaxInt32
+	var diagonalSeen []uint64
+	var diagonalShift uint
+	if useDiagonals {
+		if ce.diagonalSeen == nil {
+			ce.diagonalSeen = make([]uint64, diagonalBits/64)
+		}
+		diagonalSeen = ce.diagonalSeen
+		clear(diagonalSeen)
+		diagonalShift = uint(bits.Len64(uint64(maxGap))) // bin width strictly exceeds MaxGap
+		bin := uint64((int64((*subs)[0].TBegin)-int64((*subs)[0].QBegin))>>diagonalShift) & (diagonalBits - 1)
+		diagonalSeen[bin>>6] |= uint64(1) << (bin & 63)
+	}
+
 	for i = 1; i < n; i++ {
 		a = &(*subs)[i] // current seed/anchor
 		// k = band * i   // index of current seed in the score matrix
@@ -327,6 +356,24 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 		if querySorted {
 			// Equal query starts form one group and never contribute to a chain.
 			j = sameQStart
+		}
+
+		if useDiagonals {
+			diagonal := int64(aTBegin) - int64(aQBegin)
+			lower, upper := (diagonal-maxGap)>>diagonalShift, (diagonal+maxGap)>>diagonalShift
+			possible := false
+			for bin := lower; bin <= upper; bin++ { // at most three adjacent bins
+				folded := uint64(bin) & (diagonalBits - 1)
+				if diagonalSeen[folded>>6]&(uint64(1)<<(folded&63)) != 0 {
+					possible = true
+					break
+				}
+			}
+			if !possible {
+				j = 0 // no predecessor can link; keep this anchor's own score
+			}
+			bin := uint64(diagonal>>diagonalShift) & (diagonalBits - 1)
+			diagonalSeen[bin>>6] |= uint64(1) << (bin & 63)
 		}
 		_bCount = 0
 		// fmt.Printf("i: %d, %s\n", i, a.String())

@@ -66,6 +66,9 @@ type Tree struct {
 
 	nodes  nodeArena
 	leaves leafArena
+
+	prefixBases  uint8   // indexed prefix length; zero means use the root
+	prefixStarts []frame // parent and depth before the edge crossing prefixBases
 }
 
 // Each tree owns its own chunked arenas for nodes and leaves so that all
@@ -139,12 +142,15 @@ func NewTree(k uint8) *Tree {
 	t.nodes.reset()
 	t.leaves.reset()
 	t.root = t.nodes.alloc()
+	t.prefixBases, t.prefixStarts = 0, nil
 	return t
 }
 
 // RecycleTree recycles the tree object. Node and leaf memory stays with
 // the tree's arenas for reuse on the next NewTree from the pool.
 func RecycleTree(t *Tree) {
+	// Do not retain a large query's directory in trees reused for short fragments.
+	t.prefixBases, t.prefixStarts = 0, nil
 	poolTree.Put(t)
 }
 
@@ -156,6 +162,8 @@ func (t *Tree) K() int {
 // Insert is used to add a new entry or update
 // an existing entry. Returns true if an existing record is updated.
 func (t *Tree) Insert(key uint64, v uint32) bool {
+	// Inserts can split cached edges. Rebuild explicitly after all mutations.
+	t.prefixBases, t.prefixStarts = 0, nil
 	key0 := key // will save it into the leaf node
 	k := t.k
 
@@ -306,6 +314,7 @@ func (t *Tree) InsertBatch(entries []BatchEntry) {
 // It preserves InsertBatch's duplicate-value order without modifying entries,
 // so concurrent callers can build private trees from one shared sorted slice.
 func (t *Tree) InsertSortedBatch(entries []BatchEntry) {
+	t.prefixBases, t.prefixStarts = 0, nil
 	if len(entries) == 0 {
 		return
 	}
@@ -420,6 +429,48 @@ type frame struct {
 	depth uint8
 }
 
+// BuildPrefixDirectory prepares read-only jump points for large query trees.
+// Call after insertion and before concurrent searches. Small trees keep root
+// lookup; the directory uses 64 KiB, 256 KiB, or 1 MiB on 64-bit platforms.
+func (t *Tree) BuildPrefixDirectory() {
+	const minPrefixBases, maxPrefixBases = 6, 8
+	uniqueKeys := t.leaves.cur*leafChunkSize + t.leaves.pos
+	if t.prefixBases != 0 || t.k < minPrefixBases || t.k > 32 || uniqueKeys < 1<<(2*minPrefixBases) {
+		return
+	}
+	depth := uint8(minPrefixBases)
+	for depth < maxPrefixBases && depth < t.k && uniqueKeys >= 1<<(2*(depth+1)) {
+		depth++
+	}
+	t.prefixStarts = make([]frame, 1<<(2*depth))
+	t.fillPrefixStarts(t.root, 0, 0, depth)
+	t.prefixBases = depth
+}
+
+// Cache the parent, not the child: a compressed edge can extend beyond the
+// directory prefix, and its remaining bases must still pass the original test.
+//
+//	root -- ACGT --> parent -- ACGTAC... --> child
+//	                depth 4   ^^
+//	prefix ACGTAC = ACGT + these first two edge bases
+//
+// ACGTAC jumps to parent at depth 4, then checks ACGTAC... as usual.
+func (t *Tree) fillPrefixStarts(parent *node, prefix uint64, depth, indexed uint8) {
+	for _, child := range parent.children {
+		if child == nil {
+			continue
+		}
+		end := depth + child.k
+		key := prefix<<(2*child.k) | child.prefix
+		if end >= indexed {
+			bucket := key >> (2 * (end - indexed))
+			t.prefixStarts[bucket] = frame{n: parent, depth: depth}
+		} else {
+			t.fillPrefixStarts(child, key, end, indexed)
+		}
+	}
+}
+
 // SearchResult records information of a search result.
 type SearchResult struct {
 	Kmer      uint64   // searched kmer
@@ -500,6 +551,22 @@ func (t *Tree) searchNode(key uint64, p uint8) *node {
 	search := key
 	var lenPrefix uint8
 	var atleast uint8
+	if t.prefixBases != 0 && p >= t.prefixBases {
+		entry := t.prefixStarts[key>>(2*(k-t.prefixBases))]
+		// A missing entry normally proves a miss. The legacy edge comparison
+		// can nevertheless accept a mismatching edge shorter than the requested
+		// prefix when all remaining requested bases are A (zero bits). Such a
+		// suffix has at least two bases: edges are nonempty. Keep root lookup
+		// for those queries so the directory does not change existing results.
+		if entry.n == nil && key>>(2*(k-p))&15 != 0 {
+			return nil
+		}
+		if entry.n != nil {
+			n, lenPrefix = entry.n, entry.depth
+			search = util.KmerSuffix(key, k, entry.depth)
+			k -= entry.depth
+		}
+	}
 	for {
 		// Check for key exhaution
 		if k == 0 {

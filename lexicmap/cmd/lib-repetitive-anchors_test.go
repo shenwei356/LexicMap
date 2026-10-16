@@ -8,6 +8,65 @@ import (
 	"testing"
 )
 
+// Sparse diagonals exercise whole-row skips; nearby diagonals, negative bins,
+// and folded bitmap collisions must preserve all scores and tie predecessors.
+func TestChainer2DiagonalSkipsMatchReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(20261020))
+	opt := DefaultChaining2Options
+	got, ref := NewChainer2(&opt), NewChainer2(&opt)
+	for trial := 0; trial < 240; trial++ {
+		subs := make([]SubstrPair, 511+trial%260)
+		for i := range subs {
+			q := int32(i / 3 * 7)
+			target := q + int32(rng.Intn(8000000))
+			if i%5 == 0 {
+				target = q + int32(rng.Intn(11)) - 5
+			}
+			if i%7 == 0 { // collide after folding 64-wide bins into 65,536 bits
+				target = q + 64*(1<<16)
+			}
+			subs[i] = SubstrPair{QBegin: q, TBegin: target, Len: 13}
+		}
+		slices.SortFunc(subs, func(a, b SubstrPair) int {
+			if a.QBegin != b.QBegin {
+				return int(a.QBegin - b.QBegin)
+			}
+			return int(a.TBegin - b.TBegin)
+		})
+		switch trial % 8 {
+		case 1:
+			for i := range subs { // shifting both axes changes no gaps
+				subs[i].QBegin -= 4000000
+				subs[i].TBegin -= 4000000
+			}
+		case 2:
+			subs[len(subs)/2].Len = 31
+		case 3:
+			slices.Reverse(subs)
+		case 4:
+			subs[len(subs)-1].TBegin = math.MaxInt32
+		}
+		opt = DefaultChaining2Options
+		opt.MinScore, opt.MinAlignLen = 1, 1
+		opt.MaxGap = []int{-1, 0, 1, 50, 63, 64, 100, math.MaxInt}[trial/8%8]
+		opt.BandBase = []int{-20, 0, 50, 100, 500}[trial%5]
+		opt.BandCount = []int{-1, 0, 1, 7, 50}[trial/5%5]
+		g, gm, gq, gt, gqb, gqe, gtb, gte := got.Chain(&subs)
+		r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
+		if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
+			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
+			!reflect.DeepEqual(denseChain2Summary(g, len(subs)), denseChain2Summary(r, len(subs))) {
+			t.Fatalf("trial %d options %+v: diagonal filtering changed chaining", trial, opt)
+		}
+		if g != nil {
+			RecycleChaining2Result(g)
+		}
+		if r != nil {
+			RecycleChaining2Result(r)
+		}
+	}
+}
+
 // Compare the complete score/predecessor matrix, not just the winning chain:
 // skipped gap failures still affect the legacy band-count stopping position.
 func TestChainer2GapGroupSkipsMatchReference(t *testing.T) {

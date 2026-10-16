@@ -112,6 +112,7 @@ func (cpr *SeqComparator) Index(s []byte) error {
 	}
 	t := rtree.NewTree(cpr.options.K)
 	t.InsertBatch(entries)
+	t.BuildPrefixDirectory()
 	cpr.tree = t
 	return nil
 }
@@ -162,6 +163,7 @@ func (cpr *SeqComparator) collectIndexEntries(s []byte) ([]rtree.BatchEntry, err
 func (cpr *SeqComparator) indexSortedEntries(entries []rtree.BatchEntry) {
 	t := rtree.NewTree(cpr.options.K)
 	t.InsertSortedBatch(entries)
+	t.BuildPrefixDirectory()
 	cpr.tree = t
 }
 

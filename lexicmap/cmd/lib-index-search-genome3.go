@@ -302,7 +302,8 @@ func (idx *Index) recycleSubjectSketch(s *subjectSketch) {
 	poolSubjectSketch.Put(s)
 }
 
-// sampleQueryFragment samples fixed-length k-mers from a query fragment.
+// sampleQueryFragment samples fixed-length k-mers in increasing query-position
+// order. Canonicalization changes the strand bit, not this position order.
 func sampleQueryFragment(frag []byte, sampledKmers []uint64) ([]uint64, error) {
 	sampledKmers = sampledKmers[:0]
 	k := gsa3SampledK
@@ -395,6 +396,9 @@ func alignQueryFragToSubjectSampled(
 	repeatedKmerMap := sketch.repeatedKmerMap
 	repeatedKmerPositions := *sketch.repeatedKmerPositions
 
+	// Query positions are already increasing, so each Q group stays contiguous.
+	// Strand conversion can reverse target positions; chainsFromSubs sorts only
+	// targets within these groups rather than sorting all anchors upstream.
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
 	const maxMatchesPerKmer = 100
