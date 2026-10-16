@@ -62,6 +62,7 @@ type Chainer2 struct {
 	// maxscores     []int
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
+	maxPotential  []int64  // largest zero-gap predecessor score in each prefix
 
 	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
 }
@@ -168,7 +169,7 @@ func (r *Chain2Result) Reset() {
 	r.NAnchors = 0
 }
 
-// Chain finds the possible chain paths.
+// Chain finds possible chain paths.
 // Please remember to call RecycleChaining2Result after using the results.
 // Returned results:
 //  1. Chain2Results.
@@ -237,6 +238,22 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	// *maxscoresIdxs = append(*maxscoresIdxs, 0)
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
 
+	usePotential := false
+	maxPotential := ce.maxPotential[:0]
+	// The legacy int32 gap arithmetic can overflow for widely separated
+	// coordinates. Bound scores only when the gap stays nonnegative.
+	minQ, maxQ := (*subs)[0].QBegin, (*subs)[0].QBegin
+	minT, maxT := (*subs)[0].TBegin, (*subs)[0].TBegin
+	for _, sub := range *subs {
+		minQ, maxQ = min(minQ, sub.QBegin), max(maxQ, sub.QBegin)
+		minT, maxT = min(minT, sub.TBegin), max(maxT, sub.TBegin)
+	}
+	usePotential = int64(maxQ)-int64(minQ) <= math.MaxInt32/2 &&
+		int64(maxT)-int64(minT) <= math.MaxInt32/2
+	if usePotential {
+		maxPotential = append(maxPotential, int64((*subs)[0].Len)*2)
+	}
+
 	// compute scores
 	// Scores and gaps are integral. Keep intermediates wider than the packed
 	// 32-bit score so comparisons retain their original pre-packing values.
@@ -270,6 +287,21 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 		for {
 			j--
 			if j < 0 {
+				break
+			}
+			// Each earlier anchor t can contribute at most score[t]+len[t],
+			// because the gap penalty is nonnegative. Keep the prefix maximum
+			// of these zero-gap bounds. For example, with len=13 throughout:
+			//
+			//   anchor         0      1      2      current
+			//   Q/T           0/0   13/13  26/26     39/39
+			//   score          13     26     39       ?
+			//   score+len      26     39     52
+			//
+			// Linking current to anchor 2 gives m=39+13=52. Before checking
+			// anchor 1, maxPotential[1]=39, so neither 1 nor 0 can match m.
+			// Use strict > to preserve the existing preference for earlier ties.
+			if usePotential && m > maxPotential[j] {
 				break
 			}
 
@@ -332,11 +364,16 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 		// *maxscores = append(*maxscores, m)          // save the max score of the whole
 		// *maxscoresIdxs = append(*maxscoresIdxs, mj) // save where the max score comes from
 		*maxscoresIdxs = append(*maxscoresIdxs, uint64(m)<<32|uint64(mj))
+		if usePotential {
+			potential := int64(uint32(m)) + int64(a.Len)
+			maxPotential = append(maxPotential, max(potential, maxPotential[i-1]))
+		}
 
 		if m > M { // the biggest score in the whole score matrix
 			M, Mi = m, i
 		}
 	}
+	ce.maxPotential = maxPotential
 
 	// fmt.Printf("M: %f, Mi: %d\n", M, Mi)
 

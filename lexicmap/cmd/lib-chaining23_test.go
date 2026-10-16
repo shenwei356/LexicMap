@@ -68,6 +68,18 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 		{{QBegin: math.MinInt32, TBegin: 0, Len: 32}, {QBegin: 0, TBegin: 1, Len: 32}, {QBegin: math.MaxInt32, TBegin: 2, Len: 32}},
 		{{QBegin: 0, TBegin: math.MaxInt32, Len: 1}, {QBegin: 1, TBegin: math.MaxInt32, Len: 32}, {QBegin: 2, TBegin: math.MaxInt32, Len: 32}},
 	}
+	// Dense collinear and crossed anchors exercise the prefix score bound and ties.
+	for _, crossed := range []bool{false, true} {
+		subs := make([]SubstrPair, 256)
+		for i := range subs {
+			target := i
+			if crossed {
+				target = i % 64
+			}
+			subs[i] = SubstrPair{QBegin: int32(i), TBegin: int32(target), Len: 13}
+		}
+		fixtures = append(fixtures, subs)
+	}
 	for trial := range 500 {
 		n := 1 + rng.Intn(192)
 		subs := make([]SubstrPair, n)
