@@ -1172,6 +1172,25 @@ func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 	// ri.Release()
 }
 
+// clearEqualLengthSubstrPairs clears duplicate coordinates from sampled seeds.
+// All anchors must have the same length and strand flags, as in the sampled
+// genome-seed path. Equal-length intervals contain each other only when both
+// starts are equal.
+func clearEqualLengthSubstrPairs(subs *[]SubstrPair) {
+	if len(*subs) < 2 {
+		return
+	}
+	slices.SortFunc(*subs, func(a, b SubstrPair) int {
+		if a.QBegin != b.QBegin {
+			return int(a.QBegin - b.QBegin)
+		}
+		return int(a.TBegin - b.TBegin)
+	})
+	*subs = slices.CompactFunc(*subs, func(a, b SubstrPair) bool {
+		return a.QBegin == b.QBegin && a.TBegin == b.TBegin
+	})
+}
+
 var poolBoolList = &sync.Pool{New: func() interface{} {
 	m := make([]bool, 0, 10240)
 	return &m

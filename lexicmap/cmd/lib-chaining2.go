@@ -246,8 +246,12 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	minQ, maxQ := (*subs)[0].QBegin, (*subs)[0].QBegin
 	minT, maxT := (*subs)[0].TBegin, (*subs)[0].TBegin
 	querySorted, groupTargetSorted, repeatedQ := true, true, false
+	equalLengths := true // one band-base test then applies to a whole Q group
 	previousQ, previousT := (*subs)[0].QBegin, (*subs)[0].TBegin
 	for index, sub := range *subs {
+		if sub.Len != (*subs)[0].Len {
+			equalLengths = false
+		}
 		if sub.QBegin < previousQ {
 			querySorted = false
 		}
@@ -293,6 +297,10 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 	// Anchors stay in place during chaining; read by address to avoid value copies.
 	var a, b *SubstrPair
 	maxGap := int64(ce.options.MaxGap)
+	// Only skip gap failures when coordinate arithmetic cannot overflow and
+	// every member of a Q group has the same band-base stopping condition.
+	skipGapGroups := qGroupStarts != nil && usePotential && equalLengths &&
+		maxGap >= 0 && maxGap <= math.MaxInt32
 	// maxDistance := float64(ce.options.MaxDistance)
 	// (*scores)[0] = (*subs)[0].Len
 	var aQBegin, aTBegin, bQBegin, bTBegin int32
@@ -405,6 +413,58 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 			}
 
 			if g > maxGap { // limit the gap. necessary?
+				// Anchors in one Q group share bQ and have sorted bT values.
+				// To connect b to a, the steps along Q and T must differ by
+				// at most maxGap. For example, aQ=100, aT=1000, bQ=80,
+				// maxGap=5: the Q step is 20, so the T step must be 15..25.
+				// This means only bT=975..985 can pass the gap check:
+				//
+				// Q:       b(80) -------- 20 --------> a(100)
+				// T:       b(?) ------- 15..25 ------> a(1000)
+				//
+				// bT, sorted:  900 970 | 975  980  985 | 990 1000
+				//              too low | can pass gap  | too high
+				//                      ^               ^
+				//                    lower           upper
+				//              <--------------------- scan direction
+				//
+				// On the right, binary-search past all values above upper.
+				// Once below lower, skip the rest of this group: every
+				// remaining bT is even smaller, making the T step too large.
+				// We skip only anchors that would fail the same gap check,
+				// so possible links and their score/tie order stay unchanged.
+				// Skipped anchors must still count toward BandCount; equal
+				// lengths also give this whole Q group the same BandBase test.
+				if skipGapGroups {
+					start := int(qGroupStarts[j])
+					// Keep small groups on the scan to avoid search overhead.
+					if j-start >= 8 {
+						// The current anchor already passed the crossing and
+						// band checks and was counted above.
+						upper := int64(aTBegin) - int64(qDiff) + maxGap
+						next := start
+						if int64(bTBegin) > upper {
+							low, high := start, j
+							for low < high {
+								mid := low + (high-low)/2
+								if int64((*subs)[mid].TBegin) <= upper {
+									low = mid + 1
+								} else {
+									high = mid
+								}
+							}
+							next = low
+						}
+						// Below the lower bound, the rest of this sorted
+						// group also fails. Count every skipped anchor and
+						// stop here if the original scan would exhaust its band.
+						_bCount += j - next
+						if _bBase > bandBase && _bCount > bandCount {
+							break
+						}
+						j = next // the next iteration inspects next-1
+					}
+				}
 				continue
 			}
 

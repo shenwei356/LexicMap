@@ -636,14 +636,14 @@ func adjustedPIdentForAlignment(pident float64, qqual []byte, extendedQueryStart
 	return adjustPIdentByQual(pident, qqual[qStart:qEnd])
 }
 
-// chainsFromSubs runs the chaining pipeline and returns all chains.
+// chainsFromSubs chains equal-length sampled anchors and returns all chains.
 func chainsFromSubs(subs *[]SubstrPair, chainer *Chainer2, K int) (*[]*Chain2Result, bool) {
 	if len(*subs) == 0 {
 		return nil, false
 	}
 
 	if len(*subs) > 1 {
-		ClearSubstrPairs(subs, K)
+		clearEqualLengthSubstrPairs(subs)
 	}
 	TrimSubStrPairs(subs, K, 100)
 	if len(*subs) == 0 {
