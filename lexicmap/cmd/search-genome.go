@@ -77,10 +77,15 @@ Algorithm:
      b) (OrthoANI mode): cut both the query genome and candidate genomes into non-overlapping
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
+
      Results are sorted by ANI percentages rounded to four decimal places, then by
      full-precision qAF and sAF (descending).
+
      Flag -n/--top-n-genomes keeps all matches with the top N distinct ANI percentages
      as printed with four decimal places. Both stages may retain more than N genomes.
+
+     Repeated sequences can produce many k-mer matches, so alignment time can differ
+     substantially between genomes of similar sizes.
 
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.

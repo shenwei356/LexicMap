@@ -21,6 +21,10 @@ Input:
     the first two columns. The files can be the output of 'lexicmap genome pair'.
     The LexicMap index must be given by '-d/--index', and '-H' skips header lines.
 
+Attention:
+  1. Repeated sequences can produce many k-mer matches, so alignment time can differ
+     substantially between genomes of similar sizes.
+
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
   and AF values with three.
@@ -101,8 +105,6 @@ Global Flags:
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
 ```
-
-Repeated sequences can produce many k-mer matches, so alignment time can differ substantially between genomes of similar sizes.
 
 Examples:
 
