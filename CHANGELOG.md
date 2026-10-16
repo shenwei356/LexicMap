@@ -38,7 +38,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
         - Optimize chaining to reduce memory use and garbage collection overhead.
         - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
-        - Faster pseudoalignment for long queries.
+        - Faster pseudoalignment for long queries and result grouping for queries with many sequence hits.
     - **Add two flags to limit the memory usage when searching in huge indexes** such as Logan Project,
       where the large number of seed matches can cause memory exhaustion during seed collection.
       See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).

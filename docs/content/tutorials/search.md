@@ -463,7 +463,7 @@ Tab-delimited format with 20+ columns, with 1-based positions.
 
   For an HSP cluster, `SimilarityScore = max(bit_score * pident)`.
   1. Within each HSP cluster, HSPs are sorted by `sstart`.
-  2. Within each subject genome, HSP clusters are sorted in descending order by `SimilarityScore`.
+  2. Within each subject genome, HSP clusters are grouped by subject sequence. Sequence groups are ordered by their highest `SimilarityScore`, and clusters within each group by descending `SimilarityScore`.
   3. Results of multiple subject genomes are sorted by the highest `SimilarityScore` of HSP clusters.
 
 

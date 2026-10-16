@@ -1047,6 +1047,23 @@ var poolSubsLong = &sync.Pool{New: func() interface{} {
 
 // ClearSubstrPairs removes nested/embedded and same anchors. k is the largest k-mer size.
 func ClearSubstrPairs(subs *[]SubstrPair, k int) {
+	if len(*subs) < 2 {
+		return
+	}
+
+	// The longest-anchor shortcut requires bounded lengths and non-overflowing
+	// coordinates. Keep the original containment scan for other inputs.
+	longestShortcut := k > 0 && k <= 255
+	if longestShortcut {
+		maxStart := int32(math.MaxInt32 - k)
+		for _, sub := range *subs {
+			if int(sub.Len) > k || sub.QBegin < 0 || sub.TBegin < 0 ||
+				sub.QBegin > maxStart || sub.TBegin > maxStart {
+				longestShortcut = false
+				break
+			}
+		}
+	}
 
 	// sort substrings/seeds in ascending order based on the starting position
 	// and in descending order based on the ending position.
@@ -1111,6 +1128,22 @@ func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 	// fmt.Printf("anchor:%d/%d, a: %s\n", 0, len(*subs), (*subs)[0])
 	for i, v := range (*subs)[1:] {
 		// fmt.Printf("anchor:%d/%d, a: %s\n", i+1, len(*subs), v) // 0-based
+
+		if longestShortcut && int(v.Len) == k {
+			// Nothing is longer than v. A containing anchor must therefore
+			// have the same length and starts on BOTH sequences:
+			//
+			// Q:       [------ k ------] v
+			//          [------ k ------] p  same Q start
+			// T:             [------ k ------] v
+			//                [------ k ------] p  same T start
+			//
+			// Sorting puts these exact duplicates next to each other, so
+			// there is no need to binary-search or scan earlier anchors.
+			p = (*subs)[i]
+			(*markers)[i+1] = p.Len == v.Len && p.QBegin == v.QBegin && p.TBegin == v.TBegin
+			continue
+		}
 
 		vQEnd = v.QBegin + int32(v.Len)
 		upbound = max(vQEnd-int32(k), 0)
@@ -1180,12 +1213,36 @@ func clearEqualLengthSubstrPairs(subs *[]SubstrPair) {
 	if len(*subs) < 2 {
 		return
 	}
-	slices.SortFunc(*subs, func(a, b SubstrPair) int {
-		if a.QBegin != b.QBegin {
-			return int(a.QBegin - b.QBegin)
+	// Sampled query seeds arrive in increasing Q order. Only targets within
+	// each Q group need sorting; unordered callers retain the full sort.
+	querySorted := true
+	for i := 1; i < len(*subs); i++ {
+		if (*subs)[i].QBegin < (*subs)[i-1].QBegin {
+			querySorted = false
+			break
 		}
-		return int(a.TBegin - b.TBegin)
-	})
+	}
+	if querySorted {
+		for start := 0; start < len(*subs); {
+			end := start + 1
+			for end < len(*subs) && (*subs)[end].QBegin == (*subs)[start].QBegin {
+				end++
+			}
+			if end-start > 1 {
+				slices.SortFunc((*subs)[start:end], func(a, b SubstrPair) int {
+					return int(a.TBegin - b.TBegin)
+				})
+			}
+			start = end
+		}
+	} else {
+		slices.SortFunc(*subs, func(a, b SubstrPair) int {
+			if a.QBegin != b.QBegin {
+				return int(a.QBegin - b.QBegin)
+			}
+			return int(a.TBegin - b.TBegin)
+		})
+	}
 	*subs = slices.CompactFunc(*subs, func(a, b SubstrPair) bool {
 		return a.QBegin == b.QBegin && a.TBegin == b.TBegin
 	})
@@ -1260,55 +1317,67 @@ func (r *SearchResult) resetChainRegions() {
 	}
 }
 
+// SortBySeqID groups HSPs by sequence ID, preserving the first occurrence of
+// each ID and the existing order within each group (including score ties).
 func (sr *SearchResult) SortBySeqID() {
-	if len(*sr.SimilarityDetails) <= 1 {
+	details := *sr.SimilarityDetails
+	if len(details) <= 1 {
 		return
 	}
 
-	sds0 := sr.SimilarityDetails
-
-	sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
-
-	// first one
-	*sds = append(*sds, (*sds0)[0])
-	seqid := (*sds0)[0].SeqID
-	(*sds0)[0] = nil
-
-	i := 1
-	var nextSeqId []byte
-	var sds1 []*SimilarityDetail
-	var first bool
-	var j, nextI int
-	var sd *SimilarityDetail
-	n := len(*sds0)
-	for {
-		sds1 = (*sds0)[i:]
-		first = true
-		for j, sd = range sds1 {
-			if sd == nil {
-				continue
-			}
-
-			if bytes.Equal(sd.SeqID, seqid) { // has the same seqid
-				*sds = append(*sds, sd)
-				(*sds0)[i+j] = nil
-			} else if first { // record another seqid
-				first = false
-				nextSeqId = sd.SeqID
-				nextI = i + j
-			}
-		}
-		if first { // no other seqids
+	// Most small results belong to one sequence and need neither a map nor
+	// a second slice. Compare bytes, since IDs may have different backing arrays.
+	firstID := details[0].SeqID
+	oneSequence := true
+	for _, sd := range details[1:] {
+		if sd == nil || !bytes.Equal(sd.SeqID, firstID) {
+			oneSequence = false
 			break
 		}
+	}
+	if oneSequence {
+		return
+	}
 
-		*sds = append(*sds, (*sds0)[nextI])
-		(*sds0)[nextI] = nil
-		seqid = nextSeqId
-		i = nextI + 1
-		if i >= n { // it's alreadly the last one
-			break
+	// Assign group numbers on first encounter; never use map iteration order.
+	// Counts become write offsets after the prefix sum below. String keys own
+	// their bytes, so recycling sequence-ID buffers cannot invalidate the map.
+	groups := make(map[string]int)
+	offsets := make([]int, 0, 8)
+	grouped := true
+	for _, sd := range details {
+		if sd == nil {
+			grouped = false
+			continue
 		}
+		group, found := groups[string(sd.SeqID)]
+		if !found {
+			group = len(offsets)
+			groups[string(sd.SeqID)] = group
+			offsets = append(offsets, 0)
+		} else if group != len(offsets)-1 {
+			grouped = false
+		}
+		offsets[group]++
+	}
+	if grouped { // contiguous groups already have the required order
+		return
+	}
+
+	n := 0
+	for group, count := range offsets {
+		offsets[group] = n
+		n += count
+	}
+	sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail)
+	*sds = slices.Grow((*sds)[:0], n)[:n]
+	for _, sd := range details {
+		if sd == nil {
+			continue
+		}
+		group := groups[string(sd.SeqID)]
+		(*sds)[offsets[group]] = sd
+		offsets[group]++
 	}
 
 	recycleSimilarityDetailSlice(sr.SimilarityDetails)
