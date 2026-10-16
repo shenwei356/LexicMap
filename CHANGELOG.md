@@ -15,9 +15,6 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
-- `lexicmap genome search/compare`:
-    - Retain terminal sequence by merging tails shorter than half a fragment into the preceding fragment, calculate AF relative to full genome sizes, and remove the unused `--min-frag-size` flag.
-    - Check additional seed-supported candidate positions when chaining yields a partial alignment, improving ANI and AF for highly similar genomes in default mode.
 - `lexicmap index`:
     - **Faster indexing (30-45% less time) and ~30% lower memory usage by optimizing seed computation and merging**.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
@@ -32,7 +29,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
-    - Fixed data races in parallel seed computation and progress reporting.
+    - Fixed data races in parallel seed computation, progress reporting, and parser shutdown.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.

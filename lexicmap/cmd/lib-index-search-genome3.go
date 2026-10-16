@@ -88,6 +88,12 @@ var poolKmerMap = &sync.Pool{}
 var poolRepeatedKmerMap = &sync.Pool{}
 var poolRepeatedKmerPositions = &sync.Pool{}
 
+// Reuse diagonal vote tables across fragments without retaining unusually
+// large tables produced by highly repetitive seeds.
+var poolVotedWindowCounts = &sync.Pool{New: func() interface{} {
+	return make(map[int]int)
+}}
+
 // poolQSeeds is for reusing query seed slices
 var poolQSeeds = &sync.Pool{New: func() interface{} {
 	s := make([][]uint64, 0, 256)
@@ -527,7 +533,13 @@ func alignVotedWindow(
 	if len(*subs) < minVotes || len(qfrag) == 0 {
 		return 0, 0, 0, 0, 0, false
 	}
-	counts := make(map[int]int, min(len(*subs), 1024))
+	counts := poolVotedWindowCounts.Get().(map[int]int)
+	defer func() {
+		if len(counts) <= 4096 {
+			clear(counts)
+			poolVotedWindowCounts.Put(counts)
+		}
+	}()
 	for _, sub := range *subs {
 		counts[int(sub.TBegin-sub.QBegin)]++
 	}

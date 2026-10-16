@@ -40,6 +40,41 @@ func TestIsLowComplexityDust(t *testing.T) {
 	fmt.Printf("%s, low-complexity: %v\n", mer, IsLowComplexityDust(code, uint8(k)))
 }
 
+// TestIsLowComplexityDustMatchesTripletScore covers every supported k-mer
+// length, repetitive and random codes, and the retained original implementation.
+func TestIsLowComplexityDustMatchesTripletScore(t *testing.T) {
+	var code uint64 = 0x9e3779b97f4a7c15
+	for k := uint8(3); k <= 32; k++ {
+		for sample := 0; sample < 1000; sample++ {
+			code ^= code << 13
+			code ^= code >> 7
+			code ^= code << 17
+			value := code
+			if sample%10 == 0 {
+				value = 0 // homopolymer
+			} else if sample%10 == 1 {
+				value = 0x5555555555555555 // alternating bases
+			}
+			var counts [64]int
+			// Preserve the current DUST window, including its final triplet.
+			for i := uint8(0); i <= k-2; i++ {
+				counts[(value>>(2*i))&63]++
+			}
+			score := 0
+			for _, count := range counts {
+				score += count * (count - 1) / 2
+			}
+			got, want := IsLowComplexityDust(value, k), score > 50
+			if got != want {
+				t.Fatalf("k=%d sample=%d code=%x: got %t, want %t", k, sample, value, got, want)
+			}
+			if slow := IsLowComplexityDustSlow(value, k); got != slow {
+				t.Fatalf("k=%d sample=%d code=%x: fast=%t, slow=%t", k, sample, value, got, slow)
+			}
+		}
+	}
+}
+
 func TestNs(t *testing.T) {
 	var k uint8 = 5
 	values := []uint64{

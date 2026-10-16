@@ -1464,8 +1464,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 		go func(file string, iFile int) {
 			defer func() {
-				wg.Done()
+				// Release the parse slot before signaling completion; the channel
+				// is reused for seed writing after wg.Wait returns.
 				<-tokens
+				wg.Done()
 			}()
 			startTime := time.Now()
 
