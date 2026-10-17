@@ -591,6 +591,8 @@ Output format:
 				}
 				return idx.prepareCompareGenome(q, fragSize, minSeedLen, orthoANI)
 			})
+			// A single pair cannot amortize retained fine-alignment entries.
+			genomeCache.cacheFragmentIndexes = nPairs > 1
 			defer genomeCache.close()
 		}
 
@@ -780,7 +782,7 @@ func init() {
 		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
 
 	compareCmd.Flags().String("max-genome-cache-memory", "1G",
-		formatFlagUsage(`Memory budget for reusing prepared genomes (supports K/M/G; 0 disables reuse). Uses conservative cache accounting; active uncached comparisons, alignment scratch, readers, and runtime memory are additional.`))
+		formatFlagUsage(`Memory budget for reusing prepared genomes and fine-alignment indexes across pairs (supports K/M/G; 0 disables reuse). Uses conservative cache accounting; active uncached comparisons, alignment scratch, readers, and runtime memory are additional.`))
 
 	compareCmd.Flags().IntP("gc-interval", "", 128,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))

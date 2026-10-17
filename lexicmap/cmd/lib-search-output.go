@@ -1,6 +1,33 @@
 package cmd
 
-import "strconv"
+import (
+	"io"
+	"strconv"
+)
+
+// maxSearchOutputRowBytes bounds the reusable row buffer. Larger alignment
+// payloads are written separately so they are not copied into a second buffer.
+const maxSearchOutputRowBytes = 64 << 10
+
+var searchOutputTab = []byte{'\t'}
+var searchOutputNewline = []byte{'\n'}
+
+// writeLargeSearchResultRow writes the same TSV fields as the small-row path.
+// The caller owns every slice until this synchronous write finishes, including
+// payloads borrowed from the spill reader's reusable buffer.
+func writeLargeSearchResultRow(w io.Writer, row, cigar, query, target, alignment []byte) error {
+	for _, part := range [][]byte{row, searchOutputTab, cigar, searchOutputTab, query,
+		searchOutputTab, target, searchOutputTab, alignment, searchOutputNewline} {
+		n, err := w.Write(part)
+		if err != nil {
+			return err
+		}
+		if n != len(part) {
+			return io.ErrShortWrite
+		}
+	}
+	return nil
+}
 
 type searchOutputOptions struct {
 	showSseqIdx bool

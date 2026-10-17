@@ -10,6 +10,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"unsafe"
+
+	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 )
 
 func TestCompareCacheEvictionAndPinnedFallback(t *testing.T) {
@@ -175,6 +178,17 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		cache := newCompareGenomeCache(10<<20, func(key string) (*preparedCompareGenome, error) {
+			if key == "query" {
+				return qp, nil
+			}
+			return sp, nil
+		})
+		cache.cacheFragmentIndexes = true
+		defer cache.close()
+		qe, se := cache.acquire("query"), cache.acquire("subject")
+		defer cache.release(qe)
+		defer cache.release(se)
 		for _, reverse := range []bool{false, true} {
 			if reverse {
 				qp, sp = sp, qp
@@ -249,4 +263,115 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestCompareFineIndexCacheBudgetAndOwnership(t *testing.T) {
+	idx := compareTestIndex(t)
+	sequence := fragmentIndexTestSequence()
+	fragments := [][]byte{sequence}
+	const budget = 1 << 20
+	c := newCompareGenomeCache(budget, func(key string) (*preparedCompareGenome, error) {
+		if key == "large" {
+			return &preparedCompareGenome{bytes: budget}, nil
+		}
+		return &preparedCompareGenome{bytes: 512, fragments: &fragments}, nil
+	})
+	c.cacheFragmentIndexes = true
+	e := c.acquire("A")
+	indexes := e.value.indexes
+	if indexes == nil {
+		t.Fatal("retained genome has no fine-index slots")
+	}
+	metadataCharge := c.used
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+			defer idx.poolSeqComparator.Put(cpr)
+			if err := indexes.index(cpr, 0, sequence); err != nil {
+				t.Error(err)
+				return
+			}
+			result, err := cpr.Compare(0, uint32(len(sequence)), sequence, len(sequence))
+			if err != nil || result == nil {
+				t.Errorf("cached fine alignment: result=%v err=%v", result, err)
+			}
+			if result != nil {
+				RecycleSeqComparatorResult(result)
+			}
+			cpr.RecycleIndex()
+		}()
+	}
+	wg.Wait()
+	charge := int64(len(indexes.fragments[0].entries)) * int64(unsafe.Sizeof(rtree.BatchEntry{}))
+	if charge == 0 || c.used != metadataCharge+charge || e.value.bytes != c.used || c.peak > budget {
+		t.Fatalf("lazy charge: used=%d metadata=%d entries=%d", c.used, metadataCharge, charge)
+	}
+	if idx.fragmentIndexBytes.Load() != 0 {
+		t.Fatal("comparison borrowed the separate genome-search cache budget")
+	}
+	c.release(e)
+	second := c.acquire("A")
+	if second != e || second.value.indexes != indexes || c.used != metadataCharge+charge {
+		t.Fatal("repeated pair did not reuse the same charged entries")
+	}
+	c.release(second)
+	large := c.acquire("large")
+	if c.evictions != 1 || e.value != nil || c.used != budget {
+		t.Fatal("eviction did not release the base and lazy entry charges")
+	}
+	c.release(large)
+	c.close()
+	if c.used != 0 {
+		t.Fatal("close retained fine-index charges")
+	}
+}
+
+func TestCompareFineIndexCacheFullFallsBack(t *testing.T) {
+	idx := compareTestIndex(t)
+	sequence := fragmentIndexTestSequence()
+	fragments := [][]byte{sequence}
+	c := newCompareGenomeCache(2048, func(string) (*preparedCompareGenome, error) {
+		return &preparedCompareGenome{bytes: 512, fragments: &fragments}, nil
+	})
+	c.cacheFragmentIndexes = true
+	defer c.close()
+	e := c.acquire("A")
+	defer c.release(e)
+	indexes := e.value.indexes
+	if indexes == nil {
+		t.Fatal("expected enough budget for slot metadata")
+	}
+	before := c.used
+	for range 2 { // the first builder and later cache-full callers both work
+		cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+		if err := indexes.index(cpr, 0, sequence); err != nil {
+			t.Fatal(err)
+		}
+		result, err := cpr.Compare(0, uint32(len(sequence)), sequence, len(sequence))
+		if err != nil || result == nil {
+			t.Fatalf("fallback alignment: result=%v err=%v", result, err)
+		}
+		RecycleSeqComparatorResult(result)
+		cpr.RecycleIndex()
+		idx.poolSeqComparator.Put(cpr)
+	}
+	if c.used != before || indexes.fragments[0].entries != nil {
+		t.Fatal("full cache retained uncharged entries")
+	}
+}
+
+func TestCompareFineIndexCacheDisabled(t *testing.T) {
+	fragments := [][]byte{fragmentIndexTestSequence()}
+	c := newCompareGenomeCache(1<<20, func(string) (*preparedCompareGenome, error) {
+		return &preparedCompareGenome{bytes: 512, fragments: &fragments}, nil
+	})
+	e := c.acquire("A")
+	if e.value.indexes != nil || c.used != 512 {
+		t.Fatal("single-pair cache retained fine-index metadata")
+	}
+	c.release(e)
+	c.close()
 }

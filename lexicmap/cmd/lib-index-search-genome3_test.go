@@ -13,7 +13,7 @@ import (
 
 func TestAddSampledKmerPosition(t *testing.T) {
 	kmers := make(map[uint64]uint32)
-	repeated := make(map[uint64]uint64)
+	repeated := make(map[uint64]repeatedKmerList)
 	positions := make([]repeatedKmerPosition, 0)
 
 	addSampledKmerPosition(&kmers, &repeated, &positions, 42, 10)
@@ -24,7 +24,7 @@ func TestAddSampledKmerPosition(t *testing.T) {
 		t.Fatalf("first encoded position: got %d, want 11", got)
 	}
 
-	index := uint32(repeated[42] >> 32)
+	index := repeated[42].head
 	want := []uint32{20, 30}
 	for i, expected := range want {
 		if index == 0 {

@@ -70,10 +70,11 @@ Flags:
                                          fragment comparison (OrthoANI mode). Available values: 2, 4, 8.
                                          (default 4)
   -e, --max-evalue float                 ► Maximum evalue of a HSP segment. (default 1e-15)
-      --max-genome-cache-memory string   ► Memory budget for reusing prepared genomes (supports K/M/G;
-                                         0 disables reuse). Uses conservative cache accounting; active
-                                         uncached comparisons, alignment scratch, readers, and runtime
-                                         memory are additional. (default "1G")
+      --max-genome-cache-memory string   ► Memory budget for reusing prepared genomes and
+                                         fine-alignment indexes across pairs (supports K/M/G; 0 disables
+                                         reuse). Uses conservative cache accounting; active uncached
+                                         comparisons, alignment scratch, readers, and runtime memory are
+                                         additional. (default "1G")
       --max-genome-size int              ► Maximum size of genomes to be considered (in MB) when
                                          reading genome from an index. (default 20)
       --max-open-files int               ► Maximum opened files. It mainly affects candidate genome

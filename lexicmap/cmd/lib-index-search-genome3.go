@@ -47,6 +47,31 @@ import (
 
 var errGenomeTooLarge = errors.New("genome exceeds the configured size limit")
 
+// selectBestFragmentAlignment puts the reciprocal-best candidate first without
+// sorting unused runners-up. All pointers remain in the slice for recycling.
+// Each fragment pair occurs once, so its IDs resolve equal alignment scores.
+func selectBestFragmentAlignment(chains []*Chain2Result) {
+	best := 0
+	for i := 1; i < len(chains); i++ {
+		a, b := chains[i], chains[best]
+		// Evalue stores aligned fraction * identity here. Fragment IDs break
+		// equal scores exactly as in the former full-sort comparator.
+		d := cmp.Compare(b.Evalue, a.Evalue)
+		if d == 0 {
+			d = cmp.Compare(a.Score, b.Score)
+			if d == 0 {
+				d = cmp.Compare(a.BitScore, b.BitScore)
+			}
+		}
+		if d < 0 {
+			best = i
+		}
+	}
+	if best != 0 {
+		chains[0], chains[best] = chains[best], chains[0]
+	}
+}
+
 // subjectSketch is an in-memory sketch of a subject genome for sampled k-mer matching.
 // It is recycled after all query fragments have been processed against the subject.
 type subjectSketch struct {
@@ -59,7 +84,7 @@ type subjectSketch struct {
 	// sampledKmerMap are position+1, leaving zero available as the map's missing
 	// value.
 	sampledKmerMap        *map[uint64]uint32
-	repeatedKmerMap       *map[uint64]uint64
+	repeatedKmerMap       *map[uint64]repeatedKmerList
 	repeatedKmerPositions *[]repeatedKmerPosition
 	contigBounds          [][2]int // [start, end) of each contig in forward strand
 }
@@ -67,6 +92,17 @@ type subjectSketch struct {
 type repeatedKmerPosition struct {
 	position uint32
 	next     uint32 // index+1; zero marks the end of the list
+}
+
+// maxSampledKmerMatches is the existing anchor limit, shared by sketch building
+// and lookup. Positions beyond this prefix cannot contribute to an alignment.
+const maxSampledKmerMatches = 100
+
+// repeatedKmerList preserves insertion order and counts retained occurrences,
+// including the first position stored inline in sampledKmerMap.
+type repeatedKmerList struct {
+	head, tail uint32 // arena indexes + 1; zero means an empty repeated list
+	count      uint32 // capped at maxSampledKmerMatches
 }
 
 var poolSubjectSketch = &sync.Pool{New: func() interface{} {
@@ -120,7 +156,7 @@ func recycleQuerySeeds(seeds *[][]uint64) {
 	poolQSeeds.Put(seeds)
 }
 
-func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64]uint64, repeatedPositions *[]repeatedKmerPosition, kmer uint64, pos uint32) {
+func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64]repeatedKmerList, repeatedPositions *[]repeatedKmerPosition, kmer uint64, pos uint32) {
 	_, ok := (*kmers)[kmer]
 	if !ok {
 		(*kmers)[kmer] = pos + 1
@@ -129,24 +165,29 @@ func addSampledKmerPosition(kmers *map[uint64]uint32, repeated *map[uint64]uint6
 
 	// The first position is stored inline in kmers. Store subsequent positions
 	// in one contiguous arena instead of allocating one slice per repeated k-mer.
-	// The map value packs head and tail indexes (+1) to preserve insertion order.
+	// Stop at the same prefix already consumed by sampled-anchor matching.
 	list := (*repeated)[kmer]
-	head, tail := uint32(list>>32), uint32(list)
+	if list.count == maxSampledKmerMatches {
+		return
+	}
 	*repeatedPositions = append(*repeatedPositions, repeatedKmerPosition{position: pos})
 	index := uint32(len(*repeatedPositions))
-	if head == 0 {
-		head = index
+	if list.head == 0 {
+		list.head = index
+		list.count = 1 // the first occurrence is stored in the primary map
 	} else {
-		(*repeatedPositions)[tail-1].next = index
+		(*repeatedPositions)[list.tail-1].next = index
 	}
-	(*repeated)[kmer] = uint64(head)<<32 | uint64(index)
+	list.tail = index
+	list.count++
+	(*repeated)[kmer] = list
 }
 
 func sampledKmerMapCapacity(genomeSize int, scale int) int {
 	return (genomeSize + scale - 1) / scale
 }
 
-func acquireSampledKmerMaps(capacity int) (*map[uint64]uint32, *map[uint64]uint64, *[]repeatedKmerPosition) {
+func acquireSampledKmerMaps(capacity int) (*map[uint64]uint32, *map[uint64]repeatedKmerList, *[]repeatedKmerPosition) {
 	var kmers *map[uint64]uint32
 	if v := poolKmerMap.Get(); v != nil {
 		kmers = v.(*map[uint64]uint32)
@@ -156,14 +197,14 @@ func acquireSampledKmerMaps(capacity int) (*map[uint64]uint32, *map[uint64]uint6
 	}
 
 	repeatedCapacity := capacity / 16
-	var repeated *map[uint64]uint64
+	var repeated *map[uint64]repeatedKmerList
 	if v := poolRepeatedKmerMap.Get(); v != nil {
-		repeated = v.(*map[uint64]uint64)
+		repeated = v.(*map[uint64]repeatedKmerList)
 	} else {
 		// Repeated canonical 13-mers are normally a small fraction of all
 		// sampled k-mers. This hint avoids early map growth without reserving
 		// the full primary-map size twice.
-		m := make(map[uint64]uint64, repeatedCapacity)
+		m := make(map[uint64]repeatedKmerList, repeatedCapacity)
 		repeated = &m
 	}
 
@@ -214,13 +255,13 @@ func (idx *Index) buildSubjectSketchSampled(seq []byte, skipRegions [][2]int, co
 
 	mapCapacity := sampledKmerMapCapacity(genomeSize, int(scale))
 	var kmerMap *map[uint64]uint32
-	var repeatedKmerMap *map[uint64]uint64
+	var repeatedKmerMap *map[uint64]repeatedKmerList
 	var repeatedKmerPositions *[]repeatedKmerPosition
 	if pooled {
 		kmerMap, repeatedKmerMap, repeatedKmerPositions = acquireSampledKmerMaps(mapCapacity)
 	} else {
 		m := make(map[uint64]uint32, mapCapacity)
-		r := make(map[uint64]uint64, mapCapacity/16)
+		r := make(map[uint64]repeatedKmerList, mapCapacity/16)
 		p := make([]repeatedKmerPosition, 0, mapCapacity/16)
 		kmerMap, repeatedKmerMap, repeatedKmerPositions = &m, &r, &p
 	}
@@ -378,7 +419,7 @@ func alignQueryFragToSubjectSampled(
 	minQcov float64,
 	idx *Index,
 	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
-	queryIndexes *queryFragmentIndexes, // nil skips entry reuse in genome compare
+	queryIndexes *queryFragmentIndexes, // nil uses private, uncached query entries
 	fragmentIndex int,
 ) (int, int, int, float64, float64, bool) {
 	// Since we only use forward strand query k-mers and subject is a single concatenated
@@ -401,7 +442,6 @@ func alignQueryFragToSubjectSampled(
 	// targets within these groups rather than sorting all anchors upstream.
 	// Match query k-mers against subject k-mers
 	// Limit matches per k-mer to avoid excessive anchors from repetitive sequences
-	const maxMatchesPerKmer = 100
 
 	for i := 0; i+1 < len(qKmers); i += 2 {
 		qk := qKmers[i]
@@ -429,8 +469,8 @@ func alignQueryFragToSubjectSampled(
 
 		// Leave one slot for the inline first occurrence. Additional positions
 		// are linked in insertion order in the shared position arena.
-		positionIndex := uint32((*repeatedKmerMap)[qk] >> 32)
-		for matches := 1; positionIndex != 0 && matches < maxMatchesPerKmer; matches++ {
+		positionIndex := (*repeatedKmerMap)[qk].head
+		for matches := 1; positionIndex != 0 && matches < maxSampledKmerMatches; matches++ {
 			position := repeatedKmerPositions[positionIndex-1]
 			posAndStrand := position.position
 			spos := int(posAndStrand >> 1)
@@ -1205,8 +1245,10 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minSeed
 func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minSeedLen int, minAF, minANI float64) error {
 	var qfrags *[][]byte
 	var qSeeds *[][]uint64
+	var queryIndexes *queryFragmentIndexes
 	if qp != nil {
 		qfrags, qSeeds = qp.fragments, &qp.seeds
+		queryIndexes = qp.indexes
 	} else {
 		// 1) Cut the query into fragments.
 		qfrags, _ = seqs2fragments(&query.seqs, fragLen, minSeedLen)
@@ -1273,7 +1315,7 @@ func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *prep
 			chainer, algn, K, extLen, extLen2,
 			minPIdent, minQcovHSP, idx,
 			&fScoreAndEvalue,
-			nil, 0,
+			queryIndexes, i,
 		)
 		if !ok {
 			continue
@@ -1486,7 +1528,11 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 		// a) pseudo alignment
 		if !hasIndexedIA || ia != indexedIA {
 			cpr.RecycleIndex()
-			err = cpr.Index(a)
+			var queryIndexes *queryFragmentIndexes
+			if qp != nil {
+				queryIndexes = qp.indexes
+			}
+			err = queryIndexes.index(cpr, int(ia), a)
 			if err != nil {
 				return fmt.Errorf("fail to index query fragment: %s", err)
 			}
@@ -1594,29 +1640,12 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 	}
 
 	// 8) Identify orthologous fragments (reciprocal best hits)
-	fsort := func(a, b *Chain2Result) int {
-		// c.Evalue = c.AlignedFraction * c.PIdent // just for sorting, not the real e-value
-		if d := cmp.Compare(b.Evalue, a.Evalue); d != 0 {
-			return d
-		}
-		// c.Score = int(ia)    // for finding the corresponding subject fragment in the reciprocal comparison
-		// c.BitScore = int(ib) // for finding the corresponding subject fragment in the reciprocal comparison
-		if d := cmp.Compare(a.Score, b.Score); d != 0 {
-			return d
-		}
-		return cmp.Compare(a.BitScore, b.BitScore)
-	}
-
 	for _, ls = range *ma {
-		if len(*ls) > 1 {
-			slices.SortFunc(*ls, fsort)
-		}
+		selectBestFragmentAlignment(*ls)
 	}
 
 	for _, ls = range *mb {
-		if len(*ls) > 1 {
-			slices.SortFunc(*ls, fsort)
-		}
+		selectBestFragmentAlignment(*ls)
 	}
 
 	// 9) Calculate ANI result from reciprocal best hits

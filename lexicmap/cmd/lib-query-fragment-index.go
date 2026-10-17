@@ -37,6 +37,28 @@ type queryFragmentIndexes struct {
 	idx       *Index
 	fragments []queryFragmentIndex
 	reserved  atomic.Int64 // shared entry bytes released after all subjects finish
+	// Genome comparisons charge lazy entries to the pinned prepared genome.
+	// Its owner releases the charge on eviction, rather than after one pair.
+	compareCache *compareGenomeCache
+	compareEntry *compareGenomeCacheEntry
+}
+
+// reserve charges entries before allocating them. A full budget always falls
+// back to private indexing, so pinned genomes never wait for cache space.
+func (c *queryFragmentIndexes) reserve(n int64) bool {
+	if c.compareCache != nil {
+		return c.compareCache.reserveFragmentEntries(c.compareEntry, n)
+	}
+	for {
+		used := c.idx.fragmentIndexBytes.Load()
+		if n > maxGenomeSearchFragmentIndexMemory-used {
+			return false
+		}
+		if c.idx.fragmentIndexBytes.CompareAndSwap(used, used+n) {
+			c.reserved.Add(n)
+			return true
+		}
+	}
 }
 
 // newQueryFragmentIndexes avoids cache preparation when only one subject exists.
@@ -65,18 +87,10 @@ func (c *queryFragmentIndexes) index(cpr *SeqComparator, fragment int, sequence 
 		}
 		sorts.ByUint64(rtree.BatchEntries(entries))
 		n := int64(len(entries)) * int64(unsafe.Sizeof(rtree.BatchEntry{}))
-		for {
-			used := c.idx.fragmentIndexBytes.Load()
-			if n > maxGenomeSearchFragmentIndexMemory-used {
-				return
-			}
-			if c.idx.fragmentIndexBytes.CompareAndSwap(used, used+n) {
-				// Exact-size ownership avoids retaining the comparator's larger capacity.
-				slot.entries = make([]rtree.BatchEntry, len(entries))
-				copy(slot.entries, entries)
-				c.reserved.Add(n)
-				return
-			}
+		if c.reserve(n) {
+			// Exact-size ownership avoids retaining the comparator's larger capacity.
+			slot.entries = make([]rtree.BatchEntry, len(entries))
+			copy(slot.entries, entries)
 		}
 	})
 	if slot.err != nil {

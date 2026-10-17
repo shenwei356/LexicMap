@@ -36,9 +36,10 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap search`:
     - **Faster searching speed, mainly for batch querying with `-n/--top-n-genomes`**.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
-        - Optimize chaining to reduce memory use and garbage collection overhead.
+        - Optimize chaining and Top-N selection to reduce memory use and garbage collection overhead.
         - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
         - Improve pseudoalignment and result grouping performance.
+        - Reduce memory use during parallel seed collection and large `-a/--all` output.
     - **Add two flags to limit the memory usage when searching in huge indexes** such as Logan Project,
       where the large number of seed matches can cause memory exhaustion during seed collection.
       See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
@@ -55,6 +56,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
     - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
     - Fixed a data race when extending the pseudoalignment region.
+    - Clear stale alignment statistics when reusing pooled results.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:

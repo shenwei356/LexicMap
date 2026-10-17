@@ -324,7 +324,9 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 		RecycleChaining2Result(r.Chains)
 		r.Chains = nil
 	}
-	r.TSeq = nil
+	// Compare fills only pseudoalignment fields; discard statistics and bounds
+	// left by a previous base-level alignment before returning this object.
+	*r = SeqComparatorResult{}
 	poolSeqComparatorResult.Put(r)
 }
 

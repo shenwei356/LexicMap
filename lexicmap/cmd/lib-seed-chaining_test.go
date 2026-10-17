@@ -1,12 +1,104 @@
 package cmd
 
 import (
+	"cmp"
 	"fmt"
+	"math"
+	"math/rand"
 	"reflect"
 	"slices"
 	"sync"
 	"testing"
 )
+
+// referenceTrimSeedSearchResults retains the former full-sort cutoff behavior.
+func referenceTrimSeedSearchResults(rs *[]*seedSearchResult, n int) {
+	if n <= 0 || len(*rs) <= n {
+		return
+	}
+	slices.SortFunc(*rs, func(a, b *seedSearchResult) int { return cmp.Compare(b.Score, a.Score) })
+	cutoff := (*rs)[n-1].Score
+	end := n
+	for end < len(*rs) && (*rs)[end].Score == cutoff {
+		end++
+	}
+	clear((*rs)[end:])
+	*rs = (*rs)[:end]
+}
+
+func TestTrimSeedSearchResultsMatchesFullSort(t *testing.T) {
+	rng := rand.New(rand.NewSource(37))
+	for _, size := range []int{4095, 4096, 10000} {
+		for _, distribution := range []string{"random", "ties", "all-tied", "nan"} {
+			input := make([]*seedSearchResult, size)
+			for i := range input {
+				score := rng.Float32() * 1000
+				switch distribution {
+				case "ties":
+					score = float32(rng.Intn(5))
+				case "all-tied":
+					score = 21
+				case "nan":
+					if i == 17 || i == size-1 {
+						score = float32(math.NaN())
+					}
+				}
+				input[i] = &seedSearchResult{BatchGenomeIndex: uint64(i), Score: score}
+			}
+			for _, limit := range []int{1, 10, 100, size / 8, size - 1, size} {
+				got, want := slices.Clone(input), slices.Clone(input)
+				backing := got
+				trimSeedSearchResults(&got, limit)
+				referenceTrimSeedSearchResults(&want, limit)
+				if len(got) != len(want) {
+					t.Fatalf("%s size=%d n=%d: retained %d, want %d", distribution, size, limit, len(got), len(want))
+				}
+				for i := range got {
+					if cmp.Compare(got[i].Score, want[i].Score) != 0 {
+						t.Fatal("ranked scores differ")
+					}
+				}
+				for _, discarded := range backing[len(got):] {
+					if discarded != nil {
+						t.Fatal("discarded candidate remains referenced")
+					}
+				}
+				byID := func(a, b *seedSearchResult) int { return cmp.Compare(a.BatchGenomeIndex, b.BatchGenomeIndex) }
+				slices.SortFunc(got, byID)
+				slices.SortFunc(want, byID)
+				if !slices.Equal(got, want) {
+					t.Fatalf("%s size=%d n=%d: candidate set or multiplicity differs", distribution, size, limit)
+				}
+			}
+		}
+	}
+}
+
+func BenchmarkSeedTopN(b *testing.B) {
+	rng := rand.New(rand.NewSource(53))
+	input := make([]*seedSearchResult, 100000)
+	for i := range input {
+		input[i] = &seedSearchResult{BatchGenomeIndex: uint64(i), Score: float32(rng.Intn(10000))}
+	}
+	for _, n := range []int{10, 100, 10000} {
+		for _, partial := range []bool{false, true} {
+			b.Run(fmt.Sprintf("n=%d/partial=%t", n, partial), func(b *testing.B) {
+				work := make([]*seedSearchResult, len(input))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for range b.N {
+					work = work[:len(input)]
+					copy(work, input)
+					if partial {
+						trimSeedSearchResults(&work, n)
+					} else {
+						referenceTrimSeedSearchResults(&work, n)
+					}
+				}
+			})
+		}
+	}
+}
 
 func TestTrimSeedSearchResultsKeepsCutoffTies(t *testing.T) {
 	for _, tt := range []struct {

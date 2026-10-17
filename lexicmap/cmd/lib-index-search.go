@@ -1794,7 +1794,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				done <- 1
 			}()
 		}
-		filterByGenomeID := genomeIds != nil
+		var collectionErr error // first producer error; guarded by seedSearcherDebugMu
 		for iS := 0; iS < nSearchers; iS++ {
 			if inMemorySearch {
 				beginM = searchersIM[iS].ChunkIndex
@@ -1807,6 +1807,43 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			wg.Add(1)
 			go func(iS, beginM, endM int) {
 				defer wg.Done()
+
+				if parallelCollection {
+					var streamer seedDataStreamer
+					if inMemorySearch {
+						streamer = searchersIM[iS]
+					} else {
+						// Streaming callbacks run before the decoder releases its
+						// borrowed buffers, so keep the token through collection.
+						idx.searcherTokens[iS] <- 1
+						defer func() { <-idx.searcherTokens[iS] }()
+						streamer = searchers[iS]
+					}
+					var started time.Time
+					if debug {
+						started = time.Now()
+					}
+					batches, values, e := streamSeedAnchors(streamer, anchorCollector,
+						(*_kmers)[beginM:endM], (*_kmersR)[beginM:endM], *_locses, *_locsesR, minPrefix, genomeIds)
+					if debug || e != nil {
+						seedSearcherDebugMu.Lock()
+						if e != nil && collectionErr == nil {
+							collectionErr = e
+						}
+						if debug {
+							seedSearcherDebugStats[iS].nKVSearchResults = batches
+							seedSearcherDebugStats[iS].nKVValues = values
+							nSeedSearchersFinished++
+							log.Debugf("%s (%s bp): seed searcher finished %d/%d (masks [%d, %d)): streaming search/collection took %s",
+								query.seqID, humanize.Comma(int64(len(query.seq))), nSeedSearchersFinished, nSearchers, beginM, endM, time.Since(started))
+							if nSeedSearchersFinished == nSearchers {
+								allSeedSearchersDoneAt = time.Now()
+							}
+						}
+						seedSearcherDebugMu.Unlock()
+					}
+					return
+				}
 
 				var srs *[]kv.SearchResult
 				var srs2 *[]kv.SearchResult
@@ -1889,75 +1926,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						seedSearcherDebugStats[iS].nKVValues += uint64(len(sr.Values))
 					}
 				}
-				if !parallelCollection {
-					serialSearchResultsCh <- srs
-					return
-				}
-
-				buffers := anchorCollector.newBuffers()
-				K := idx.k
-				var locs []int
-				for i := range *srs {
-					sr := &(*srs)[i]
-					kPrefix := int(sr.Len)
-					if !sr.IsSuffix {
-						locs = (*_locses)[sr.IQuery]
-					} else {
-						locs = (*_locses)[(*_locsesR)[sr.IQuery][sr.IQuery2]]
-					}
-					for _, encodedPosQ := range locs {
-						rcQ := encodedPosQ&MASK_STRAND > 0
-						posQ := encodedPosQ >> BITS_STRAND
-						for _, refpos := range sr.Values {
-							batchGenomeIndex := refpos >> BITS_NONE_IDX
-							if filterByGenomeID {
-								if _, ok := (*genomeIds)[batchGenomeIndex]; !ok {
-									continue
-								}
-							}
-
-							posT := int(refpos << BITS_IDX >> BITS_IDX_FLAGS)
-							rvT := refpos&MASK_REVERSE > 0
-							rcT := refpos>>BITS_REVERSE&MASK_STRAND > 0
-							var beginQ, beginT int
-							if !rvT {
-								if rcQ {
-									beginQ = posQ + K - kPrefix
-								} else {
-									beginQ = posQ
-								}
-								if rcT {
-									beginT = posT + K - kPrefix
-								} else {
-									beginT = posT
-								}
-							} else {
-								if rcQ {
-									beginQ = posQ
-								} else {
-									beginQ = posQ + K - kPrefix
-								}
-								if rcT {
-									beginT = posT
-								} else {
-									beginT = posT + K - kPrefix
-								}
-							}
-
-							anchorCollector.add(buffers, seedAnchor{
-								batchGenomeIndex: batchGenomeIndex,
-								qBegin:           int32(beginQ),
-								tBegin:           int32(beginT),
-								length:           uint8(kPrefix),
-								qrc:              rcQ,
-								trc:              rcT,
-							})
-						}
-					}
-				}
-				anchorCollector.flush(buffers)
-				kv.RecycleSearchResults(srs)
-				// <-tokensS
+				serialSearchResultsCh <- srs
 			}(iS, beginM, endM)
 		}
 		wg.Wait()
@@ -1990,6 +1959,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		}
 		idx.poolKmers.Put(_kmersR)
 		idx.poolLocses.Put(_locsesR)
+		if collectionErr != nil {
+			clearSeedSearchResults(seedResults)
+			return nil, fmt.Errorf("collect seed anchors: %w", collectionErr)
+		}
 
 		var nGenomeEntries int
 		// Collected anchors after genome/TaxId filtering, before deduplication/chaining.
@@ -2009,9 +1982,13 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				nKVSearchResults += stat.nKVSearchResults
 				nKVValues += stat.nKVValues
 			}
-			log.Debugf("%s (%s bp): seed collector (%d workers): k-mer matches=%s, matched k-mer locations=%s, anchors after filtering=%s, new genome entries=%s; tail after all searchers finished reading/decoding: %s; drain after all producers finished: %s",
+			resultLabel := "k-mer matches"
+			if parallelCollection {
+				resultLabel = "seed data batches" // a matching key can span batches
+			}
+			log.Debugf("%s (%s bp): seed collector (%d workers): %s=%s, matched k-mer locations=%s, anchors after filtering=%s, new genome entries=%s; tail after all searchers finished: %s; drain after all producers finished: %s",
 				query.seqID, humanize.Comma(int64(len(query.seq))),
-				nCollectorWorkers,
+				nCollectorWorkers, resultLabel,
 				humanize.Comma(int64(nKVSearchResults)), humanize.Comma(int64(nKVValues)),
 				humanize.Comma(int64(nAnchors)), humanize.Comma(int64(nGenomeEntries)),
 				collectionAfterSearchDuration, collectorDrainDuration)

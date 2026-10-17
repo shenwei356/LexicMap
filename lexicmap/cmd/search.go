@@ -561,22 +561,26 @@ Result ordering:
 						}
 						row = appendSearchResultRow(row[:0], queryID, len(q.seq), targets, id2name[r.BatchGenomeIndex], genomeName,
 							r, sd, c, _c, j, outputOptions, avgQual)
-						if moreColumns {
-							row = append(row, '\t')
-							row = append(row, cigar...)
-							row = append(row, '\t')
-							row = append(row, qseq...)
-							row = append(row, '\t')
-							row = append(row, tseq...)
-							row = append(row, '\t')
-							row = append(row, alignment...)
-						}
-						row = append(row, '\n')
-						if _, writeErr := outfh.Write(row); writeErr != nil {
-							checkError(writeErr)
+						if moreColumns && len(row)+len(cigar)+len(qseq)+len(tseq)+len(alignment)+5 > maxSearchOutputRowBytes {
+							checkError(writeLargeSearchResultRow(outfh, row, cigar, qseq, tseq, alignment))
+						} else {
+							if moreColumns {
+								row = append(row, '\t')
+								row = append(row, cigar...)
+								row = append(row, '\t')
+								row = append(row, qseq...)
+								row = append(row, '\t')
+								row = append(row, tseq...)
+								row = append(row, '\t')
+								row = append(row, alignment...)
+							}
+							row = append(row, '\n')
+							if _, writeErr := outfh.Write(row); writeErr != nil {
+								checkError(writeErr)
+							}
 						}
 						// Retain common rows, but release large alignment payload copies.
-						if cap(row) > 64<<10 {
+						if cap(row) > maxSearchOutputRowBytes {
 							row = nil
 						}
 

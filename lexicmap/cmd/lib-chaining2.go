@@ -167,9 +167,10 @@ type Chain2Result struct {
 	Evalue   float64
 }
 
-// Reset resets a Chain2Result
+// Reset clears all previous alignment metadata while retaining small output
+// buffers for reuse. A new pseudoalignment must not expose another hit's score.
 func (r *Chain2Result) Reset() {
-	r.NAnchors = 0
+	*r = Chain2Result{CIGAR: r.CIGAR[:0], QSeq: r.QSeq[:0], TSeq: r.TSeq[:0], Alignment: r.Alignment[:0]}
 }
 
 // Chain finds possible chain paths.
@@ -203,6 +204,7 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 			path.MatchedBases = slen
 			path.PIdent = 100
 			path.AlignedBasesQ = slen
+			path.AlignedBasesT = slen
 			path.NAnchors++
 			*paths = append(*paths, path)
 
