@@ -553,11 +553,7 @@ Output format:
 					decor.Name("", decor.WCSyncSpaceR),
 					decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
 				),
-				mpb.AppendDecorators(
-					decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-					decor.EwmaETA(decor.ET_STYLE_GO, 1024),
-					decor.OnComplete(decor.Name(""), ". done"),
-				),
+				mpb.AppendDecorators(progressTimeDecorators(1024)...),
 			)
 
 			chDuration = make(chan time.Duration, idx.opt.NumCPUs)

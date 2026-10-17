@@ -153,11 +153,7 @@ Attention:
 						decor.Name("", decor.WCSyncSpaceR),
 						decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
 					),
-					mpb.AppendDecorators(
-						decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-						decor.EwmaETA(decor.ET_STYLE_GO, 10),
-						decor.OnComplete(decor.Name(""), ". done"),
-					),
+					mpb.AppendDecorators(progressTimeDecorators(10)...),
 				)
 
 				chDuration = make(chan time.Duration, opt.NumCPUs)

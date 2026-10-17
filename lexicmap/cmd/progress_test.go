@@ -121,6 +121,12 @@ func TestDebugProgressRespectsQuiet(t *testing.T) {
 					if got, want := bytes.Contains(stderr.Bytes(), []byte(command.label)), mode.debug && !mode.quiet; got != want {
 						t.Fatalf("progress visible=%v, want %v; stderr:\n%s", got, want, stderr.String())
 					}
+					if got, want := bytes.Contains(stderr.Bytes(), []byte("done in ")), mode.debug && !mode.quiet; got != want {
+						t.Fatalf("completed duration visible=%v, want %v; stderr:\n%s", got, want, stderr.String())
+					}
+					if bytes.Contains(stderr.Bytes(), []byte(". done")) {
+						t.Fatalf("unexpected punctuation before done; stderr:\n%s", stderr.String())
+					}
 					if bytes.Count(stdout.Bytes(), []byte("\n")) < 2 {
 						t.Fatalf("fixture produced no results: %s", stdout.String())
 					}

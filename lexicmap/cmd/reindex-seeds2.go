@@ -116,11 +116,7 @@ func reindexSeeds2(dbDir string, partitions int, threshold uint64, opt *Options)
 				decor.Name("", decor.WCSyncSpaceR),
 				decor.CountersNoUnit("%d / %d", decor.WCSyncWidth),
 			),
-			mpb.AppendDecorators(
-				decor.Name("ETA: ", decor.WC{W: len("ETA: ")}),
-				decor.EwmaETA(decor.ET_STYLE_GO, 3),
-				decor.OnComplete(decor.Name(""), ". done"),
-			),
+			mpb.AppendDecorators(progressTimeDecorators(3)...),
 		)
 	}
 
