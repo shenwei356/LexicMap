@@ -26,9 +26,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"unsafe"
 
 	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
+	"github.com/twotwotwo/sorts"
 )
 
 // fragmentIndexTestSequence includes repeats and ambiguous bases in a short
@@ -97,6 +97,7 @@ func TestQueryFragmentIndexesConcurrentOwnership(t *testing.T) {
 	idx := compareTestIndex(t)
 	sequence := fragmentIndexTestSequence()
 	cache := newQueryFragmentIndexes(idx, 1, 8)
+	metadataCharge := cache.reserved.Load()
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Add(1)
@@ -108,9 +109,9 @@ func TestQueryFragmentIndexesConcurrentOwnership(t *testing.T) {
 				t.Error(err)
 				return
 			}
-			borrowed := cache.fragments[0].entries
-			if borrowed == nil || (len(cpr.entries) > 0 && &cpr.entries[0] == &borrowed[0]) {
-				t.Error("shared entries remained mutable comparator scratch")
+			borrowed := cache.fragments[0].tree
+			if borrowed == nil || cpr.compact != borrowed || cpr.tree != nil {
+				t.Error("comparator did not borrow the complete cached tree")
 			}
 			result, err := cpr.Compare(0, uint32(len(sequence)), sequence, len(sequence))
 			if err != nil || result == nil {
@@ -122,14 +123,14 @@ func TestQueryFragmentIndexesConcurrentOwnership(t *testing.T) {
 			if err := cpr.Index(sequence[:100]); err != nil {
 				t.Error(err)
 			}
-			if &cpr.entries[0] == &borrowed[0] {
-				t.Error("private indexing overwrote a borrowed index")
+			if cpr.compact != nil {
+				t.Error("private indexing reused a borrowed tree")
 			}
 			cpr.RecycleIndex()
 		}()
 	}
 	wg.Wait()
-	if want := int64(len(cache.fragments[0].entries)) * int64(unsafe.Sizeof(rtree.BatchEntry{})); idx.fragmentIndexBytes.Load() != want || cache.reserved.Load() != want {
+	if want := metadataCharge + cache.fragments[0].tree.RetainedBytes(); idx.fragmentIndexBytes.Load() != want || cache.reserved.Load() != want {
 		t.Fatal("concurrent users charged the same fragment more than once")
 	}
 	cache.close()
@@ -138,26 +139,32 @@ func TestQueryFragmentIndexesConcurrentOwnership(t *testing.T) {
 	}
 }
 
+// Reservations from concurrent queries share one limit, including slot metadata.
 func TestQueryFragmentIndexesShareBudgetAcrossQueries(t *testing.T) {
 	idx := compareTestIndex(t)
 	sequence := fragmentIndexTestSequence()
-	first := newQueryFragmentIndexes(idx, 1, 2)
+	probe := newQueryFragmentIndexes(idx, 1, 2)
+	metadata := probe.reserved.Load()
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
-	if err := first.index(cpr, 0, sequence); err != nil {
+	if err := probe.index(cpr, 0, sequence); err != nil {
 		t.Fatal(err)
 	}
-	charge := first.reserved.Load()
+	charge := probe.reserved.Load() - metadata
 	cpr.RecycleIndex()
 	idx.poolSeqComparator.Put(cpr)
-	first.close()
+	probe.close()
 
-	// Leave space for exactly one fragment among eight concurrent queries.
-	base := maxGenomeSearchFragmentIndexMemory - charge
-	idx.fragmentIndexBytes.Store(base)
+	// Leave room for one real tree after reserving all eight queries' slots.
 	caches := make([]*queryFragmentIndexes, 8)
-	var wg sync.WaitGroup
+	var metadataCharge int64
 	for i := range caches {
 		caches[i] = newQueryFragmentIndexes(idx, 1, 2)
+		metadataCharge += caches[i].reserved.Load()
+	}
+	base := idx.opt.MaxGenomeCacheMemory - metadataCharge - charge
+	idx.fragmentIndexBytes.Add(base)
+	var wg sync.WaitGroup
+	for _, c := range caches {
 		wg.Add(1)
 		go func(c *queryFragmentIndexes) {
 			defer wg.Done()
@@ -165,17 +172,25 @@ func TestQueryFragmentIndexesShareBudgetAcrossQueries(t *testing.T) {
 			defer idx.poolSeqComparator.Put(cpr)
 			if err := c.index(cpr, 0, sequence); err != nil {
 				t.Error(err)
+				return
 			}
-			cpr.RecycleIndex()
-		}(caches[i])
+			defer cpr.RecycleIndex()
+			result, err := cpr.Compare(0, uint32(len(sequence)), sequence, len(sequence))
+			if err != nil || result == nil {
+				t.Errorf("cached or fallback comparison: result=%v err=%v", result, err)
+			}
+			if result != nil {
+				RecycleSeqComparatorResult(result)
+			}
+		}(c)
 	}
 	wg.Wait()
-	if idx.fragmentIndexBytes.Load() != maxGenomeSearchFragmentIndexMemory {
-		t.Fatal("concurrent queries did not respect their shared budget")
+	if idx.fragmentIndexBytes.Load() != idx.opt.MaxGenomeCacheMemory {
+		t.Fatal("concurrent queries did not respect the shared budget")
 	}
 	retained := 0
 	for _, c := range caches {
-		if c.fragments[0].entries != nil {
+		if c.fragments[0].tree != nil {
 			retained++
 		}
 		c.close()
@@ -194,11 +209,11 @@ func BenchmarkQueryFragmentIndex(b *testing.B) {
 			defer idx.poolSeqComparator.Put(cpr)
 			var cache *queryFragmentIndexes
 			if variant != "original" {
+				if variant == "full" {
+					idx.fragmentIndexBytes.Store(idx.opt.MaxGenomeCacheMemory)
+				}
 				cache = newQueryFragmentIndexes(idx, 1, 2)
 				defer cache.close()
-				if variant == "full" {
-					idx.fragmentIndexBytes.Store(maxGenomeSearchFragmentIndexMemory)
-				}
 			}
 			if err := cache.index(cpr, 0, sequence); err != nil {
 				b.Fatal(err)
@@ -218,7 +233,7 @@ func BenchmarkQueryFragmentIndex(b *testing.B) {
 func TestQueryFragmentIndexesFullBudgetAndSingleton(t *testing.T) {
 	idx := compareTestIndex(t)
 	sequence := fragmentIndexTestSequence()
-	idx.fragmentIndexBytes.Store(maxGenomeSearchFragmentIndexMemory)
+	idx.fragmentIndexBytes.Store(idx.opt.MaxGenomeCacheMemory)
 	for _, subjects := range []int{1, 2} {
 		cache := newQueryFragmentIndexes(idx, 1, subjects)
 		for range 2 {
@@ -233,7 +248,7 @@ func TestQueryFragmentIndexesFullBudgetAndSingleton(t *testing.T) {
 			idx.poolSeqComparator.Put(cpr)
 		}
 		cache.close()
-		if idx.fragmentIndexBytes.Load() != maxGenomeSearchFragmentIndexMemory {
+		if idx.fragmentIndexBytes.Load() != idx.opt.MaxGenomeCacheMemory {
 			t.Fatal("fallback changed another query's budget")
 		}
 	}
@@ -242,6 +257,7 @@ func TestQueryFragmentIndexesFullBudgetAndSingleton(t *testing.T) {
 func TestQueryFragmentIndexesPublishError(t *testing.T) {
 	idx := compareTestIndex(t)
 	cache := newQueryFragmentIndexes(idx, 1, 2)
+	metadataCharge := cache.reserved.Load()
 	defer cache.close()
 	for range 2 {
 		cpr := idx.poolSeqComparator.Get().(*SeqComparator)
@@ -251,14 +267,15 @@ func TestQueryFragmentIndexesPublishError(t *testing.T) {
 		cpr.RecycleIndex()
 		idx.poolSeqComparator.Put(cpr)
 	}
-	if idx.fragmentIndexBytes.Load() != 0 {
-		t.Fatal("failed index consumed cache memory")
+	if idx.fragmentIndexBytes.Load() != metadataCharge || cache.fragments[0].tree != nil {
+		t.Fatal("failed index consumed tree cache memory")
 	}
 }
 
 func TestQueryFragmentIndexesEmptyFilteredEntries(t *testing.T) {
 	idx := compareTestIndex(t)
 	cache := newQueryFragmentIndexes(idx, 1, 2)
+	metadataCharge := cache.reserved.Load()
 	sequence := []byte(strings.Repeat("A", 1020))
 	for range 2 {
 		cpr := idx.poolSeqComparator.Get().(*SeqComparator)
@@ -272,8 +289,8 @@ func TestQueryFragmentIndexesEmptyFilteredEntries(t *testing.T) {
 		cpr.RecycleIndex()
 		idx.poolSeqComparator.Put(cpr)
 	}
-	if cache.fragments[0].entries == nil || len(cache.fragments[0].entries) != 0 || idx.fragmentIndexBytes.Load() != 0 {
-		t.Fatal("empty prepared entries were not shared without charging memory")
+	if cache.fragments[0].tree == nil || idx.fragmentIndexBytes.Load() != metadataCharge+cache.fragments[0].tree.RetainedBytes() {
+		t.Fatal("empty tree and its metadata were not fully charged")
 	}
 	cache.close()
 	cache.close()
@@ -284,9 +301,10 @@ func TestQueryFragmentIndexesEmptyFilteredEntries(t *testing.T) {
 
 func TestQueryFragmentIndexesBoundLargeQueryMetadata(t *testing.T) {
 	idx := compareTestIndex(t)
+	idx.opt.MaxGenomeCacheMemory = 1024
 	cache := newQueryFragmentIndexes(idx, 1<<20, 2)
 	defer cache.close()
-	if len(cache.fragments) != maxGenomeSearchFragmentIndexSlots {
+	if len(cache.fragments) != 0 || cache.reserved.Load() != 0 {
 		t.Fatal("long query allocated unbounded fragment metadata")
 	}
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
@@ -295,22 +313,22 @@ func TestQueryFragmentIndexesBoundLargeQueryMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cpr.RecycleIndex()
-	if cpr.tree == nil || idx.fragmentIndexBytes.Load() != 0 {
+	if cpr.tree == nil || (cpr.compact != nil) || idx.fragmentIndexBytes.Load() != cache.reserved.Load() {
 		t.Fatal("fragment beyond the cache slots did not use uncached indexing")
 	}
 }
 
-// A 10 Mb query must also reuse its final fragment, which exceeded the old
-// 8192-slot limit even when shared entry memory was available.
-func TestQueryFragmentIndexesCacheFinalFragmentOf10MbQuery(t *testing.T) {
-	const genomeLength = 10_000_000
+// A 20 Mb query must also reuse its final fragment, beyond the former 16384
+// slots, when the configured shared budget can accommodate it.
+func TestQueryFragmentIndexesCacheFinalFragmentOf20MbQuery(t *testing.T) {
+	const genomeLength = 20_000_000
 	const fragmentLength = 1020
 	fragments := (genomeLength + fragmentLength - 1) / fragmentLength
 	idx := compareTestIndex(t)
 	cache := newQueryFragmentIndexes(idx, fragments, 2)
 	defer cache.close()
 	if len(cache.fragments) != fragments {
-		t.Fatal("10 Mb query's final fragment has no cache slot")
+		t.Fatal("20 Mb query's final fragment has no cache slot")
 	}
 	sequence := fragmentIndexTestSequence()[:genomeLength%fragmentLength]
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
@@ -320,21 +338,131 @@ func TestQueryFragmentIndexesCacheFinalFragmentOf10MbQuery(t *testing.T) {
 	}
 	want := append([]rtree.BatchEntry(nil), cpr.entries...)
 	cpr.RecycleIndex()
-	charge := int64(len(want)) * int64(unsafe.Sizeof(rtree.BatchEntry{}))
+	metadataCharge := cache.reserved.Load()
 	for range 2 {
 		if err := cache.index(cpr, fragments-1, sequence); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(cache.fragments[fragments-1].entries, want) {
-			t.Fatal("10 Mb query's final fragment was not cached with the original entries")
+		var got []rtree.BatchEntry
+		cache.fragments[fragments-1].tree.Walk(func(key uint64, values []uint32) bool {
+			for _, value := range values {
+				got = append(got, rtree.BatchEntry{Key: key, Val: value})
+			}
+			return false
+		})
+		if !reflect.DeepEqual(got, want) {
+			t.Fatal("20 Mb query's final fragment was not cached with the original entries")
 		}
-		if cpr.tree == nil || cache.reserved.Load() != charge || idx.fragmentIndexBytes.Load() != charge {
+		charge := metadataCharge + cache.fragments[fragments-1].tree.RetainedBytes()
+		if cpr.compact != cache.fragments[fragments-1].tree || cpr.tree != nil || cache.reserved.Load() != charge || idx.fragmentIndexBytes.Load() != charge {
 			t.Fatal("reusing the final fragment changed its cache charge or failed to build a tree")
 		}
 		cpr.RecycleIndex()
 	}
 	cache.close()
 	if idx.fragmentIndexBytes.Load() != 0 {
-		t.Fatal("10 Mb query's cache did not release its shared budget")
+		t.Fatal("20 Mb query's cache did not release its shared budget")
+	}
+}
+
+// A tree that cannot fit after slot admission must remain private for both the
+// first builder and later callers. Closing releases only this cache's metadata.
+func TestQueryFragmentIndexesTreeBudgetFallback(t *testing.T) {
+	idx := compareTestIndex(t)
+	cache := newQueryFragmentIndexes(idx, 1, 2)
+	metadataCharge := cache.reserved.Load()
+	if metadataCharge == 0 || len(cache.fragments) != 1 {
+		t.Fatal("slot metadata was not charged")
+	}
+	base := idx.opt.MaxGenomeCacheMemory - metadataCharge - 1
+	idx.fragmentIndexBytes.Add(base)
+	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+	defer idx.poolSeqComparator.Put(cpr)
+	sequence := fragmentIndexTestSequence()
+	for range 2 {
+		if err := cache.index(cpr, 0, sequence); err != nil {
+			t.Fatal(err)
+		}
+		if cpr.tree == nil || (cpr.compact != nil) || cache.fragments[0].tree != nil || cache.reserved.Load() != metadataCharge {
+			t.Fatal("unfunded tree was retained")
+		}
+		result, err := cpr.Compare(0, uint32(len(sequence)), sequence, len(sequence))
+		if err != nil || result == nil {
+			t.Fatalf("private fallback failed: %v", err)
+		}
+		RecycleSeqComparatorResult(result)
+		cpr.RecycleIndex()
+	}
+	cache.close()
+	if idx.fragmentIndexBytes.Load() != base {
+		t.Fatal("fallback released another owner's charge")
+	}
+}
+
+// Configured budgets must control real tree admission, including zero and exact
+// boundaries. A larger budget admits bytes beyond the former fixed 1 GiB limit.
+func TestQueryFragmentIndexesConfiguredBudget(t *testing.T) {
+	sequence := fragmentIndexTestSequence()
+	probe := compareTestIndex(t)
+	cpr := probe.poolSeqComparator.Get().(*SeqComparator)
+	entries, err := cpr.collectIndexEntries(sequence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sorts.ByUint64(rtree.BatchEntries(entries))
+	charge := queryFragmentSlotBytes(1) + rtree.CompactTreeBytes(cpr.options.K, entries)
+	probe.poolSeqComparator.Put(cpr)
+	for _, tc := range []struct {
+		name         string
+		budget, used int64
+		cached       bool
+	}{
+		{"disabled", 0, 0, false},
+		{"one-byte-short", charge - 1, 0, false},
+		{"exact", charge, 0, true},
+		{"above-old-limit", 2 << 30, 1 << 30, true},
+		{"default-budget", DefaultIndexSearchingOptions.MaxGenomeCacheMemory, 1 << 30, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idx := compareTestIndex(t)
+			idx.opt.MaxGenomeCacheMemory = tc.budget
+			idx.fragmentIndexBytes.Store(tc.used)
+			cache := newQueryFragmentIndexes(idx, 1, 2)
+			cpr := idx.poolSeqComparator.Get().(*SeqComparator)
+			defer idx.poolSeqComparator.Put(cpr)
+			for range 2 {
+				if err := cache.index(cpr, 0, sequence); err != nil {
+					t.Fatal(err)
+				}
+				if (cpr.compact != nil) != tc.cached || (cpr.tree != nil) == tc.cached {
+					t.Fatal("wrong cached/private index selection")
+				}
+				cpr.RecycleIndex()
+			}
+			if idx.fragmentIndexBytes.Load() > tc.budget {
+				t.Fatal("configured budget exceeded")
+			}
+			if tc.cached && cache.reserved.Load() != charge {
+				t.Fatal("incomplete cache charge")
+			}
+			cache.close()
+			if idx.fragmentIndexBytes.Load() != tc.used {
+				t.Fatal("released another query's charge")
+			}
+		})
+	}
+}
+
+func TestQueryFragmentIndexesRejectNegativeBudget(t *testing.T) {
+	opt := DefaultIndexSearchingOptions
+	opt.MaxGenomeCacheMemory = -1
+	if err := CheckIndexSearchingOptions(&opt); err == nil {
+		t.Fatal("negative budget passed option validation")
+	}
+	for _, noIndex := range []bool{false, true} {
+		opt.NoIndex = noIndex
+		if idx, err := NewIndexSearcher("", &opt); idx != nil || err == nil || !strings.Contains(err.Error(), "MaxGenomeCacheMemory") {
+			t.Fatal("negative budget passed constructor validation")
+		}
 	}
 }

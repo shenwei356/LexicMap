@@ -87,6 +87,11 @@ Algorithm:
      Repeated sequences can produce many k-mer matches, so alignment time can differ
      substantially between genomes of similar sizes.
 
+     Query-fragment indexes are reused across candidate genomes within
+     --max-genome-cache-memory (default 4G, shared across concurrent queries;
+     0 disables reuse). Increase it for large or concurrent queries when memory
+     permits. Other search memory is additional.
+
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
      Experimental feature: Long-read FASTQ files are also accepted. For these inputs,
@@ -150,6 +155,12 @@ Output format:
 		timeStart := time.Now()
 
 		var err error
+		cacheBudgetStr := getFlagString(cmd, "max-genome-cache-memory")
+		cacheBudget, err := ParseByteSize(cacheBudgetStr)
+		checkError(err)
+		if cacheBudget < 0 || strings.HasPrefix(strings.TrimSpace(cacheBudgetStr), "-") {
+			checkError(fmt.Errorf("--max-genome-cache-memory must be nonnegative"))
+		}
 
 		// ---------------------------------------------------------------
 
@@ -405,6 +416,7 @@ Output format:
 			LoadTaxRank:             showSpeciesName,
 
 			MaxSubjectGenomeSize: maxSubjectGenomeSize,
+			MaxGenomeCacheMemory: cacheBudget,
 			SearchMaskCount:      nMasks,
 		}
 
@@ -798,6 +810,9 @@ func init() {
 
 	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries.`))
+
+	gsearchCmd.Flags().String("max-genome-cache-memory", "4G",
+		formatFlagUsage(`Memory budget for reusing query-fragment indexes across candidate genomes, shared by concurrent queries (supports K/M/G; 0 disables reuse). Other search memory is additional.`))
 
 	gsearchCmd.Flags().IntP("gc-interval", "", 4,
 		formatFlagUsage(`Force garbage collection every N queries (0 for disable). The value can't be too small.`))

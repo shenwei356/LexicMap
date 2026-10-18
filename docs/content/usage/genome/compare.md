@@ -24,6 +24,8 @@ Input:
 Attention:
   1. Repeated sequences can produce many k-mer matches, so alignment time can differ
      substantially between genomes of similar sizes.
+  2. Prepared genomes and fragment indexes are reused across pairs within
+     --max-genome-cache-memory. This budget does not limit total process memory.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -74,7 +76,7 @@ Flags:
                                          fine-alignment indexes across pairs (supports K/M/G; 0 disables
                                          reuse). Uses conservative cache accounting; active uncached
                                          comparisons, alignment scratch, readers, and runtime memory are
-                                         additional. (default "1G")
+                                         additional. (default "4G")
       --max-genome-size int              ► Maximum size of genomes to be considered (in MB) when
                                          reading genome from an index. (default 20)
       --max-open-files int               ► Maximum opened files. It mainly affects candidate genome

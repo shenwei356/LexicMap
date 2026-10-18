@@ -419,7 +419,7 @@ func alignQueryFragToSubjectSampled(
 	minQcov float64,
 	idx *Index,
 	fScoreAndEvalue *func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64),
-	queryIndexes *queryFragmentIndexes, // nil uses private, uncached query entries
+	queryIndexes *queryFragmentIndexes, // nil uses private, uncached query indexes
 	fragmentIndex int,
 ) (int, int, int, float64, float64, bool) {
 	// Since we only use forward strand query k-mers and subject is a single concatenated

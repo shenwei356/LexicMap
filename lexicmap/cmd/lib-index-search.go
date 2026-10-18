@@ -121,6 +121,10 @@ type IndexSearchingOptions struct {
 	LoadTaxRank             bool // need to load rank for outputing species names
 
 	// For searching genomes
+	// MaxGenomeCacheMemory bounds shared query-fragment indexes in genome search;
+	// zero disables reuse. Ordinary search does not use it. Genome compare owns
+	// a separate budget for prepared genomes and their lazy fragment indexes.
+	MaxGenomeCacheMemory int64
 	MaxSubjectGenomeSize int
 	SearchMaskCount      int // 0 uses all masks; otherwise it must be a power of 4
 
@@ -129,6 +133,9 @@ type IndexSearchingOptions struct {
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
+	if opt.MaxGenomeCacheMemory < 0 {
+		return fmt.Errorf("MaxGenomeCacheMemory must be nonnegative")
+	}
 	if opt.MaxSeedMemory < 0 || (opt.MaxSeedMemory > 0 && opt.MaxSeedMemory < seedAnchorBytes) {
 		return fmt.Errorf("MaxSeedMemory must be 0 or at least %d bytes", seedAnchorBytes)
 	}
@@ -148,8 +155,9 @@ func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
 }
 
 var DefaultIndexSearchingOptions = IndexSearchingOptions{
-	NumCPUs:      runtime.NumCPU(),
-	MaxOpenFiles: 512,
+	MaxGenomeCacheMemory: defaultGenomeSearchFragmentIndexMemory,
+	NumCPUs:              runtime.NumCPU(),
+	MaxOpenFiles:         512,
 
 	MaxSeedSearchingConcurrency: 1,
 
@@ -210,8 +218,9 @@ type Index struct {
 	poolSeqComparator *sync.Pool
 	poolChainers2     *sync.Pool
 
-	// fragmentIndexBytes bounds sorted genome-search fragment entries across
-	// concurrent queries. Subject data and private tree/alignment scratch are extra.
+	// fragmentIndexBytes charges compact indexes and slot metadata against
+	// opt.MaxGenomeCacheMemory across genome-search queries only. Ordinary search
+	// reuses its private tree, and genome compare charges compareGenomeCache.
 	fragmentIndexBytes atomic.Int64
 
 	alignmentPayloadBudget *alignmentPayloadBudget
@@ -292,6 +301,9 @@ func (idx *Index) initChainingResources() {
 // NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
 	outputLog := opt.Verbose || opt.Log2File
+	if opt.MaxGenomeCacheMemory < 0 {
+		return nil, fmt.Errorf("MaxGenomeCacheMemory must be nonnegative")
+	}
 	if opt.MaxSeedMemory < 0 || (opt.MaxSeedMemory > 0 && opt.MaxSeedMemory < seedAnchorBytes) {
 		return nil, fmt.Errorf("MaxSeedMemory must be 0 or at least %d bytes", seedAnchorBytes)
 	}
@@ -2064,7 +2076,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	cpr := idx.poolSeqComparator.Get().(*SeqComparator)
 	// recycle the previous tree data
 	cpr.RecycleIndex()
-	err = cpr.Index(s) // index the query sequence
+	// Build once for this query/subsequence, then share the read-only tree
+	// across candidate subjects below. No queryFragmentIndexes cache is needed.
+	err = cpr.Index(s)
 	if err != nil {
 		checkError(err)
 	}

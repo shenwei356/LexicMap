@@ -53,6 +53,11 @@ Algorithm:
      Repeated sequences can produce many k-mer matches, so alignment time can differ
      substantially between genomes of similar sizes.
 
+     Query-fragment indexes are reused across candidate genomes within
+     --max-genome-cache-memory (default 4G, shared across concurrent queries;
+     0 disables reuse). Increase it for large or concurrent queries when memory
+     permits. Other search memory is additional.
+
 Attention:
   1. Input should be (gzipped) FASTA records from files or stdin, with one genome per file.
      Experimental feature: Long-read FASTQ files are also accepted. For these inputs,
@@ -108,86 +113,94 @@ Usage:
   lexicmap genome search [flags] -d <index path> [query.fasta[.gz] ...] [-o result.tsv[.gz]]
 
 Flags:
-  -O, --OrthoANI                       ► Compute OrthoANI using reciprocal best hit of fragment pairs.
-                                       Type 'lexicmap genome search --help' for details.
-      --adjust-ani-by-quality          ► (Experimental feature) Estimate ANI corrected for Phred+33
-                                       sequencing errors in the aligned query regions and add the
-                                       ANIAdjusted column. FASTQ input is required. The raw ANI is still
-                                       used for filtering and sorting.
-      --align-band int                 ► Band size in backtracking the score matrix (pseudo alignment
-                                       phase). (default 100)
-      --align-max-gap int              ► Maximum gap in a HSP segment. (default 100)
-  -l, --align-min-match-len int        ► Minimum aligned length in a HSP segment. (default 30)
-  -i, --align-min-match-pident float   ► Minimum base identity (percentage) in a HSP segment. (default 70)
-      --debug                          ► Print debug information, including a progress bar.
-                                       (recommended when searching with one query).
-      --extra                          ► Show extra columns for -S/--only-genome-screening.
-      --frag-size int                  ► The size of non-overlap fragments cut for ANI computation.
-                                       (default 1020)
-      --gc-interval int                ► Force garbage collection every N queries (0 for disable). The
-                                       value can't be too small. (default 4)
-  -G, --genome2taxid string            ► Two-column tabular file for mapping genome ID to TaxId,
-                                       needed for filtering results with TaxIds. Genome IDs in the index
-                                       can be exported via "lexicmap utils genomes -d db.lmi/ | csvtk
-                                       cut -t -f 1 | csvtk uniq -Ut". (default: <taxdump path>/taxid.map)
-  -h, --help                           help for search
-  -d, --index string                   ► Index directory created by "lexicmap index".
-  -k, --keep-genomes-without-taxid     ► Keep genome hits without TaxId, i.e., those without TaxId in
-                                       the --genome2taxid file.
-      --kmer-scale int                 ► Using 1/scale of k-mers for seeding (default mode) or
-                                       fragment comparison (OrthoANI mode). Available values: 2, 4, 8.
-                                       (default 4)
-  -w, --load-whole-seeds               ► Load the whole seed data into memory for faster seed
-                                       matching. It will consume a lot of RAM.
-  -m, --masks int                      ► Only use seed data of N masks for genome
-                                       prefiltering/screening. It should be 0 (for all masks in the
-                                       index) or power of 4 (needs to be >= 256, e.g., 256, 1024, 4096,
-                                       16384). (default 1024)
-  -e, --max-evalue float               ► Maximum evalue of a HSP segment. (default 1e-15)
-      --max-open-files int             ► Maximum opened files. It mainly affects candidate genome
-                                       extraction. Increase this value if you have hundreds of genome
-                                       batches or have multiple queries, and do not forgot to set a
-                                       bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
-  -J, --max-query-conc int             ► Maximum number of concurrent queries. (default 8)
-      --max-subject-genome-size int    ► Maximum size of subject genomes to be considered (in MB).
-                                       (default 20)
-  -F, --min-af float                   ► Only output results where one genome has aligned fraction >
-                                       than this value (percentage). (default 15)
-  -I, --min-ani float                  ► Only output results where one genome has ANI > than this
-                                       value (percentage). (default 70)
-  -q, --min-qcov-per-hsp float         ► Minimum query coverage (percentage) per HSP. (default 30)
-  -S, --only-genome-screening          ► Only perform genome screening, no ANI computation.
-  -o, --out-file string                ► Out file, supports a ".gz" suffix ("-" for stdout). (default "-")
-      --ref-name-regexp string         ► Regular expression (must contains "(" and ")") for extracting
-                                       the reference name from the input filename. Attention: use double
-                                       quotation marks for patterns containing commas, e.g., -p
-                                       '"A{2,}"'. (default
-                                       "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
-  -p, --seed-min-prefix int            ► Minimum prefix length of matched seeds in the genome
-                                       filtering phase. (default 21)
-  -g, --show-genome-name               ► Show the taxonomic name of subject genome in field 'sname'.
-                                       Flags -T/--taxdump and -G/--genome2taxid are needed.
-  -s, --show-species-name              ► Show the species name of subject genome in field 'sname'.
-                                       Flags -T/--taxdump and -G/--genome2taxid are needed.
-  -T, --taxdump string                 ► Directory containing taxdump files (nodes.dmp, names.dmp,
-                                       etc.), needed for filtering results with TaxIds. For other
-                                       non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to
-                                       create taxdump files. (default: <index path>/taxdump)
-      --taxid-file string              ► TaxIds from a file for filtering results, where the taxids
-                                       are equal to or are the children of the given taxids. Negative
-                                       values are allowed as a black list.
-  -t, --taxids strings                 ► TaxIds(s) for filtering results, where the taxids are equal
-                                       to or are the children of the given taxids. Negative values are
-                                       allowed as a black list.
-  -N, --top-n-chains int               ► Keep the top N chains in a genome for the query (0 for all)
-                                       in the chaining phase. Value 1 is not recommended as the best
-                                       chaining result does not always bring the best alignment. (default 5)
-  -n, --top-n-genomes int              ► Keep the top N screened genomes, including all ties at the
-                                       cutoff score, then all matches with the top N distinct ANI
-                                       percentages as printed with four decimal places (0 for all). May
-                                       return more than N genomes. (default 10)
-      --windows int                    ► The number of windows in lexichash masking, for genome
-                                       screening (1 is sufficient). (default 1)
+  -O, --OrthoANI                         ► Compute OrthoANI using reciprocal best hit of fragment
+                                         pairs. Type 'lexicmap genome search --help' for details.
+      --adjust-ani-by-quality            ► (Experimental feature) Estimate ANI corrected for Phred+33
+                                         sequencing errors in the aligned query regions and add the
+                                         ANIAdjusted column. FASTQ input is required. The raw ANI is
+                                         still used for filtering and sorting.
+      --align-band int                   ► Band size in backtracking the score matrix (pseudo
+                                         alignment phase). (default 100)
+      --align-max-gap int                ► Maximum gap in a HSP segment. (default 100)
+  -l, --align-min-match-len int          ► Minimum aligned length in a HSP segment. (default 30)
+  -i, --align-min-match-pident float     ► Minimum base identity (percentage) in a HSP segment.
+                                         (default 70)
+      --debug                            ► Print debug information, including a progress bar.
+                                         (recommended when searching with one query).
+      --extra                            ► Show extra columns for -S/--only-genome-screening.
+      --frag-size int                    ► The size of non-overlap fragments cut for ANI computation.
+                                         (default 1020)
+      --gc-interval int                  ► Force garbage collection every N queries (0 for disable).
+                                         The value can't be too small. (default 4)
+  -G, --genome2taxid string              ► Two-column tabular file for mapping genome ID to TaxId,
+                                         needed for filtering results with TaxIds. Genome IDs in the
+                                         index can be exported via "lexicmap utils genomes -d db.lmi/ |
+                                         csvtk cut -t -f 1 | csvtk uniq -Ut". (default: <taxdump
+                                         path>/taxid.map)
+  -h, --help                             help for search
+  -d, --index string                     ► Index directory created by "lexicmap index".
+  -k, --keep-genomes-without-taxid       ► Keep genome hits without TaxId, i.e., those without TaxId
+                                         in the --genome2taxid file.
+      --kmer-scale int                   ► Using 1/scale of k-mers for seeding (default mode) or
+                                         fragment comparison (OrthoANI mode). Available values: 2, 4, 8.
+                                         (default 4)
+  -w, --load-whole-seeds                 ► Load the whole seed data into memory for faster seed
+                                         matching. It will consume a lot of RAM.
+  -m, --masks int                        ► Only use seed data of N masks for genome
+                                         prefiltering/screening. It should be 0 (for all masks in the
+                                         index) or power of 4 (needs to be >= 256, e.g., 256, 1024,
+                                         4096, 16384). (default 1024)
+  -e, --max-evalue float                 ► Maximum evalue of a HSP segment. (default 1e-15)
+      --max-genome-cache-memory string   ► Memory budget for reusing query-fragment indexes across
+                                         candidate genomes, shared by concurrent queries (supports
+                                         K/M/G; 0 disables reuse). Other search memory is additional.
+                                         (default "4G")
+      --max-open-files int               ► Maximum opened files. It mainly affects candidate genome
+                                         extraction. Increase this value if you have hundreds of genome
+                                         batches or have multiple queries, and do not forgot to set a
+                                         bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
+  -J, --max-query-conc int               ► Maximum number of concurrent queries. (default 8)
+      --max-subject-genome-size int      ► Maximum size of subject genomes to be considered (in MB).
+                                         (default 20)
+  -F, --min-af float                     ► Only output results where one genome has aligned fraction >
+                                         than this value (percentage). (default 15)
+  -I, --min-ani float                    ► Only output results where one genome has ANI > than this
+                                         value (percentage). (default 70)
+  -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP. (default 30)
+  -S, --only-genome-screening            ► Only perform genome screening, no ANI computation.
+  -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
+                                         (default "-")
+      --ref-name-regexp string           ► Regular expression (must contains "(" and ")") for
+                                         extracting the reference name from the input filename.
+                                         Attention: use double quotation marks for patterns containing
+                                         commas, e.g., -p '"A{2,}"'. (default
+                                         "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
+  -p, --seed-min-prefix int              ► Minimum prefix length of matched seeds in the genome
+                                         filtering phase. (default 21)
+  -g, --show-genome-name                 ► Show the taxonomic name of subject genome in field 'sname'.
+                                         Flags -T/--taxdump and -G/--genome2taxid are needed.
+  -s, --show-species-name                ► Show the species name of subject genome in field 'sname'.
+                                         Flags -T/--taxdump and -G/--genome2taxid are needed.
+  -T, --taxdump string                   ► Directory containing taxdump files (nodes.dmp, names.dmp,
+                                         etc.), needed for filtering results with TaxIds. For other
+                                         non-NCBI taxonomy data, please use 'taxonkit create-taxdump' to
+                                         create taxdump files. (default: <index path>/taxdump)
+      --taxid-file string                ► TaxIds from a file for filtering results, where the taxids
+                                         are equal to or are the children of the given taxids. Negative
+                                         values are allowed as a black list.
+  -t, --taxids strings                   ► TaxIds(s) for filtering results, where the taxids are equal
+                                         to or are the children of the given taxids. Negative values are
+                                         allowed as a black list.
+  -N, --top-n-chains int                 ► Keep the top N chains in a genome for the query (0 for all)
+                                         in the chaining phase. Value 1 is not recommended as the best
+                                         chaining result does not always bring the best alignment.
+                                         (default 5)
+  -n, --top-n-genomes int                ► Keep the top N screened genomes, including all ties at the
+                                         cutoff score, then all matches with the top N distinct ANI
+                                         percentages as printed with four decimal places (0 for all).
+                                         May return more than N genomes. (default 10)
+      --windows int                      ► The number of windows in lexichash masking, for genome
+                                         screening (1 is sufficient). (default 1)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

@@ -33,6 +33,9 @@ import (
 // preparedCompareGenome owns immutable data shared by concurrent genome pairs.
 // It has no alignment results; fragments borrow genome sequences. Cache-owned
 // buffers are dropped on eviction instead of being retained in sync.Pool.
+// For pairs A-B and A-C, A's query-fragment indexes can be built once and shared.
+// Reuse avoids repeated preparation, but retaining several prepared genomes
+// can increase peak memory versus uncached pairs, so all data shares a budget.
 type preparedCompareGenome struct {
 	genome    *GQuery               // sequences and metadata, never a pair's result
 	fragments *[][]byte             // contig-aware fragments
@@ -41,7 +44,7 @@ type preparedCompareGenome struct {
 	sketch    *subjectSketch        // ordinary ANI subject lookup
 	entries   []rtree.BatchEntry    // sorted canonical entries in OrthoANI mode
 	bytes     int64                 // retained charge; lazy growth guarded by cache.mu
-	indexes   *queryFragmentIndexes // lazy fine-alignment entries, owned by this cache entry
+	indexes   *queryFragmentIndexes // lazy immutable fine-alignment indexes, owned by this cache entry
 }
 
 // prepareCompareGenome prepares both roles once using fixed command options.
@@ -132,13 +135,15 @@ type compareGenomeCacheEntry struct {
 // compareGenomeCache shares preparation without waiting for pinned entries to
 // become evictable. A miss that cannot fit runs uncached, avoiding deadlocks when
 // a pair needs two genomes larger than the available budget.
+// This is genome compare's --max-genome-cache-memory budget, independent of
+// IndexSearchingOptions.MaxGenomeCacheMemory used by genome search.
 type compareGenomeCache struct {
 	mu                   sync.Mutex
 	budget, used, peak   int64
 	entries              map[string]*compareGenomeCacheEntry
 	idle                 list.List // most recently released first
 	load                 func(string) (*preparedCompareGenome, error)
-	cacheFragmentIndexes bool // enabled only when more than one pair can reuse entries
+	cacheFragmentIndexes bool // enabled only when more than one pair can reuse fine indexes
 	hits, loads          uint64
 	evictions            uint64
 }
@@ -183,11 +188,11 @@ func (c *compareGenomeCache) acquire(key string) *compareGenomeCacheEntry {
 			e.retained = true
 			c.used += value.bytes
 			// Slot metadata is bounded and charged too. Only retained genomes
-			// cache fine entries; oversized or pinned-budget misses run uncached.
+			// cache fine indexes; oversized or pinned-budget misses run uncached.
 			if c.cacheFragmentIndexes && value.fragments != nil {
-				n := min(len(*value.fragments), maxGenomeSearchFragmentIndexSlots)
-				charge := int64(n)*int64(unsafe.Sizeof(queryFragmentIndex{})) + int64(unsafe.Sizeof(queryFragmentIndexes{}))
-				if charge <= c.budget-c.used {
+				n := len(*value.fragments)
+				charge := queryFragmentSlotBytes(n)
+				if charge > 0 && charge <= c.budget-c.used {
 					value.indexes = &queryFragmentIndexes{fragments: make([]queryFragmentIndex, n), compareCache: c, compareEntry: e}
 					value.bytes += charge
 					c.used += charge

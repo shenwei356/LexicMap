@@ -29,39 +29,44 @@ import (
 	"github.com/twotwotwo/sorts"
 )
 
-// This limit covers cached sorted entries across all active genome-search
-// queries on an Index. Entries are allocated on demand; at the default fragment
-// length, a fully cached 10 Mb query needs about 296 MiB. Tree/chaining scratch,
-// subjects, and query-local slot metadata are additional, so this is not an RSS cap.
-const maxGenomeSearchFragmentIndexMemory int64 = 1 << 30
+// The default is configurable through genome search --max-genome-cache-memory.
+// It covers complete cached trees and slot metadata across all active queries
+// on an Index; private scratch, subjects, pools and runtime memory are extra.
+// Genome compare uses its separate compareGenomeCache budget, not this default.
+const defaultGenomeSearchFragmentIndexMemory int64 = 4 << 30
 
-// Bound per-query slot metadata too, including chromosome-sized queries. These
-// slots cover about 16.7 Mb at the default fragment length, allowing 10 Mb queries
-// to cache their final fragments. Fragments beyond the limit use uncached indexing.
-const maxGenomeSearchFragmentIndexSlots = 16384
-
-// queryFragmentIndex publishes one immutable sorted entry slice or indexing
-// error. A nil slice after once completes selects the uncached Index path.
+// queryFragmentIndex publishes one immutable tree or indexing error. A nil tree
+// after once completes selects private indexing. Published trees are never pooled.
 type queryFragmentIndex struct {
-	once    sync.Once
-	entries []rtree.BatchEntry
-	err     error
+	once sync.Once
+	tree *rtree.CompactTree
+	err  error
 }
 
 // queryFragmentIndexes prepares only fragments that reach fine alignment.
-// Entries are shared until all subjects finish; each comparator builds its own
-// mutable tree. This preserves existing radix lookup and alignment behavior.
+// Keys, values, and prefix directories are shared until all subjects finish;
+// alignment scratch stays private to each comparator.
+// In genome search, each query owns its indexes: they are never shared between
+// queries and are released after its subjects finish. Laziness avoids building
+// fragments that never reach fine alignment; reuse needs no LRU or eviction.
+// One query's indexes do not multiply with its subject count, but concurrent
+// queries retain separate sets. The shared byte budget bounds their combined
+// retention; it does not preallocate memory or limit total process RSS.
+// Ordinary search already builds one private query tree outside its subject
+// loop, so it never uses this cache. The former entries-only cache saved k-mer
+// collection/sorting, but rebuilt the tree and prefix directory for each subject
+// even on a cache hit. Sharing CompactTree removes those repeated builds.
 type queryFragmentIndexes struct {
 	idx       *Index
 	fragments []queryFragmentIndex
-	reserved  atomic.Int64 // shared entry bytes released after all subjects finish
-	// Genome comparisons charge lazy entries to the pinned prepared genome.
+	reserved  atomic.Int64 // shared tree and slot bytes released after all subjects finish
+	// Genome comparisons charge lazy trees to the pinned prepared genome.
 	// Its owner releases the charge on eviction, rather than after one pair.
 	compareCache *compareGenomeCache
 	compareEntry *compareGenomeCacheEntry
 }
 
-// reserve charges entries before allocating them. A full budget always falls
+// reserve charges exact-size arrays before allocation. A full budget falls
 // back to private indexing, so pinned genomes never wait for cache space.
 func (c *queryFragmentIndexes) reserve(n int64) bool {
 	if c.compareCache != nil {
@@ -69,7 +74,7 @@ func (c *queryFragmentIndexes) reserve(n int64) bool {
 	}
 	for {
 		used := c.idx.fragmentIndexBytes.Load()
-		if n > maxGenomeSearchFragmentIndexMemory-used {
+		if n > c.idx.opt.MaxGenomeCacheMemory-used {
 			return false
 		}
 		if c.idx.fragmentIndexBytes.CompareAndSwap(used, used+n) {
@@ -82,14 +87,32 @@ func (c *queryFragmentIndexes) reserve(n int64) bool {
 // newQueryFragmentIndexes avoids cache preparation when only one subject exists.
 func newQueryFragmentIndexes(idx *Index, fragments, subjects int) *queryFragmentIndexes {
 	c := &queryFragmentIndexes{idx: idx}
-	if subjects > 1 {
-		c.fragments = make([]queryFragmentIndex, min(fragments, maxGenomeSearchFragmentIndexSlots))
+	if subjects > 1 && fragments > 0 {
+		// Charge every slot before allocating; no fixed fragment-count cutoff
+		// should prevent a larger configured budget from covering long queries.
+		charge := queryFragmentSlotBytes(fragments)
+		if charge > 0 && c.reserve(charge) {
+			c.fragments = make([]queryFragmentIndex, fragments)
+		}
 	}
 	return c
 }
 
-// index builds private trees from shared sorted entries when available. A nil
-// receiver or full cache uses the original Index path without waiting for memory.
+// queryFragmentSlotBytes returns -1 for impossible metadata sizes so callers
+// reject them without wrapping the charge or attempting a huge allocation.
+func queryFragmentSlotBytes(n int) int64 {
+	const maxCharge = int64(1<<63 - 1)
+	object := int64(unsafe.Sizeof(queryFragmentIndexes{}))
+	slot := int64(unsafe.Sizeof(queryFragmentIndex{}))
+	if int64(n) > (maxCharge-object)/slot {
+		return -1
+	}
+	return object + int64(n)*slot
+}
+
+// index borrows a complete immutable tree when available. A nil receiver or full
+// cache uses the original Index path without waiting for memory. The caller must
+// RecycleIndex before reusing the comparator or releasing the cache owner.
 func (c *queryFragmentIndexes) index(cpr *SeqComparator, fragment int, sequence []byte) error {
 	if c == nil || fragment >= len(c.fragments) {
 		return cpr.Index(sequence)
@@ -104,33 +127,30 @@ func (c *queryFragmentIndexes) index(cpr *SeqComparator, fragment int, sequence 
 			return
 		}
 		sorts.ByUint64(rtree.BatchEntries(entries))
-		n := int64(len(entries)) * int64(unsafe.Sizeof(rtree.BatchEntry{}))
-		if c.reserve(n) {
-			// Exact-size ownership avoids retaining the comparator's larger capacity.
-			slot.entries = make([]rtree.BatchEntry, len(entries))
-			copy(slot.entries, entries)
+		if c.reserve(rtree.CompactTreeBytes(cpr.options.K, entries)) {
+			slot.tree = rtree.NewCompactTree(cpr.options.K, entries)
 		}
 	})
 	if slot.err != nil {
 		return slot.err
 	}
-	if slot.entries != nil {
-		cpr.indexSortedEntries(slot.entries)
+	if slot.tree != nil {
+		cpr.compact = slot.tree
 		return nil
 	}
 	if built {
-		// The cache-full builder already filtered and sorted its private entries.
+		// Reuse the first caller's sorted scratch on a cache miss.
 		cpr.indexSortedEntries(cpr.entries)
 		return nil
 	}
 	return cpr.Index(sequence)
 }
 
-// close drops shared arrays after every subject has finished. Cached entries
-// are not pooled, so later queries do not keep them alive through sync.Pool.
+// close drops shared trees after every subject has finished and detached its
+// comparator. Never recycle them: pools must not outlive the released charge.
 func (c *queryFragmentIndexes) close() {
 	for i := range c.fragments {
-		c.fragments[i].entries = nil
+		c.fragments[i].tree = nil
 	}
 	c.fragments = nil
 	c.idx.fragmentIndexBytes.Add(-c.reserved.Swap(0))

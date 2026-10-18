@@ -28,9 +28,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"unsafe"
-
-	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 )
 
 func TestCompareCacheEvictionAndPinnedFallback(t *testing.T) {
@@ -155,7 +152,7 @@ func TestCompareCacheLRUOrder(t *testing.T) {
 // compareTestIndex uses the CLI's alignment settings without reading an index.
 func compareTestIndex(t testing.TB) *Index {
 	t.Helper()
-	idx, err := NewGenomeComparator("", &IndexSearchingOptions{NoIndex: true, ExtendLength2: 50, MaxEvalue: 1e-15})
+	idx, err := NewGenomeComparator("", &IndexSearchingOptions{NoIndex: true, ExtendLength2: 50, MaxEvalue: 1e-15, MaxGenomeCacheMemory: defaultGenomeSearchFragmentIndexMemory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,6 +282,8 @@ func TestPreparedGenomeComparisonMatchesUncached(t *testing.T) {
 
 func TestCompareFineIndexCacheBudgetAndOwnership(t *testing.T) {
 	idx := compareTestIndex(t)
+	// Disabling genome-search reuse must not affect compare's own budget.
+	idx.opt.MaxGenomeCacheMemory = 0
 	sequence := fragmentIndexTestSequence()
 	fragments := [][]byte{sequence}
 	const budget = 1 << 20
@@ -323,7 +322,7 @@ func TestCompareFineIndexCacheBudgetAndOwnership(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	charge := int64(len(indexes.fragments[0].entries)) * int64(unsafe.Sizeof(rtree.BatchEntry{}))
+	charge := indexes.fragments[0].tree.RetainedBytes()
 	if charge == 0 || c.used != metadataCharge+charge || e.value.bytes != c.used || c.peak > budget {
 		t.Fatalf("lazy charge: used=%d metadata=%d entries=%d", c.used, metadataCharge, charge)
 	}
@@ -376,7 +375,7 @@ func TestCompareFineIndexCacheFullFallsBack(t *testing.T) {
 		cpr.RecycleIndex()
 		idx.poolSeqComparator.Put(cpr)
 	}
-	if c.used != before || indexes.fragments[0].entries != nil {
+	if c.used != before || indexes.fragments[0].tree != nil {
 		t.Fatal("full cache retained uncharged entries")
 	}
 }

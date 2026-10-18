@@ -75,8 +75,13 @@ type SeqComparator struct {
 	// chainer *Chainer2
 	poolChainers *sync.Pool
 
-	// a prefix tree for matching k-mers
+	// tree is private to this comparator. Ordinary search builds it once per
+	// query/subsequence and reuses it across subjects; genome alignment uses it
+	// for singleton comparisons or when the shared fragment cache cannot admit it.
 	tree *rtree.Tree
+	// compact is borrowed only by genome search/compare from queryFragmentIndexes;
+	// ordinary search leaves it nil. Never pool or modify this shared index.
+	compact *rtree.CompactTree
 
 	// reusable buffer for bulk-loading the tree
 	entries []rtree.BatchEntry
@@ -105,6 +110,7 @@ func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *S
 }
 
 // Index initializes the SeqComparator with the query sequence.
+// Call RecycleIndex before replacing an existing index.
 func (cpr *SeqComparator) Index(s []byte) error {
 	entries, err := cpr.collectIndexEntries(s)
 	if err != nil {
@@ -159,7 +165,7 @@ func (cpr *SeqComparator) collectIndexEntries(s []byte) ([]rtree.BatchEntry, err
 	return entries, nil
 }
 
-// indexSortedEntries builds private tree scratch from immutable cached entries.
+// indexSortedEntries builds private tree scratch from sorted entries.
 func (cpr *SeqComparator) indexSortedEntries(entries []rtree.BatchEntry) {
 	t := rtree.NewTree(cpr.options.K)
 	t.InsertSortedBatch(entries)
@@ -408,8 +414,13 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 		}
 
 		targetPos = iter.Index()
-		t.SearchEach(kmer, m, appendPositive)
-		t.SearchEach(kmerRC, m, appendNegative)
+		if cpr.compact != nil {
+			cpr.compact.SearchEach(kmer, m, appendPositive)
+			cpr.compact.SearchEach(kmerRC, m, appendNegative)
+		} else {
+			t.SearchEach(kmer, m, appendPositive)
+			t.SearchEach(kmerRC, m, appendNegative)
+		}
 	}
 
 	if len(*subs) < 1 { // no way, no matches in the pseudo alignment
@@ -492,6 +503,7 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 // RecycleIndex recycles the Index (tree data).
 // Please call this if you do not need the comparator anymore.
 func (cpr *SeqComparator) RecycleIndex() {
+	cpr.compact = nil
 	if cpr.tree != nil {
 		rtree.RecycleTree(cpr.tree)
 		cpr.tree = nil
