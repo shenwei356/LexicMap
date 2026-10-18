@@ -224,6 +224,8 @@ type Index struct {
 	poolGenomeRdrs []chan *genome.Reader
 	hasGenomeRdrs  bool
 
+	genomeReaderIndexes sync.Map // batch -> *sharedGenomeReaderIndex; owned until Close
+
 	BatchGenomeIndex2GenomeID map[uint64][]byte
 
 	// genome chunks
@@ -791,8 +793,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 				tokens <- 1
 				wg.Add(1)
 				go func(i int) {
-					fileGenomes := filepath.Join(outDir, DirGenomes, batchDir(i), FileGenomes)
-					rdr, err := genome.NewReader(fileGenomes)
+					rdr, err := idx.newGenomeReader(i)
 					if err != nil {
 						checkError(fmt.Errorf("failed to create genome reader: %s", err))
 					}
@@ -886,8 +887,7 @@ func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, err
 			go func(batch int) {
 				defer wg.Done()
 				defer func() { <-tokens }()
-				file := filepath.Join(outDir, DirGenomes, batchDir(batch), FileGenomes)
-				rdr, readErr := genome.NewReader(file)
+				rdr, readErr := idx.newGenomeReader(batch)
 				if readErr != nil {
 					errCh <- fmt.Errorf("failed to create genome reader: %s", readErr)
 					return
@@ -945,6 +945,7 @@ func (idx *Index) Close() error {
 		}
 		wg.Wait()
 	}
+	idx.genomeReaderIndexes.Clear()
 	return _err
 }
 
@@ -958,7 +959,7 @@ func (idx *Index) acquireGenomeReader(batch int) (*genome.Reader, error) {
 
 	idx.openFileTokens <- 1
 	file := filepath.Join(idx.path, DirGenomes, batchDir(batch), FileGenomes)
-	rdr, err := genome.NewReader(file)
+	rdr, err := idx.newGenomeReader(batch)
 	if err != nil {
 		<-idx.openFileTokens
 		return nil, fmt.Errorf("failed to open genome data file %s: %w", file, err)
@@ -2161,8 +2162,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			rdr = <-idx.poolGenomeRdrs[refBatch]
 		} else {
 			idx.openFileTokens <- 1 // genome file
-			fileGenome := filepath.Join(idx.path, DirGenomes, batchDir(refBatch), FileGenomes)
-			rdr, err = genome.NewReader(fileGenome)
+			rdr, err = idx.newGenomeReader(refBatch)
 			if err != nil {
 				checkError(fmt.Errorf("failed to read genome data file: %s", err))
 			}
@@ -2171,7 +2171,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		qlen := len(s)
 		var rc bool
 		var qb, qe, tb, te, tBegin, tEnd, qBegin, qEnd int
-		var l, iSeq, iSeqPre, tPosOffsetBegin, tPosOffsetEnd int
+		var iSeq, iSeqPre, tPosOffsetBegin int
 		var _begin, _end int
 
 		sds := poolSimilarityDetails.Get().(*[]*SimilarityDetail) // HSPs in a reference
@@ -2188,6 +2188,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		var key alignmentKey
 
 		var tSeq *genome.Genome
+		var contigs contigLookup // reused across all chains in this reference
 
 		// check sequences from all chains
 		for _, region := range r.chainRegions { // for each lexichash chain
@@ -2260,9 +2261,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				// get the index of target seq according to the position
 
 				iSeq = 0
-				tPosOffsetBegin = 0 // start position of current sequence
-				tPosOffsetEnd = 0   // end pososition of current sequence
-				var j int
+				tPosOffsetBegin = 0   // start position of current sequence
 				if tSeq.NumSeqs > 1 { // just for genomes with multiple contigs
 					iSeq = -1
 					// ===========aaaaaaa================================aaaaaaa=======
@@ -2291,26 +2290,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 					// fmt.Printf("  try %d: %d-%d\n", j, _begin, _end)
 
-					for j, l = range tSeq.SeqSizes {
-						// end position of current contig
-						tPosOffsetEnd += l - 1 // length sum of 0..j
-
-						// fmt.Printf("  seq %d: %d-%d\n", j, tPosOffsetBegin, tPosOffsetEnd)
-
-						// +K -K is because chained region might have little overlaps with contig intervals
-						if _begin+K >= tPosOffsetBegin && _end-K <= tPosOffsetEnd {
-							iSeq = j
-							// fmt.Printf("    iSeq: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d, seqlen: %d\n",
-							// 	iSeq, tPosOffsetBegin, tPosOffsetEnd, l)
-							break
-						} else if _end < tPosOffsetBegin { // no need to find
-							iSeq = -1
-							break
-						}
-
-						tPosOffsetEnd += contigInterval + 1
-						tPosOffsetBegin = tPosOffsetEnd // begin position of the next contig
-					}
+					iSeq, tPosOffsetBegin, _ = contigs.locate(
+						tSeq.SeqSizes, contigInterval, _begin, _end, K)
 
 					// it will not happen now.
 					if iSeq < 0 { // this means the aligned sequence crosses two sequences.

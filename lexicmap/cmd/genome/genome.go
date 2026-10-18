@@ -30,7 +30,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
@@ -369,7 +368,7 @@ type Reader struct {
 	batch uint32
 	nSeqs uint32
 
-	Index []uint64 // index data of all genome records, (offset, nbases)
+	Index []uint64 // read-only record directory (offset, nbases); may be shared by readers
 
 	buf []byte
 
@@ -393,92 +392,11 @@ func resizeByteSlice(s []byte, n int) []byte {
 // NewReader returns a reader from a genome file.
 // The reader is recycled after calling Close().
 func NewReader(file string) (*Reader, error) {
-	if strings.HasSuffix(file, GenomeIndexFileExt) {
-		return nil, fmt.Errorf("genome file, not the index file should be given")
-	}
-
-	// ------------ genome index file ----------------
-
-	fileIndex := filepath.Clean(file) + GenomeIndexFileExt
-	var err error
-	r := poolReader.Get().(*Reader)
-
-	fh, err := os.Open(fileIndex)
+	index, err := ReadIndex(file)
 	if err != nil {
 		return nil, err
 	}
-	bfh := bufio.NewReaderSize(fh, 64<<10) // 64KB buffer
-
-	r.buf = resizeByteSlice(r.buf, 24)
-	buf := r.buf
-
-	// check the magic number
-	n, err := io.ReadFull(bfh, buf[:8])
-	if err != nil {
-		return nil, err
-	}
-	if n < 8 {
-		return nil, ErrBrokenFile
-	}
-	same := true
-	for i := 0; i < 8; i++ {
-		if MagicIdx[i] != buf[i] {
-			same = false
-			break
-		}
-	}
-	if !same {
-		return nil, ErrInvalidFileFormat
-	}
-
-	// read metadata
-	n, _ = io.ReadFull(bfh, buf[:8])
-	if n < 8 {
-		return nil, ErrBrokenFile
-	}
-
-	// check compatibility
-	if MainVersion != buf[0] {
-		return nil, ErrVersionMismatch
-	}
-
-	// batch number and the number seqs
-	n, _ = io.ReadFull(bfh, buf[:8])
-	if n < 8 {
-		return nil, ErrBrokenFile
-	}
-
-	r.batch = be.Uint32(buf[:4])
-	r.nSeqs = be.Uint32(buf[4:8])
-
-	// read all index data, because it's small
-	r.Index = make([]uint64, r.nSeqs<<1)
-	var i2 int
-	for i := 0; i < int(r.nSeqs); i++ {
-		// offset in the data file and bases
-		n, _ = io.ReadFull(bfh, buf[:12])
-		if n < 12 {
-			return nil, ErrBrokenFile
-		}
-		i2 = i << 1
-		r.Index[i2] = be.Uint64(buf[:8])
-		r.Index[i2+1] = uint64(be.Uint32(buf[8:12]))
-	}
-	err = fh.Close()
-	if err != nil {
-		return r, err
-	}
-
-	// ------------ genome data file ----------------
-
-	r.fhData, err = os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-
-	r.bufReader = bufio.NewReaderSize(nil, 4096) // 4KB buffer, can't be too large
-
-	return r, nil
+	return index.NewReader()
 }
 
 // Close closes and recycles the reader.
@@ -490,6 +408,8 @@ func (r *Reader) Close() error {
 	// }
 
 	err := r.fhData.Close()
+	// Pooled readers must not keep a shared directory alive after their owner closes.
+	r.Index = nil
 	if err != nil {
 		poolReader.Put(r)
 		return err
