@@ -40,11 +40,12 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
         - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
         - Improve pseudoalignment, contig lookup, and result grouping performance.
         - Reduce memory use during parallel seed collection, genome loading, and large `-a/--all` output.
-    - **Add two flags to limit the memory usage when searching in huge indexes** such as Logan Project,
+    - **Add two flags to limit the memory usage when searching in huge indexes** such as the [Logan Project](https://github.com/IndexThePlanet/Logan),
       where the large number of seed matches can cause memory exhaustion during seed collection.
       See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
         - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a large value (such as 1/2 to 3/4 of the available free RAM). See the help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
         - **Add `--max-align-result-memory` (default `1G`) to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
+    - Add `-L/--lazy-genome-meta` to skip contig metadata loading for candidates rejected by pseudoalignment, useful for genomes with many contigs such as MAGs or samples in the [Logan Project](https://github.com/IndexThePlanet/Logan).
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.

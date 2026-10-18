@@ -80,6 +80,11 @@ Tips:
      anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
      loaded index data, and alignment memory.
      It is not a total RSS limit.
+  5. -L/--lazy-genome-meta delays reading contig lengths and IDs until pseudoalignment
+     finds a match. It is disabled by default and is intended for genomes with many
+     contigs, such as metagenome-assembled genomes (MAGs), especially when many
+     candidates are rejected by pseudoalignment. Separate sequence and metadata reads
+     can be slower when most candidates match; benchmark on your storage, especially HDDs.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -211,6 +216,7 @@ Result ordering:
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
+		lazyGenomeMeta := getFlagBool(cmd, "lazy-genome-meta")
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < minSinglePrefix {
@@ -341,6 +347,7 @@ Result ordering:
 			TopN:           topn,
 			TopNChains:     topNChains,
 			InMemorySearch: inMemorySearch,
+			LazyGenomeMeta: lazyGenomeMeta,
 
 			MaxGap:      float64(maxGap),
 			MaxDistance: float64(maxDist),
@@ -418,24 +425,26 @@ Result ordering:
 
 		if outputLog {
 			log.Infof("searching with %d threads...", opt.NumCPUs)
+			if gc {
+				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
+			}
+			if len(taxids)+len(negativeTaxids) > 0 {
+				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
+			}
+			if sopt.MaxSeedMemory > 0 {
+				log.Infof("  seed collection buffer budget across query slots (--max-seed-memory): %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
+			}
 			if sopt.TopN > 0 {
 				log.Infof("  keep the top %d genomes", sopt.TopN)
 			}
 			if sopt.TopNChains > 0 {
 				log.Infof("  keep the top %d chains", sopt.TopNChains)
 			}
-			if sopt.MaxSeedMemory > 0 {
-				log.Infof("  seed collection buffer budget across query slots (--max-seed-memory): %s", humanize.IBytes(uint64(sopt.MaxSeedMemory)))
+			if lazyGenomeMeta {
+				log.Infof("  lazy genome metadata enabled, contig metadata will be read only after pseudoalignment finds a match")
 			}
 			if sopt.MaxAlignResultMemory > 0 {
 				log.Infof("  maximum retained alignment output memory (--max-align-result-memory): %s", humanize.IBytes(uint64(sopt.MaxAlignResultMemory)))
-			}
-
-			if gc {
-				log.Infof("  maximum number of concurrent queries: %d, force garbage collection for every %d queries", maxQueryConcurrency, gcInterval)
-			}
-			if len(taxids)+len(negativeTaxids) > 0 {
-				log.Infof("  filtering genomes by %d TaxIds and %d negative TaxIds", len(taxids), len(negativeTaxids))
 			}
 		}
 
@@ -758,6 +767,9 @@ func init() {
 
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
+
+	mapCmd.Flags().BoolP("lazy-genome-meta", "L", false,
+		formatFlagUsage(`Read contig metadata only after pseudoalignment finds a match. Useful for genomes with many contigs, such as MAGs. Disabled by default; see Tips for I/O tradeoffs.`))
 
 	// pseudo alignment
 	mapCmd.Flags().IntP("align-ext-len", "", 1000,

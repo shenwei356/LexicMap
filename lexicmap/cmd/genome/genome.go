@@ -98,6 +98,8 @@ type Genome struct {
 
 	// offset of sequence, only used in calling SubSeq for more than once
 	SeqOffSet int64
+
+	metadataLoaded bool // contig metadata has been read for this extraction
 }
 
 func (r Genome) String() string {
@@ -129,6 +131,8 @@ func (r *Genome) Reset() {
 	r.SeqIDs = r.SeqIDs[:0]
 
 	r.GenomeIdx = -1
+	r.SeqOffSet = 0
+	r.metadataLoaded = false
 
 	// for safety
 	r.Kmers = nil
@@ -883,89 +887,14 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 	br := r.bufReader
 
 	if g == nil { // read genome info once
-		offset = int64(r.Index[i2])
-
-		// -----------------------------------------------------------
-		// get sequence information
-
 		g = PoolGenome.Get().(*Genome)
 		g.Reset()
-
-		r.fhData.Seek(offset, 0)
-		br.Reset(r.fhData)
-
-		// ID length
-		n, _ = io.ReadFull(br, buf[:2])
-		if n < 2 {
+		if err = r.readMetadata(idx, g); err != nil {
 			RecycleGenome(g)
-			return nil, ErrBrokenFile
+			return nil, err
 		}
-		idLen := be.Uint16(buf[:2])
-		offset += 2
-
-		// ID
-		br.Discard(int(idLen)) // ID is not used since v0.8.0
-
-		offset += int64(idLen)
-
-		// genome size, Len of concatenated seqs, NumSeqs
-		n, _ = io.ReadFull(br, buf[:12])
-		if n < 12 {
-			RecycleGenome(g)
-			return nil, ErrBrokenFile
-		}
-		g.GenomeSize = int(be.Uint32(buf[:4]))
-		g.Len = int(be.Uint32(buf[4:8]))
-		g.NumSeqs = int(be.Uint32(buf[8:12]))
-		offset += 12
-
-		// SeqSizes and SeqIDs
-		g.SeqSizes = g.SeqSizes[:0]
-		g.SeqIDs = g.SeqIDs[:0]
-		var j, nappend int
-		var idLen2 int
-		for i := 0; i < g.NumSeqs; i++ {
-			n, _ = io.ReadFull(br, buf[:6])
-			if n < 6 {
-				RecycleGenome(g)
-				return nil, ErrBrokenFile
-			}
-			g.SeqSizes = append(g.SeqSizes, int(be.Uint32(buf[:4])))
-
-			// seq id
-			// n, err = io.ReadFull(br, buf[:2])
-			// if err != nil {
-			// 	return nil, err
-			// }
-			// if n < 2 {
-			// 	return nil, ErrBrokenFile
-			// }
-
-			idLen2 = int(be.Uint16(buf[4:6]))
-			id := poolID.Get().(*[]byte)
-			if len(*id) >= idLen2 {
-				*id = (*id)[:idLen2]
-			} else {
-				nappend = idLen2 - len(*id)
-				for j = 0; j < nappend; j++ {
-					*id = append(*id, 0)
-				}
-			}
-			n, _ = io.ReadFull(br, *id)
-			if n < idLen2 {
-				RecycleGenome(g)
-				return nil, ErrBrokenFile
-			}
-			g.SeqIDs = append(g.SeqIDs, id)
-
-			offset += int64(6 + idLen2)
-		}
-
-		g.SeqOffSet = offset
-	} else { // skip reading genome information
-
-		offset = g.SeqOffSet
 	}
+	offset = g.SeqOffSet
 
 	// saving the offset for faster extract other subsequences in the same genome
 

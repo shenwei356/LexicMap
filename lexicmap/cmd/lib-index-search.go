@@ -66,6 +66,7 @@ type IndexSearchingOptions struct {
 	MaxSeedSearchingConcurrency int
 
 	InMemorySearch bool  // load the seed/kv data into memory
+	LazyGenomeMeta bool  // defer contig metadata until pseudoalignment succeeds; ordinary search only
 	MinPrefix      uint8 // minimum prefix length, e.g., 15
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
@@ -2208,7 +2209,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			// extract target sequence for comparison.
 			// Right now, we fetch seq from disk for each seq,
 			// In the future, we might buffer frequently accessed references for improving speed.
-			tSeq, err = rdr.SubSeq3(refID, tBegin, tEnd, tSeq)
+			if idx.opt.LazyGenomeMeta {
+				tSeq, err = rdr.SubSeqWithoutMetadata(refID, tBegin, tEnd, tSeq)
+			} else {
+				tSeq, err = rdr.SubSeq3(refID, tBegin, tEnd, tSeq)
+			}
 			if err != nil {
 				checkError(err)
 			}
@@ -2235,6 +2240,15 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			}
 			if cr == nil { // no matches in the pseudo alignment
 				continue
+			}
+
+			// Contig boundaries are required before clipping and full alignment.
+			// Rejected pseudoalignments never need the contig lengths or IDs.
+			if idx.opt.LazyGenomeMeta {
+				tSeq, err = rdr.LoadMetadata(refID, tSeq)
+				if err != nil {
+					checkError(err)
+				}
 			}
 
 			// if len(r.ID) == 0 { // record genome information, do it once
