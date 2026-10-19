@@ -508,11 +508,7 @@ Output format:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
 		var total, matched uint64
@@ -676,7 +672,7 @@ Output format:
 			}
 
 			recycleQuery(q)
-			outfh.Flush()
+			checkError(outfh.Flush())
 
 			if gc && total&gcIntervalMinus1 == 0 {
 				runtime.GC()

@@ -45,7 +45,9 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 			return nil, nil, nil, fmt.Errorf("can not write file into a non-directory path: %s", dir)
 		}
 		if os.IsNotExist(err) {
-			os.MkdirAll(dir, 0755)
+			if err = os.MkdirAll(dir, 0755); err != nil {
+				return nil, nil, nil, err
+			}
 		}
 
 		w, err = os.Create(file)
@@ -58,11 +60,27 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 		// gw := gzip.NewWriter(w)
 		gw, err := gzip.NewWriterLevel(w, level)
 		if err != nil {
+			if w != os.Stdout {
+				_ = w.Close()
+			}
 			return nil, nil, nil, fmt.Errorf("fail to write %s: %s", file, err)
 		}
 		return bufio.NewWriterSize(gw, IOBufferSize), gw, w, nil
 	}
 	return bufio.NewWriterSize(w, IOBufferSize), nil, w, nil
+}
+
+// closeOutStream drains every output layer and reports delayed write errors.
+// Always close owned layers after a failure; stdout belongs to the process.
+func closeOutStream(w *bufio.Writer, compressed io.WriteCloser, file *os.File) error {
+	err := w.Flush()
+	if compressed != nil {
+		err = errors.Join(err, compressed.Close())
+	}
+	if file != nil && file != os.Stdout {
+		err = errors.Join(err, file.Close())
+	}
+	return err
 }
 
 func inStream(file string) (*bufio.Reader, *os.File, bool, error) {

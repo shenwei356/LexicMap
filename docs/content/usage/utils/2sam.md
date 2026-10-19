@@ -20,6 +20,8 @@ Output:
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
    - NM (edit distance) and AS (alignment score) fields are produced.
+   - Reverse-strand alignments use reverse-complemented SEQ and reversed
+     CIGAR operation order, including soft clipping.
 
 Usage:
   lexicmap utils 2sam [flags] 

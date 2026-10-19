@@ -1190,11 +1190,20 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 
 	getAnchor := AnchorExtracter(K, maskPrefix, uint8(anchorPrefix))
 
-	fhi, err := os.Create(indexFile)
+	// Build beside the old index so a read/write failure leaves it searchable.
+	oldInfo, err := os.Stat(indexFile)
 	if err != nil {
 		return err
 	}
-	defer fhi.Close()
+	fhi, err := os.CreateTemp(filepath.Dir(indexFile), "."+filepath.Base(indexFile)+"-*")
+	if err != nil {
+		return err
+	}
+	tmpName := fhi.Name()
+	defer func() {
+		_ = fhi.Close()
+		_ = os.Remove(tmpName)
+	}()
 	wi := bufio.NewWriterSize(fhi, IOBufferSize)
 
 	// 8-byte magic number
@@ -1511,8 +1520,17 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 	if err != nil {
 		return err
 	}
+	if err = fhi.Chmod(oldInfo.Mode().Perm()); err != nil {
+		return err
+	}
+	if err = fhi.Sync(); err != nil {
+		return err
+	}
 	err = fhi.Close()
 	if err != nil {
+		return err
+	}
+	if err = os.Rename(tmpName, indexFile); err != nil {
 		return err
 	}
 

@@ -6,7 +6,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 
 - `lexicmap`:
     - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
-    - All commands check that the log file differs from the output file before opening it.
+    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
 - New commands:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
@@ -60,6 +60,12 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Clear stale alignment statistics when reusing pooled results.
 - `lexicmap utils merge-search-results`:
     - **Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score**. Unlike `search -n`, this filters alignment results rather than chaining scores.
+    - Apply `-q/--query` when only one input file is given.
+- `lexicmap utils 2sam`:
+    - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
+    - Fix MAPQ calculation when a later secondary alignment has a higher score.
+- `lexicmap utils edit-genome-ids`:
+    - Preserve the mapping file when no genome IDs change.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
@@ -70,6 +76,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
 - `lexicmap utils reindex-seeds`:
+    - Preserve each chunk's existing primary index if rebuilding it fails.
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
     - Added progress bars to all seed chunks.
 - `lexicmap utils remerge`:

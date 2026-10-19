@@ -292,7 +292,21 @@ func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFrom
 	infileList := getFlagString(cmd, flag)
 	files := getFileList(args, checkFileFromArgs)
 	if infileList != "" {
-		_files, err := getFileListFromFile(infileList, checkFileFromFile)
+		var _files []string
+		var err error
+		var cached commandFileList
+		var ok bool
+		if ctx := cmd.Context(); ctx != nil {
+			cached, ok = ctx.Value(commandFileListKey{}).(commandFileList)
+		}
+		if ok && cached.path == infileList {
+			_files = cached.files
+			if checkFileFromFile {
+				getFileList(_files, true)
+			}
+		} else {
+			_files, err = getFileListFromFile(infileList, checkFileFromFile)
+		}
 		checkError(err)
 		if len(_files) == 0 {
 			log.Warningf("no files found in file list: %s", infileList)

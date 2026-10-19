@@ -60,6 +60,9 @@ Input:
      1000-bp intervals of N’s to reduce the sequence scale to index.
   6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
   7. Soft-masked sequences are supported with --soft-masking.
+  8. At most 131,072 batches and 131,072 genome chunks per batch are supported.
+     Increase --batch-size if there are too many batches. If splitting genomes
+     exceeds the chunk limit within a batch, decrease --batch-size or increase --max-genome.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome

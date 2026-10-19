@@ -246,11 +246,7 @@ Figures:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
 		fmt.Fprintf(outfh, "ref\tseqid\tpos_gnm\tpos_seq\tstrand\tdistance")

@@ -47,6 +47,9 @@ This command writes single-level .idx files and removes their corresponding
 .idx15 files afterward. Use "lexicmap utils reindex-seeds2" to create adaptive
 two-level indexes that can reduce seed-matching time for large primary-prefix
 blocks.
+
+Each primary index is replaced only after its new file has been written and
+closed successfully. A failed rebuild leaves that chunk's old index intact.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)

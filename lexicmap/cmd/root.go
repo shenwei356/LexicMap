@@ -30,6 +30,9 @@ import (
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
+	// Validate file identities before any Run function can truncate its log/output.
+	PersistentPreRunE: checkCommandFiles,
+
 	Use:   "lexicmap",
 	Short: "efficient sequence/genome alignment against millions of prokaryotic genomes",
 	Long: fmt.Sprintf(`

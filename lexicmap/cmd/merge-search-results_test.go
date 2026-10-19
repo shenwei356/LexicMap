@@ -45,7 +45,8 @@ func TestMergeSearchResultsCommand(t *testing.T) {
 			if err := RootCmd.Execute(); err != nil {
 				os.Exit(1)
 			}
-			return
+			// Behave like the CLI; the test runner's PASS line is not TSV output.
+			os.Exit(0)
 		}
 	}
 	t.Fatal("missing command arguments")

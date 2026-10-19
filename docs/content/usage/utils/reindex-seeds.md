@@ -19,6 +19,9 @@ This command writes single-level .idx files and removes their corresponding
 two-level indexes that can reduce seed-matching time for large primary-prefix
 blocks.
 
+Each primary index is replaced only after its new file has been written and
+closed successfully. A failed rebuild leaves that chunk's old index intact.
+
 Usage:
   lexicmap utils reindex-seeds [flags]
 

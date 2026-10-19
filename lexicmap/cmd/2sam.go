@@ -23,6 +23,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"math"
 	"regexp"
 	"strconv"
@@ -49,6 +50,8 @@ Output:
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
    - NM (edit distance) and AS (alignment score) fields are produced.
+   - Reverse-strand alignments use reverse-complemented SEQ and reversed
+     CIGAR operation order, including soft clipping.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -76,11 +79,7 @@ Output:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
 		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
@@ -192,9 +191,6 @@ Output:
 		var _qcovHSP, _pident float64
 		var flag uint32
 		aligns := make([]*SearchResultOfASequence2, 0, 1024)
-		var a, b *SearchResultOfASequence2
-		var i, maxScore, maxI int
-		var mapq float64
 		var _qlen, _qstart, _qend int
 		var clip5, clip3 string
 		for _, file := range files {
@@ -202,7 +198,7 @@ Output:
 			checkError(err)
 
 			headerLine = true
-			preQuery = "shenwei356"
+			preQuery = ""
 			aligns = aligns[:0]
 			clear(m)
 
@@ -291,10 +287,18 @@ Output:
 				r.RNEXT = "*"
 				r.PNEXT = "0"
 				r.TLEN = _send - _sstart + 1
-				if preQuery != query {
+				if len(aligns) == 0 || preQuery != query {
 					r.SEQ = strings.Repeat("N", _qstart-1) + strings.ReplaceAll(qseq, "-", "") + strings.Repeat("N", _qlen-_qend)
 				} else {
 					r.SEQ = "*"
+				}
+				// Search TSV follows the query strand; SAM follows the reference strand.
+				// Reverse whole operations (including clipping), never their digits.
+				if flag&0x10 != 0 {
+					r.CIGAR = reverseSAMCIGAR(r.CIGAR)
+					if r.SEQ != "*" {
+						r.SEQ = string(RC([]byte(r.SEQ)))
+					}
 				}
 				r.QUAL = "*"
 				// r.NM = int(float64(_alenHSP) * (1 - _pident/100)) // can't calculate it like this
@@ -302,74 +306,16 @@ Output:
 				r.AS = algnScore
 
 				if preQuery != query && len(aligns) > 0 {
-					if len(aligns) == 1 {
-						aligns[0].MAPQ = 60
-					} else {
-						a = aligns[0]
-						b = aligns[1]
-						maxScore, maxI = b.score, 1
-						b.FLAG |= 0x100 // secondary alignment
-						for i, b = range aligns[2:] {
-							b.FLAG |= 0x100 // secondary alignment
-							if b.score > maxScore {
-								maxScore, maxI = b.score, i
-							}
-						}
-						b = aligns[maxI]
-
-						mapq = 40 * float64(a.score-b.score) / float64(a.score)
-						mapq *= a.qcovHSP / 100                           // cov_factor
-						mapq *= (a.pident / 100) * (1 - a.gaps/a.alenHSP) // qual_factor
-
-						a.MAPQ = uint32(min(60, max(0, int(mapq))))
-					}
-
-					for _, a = range aligns {
-						fmt.Fprintf(outfh, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\n",
-							preQuery, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
-							a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS)
-
-						recycleSearchResultOfASequence2(a)
-					}
-
+					checkError(writeSAMQuery(outfh, preQuery, aligns))
 					clear(aligns)
 					aligns = aligns[:0]
-					clear(m)
 				}
 
 				aligns = append(aligns, r)
 				preQuery = query
 			}
 			if len(aligns) > 0 {
-				if len(aligns) == 1 {
-					aligns[0].MAPQ = 60
-				} else {
-					a = aligns[0]
-					b = aligns[1]
-					maxScore, maxI = b.score, 1
-					b.FLAG |= 0x100 // secondary alignment
-					for i, b = range aligns[2:] {
-						b.FLAG |= 0x100 // secondary alignment
-						if b.score > maxScore {
-							maxScore, maxI = b.score, i
-						}
-					}
-					b = aligns[maxI]
-
-					mapq = 40 * float64(a.score-b.score) / float64(a.score)
-					mapq *= a.qcovHSP / 100                           // cov_factor
-					mapq *= (a.pident / 100) * (1 - a.gaps/a.alenHSP) // qual_factor
-
-					a.MAPQ = uint32(min(60, max(0, int(mapq))))
-				}
-
-				for _, a = range aligns {
-					fmt.Fprintf(outfh, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\n",
-						preQuery, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
-						a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS)
-
-					recycleSearchResultOfASequence2(a)
-				}
+				checkError(writeSAMQuery(outfh, preQuery, aligns))
 				clear(aligns)
 				aligns = aligns[:0]
 			}
@@ -384,6 +330,54 @@ Output:
 	},
 }
 
+// reverseSAMCIGAR changes from query-forward to reference-forward operation order.
+func reverseSAMCIGAR(cigar string) string {
+	var reversed strings.Builder
+	reversed.Grow(len(cigar))
+	for end := len(cigar); end > 0; {
+		start := end - 1 // operation letter
+		for start > 0 && cigar[start-1] >= '0' && cigar[start-1] <= '9' {
+			start--
+		}
+		reversed.WriteString(cigar[start:end])
+		end = start
+	}
+	return reversed.String()
+}
+
+// writeSAMQuery applies the same MAPQ and secondary flags at query boundaries
+// and EOF. Keep the existing primary alignment, and find its strongest competitor
+// directly rather than translating indexes from a subslice.
+func writeSAMQuery(w io.Writer, query string, aligns []*SearchResultOfASequence2) error {
+	if len(aligns) == 0 {
+		return nil
+	}
+	a := aligns[0]
+	if len(aligns) == 1 {
+		a.MAPQ = 60
+	} else {
+		maxScore := aligns[1].score
+		for _, other := range aligns[1:] {
+			other.FLAG |= 0x100
+			maxScore = max(maxScore, other.score)
+		}
+		mapq := 40 * float64(a.score-maxScore) / float64(a.score)
+		mapq *= a.qcovHSP / 100
+		mapq *= (a.pident / 100) * (1 - a.gaps/a.alenHSP)
+		a.MAPQ = uint32(min(60, max(0, int(mapq))))
+	}
+	for _, a := range aligns {
+		if _, err := fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\n",
+			query, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
+			a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS); err != nil {
+			return err
+		}
+		recycleSearchResultOfASequence2(a)
+	}
+	return nil
+}
+
+// SearchResultOfASequence2 holds one SAM record and the inputs to its MAPQ.
 type SearchResultOfASequence2 struct {
 	sgenome string
 	score   int

@@ -223,6 +223,33 @@ func loadIndexMasks(opt *IndexBuildingOptions) (*lexichash.LexicHash, error) {
 	return lh, nil
 }
 
+// indexBatchCount rejects unrepresentable batch IDs before allocating build data.
+func indexBatchCount(files, batchSize int) (int, error) {
+	if files < 0 || batchSize < 1 || batchSize > 1<<BITS_GENOME_IDX {
+		return 0, fmt.Errorf("invalid input count or genome batch size: %d, %d", files, batchSize)
+	}
+	batches := 0
+	if files > 0 {
+		batches = 1 + (files-1)/batchSize // avoid overflow in ceiling division
+	}
+	if batches > 1<<BITS_BATCH_IDX {
+		return 0, fmt.Errorf("at most %d batches supported, got %d; increase --batch-size", 1<<BITS_BATCH_IDX, batches)
+	}
+	return batches, nil
+}
+
+// packGenomeIndex validates both fields before they are shifted into seed values.
+// The record count includes chunks produced by splitting large input genomes.
+func packGenomeIndex(batch int, record uint64) (uint64, error) {
+	if batch < 0 || batch >= 1<<BITS_BATCH_IDX {
+		return 0, fmt.Errorf("genome batch index out of range: %d", batch)
+	}
+	if record > MASK_GENOME_IDX {
+		return 0, fmt.Errorf("batch %d exceeds %d genome chunks; decrease --batch-size or increase --max-genome", batch, 1<<BITS_GENOME_IDX)
+	}
+	return uint64(batch)<<BITS_GENOME_IDX | record, nil
+}
+
 // BuildIndex builds index from a list of input files
 func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) error {
 	// they are already checked.
@@ -234,7 +261,10 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	// }
 
 	nFiles := len(infiles)
-	nBatches := (nFiles + opt.GenomeBatchSize - 1) / opt.GenomeBatchSize
+	nBatches, err := indexBatchCount(nFiles, opt.GenomeBatchSize)
+	if err != nil {
+		return err
+	}
 	// Reject insufficient merge budgets before allocating masks or building batches.
 	if nBatches > 1 {
 		outputFiles := 2 // final chunks have a seeds file and a primary index
@@ -311,7 +341,8 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		go func() {
 			for r := range chBG {
 				nBG++
-				outfhBG.WriteString(r)
+				_, writeErr := outfhBG.WriteString(r)
+				checkError(writeErr)
 			}
 
 			doneBG <- 1
@@ -360,8 +391,6 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		if err != nil {
 			checkError(fmt.Errorf("failed to create dir: %s", err))
 		}
-	} else if nBatches > 1<<BITS_BATCH_IDX { // 1<<17
-		checkError(fmt.Errorf("at most %d batches supported. current: %d", 1<<BITS_BATCH_IDX, nBatches))
 	}
 
 	if nBatches > 512 {
@@ -400,7 +429,7 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	if outputBigGenomes {
 		close(chBG)
 		<-doneBG
-		outfhBG.Close()
+		checkError(outfhBG.Close())
 		if opt.Verbose || opt.Log2File {
 			log.Infof("  finished saving %d skipped genome files: %s", nBG, opt.BigGenomeFile)
 		}
@@ -662,6 +691,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		var li *[]uint64
 		var ok bool
 		for refseq := range genomes { // each genome, one by one
+			// Splitting input genomes can exceed the per-batch record limit even
+			// when the number of input files fits. Never truncate an identifier.
+			id, packErr := packGenomeIndex(batch, refIdx)
+			checkError(packErr)
+			batchIDAndRefID = id
 			genomesW <- refseq // send to save to file, asynchronously writing
 
 			_kmers := refseq.Kmers
@@ -669,7 +703,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			extraKmers := refseq.ExtraKmers
 
 			// refseq id -> this
-			batchIDAndRefID = uint64(batch)<<BITS_GENOME_IDX | (refIdx & MASK_GENOME_IDX)
 			be.PutUint16(buf[:2], uint16(len(refseq.ID)))
 			bw.Write(buf[:2])
 			bw.Write(refseq.ID)
@@ -945,7 +978,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		}
 
 		// genome index
-		bw.Flush()
+		checkError(bw.Flush())
 		checkError(fhGI.Close())
 
 		// genome data
@@ -1767,7 +1800,7 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			bw.Write(buf)
 		}
 	}
-	bw.Flush()
+	checkError(bw.Flush())
 	checkError(fhGC.Close())
 
 	// process bar

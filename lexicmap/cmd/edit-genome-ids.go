@@ -53,7 +53,8 @@ Use cases:
     lexicmap utils edit-genome-ids -d t.lmi/ -p '^(\w{3}_\d{9}\.\d+).*' -r '$1'
 
 Tips:
-  - A backup file (genomes.map.bin.bak) will be created on the first run.
+  - A backup file (genomes.map.bin.bak) is created on the first run that changes an ID.
+  - If no IDs change, the mapping and any existing backup are left unchanged.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -166,8 +167,18 @@ Tips:
 
 		}
 
-		bw.Flush()
+		checkError(bw.Flush())
 		checkError(fhGI.Close())
+		checkError(fh.Close())
+
+		// A no-op must leave the original mapping and any existing backup intact.
+		if _n == 0 {
+			checkError(os.Remove(fileGenomeIndex))
+			if outputLog {
+				log.Infof("0 of %d genome IDs are changed", N)
+			}
+			return
+		}
 
 		backFile := fileGenomeIndex0 + ".bak"
 
@@ -190,16 +201,9 @@ Tips:
 			}
 		}
 
-		if _n == 0 {
-			err = os.RemoveAll(fileGenomeIndex)
-			if err != nil {
-				checkError(fmt.Errorf("failed to delete tmp file %s: %s", fileGenomeIndex, err))
-			}
-		} else {
-			err = os.Rename(fileGenomeIndex, fileGenomeIndex0)
-			if err != nil {
-				checkError(fmt.Errorf("failed to update %s: %s", fileGenomeIndex0, err))
-			}
+		err = os.Rename(fileGenomeIndex, fileGenomeIndex0)
+		if err != nil {
+			checkError(fmt.Errorf("failed to update %s: %s", fileGenomeIndex0, err))
 		}
 
 		if outputLog {

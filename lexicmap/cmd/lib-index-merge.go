@@ -264,7 +264,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				checkError(fmt.Errorf("failed to close genome index mapping file: %s", err))
 			}
 		}
-		bw.Flush()
+		checkError(bw.Flush())
 		err = fh.Close()
 		if err != nil {
 			checkError(fmt.Errorf("failed to close genome index mapping file: %s", err))
@@ -292,7 +292,7 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				checkError(fmt.Errorf("failed to close genome chunk list file: %s", err))
 			}
 		}
-		bw.Flush()
+		checkError(bw.Flush())
 		err = fh.Close()
 		if err != nil {
 			checkError(fmt.Errorf("failed to close genome chunk list file: %s", err))

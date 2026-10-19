@@ -90,11 +90,7 @@ Output format:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
 		// -----------------------------------------------------
@@ -464,7 +460,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 		pbs.Wait()
 	}
 
-	bw.Flush()
+	if err = bw.Flush(); err != nil {
+		_ = fhw.Close()
+		return err
+	}
 	err = fhw.Close()
 	if err != nil {
 		return err

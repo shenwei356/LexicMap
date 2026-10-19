@@ -159,11 +159,7 @@ Attention:
 			outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 			checkError(err)
 			defer func() {
-				outfh.Flush()
-				if gw != nil {
-					gw.Close()
-				}
-				w.Close()
+				checkError(closeOutStream(outfh, gw, w))
 			}()
 
 			if outputLog {
@@ -574,11 +570,7 @@ Attention:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
 		s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)

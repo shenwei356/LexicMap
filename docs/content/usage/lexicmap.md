@@ -37,3 +37,8 @@ Flags:
 
 Use "lexicmap [command] --help" for more information about a command.
 ```
+
+Output and log files must differ from input files, including symbolic links and
+hard links. This also applies to file lists, auxiliary inputs, and index data.
+Commands exit with an error if writing, flushing, or closing their result output
+fails.

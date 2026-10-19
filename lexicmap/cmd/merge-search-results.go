@@ -41,7 +41,8 @@ var mergeCmd = &cobra.Command{
 
 Attention:
   1. These search results should come from the same ONE query.
-     If not, please specify one query with the flag -q/--query
+     If not, please specify one query with the flag -q/--query.
+     Query selection also applies when only one input file is given.
   2. We assume that genome IDs are distinct across all indexes.
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
@@ -101,14 +102,10 @@ Attention:
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
 		checkError(err)
 		defer func() {
-			outfh.Flush()
-			if gw != nil {
-				gw.Close()
-			}
-			w.Close()
+			checkError(closeOutStream(outfh, gw, w))
 		}()
 
-		if len(files) == 1 && topN == 0 {
+		if len(files) == 1 && topN == 0 && query == "" {
 			if outputLog {
 				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
 			}
