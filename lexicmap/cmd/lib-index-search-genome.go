@@ -844,6 +844,11 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 				ia, ib = p>>32, p&4294967295
 				a = (*qfrags)[ia]
 				b = (*sfrags)[ib]
+				// Screening uses shorter seeds than fine alignment. Keep short
+				// contigs in genome sizes, but do not index or align them here.
+				if len(a) < int(cpr.options.K) || len(b) < int(cpr.options.K) {
+					continue
+				}
 
 				// fmt.Printf("%s\t%s\t%d\t%d\t", query.id, g.ID, ia, ib)
 				// fmt.Printf("%s\n%s\n", a, b)
@@ -886,7 +891,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 
 				if cr != nil && cr2 != nil { // both strands has hits
 					// choose the strand with the longer aligned length, if tie, choose the positive strand
-					if (*cr.Chains)[0].QEnd-(*cr.Chains)[0].QBegin < (*cr2.Chains)[0].QEnd-(*cr2.Chains)[0].QBegin {
+					if cr.BestChain.QEnd-cr.BestChain.QBegin < cr2.BestChain.QEnd-cr2.BestChain.QBegin {
 						RecycleSeqComparatorResult(cr)
 						cr = cr2
 						b = b2
@@ -901,8 +906,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 				// -----------------------------------------------
 				// b) base-level alignment
 
-				c = (*cr.Chains)[0]   // choose the first chain with the highest chaining score
-				(*cr.Chains)[0] = nil // avoid being recycled before we finish processing c
+				c = cr.BestChain // borrow the highest-scoring chain, regardless of coordinate order
 
 				// fmt.Printf("q[%d,%d]\tt[%d,%d]\t", c.QBegin+1, c.QEnd+1, c.TBegin+1, c.TEnd+1)
 
@@ -918,7 +922,6 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 
 				_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
 				if evalue > maxEvalue {
-					recycleChain2(c)
 					wfa.RecycleAlignmentResult(cigar)
 					RecycleSeqComparatorResult(cr)
 					continue
@@ -948,6 +951,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 				// c) filter and store the result
 
 				if c.PIdent >= minPIdent && c.AlignedFraction >= minQcovHSP {
+					c = cr.takeBestChain() // retained alignment maps now own this chain
 					if ls, ok = (*ma)[uint32(ia)]; !ok {
 						ls = poolChains2.Get().(*[]*Chain2Result)
 						*ls = (*ls)[:0]
@@ -964,8 +968,6 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 						(*mb)[uint32(ib)] = ls
 					}
 					*ls = append(*ls, c)
-				} else {
-					recycleChain2(c)
 				}
 
 				// -----------------------------------------------

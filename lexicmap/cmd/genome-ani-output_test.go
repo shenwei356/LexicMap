@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -299,6 +300,144 @@ func TestGenomeANIShortSampledTailRC(t *testing.T) {
 					t.Fatalf("%s: got %s, want 100%%", name, fields[i])
 				}
 			}
+		})
+	}
+}
+
+// TestGenomeOrthoANIShortContigs covers contigs seedable by the 11-mer
+// screening stage but too short for 31-mer alignment, on either side of a pair.
+func TestGenomeOrthoANIShortContigs(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(719))
+	core := make([]byte, 5100)
+	for i := range core {
+		core[i] = "ACGT"[rng.Intn(4)]
+	}
+	plain := filepath.Join(dir, "plain.fa")
+	short := filepath.Join(dir, "short.fa")
+	if err := os.WriteFile(plain, []byte(">core\n"+string(core)+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Each short contig also matches the core, exercising short-versus-long
+	// candidate pairs rather than only short-versus-short self pairs.
+	data := ">core\n" + string(core) + "\n>short25\n" + string(core[:25]) + "\n>short30\n" + string(core[100:130]) + "\n"
+	if err := os.WriteFile(short, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Two candidate subjects activate query-fragment index reuse in search.
+	other := filepath.Join(dir, "other.fa")
+	if err := os.WriteFile(other, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	db := filepath.Join(dir, "index.lmi")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-c", "2", "-m", "64", "-k", "16", "--partitions", "4", "-O", db, short, other)
+	for _, cache := range []string{"0", "1M"} {
+		for _, tc := range []struct {
+			name string
+			args []string
+			want map[string]string
+		}{
+			{"compare short query", []string{"genome", "compare", short, plain}, map[string]string{"AF1": "98.933", "AF2": "100.000", "size1": "5155", "size2": "5100"}},
+			{"compare short subject", []string{"genome", "compare", plain, short}, map[string]string{"AF1": "100.000", "AF2": "98.933", "size1": "5100", "size2": "5155"}},
+			{"search short query and subject", []string{"genome", "search", "-d", db, "-m", "0", "-p", "12", short}, map[string]string{"qAF": "98.933", "sAF": "98.933", "qsize": "5155", "ssize": "5155"}},
+			{"search short subject", []string{"genome", "search", "-d", db, "-m", "0", "-p", "12", plain}, map[string]string{"qAF": "100.000", "sAF": "98.933", "qsize": "5100", "ssize": "5155"}},
+		} {
+			t.Run(tc.name+"/cache="+cache, func(t *testing.T) {
+				args := append(tc.args, "-O", "--frag-size", "100", "--kmer-scale", "2", "--quiet", "-j", "1", "--max-genome-cache-memory", cache)
+				output := runSeedIndexCommand(t, args...)
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+				wantLines := 2
+				if tc.args[1] == "search" {
+					wantLines = 3
+				}
+				if len(lines) != wantLines {
+					t.Fatalf("expected %d genome matches, got %s", wantLines-1, output)
+				}
+				header := strings.Split(lines[0], "\t")
+				for _, line := range lines[1:] {
+					fields := strings.Split(line, "\t")
+					for i, name := range header {
+						if want, ok := tc.want[name]; ok && fields[i] != want {
+							t.Fatalf("%s: got %s, want %s", name, fields[i], want)
+						}
+						if (name == "ANI" || name == "ANI1" || name == "ANI2") && fields[i] != "100.0000" {
+							t.Fatalf("%s: got %s, want 100.0000", name, fields[i])
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestGenomeANIBestChainAfterSorting checks both strands, input orders, and
+// cached/uncached OrthoANI callers with a short coordinate-first decoy chain.
+func TestGenomeANIBestChainAfterSorting(t *testing.T) {
+	dir := t.TempDir()
+	var queries, subjects, reverseSubjects [][]byte
+	for i := range 5 {
+		q, s := reorderedChainSequences(719 + int64(i))
+		queries = append(queries, q)
+		subjects = append(subjects, s)
+		rc := append([]byte(nil), s...)
+		RC(rc)
+		reverseSubjects = append(reverseSubjects, rc)
+	}
+	// Separate contigs preserve the same two-chain case in every fragment.
+	write := func(name string, sequences [][]byte) string {
+		t.Helper()
+		var data strings.Builder
+		for i, sequence := range sequences {
+			fmt.Fprintf(&data, ">contig%d\n%s\n", i, sequence)
+		}
+		file := filepath.Join(dir, name+".fa")
+		if err := os.WriteFile(file, []byte(data.String()), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return file
+	}
+	query := write("query", queries)
+	subject := write("subject", subjects)
+	subjectRC := write("subject-rc", reverseSubjects)
+	db := filepath.Join(dir, "index.lmi")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-c", "2", "-m", "64", "-k", "16", "--partitions", "4", "-O", db, subject, subjectRC)
+	check := func(t *testing.T, output []byte, matches int) {
+		t.Helper()
+		lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+		if len(lines) != matches+1 {
+			t.Fatalf("expected %d matches, got %s", matches, output)
+		}
+		header := strings.Split(lines[0], "\t")
+		for _, line := range lines[1:] {
+			fields := strings.Split(line, "\t")
+			if len(fields) != len(header) {
+				t.Fatalf("unexpected column count: %s", line)
+			}
+			for i, name := range header {
+				v, _ := strconv.ParseFloat(fields[i], 64)
+				if (name == "ANI" || name == "ANI1" || name == "ANI2") && v < 99 {
+					t.Fatalf("%s should reflect the long exact match: %s", name, line)
+				}
+				if strings.Contains(name, "AF") && (v < 74 || v > 77) {
+					t.Fatalf("%s should cover the long 770/1020 match: %s", name, line)
+				}
+			}
+		}
+	}
+	for _, cache := range []string{"0", "1M"} {
+		for _, reference := range []string{subject, subjectRC} {
+			for _, reverse := range []bool{false, true} {
+				t.Run(fmt.Sprintf("compare/%s/reverse=%v/cache=%s", filepath.Base(reference), reverse, cache), func(t *testing.T) {
+					a, b := query, reference
+					if reverse {
+						a, b = b, a
+					}
+					check(t, runSeedIndexCommand(t, "genome", "compare", "-O", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, a, b), 1)
+				})
+			}
+		}
+		t.Run("search/cache="+cache, func(t *testing.T) {
+			check(t, runSeedIndexCommand(t, "genome", "search", "-O", "--quiet", "-j", "2", "-m", "0", "-p", "12", "--max-genome-cache-memory", cache, "-d", db, query), 2)
 		})
 	}
 }

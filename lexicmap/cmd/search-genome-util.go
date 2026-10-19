@@ -201,6 +201,8 @@ func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, re
 		}
 
 		if convertNtoA {
+			// Both screening and fine alignment use this converted sequence;
+			// soft-masked lowercase bases are not restored for ANI computation.
 			convertSeq(record.Seq.Seq, table)
 		}
 		if readQual {

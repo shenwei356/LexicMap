@@ -191,13 +191,33 @@ type SeqComparatorResult struct {
 
 	TSeq []byte // target seq
 
-	Chains *[]*Chain2Result
+	Chains *[]*Chain2Result // chains ordered by query start
+	// BestChain preserves the chainer's first (highest-scoring) chain before sorting.
+	// It borrows an element of Chains and is recycled with this result.
+	BestChain *Chain2Result
+}
+
+// takeBestChain transfers the best chain to a caller that will recycle it later.
+// Remove its sorted-slice entry so recycling the result cannot recycle it twice.
+func (r *SeqComparatorResult) takeBestChain() *Chain2Result {
+	c := r.BestChain
+	if c != nil {
+		for i, chain := range *r.Chains {
+			if chain == c {
+				(*r.Chains)[i] = nil
+				break
+			}
+		}
+		r.BestChain = nil
+	}
+	return c
 }
 
 // Update updates the data with new chains.
 // However it does not considerate gaps.
 func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 	r.Chains = chains
+	r.BestChain = nil // replacement chains have no preserved chaining-score order
 	r.QueryLen = queryLen
 
 	// alignment regions might have overlap
@@ -238,6 +258,7 @@ func (r *SeqComparatorResult) Update(chains *[]*Chain2Result, queryLen int) {
 // Update2 only compute the aligned fraction for all chains
 func (r *SeqComparatorResult) Update2(chains *[]*Chain2Result, queryLen int) {
 	r.Chains = chains
+	r.BestChain = nil // replacement chains have no preserved chaining-score order
 	r.QueryLen = queryLen
 
 	// alignment regions might have overlap
@@ -475,8 +496,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// r.MatchedBases = nMatchedBases
 	r.QueryLen = queryLen
 	r.AlignedFraction = af
+	r.BestChain = (*chains)[0]
 
-	// very important
+	// Keep coordinate order for callers that process all HSPs; BestChain survives sorting.
 	if len(*chains) > 1 {
 		// sort.Slice(*chains, func(i, j int) bool {
 		// 	return (*chains)[i].QBegin <= (*chains)[j].QBegin

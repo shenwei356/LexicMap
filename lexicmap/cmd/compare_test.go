@@ -143,3 +143,60 @@ func TestReadPairFilesSkipsHeaderInEachFile(t *testing.T) {
 		t.Fatalf("pairs: got %v, want %v", got, want)
 	}
 }
+
+// TestCompareCaseInsensitive checks normalization before either cached or
+// private fragment indexing, in both default and reciprocal-best-hit modes.
+func TestCompareCaseInsensitive(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(719))
+	sequence := make([]byte, 5100)
+	for i := range sequence {
+		sequence[i] = "ACGT"[rng.Intn(4)]
+	}
+	upper := string(sequence)
+	files := make([]string, 0, 3)
+	for i, s := range []string{upper, strings.ToLower(upper), upper[:2040] + strings.ToLower(upper[2040:3060]) + upper[3060:]} {
+		file := filepath.Join(dir, fmt.Sprintf("case%d.fa", i))
+		if err := os.WriteFile(file, []byte(">seq\n"+s+"\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+	}
+	for _, cache := range []string{"0", "1M"} {
+		for _, ortho := range []bool{false, true} {
+			t.Run(fmt.Sprintf("cache=%s/ortho=%v", cache, ortho), func(t *testing.T) {
+				args := []string{"genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache}
+				if ortho {
+					args = append(args, "-O")
+				}
+				output := runSeedIndexCommand(t, append(args, files...)...)
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+				if len(lines) != 4 {
+					t.Fatalf("expected three pairwise matches, got %s", output)
+				}
+				for _, line := range lines[1:] {
+					fields := strings.Split(line, "\t")
+					if strings.Join(fields[2:7], "\t") != "100.0000\t100.0000\t100.0000\t100.000\t100.000" {
+						t.Fatalf("case changed ANI/AF: %s", line)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestReadGenomeFromFileUppercase preserves ambiguity symbols and contig sizes.
+func TestReadGenomeFromFileUppercase(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "mixed.fa")
+	if err := os.WriteFile(file, []byte(">one\nacgtnryACGTNRY\n>two\nws\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	q, err := ReadGenomeFromFile(file, nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer RecycleGQuery(q)
+	if q.genomeSize != 16 || len(q.seqs) != 2 || string(*q.seqs[0]) != "ACGTNRYACGTNRY" || string(*q.seqs[1]) != "WS" {
+		t.Fatalf("unexpected normalization: size=%d seqs=%v", q.genomeSize, q.seqs)
+	}
+}

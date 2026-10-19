@@ -44,11 +44,11 @@ func TestFragmentComparatorRetainsUnseedableFragment(t *testing.T) {
 	}
 }
 
-// legacyFragmentPairs is an independent oracle for the original uint16
-// cross-product counts and count-only, unstable Top-N sorting. Row order is
+// referenceFragmentPairs uses wide cross-product counts capped after collection
+// and count-only, unstable Top-N sorting as an independent oracle. Row order is
 // normalized by callers, just as both alignment paths sort their returned pairs.
-func legacyFragmentPairs(a, b []rtree.BatchEntry, options *FragmentComparatorOptions) []uint64 {
-	counts := make(map[uint64]uint16)
+func referenceFragmentPairs(a, b []rtree.BatchEntry, options *FragmentComparatorOptions) []uint64 {
+	counts := make(map[uint64]uint64)
 	for ia, ib := 0, 0; ia < len(a) && ib < len(b); {
 		if a[ia].Key < b[ib].Key {
 			ia++
@@ -74,7 +74,8 @@ func legacyFragmentPairs(a, b []rtree.BatchEntry, options *FragmentComparatorOpt
 	}
 	pairs := make([]uint64, 0)
 	for key, count := range counts {
-		if count >= options.MinSharedKmers {
+		counts[key] = min(count, 65535)
+		if counts[key] >= uint64(options.MinSharedKmers) {
 			pairs = append(pairs, key)
 		}
 	}
@@ -101,7 +102,7 @@ func legacyFragmentPairs(a, b []rtree.BatchEntry, options *FragmentComparatorOpt
 	return pairs
 }
 
-func TestFragmentPairsMatchLegacy(t *testing.T) {
+func TestFragmentPairsMatchReference(t *testing.T) {
 	var a, b []rtree.BatchEntry
 	rng := rand.New(rand.NewSource(61))
 	// More than 12 subjects exercises quicksort as well as small insertion sorts.
@@ -126,20 +127,20 @@ func TestFragmentPairsMatchLegacy(t *testing.T) {
 	for range 4 {
 		b = append(b, rtree.BatchEntry{Key: 9000, Val: 30<<1 | 1})
 	}
-	// Preserve uint16 wraparound, including a touched pair whose count becomes zero.
+	// A repetitive pair must saturate instead of wrapping to zero.
 	for range 256 {
 		a = append(a, rtree.BatchEntry{Key: 9001, Val: 21 << 1})
 		b = append(b, rtree.BatchEntry{Key: 9001, Val: 31<<1 | 1})
 	}
-	for _, threshold := range []uint16{0, 1, 3, 6, 12, 13} {
+	for _, threshold := range []uint16{0, 1, 3, 6, 12, 13, 65535} {
 		for _, topN := range []int{0, 1, 5, 17, 96, 97, 100} {
 			options := &FragmentComparatorOptions{K: 11, MinSharedKmers: threshold, TopNFragments: topN}
 			cpr := &FragmentComparator{options: options}
 			got := cpr.scanPairsMerged(a, b)
 			slices.Sort(*got)
-			want := legacyFragmentPairs(a, b, options)
+			want := referenceFragmentPairs(a, b, options)
 			if !slices.Equal(*got, want) {
-				t.Fatalf("threshold=%d topN=%d: pairs differ from original selection", threshold, topN)
+				t.Fatalf("threshold=%d topN=%d: pairs differ from reference selection", threshold, topN)
 			}
 			RecycleFragmentCompareResult(got)
 		}
@@ -183,7 +184,7 @@ func TestFragmentPairsBlocksReuseAndFallback(t *testing.T) {
 		originalA, originalB := slices.Clone(input[0]), slices.Clone(input[1])
 		pairs := cpr.scanPairsMerged(input[0], input[1])
 		slices.Sort(*pairs)
-		if !slices.Equal(*pairs, legacyFragmentPairs(input[0], input[1], cpr.options)) {
+		if !slices.Equal(*pairs, referenceFragmentPairs(input[0], input[1], cpr.options)) {
 			t.Fatal("block boundaries, scratch reuse or hash fallback changed pair selection")
 		}
 		RecycleFragmentCompareResult(pairs)
@@ -232,7 +233,7 @@ func TestFragmentPairsConcurrentImmutableEntries(t *testing.T) {
 	b := []rtree.BatchEntry{{Key: 1, Val: 1}, {Key: 1, Val: 1}, {Key: 1, Val: 3}, {Key: 3, Val: 5}}
 	originalA, originalB := slices.Clone(a), slices.Clone(b)
 	options := &FragmentComparatorOptions{K: 11, MinSharedKmers: 1, TopNFragments: 1}
-	want := legacyFragmentPairs(a, b, options)
+	want := referenceFragmentPairs(a, b, options)
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Add(1)
@@ -292,5 +293,42 @@ func BenchmarkFragmentPairs(b *testing.B) {
 				RecycleFragmentCompareResult(pairs)
 			}
 		})
+	}
+}
+
+// TestFragmentPairCountSaturation covers both counter representations and reuse
+// across the uint16 boundary, with contributions from multiple shared keys.
+func TestFragmentPairCountSaturation(t *testing.T) {
+	for _, sparse := range []bool{false, true} {
+		subject := uint32(0)
+		if sparse {
+			// Force the hash fallback without allocating a huge dense matrix.
+			subject = maxFragmentPairCounterCells
+		}
+		cpr := &FragmentComparator{options: &FragmentComparatorOptions{MinSharedKmers: 1}}
+		for _, total := range []int{65534, 65535, 65536, 70000, 1} {
+			var a, b []rtree.BatchEntry
+			if total > 1 {
+				for range 254 {
+					a = append(a, rtree.BatchEntry{Key: 1})
+				}
+				for range 258 {
+					b = append(b, rtree.BatchEntry{Key: 1, Val: subject << 1})
+				}
+			}
+			a = append(a, rtree.BatchEntry{Key: 2})
+			extra := total
+			if total > 1 {
+				extra -= 254 * 258
+			}
+			for range extra {
+				b = append(b, rtree.BatchEntry{Key: 2, Val: subject << 1})
+			}
+			pairs := cpr.scanPairsMerged(a, b)
+			if len(*pairs) != 1 || (*pairs)[0] != uint64(subject) || len(cpr.pairCounts) != 1 || int(cpr.pairCounts[0].count) != min(total, 65535) {
+				t.Fatalf("sparse=%v total=%d: pairs=%v counts=%v", sparse, total, *pairs, cpr.pairCounts)
+			}
+			RecycleFragmentCompareResult(pairs)
+		}
 	}
 }

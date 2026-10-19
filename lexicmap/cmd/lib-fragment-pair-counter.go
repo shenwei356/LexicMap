@@ -27,8 +27,8 @@ import (
 )
 
 // Bound retained dense uint16 counters plus their presence bitmap per comparator.
-// The bitmap distinguishes an untouched pair from a uint16 count wrapping to
-// zero: each cell needs 17 bits. Eight bytes cover bitmap rounding; output pair
+// The bitmap tracks touched cells for sparse traversal and clearing: each cell
+// needs 17 bits. Eight bytes cover bitmap rounding; output pair
 // buffers and the original hash fallback are additional. Allocate only the rows
 // needed by a comparison; this ceiling allows 20 Mb genomes to use dense blocks.
 const maxFragmentPairCounterBytes = 64 << 20
@@ -62,7 +62,7 @@ func fragmentPairCounterShape(a, b []rtree.BatchEntry) (rows, cols, blockRows in
 
 // scanPairsDense counts one bounded block of query rows at a time, rescanning
 // the immutable sorted streams for each block. It enumerates every original
-// position cross product exactly once and retains the same uint16 arithmetic.
+// position cross product exactly once, saturating each uint16 count at 65,535.
 // A false result selects the hash path without allocating counter scratch.
 func (cpr *FragmentComparator) scanPairsDense(a, b []rtree.BatchEntry) (*[]uint64, bool) {
 	if len(a) == 0 || len(b) == 0 {
@@ -118,13 +118,14 @@ func (cpr *FragmentComparator) scanPairsDense(a, b []rtree.BatchEntry) (*[]uint6
 					if counter[cell] == 0 {
 						visited[cell>>6] |= uint64(1) << (cell & 63)
 					}
-					counter[cell]++
+					if counter[cell] < maxFragmentPairCount {
+						counter[cell]++
+					}
 				}
 			}
 			ia, ib = ja, jb
 		}
-		// Visit and clear only cells used by this block. Presence remains set
-		// across uint16 wraparound, including zero counts when the threshold is zero.
+		// Visit and clear only cells used by this block, including saturated cells.
 		for word, mask := range visited {
 			if mask == 0 {
 				continue

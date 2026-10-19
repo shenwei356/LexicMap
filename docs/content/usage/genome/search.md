@@ -44,6 +44,8 @@ Algorithm:
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
 
+     Fine alignment prioritizes the highest-scoring pseudoalignment chain.
+
      Results are sorted by ANI percentages rounded to four decimal places, then by
      full-precision qAF and sAF (descending).
 
@@ -68,6 +70,11 @@ Attention:
   2. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
+  4. With an index built using --soft-masking, lowercase query bases are converted
+     to A for both seed screening and final alignment. This can affect ANI and AF
+     for soft-masked genomes, such as fungal genomes; use unmasked queries when possible.
+     Ambiguous bases (including N) are also replaced with A/C/G/T in queries and
+     stored genomes, so ANI and AF in ambiguous regions require caution.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -101,7 +108,8 @@ Output format:
     4.  qAF,      Align fraction of the query genome (sum_aligned_length / query_genome_size).
     5.  sAF,      Align fraction of the subject genome (sum_aligned_length / subject_genome_size).
                   Terminal pieces shorter than half a fragment join the preceding fragment
-                  of the same contig. Contigs shorter than the seed length cannot be seeded.
+                  of the same contig. Contigs shorter than the alignment seed length are
+                  not aligned but remain included in genome sizes for AF.
     6.  qctgs,    Number of contigs in the query genome.
     7.  qsize,    Size of the query genome.
     8.  sctgs,    Number of contigs in the subject genome.

@@ -750,20 +750,27 @@ func alignChain(
 	}
 	defer RecycleSeqComparatorResult(cr)
 
-	// WFA alignment on each sub-chain.
+	// Try the highest-scoring sub-chain first, then retain the existing fallback order.
 	var totMatched, totAligned, totGaps int
 	var pidentAdjusted float64
 	maxEvalue := idx.opt.MaxEvalue
 	maxTrials := 2
 
 	trials := 0
-	for _, c := range *cr.Chains {
+	for i := -1; i < len(*cr.Chains); i++ {
+		c := cr.BestChain
+		if i >= 0 {
+			c = (*cr.Chains)[i]
+			if c == cr.BestChain { // do not retry the best chain in coordinate order
+				continue
+			}
+		}
 		if c.QEnd < c.QBegin || c.TEnd < c.TBegin {
 			continue
 		}
 
 		trials++
-		if trials > maxTrials { // can't find a valid alignment for the best 3 chains, give up
+		if trials > maxTrials { // keep the existing limit of two valid sub-chain attempts
 			break
 		}
 
@@ -1520,6 +1527,11 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 		ia, ib = p>>32, p&4294967295
 		a = (*qfrags)[ia]
 		b = (*sfrags)[ib]
+		// Screening uses shorter seeds than fine alignment. Skip unindexable
+		// contigs on either side while retaining them in the genome-size AF denominator.
+		if len(a) < int(cpr.options.K) || len(b) < int(cpr.options.K) {
+			continue
+		}
 
 		// a) pseudo alignment
 		if !hasIndexedIA || ia != indexedIA {
@@ -1561,7 +1573,7 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 
 		if cr != nil && cr2 != nil { // both strands have hits
 			// choose the strand with the longer aligned length, if tie, choose the positive strand
-			if (*cr.Chains)[0].QEnd-(*cr.Chains)[0].QBegin < (*cr2.Chains)[0].QEnd-(*cr2.Chains)[0].QBegin {
+			if cr.BestChain.QEnd-cr.BestChain.QBegin < cr2.BestChain.QEnd-cr2.BestChain.QBegin {
 				RecycleSeqComparatorResult(cr)
 				cr = cr2
 				b = b2
@@ -1574,8 +1586,7 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 		} // only has hit in the positive strand
 
 		// b) base-level alignment
-		c = (*cr.Chains)[0]   // choose the first chain with the highest chaining score
-		(*cr.Chains)[0] = nil // avoid being recycled before we finish processing c
+		c = cr.BestChain // borrow the highest-scoring chain, regardless of coordinate order
 
 		_qseq, _tseq, _, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
 		if err != nil {
@@ -1591,7 +1602,6 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 
 		_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
 		if evalue > maxEvalue {
-			recycleChain2(c)
 			wfa.RecycleAlignmentResult(cigar)
 			RecycleSeqComparatorResult(cr)
 			continue
@@ -1611,6 +1621,7 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 
 		// c) filter and store the result
 		if c.PIdent >= minPIdent && c.AlignedFraction >= minQcovHSP {
+			c = cr.takeBestChain() // retained alignment maps now own this chain
 			if ls, ok = (*ma)[uint32(ia)]; !ok {
 				ls = poolChains2.Get().(*[]*Chain2Result)
 				*ls = (*ls)[:0]
@@ -1627,8 +1638,6 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 				(*mb)[uint32(ib)] = ls
 			}
 			*ls = append(*ls, c)
-		} else {
-			recycleChain2(c)
 		}
 
 		wfa.RecycleAlignmentResult(cigar)
@@ -1728,6 +1737,13 @@ func ReadGenomeFromFile(file string, reRefName *regexp.Regexp, fullPathAsRefName
 		s := poolSeq.Get().(*[]byte)
 		*s = (*s)[:0]
 		*s = append(*s, record.Seq.Seq...)
+		// Fine alignment compares bytes directly; normalize the owned copy in place.
+		d := byte('a' - 'A')
+		for i, b := range *s {
+			if b >= 'a' && b <= 'z' {
+				(*s)[i] = b - d
+			}
+		}
 		q.seqs = append(q.seqs, s)
 
 		q.genomeSize += len(record.Seq.Seq)

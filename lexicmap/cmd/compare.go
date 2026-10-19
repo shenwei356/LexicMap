@@ -58,13 +58,18 @@ Input:
     The LexicMap index must be given by '-d/--index', and '-H' skips header lines.
 
 Attention:
-  1. Repeated sequences can produce many k-mer matches, so alignment time can differ
+  1. Fine alignment prioritizes the highest-scoring pseudoalignment chain.
+     Repeated sequences can produce many k-mer matches, so alignment time can differ
      substantially between genomes of similar sizes.
   2. Prepared genomes and fragment indexes are reused across pairs within
      --max-genome-cache-memory. This budget does not limit total process memory.
   3. Both genomes must meet --min-af. In the default mode, at least one direction
      must meet --min-ani; OrthoANI uses its single reciprocal-best-hit ANI.
      Both thresholds are inclusive.
+  4. FASTA input is case-insensitive. Soft masking does not remove lowercase
+     A/C/G/T from stored genomes. Two-bit encoding replaces ambiguous bases
+     (including N) with A/C/G/T in indexed genomes.
+     ANI and AF can therefore differ between file and index modes in ambiguous regions.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -80,7 +85,8 @@ Output format:
     6.  AF1,      Align fraction of genome 1 (sum_aligned_length / genome1_size).
     7.  AF2,      Align fraction of genome 2 (sum_aligned_length / genome2_size).
                   Terminal pieces shorter than half a fragment join the preceding fragment
-                  of the same contig. Contigs shorter than the seed length cannot be seeded.
+                  of the same contig. Contigs shorter than the alignment seed length are
+                  not aligned but remain included in genome sizes for AF.
     8.  ctgs1,    Number of contigs in genome 1.
     9.  size1,    Size of the genome 1.
     10. ctgs2,    Number of contigs in genome 2.

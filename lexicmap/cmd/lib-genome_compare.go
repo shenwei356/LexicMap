@@ -81,11 +81,14 @@ type FragmentComparator struct {
 }
 
 // fragmentPairCount keeps the original packed fragment IDs and uint16 count.
-// Counts intentionally retain wraparound and duplicate-position multiplicity.
+// Counts include duplicate-position multiplicity and saturate instead of wrapping.
 type fragmentPairCount struct {
 	pair  uint64 // query fragment in the high 32 bits, subject in the low 32 bits
-	count uint16 // shared position cross products, with the original uint16 arithmetic
+	count uint16 // shared position cross products, capped at maxFragmentPairCount
 }
+
+// Keep two-byte counters without losing highly repetitive fragment pairs to overflow.
+const maxFragmentPairCount = 1<<16 - 1
 
 var poolMapUint64Uint16 = &sync.Pool{New: func() interface{} {
 	tmp := make(map[uint64]uint16, 1<<20)
@@ -266,7 +269,10 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 			rowKey := fa << 32
 			for q := ib; q < jb; q++ {
 				fb := uint64(entriesB[q].Val >> 1)
-				(*counter)[rowKey|fb]++
+				key := rowKey | fb
+				if (*counter)[key] < maxFragmentPairCount {
+					(*counter)[key]++
+				}
 			}
 		}
 		ia = ja
