@@ -26,19 +26,17 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-// TestSearchLazyGenomeMeta exercises the public flag with full alignment output,
+// TestSearchLazyGenomeMeta exercises default search with full alignment output,
 // multiple contigs, reverse-strand matches, and an unmatched query.
 func TestSearchLazyGenomeMeta(t *testing.T) {
-	flag := mapCmd.Flags().Lookup("lazy-genome-meta")
-	if flag == nil || flag.DefValue != "false" || DefaultIndexSearchingOptions.LazyGenomeMeta {
-		t.Fatal("lazy metadata must be opt-in at both CLI and library levels")
-	}
 	dir := t.TempDir()
 	rng := rand.New(rand.NewSource(17))
 	var queries bytes.Buffer
+	expectedQueries := make(map[string]string)
 	refs := make([]string, 2)
 	for record, contigs := range []int{1, 4} {
 		var fasta bytes.Buffer
@@ -53,6 +51,7 @@ func TestSearchLazyGenomeMeta(t *testing.T) {
 				if record == 1 {
 					RC(query)
 				}
+				expectedQueries[fmt.Sprintf("query-%d", record)] = string(query)
 				fmt.Fprintf(&queries, ">query-%d\n%s\n", record, query)
 			}
 		}
@@ -70,14 +69,23 @@ func TestSearchLazyGenomeMeta(t *testing.T) {
 	args := []string{"index", "--quiet", "-j", "1", "-c", "2", "-m", "64", "-k", "16", "--partitions", "4", "-O", db}
 	runSeedIndexCommand(t, append(args, refs...)...)
 	args = []string{"search", "--quiet", "-j", "1", "-J", "1", "-d", db, "-p", "12", "-P", "12", "-n", "0", "-N", "0", "-a", queryFile}
-	eager := runSeedIndexCommand(t, args...)
-	if !bytes.Contains(eager, []byte("query-0\t")) || !bytes.Contains(eager, []byte("query-1\t")) || bytes.Contains(eager, []byte("unmatched\t")) {
-		t.Fatalf("unexpected fixture matches:\n%s", eager)
+	output := runSeedIndexCommand(t, args...)
+	rows := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(rows) != 3 { // Header plus the two exact matches; no hit for unmatched.
+		t.Fatalf("unexpected fixture matches:\n%s", output)
 	}
-	for _, option := range []string{"--lazy-genome-meta=false", "--lazy-genome-meta"} {
-		output := runSeedIndexCommand(t, append(append([]string{}, args...), option)...)
-		if !bytes.Equal(eager, output) {
-			t.Fatalf("%s changed search output\neager:\n%s\nactual:\n%s", option, eager, output)
+	for i, row := range rows[1:] {
+		fields := strings.Split(row, "\t")
+		queryID := fmt.Sprintf("query-%d", i)
+		contigID, strand := "contig-0-0", "+"
+		if i == 1 {
+			contigID, strand = "contig-1-3", "-"
+		}
+		// Metadata must resolve the original contig and coordinates on both strands.
+		if len(fields) != 24 || fields[0] != queryID || fields[3] != fmt.Sprintf("ref%d", i) || fields[4] != contigID ||
+			strings.Join(fields[12:18], "\t") != "1\t400\t201\t600\t"+strand+"\t800" ||
+			fields[21] != expectedQueries[queryID] || fields[22] != expectedQueries[queryID] {
+			t.Fatalf("unexpected alignment for %s:\n%s", queryID, row)
 		}
 	}
 }

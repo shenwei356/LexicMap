@@ -47,11 +47,6 @@ Tips:
      anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
      loaded index data, and alignment memory.
      It is not a total RSS limit.
-  5. -L/--lazy-genome-meta delays reading contig lengths and IDs until pseudoalignment
-     finds a match. It is disabled by default and is intended for genomes with many
-     contigs, such as metagenome-assembled genomes (MAGs), especially when many
-     candidates are rejected by pseudoalignment. Separate sequence and metadata reads
-     can be slower when most candidates match; benchmark on your storage, especially HDDs.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -148,9 +143,6 @@ Flags:
   -d, --index string                     ► Index directory created by "lexicmap index".
   -k, --keep-genomes-without-taxid       ► Keep genome hits without TaxId, i.e., those without TaxId
                                          in the --genome2taxid file.
-  -L, --lazy-genome-meta                 ► Read contig metadata only after pseudoalignment finds a
-                                         match. Useful for genomes with many contigs, such as MAGs.
-                                         Disabled by default; see Tips for I/O tradeoffs.
   -w, --load-whole-seeds                 ► Load the whole seed data into memory for faster seed
                                          matching. It will consume a lot of RAM.
       --max-align-result-memory string   ► Maximum memory for retaining CIGAR, query sequence, subject

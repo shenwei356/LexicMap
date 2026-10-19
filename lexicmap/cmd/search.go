@@ -80,11 +80,6 @@ Tips:
      anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
      loaded index data, and alignment memory.
      It is not a total RSS limit.
-  5. -L/--lazy-genome-meta delays reading contig lengths and IDs until pseudoalignment
-     finds a match. It is disabled by default and is intended for genomes with many
-     contigs, such as metagenome-assembled genomes (MAGs), especially when many
-     candidates are rejected by pseudoalignment. Separate sequence and metadata reads
-     can be slower when most candidates match; benchmark on your storage, especially HDDs.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId
@@ -216,7 +211,8 @@ Result ordering:
 		topn := getFlagNonNegativeInt(cmd, "top-n-genomes")
 		topNChains := getFlagNonNegativeInt(cmd, "top-n-chains")
 		inMemorySearch := getFlagBool(cmd, "load-whole-seeds")
-		lazyGenomeMeta := getFlagBool(cmd, "lazy-genome-meta")
+		// lazyGenomeMeta := getFlagBool(cmd, "lazy-genome-meta")
+		lazyGenomeMeta := true
 
 		minAlignLen := getFlagPositiveInt(cmd, "align-min-match-len")
 		if minAlignLen < minSinglePrefix {
@@ -768,8 +764,13 @@ func init() {
 	mapCmd.Flags().BoolP("load-whole-seeds", "w", false,
 		formatFlagUsage(`Load the whole seed data into memory for faster seed matching. It will consume a lot of RAM.`))
 
-	mapCmd.Flags().BoolP("lazy-genome-meta", "L", false,
-		formatFlagUsage(`Read contig metadata only after pseudoalignment finds a match. Useful for genomes with many contigs, such as MAGs. Disabled by default; see Tips for I/O tradeoffs.`))
+	// Lazy genome metadata loading delays reading contig lengths and IDs until
+	// pseudoalignment finds a match. It is intended for genomes with many contigs,
+	// such as metagenome-assembled genomes (MAGs), especially when many candidates
+	// are rejected by pseudoalignment. Separate sequence and metadata reads can be
+	// slower when most candidates match; benchmark on your storage, especially HDDs.
+	// mapCmd.Flags().BoolP("lazy-genome-meta", "L", false,
+	// 	formatFlagUsage(`Read contig metadata only after pseudoalignment finds a match. Useful for genomes with many contigs, such as MAGs. Disabled by default.`))
 
 	// pseudo alignment
 	mapCmd.Flags().IntP("align-ext-len", "", 1000,
