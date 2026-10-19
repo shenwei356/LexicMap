@@ -307,6 +307,8 @@ Result ordering:
 		maxSeedSearchingConcurrency := maxQueryConcurrency / 2
 		if maxSeedSearchingConcurrency < 2 {
 			maxSeedSearchingConcurrency = 2
+		} else if maxSeedSearchingConcurrency > opt.NumCPUs {
+			maxSeedSearchingConcurrency = opt.NumCPUs
 		}
 
 		_gcInterval := getFlagNonNegativeInt(cmd, "gc-interval")

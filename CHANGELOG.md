@@ -48,7 +48,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
-    - Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`; the number of retained candidates may exceed N.
+    - **Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`**; the number of retained candidates may exceed N.
     - **Taxonomic information**
         - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
         - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
@@ -58,12 +58,12 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
     - Fixed a data race when extending the pseudoalignment region.
     - Clear stale alignment statistics when reusing pooled results.
+- `lexicmap utils merge-search-results`:
+    - **Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score**. Unlike `search -n`, this filters alignment results rather than chaining scores.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
-- `lexicmap utils merge-search-results`:
-    - Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score. Unlike `search -n`, this filters alignment results rather than chaining scores.
 - `lexicmap utils seed-pos`:
     - Skip empty seed results and finish reading result fields before recycling them.
     - Fixed data races in seed-position reader creation and error handling.
