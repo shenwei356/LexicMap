@@ -46,6 +46,7 @@ Attention:
   2. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
+  4. For older indexes without a stored base count, the first search counts bases and updates info.toml.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format

@@ -14,7 +14,7 @@ Algorithm:
   1. Genome screening:
      Candidate genomes are screened by the total length of shared seeds (k-mers longer
      than the value of -p/--seed-min-prefix) between the query genome and the genomes
-     in the index, with lexichash masking.
+     in the index, with lexichash masking. Seeds never cross query contig boundaries.
 
      Flag -n/--top-n-genomes keeps score groups in descending order until their total
      genome count reaches or exceeds N, including the entire cutoff group (0 for all).

@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -86,16 +87,10 @@ func init() {
 }
 
 func updateInputBases(info *IndexInfo, dbDir string, threads int) (int64, error) {
-	// sum bases
+	// Publish totals only after every batch has been read and closed successfully.
 	var totalBases int64
-	ch := make(chan int64, threads)
-	done := make(chan int)
-	go func() {
-		for b := range ch {
-			totalBases += b
-		}
-		done <- 1
-	}()
+	var readErr error
+	var mu sync.Mutex // guards the total and first error from concurrent batches
 
 	// extract genome sizes
 	var wg sync.WaitGroup
@@ -104,26 +99,34 @@ func updateInputBases(info *IndexInfo, dbDir string, threads int) (int64, error)
 		wg.Add(1)
 		tokens <- 1
 		go func(i int) {
+			defer func() {
+				<-tokens
+				wg.Done()
+			}()
 			fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
+			var bases int64
 			rdr, err := genome.NewReader(fileGenomes)
-			if err != nil {
-				checkError(fmt.Errorf("failed to create genome reader: %s", err))
+			if err == nil {
+				bases, err = rdr.TotalBases()
+				// Close before releasing the slot, including failed reads. Keep both errors.
+				err = errors.Join(err, rdr.Close())
 			}
 
-			_totalBases, err := rdr.TotalBases()
+			mu.Lock()
+			defer mu.Unlock()
 			if err != nil {
-				checkError(fmt.Errorf("failed to check total bases for %s: %s", fileGenomes, err))
+				if readErr == nil {
+					readErr = fmt.Errorf("failed to count bases in %s: %w", fileGenomes, err)
+				}
+				return
 			}
-
-			ch <- _totalBases
-
-			wg.Done()
-			<-tokens
+			totalBases += bases
 		}(i)
 	}
 	wg.Wait()
-	close(ch)
-	<-done
+	if readErr != nil {
+		return 0, readErr
+	}
 
 	// update info file
 	info.InputBases = totalBases

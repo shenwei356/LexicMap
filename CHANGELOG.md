@@ -65,6 +65,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
     - Fix MAPQ calculation when a later secondary alignment has a higher score.
 - `lexicmap utils edit-genome-ids`:
+    - Refresh cached genome details after renaming IDs.
     - Preserve the mapping file when no genome IDs change.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
     - Truncate genome/sequence IDs longer than 65,535 characters.

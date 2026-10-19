@@ -47,6 +47,8 @@ var genomeDetailsCmd = &cobra.Command{
 
 On the first run, this command will extract genome details and save them to 'genomes.details.bin'.
 If the file exists, it will be read directly and details will be printed.
+Renaming IDs with edit-genome-ids removes this cache. The next run rebuilds it;
+use -i/--save-seqids again if sequence IDs are needed.
 
 Output format:
   Tab-delimited format.

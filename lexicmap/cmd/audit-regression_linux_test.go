@@ -28,9 +28,37 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 )
+
+// Do not rely on os.File finalizers to release a batch before the next opens.
+func TestUpdateInputBasesClosesReaders(t *testing.T) {
+	previous := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(previous)
+	dir := t.TempDir()
+	info := writeRecountFixture(t, dir, 48)
+	for _, broken := range []bool{false, true} {
+		if broken {
+			if err := os.Truncate(filepath.Join(dir, DirGenomes, batchDir(20), FileGenomes), 0); err != nil {
+				t.Fatal(err)
+			}
+		}
+		before, err := os.ReadDir("/proc/self/fd")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = updateInputBases(info, dir, 3)
+		if (err != nil) != broken {
+			t.Fatalf("broken=%v: unexpected recount error: %v", broken, err)
+		}
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			t.Fatalf("broken=%v: open files grew from %d to %d: %v", broken, len(before), len(after), err)
+		}
+	}
+}
 
 func TestCommandOutputWriteFailures(t *testing.T) {
 	dir := t.TempDir()

@@ -54,7 +54,9 @@ Use cases:
 
 Tips:
   - A backup file (genomes.map.bin.bak) is created on the first run that changes an ID.
-  - If no IDs change, the mapping and any existing backup are left unchanged.
+  - If no IDs change, the mapping, backup, and cached genome details are left unchanged.
+  - Renaming IDs removes genomes.details.bin. The next genome-details run rebuilds it;
+    use -i/--save-seqids again if sequence IDs are needed.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -178,6 +180,12 @@ Tips:
 				log.Infof("0 of %d genome IDs are changed", N)
 			}
 			return
+		}
+
+		// Cached details embed genome IDs. Invalidate before changing the mapping
+		// so a removal error cannot leave new IDs paired with stale cached IDs.
+		if err = os.Remove(filepath.Join(dbDir, FileGenomeDetails)); err != nil && !os.IsNotExist(err) {
+			checkError(fmt.Errorf("failed to invalidate genome details: %w", err))
 		}
 
 		backFile := fileGenomeIndex0 + ".bak"

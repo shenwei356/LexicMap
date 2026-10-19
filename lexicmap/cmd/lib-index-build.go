@@ -382,11 +382,11 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	// tmp dir
 	tmpDir := filepath.Clean(outdir) + ExtTmpDir
-	err = os.RemoveAll(tmpDir)
-	if err != nil {
-		return err
-	}
-	if nBatches > 1 { // only used for > 1 batches
+	if nBatches > 1 { // Single-batch builds must leave the unused temporary directory intact.
+		err = os.RemoveAll(tmpDir)
+		if err != nil {
+			return err
+		}
 		err = os.MkdirAll(tmpDir, 0755)
 		if err != nil {
 			checkError(fmt.Errorf("failed to create dir: %s", err))

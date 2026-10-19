@@ -63,11 +63,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		directory      bool
 	}
 	var outputs []outputPath
-	for _, name := range []string{"out-file", "log", "big-genomes", "out-dir"} {
-		path := flag(name)
-		if path == "" || (path == "-" && name == "out-file") {
-			continue
-		}
+	addOutput := func(path string, directory bool) error {
 		absolute, err := filepath.Abs(path)
 		if err != nil {
 			return err
@@ -79,7 +75,24 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		if real, err := filepath.EvalSymlinks(absolute); err == nil {
 			absolute = real
 		}
-		outputs = append(outputs, outputPath{path, absolute, info, name == "out-dir"})
+		outputs = append(outputs, outputPath{path, absolute, info, directory})
+		return nil
+	}
+	for _, name := range []string{"out-file", "log", "big-genomes", "out-dir"} {
+		path := flag(name)
+		if path == "" || (path == "-" && name == "out-file") {
+			continue
+		}
+		if err := addOutput(path, name == "out-dir"); err != nil {
+			return err
+		}
+	}
+	// Multi-batch builds replace this directory before reading their inputs.
+	// Protect it even when the final output directory does not exist yet.
+	if dir := flag("out-dir"); cmd.Name() == "index" && dir != "" {
+		if err := addOutput(filepath.Clean(dir)+ExtTmpDir, true); err != nil {
+			return err
+		}
 	}
 	if len(outputs) == 0 {
 		return nil

@@ -186,7 +186,7 @@ func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, re
 				break
 			}
 			RecycleGQuery(q)
-			return nil, fmt.Errorf("read seq %d in %s: %s", i, file, err)
+			return nil, fmt.Errorf("read seq %d in %s: %s", i+1, file, err)
 		}
 		growBy := len(record.Seq.Seq)
 		if i > 0 {
@@ -236,6 +236,7 @@ func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, re
 		q.genomeSize += len(record.Seq.Seq)
 
 		q.bigSeq = append(q.bigSeq, record.Seq.Seq...)
+		i++ // Later contigs need a skipped spacer; fine-alignment sequences stay separate.
 	}
 
 	lenSeq := len(q.bigSeq)
@@ -253,6 +254,20 @@ func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, re
 		recycleGapRegions(gaps)
 
 		lexichash.SortSkipRegions(q.skipRegions)
+		// Gap scanning rediscovers the contig spacers. Merge duplicate and
+		// overlapping intervals: the masker advances only at each interval's end,
+		// so a second interval with the same end would hide all later intervals.
+		n := 0
+		for j := 0; j < len(q.skipRegions); j += 2 {
+			start, end := q.skipRegions[j], q.skipRegions[j+1]
+			if n > 0 && start <= q.skipRegions[n-1]+1 {
+				q.skipRegions[n-1] = max(q.skipRegions[n-1], end)
+			} else {
+				q.skipRegions[n], q.skipRegions[n+1] = start, end
+				n += 2
+			}
+		}
+		q.skipRegions = q.skipRegions[:n]
 	}
 
 	baseFile := filepath.Base(file)

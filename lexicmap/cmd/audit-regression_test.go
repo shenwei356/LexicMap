@@ -64,6 +64,10 @@ func TestEditGenomeIDsNoChange(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
+				cache := filepath.Join(dir, FileGenomeDetails)
+				if err := os.WriteFile(cache, []byte("cached details"), 0600); err != nil {
+					t.Fatal(err)
+				}
 				runSeedIndexCommand(t, "utils", "edit-genome-ids", "--quiet", "-d", dir, "-p", pattern, "-r", "g1")
 				got, err := os.ReadFile(file)
 				if err != nil || !bytes.Equal(got, original.Bytes()) {
@@ -77,8 +81,68 @@ func TestEditGenomeIDsNoChange(t *testing.T) {
 				} else if !os.IsNotExist(err) {
 					t.Fatalf("unexpected backup: %v", err)
 				}
+				if got, err := os.ReadFile(cache); err != nil || string(got) != "cached details" {
+					t.Fatalf("no-op edit changed cached details: %q, %v", got, err)
+				}
 			})
 		}
+	}
+}
+
+func TestEditGenomeIDsInvalidatesDetails(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "ref.fa")
+	if err := os.WriteFile(input, []byte(">seq\n"+strings.Repeat("ACGT", 100)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	index := filepath.Join(dir, "db.lmi")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-k", "16", "--partitions", "4", "-O", index, input)
+	oldID := "ref"
+	for _, newID := range []string{"renamed", "renamed-again"} {
+		before := runSeedIndexCommand(t, "utils", "genome-details", "--quiet", "-j", "1", "-i", "-e", "-d", index)
+		if !bytes.Contains(before, []byte("\n"+oldID+"\t")) {
+			t.Fatalf("unexpected initial details: %s", before)
+		}
+		runSeedIndexCommand(t, "utils", "edit-genome-ids", "--quiet", "-d", index, "-p", "^"+oldID+"$", "-r", newID)
+		if _, err := os.Stat(filepath.Join(index, FileGenomeDetails)); !os.IsNotExist(err) {
+			t.Fatalf("stale details retained after rename: %v", err)
+		}
+		after := runSeedIndexCommand(t, "utils", "genome-details", "--quiet", "-j", "1", "-i", "-e", "-d", index)
+		if !bytes.Equal(after, bytes.ReplaceAll(before, []byte("\n"+oldID+"\t"), []byte("\n"+newID+"\t"))) {
+			t.Fatalf("rebuilt details disagree with renamed mapping: %s", after)
+		}
+		oldID = newID
+	}
+}
+
+func TestEditGenomeIDsInvalidationFailurePreservesMapping(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, FileGenomeIndex)
+	var original bytes.Buffer
+	binary.Write(&original, binary.BigEndian, uint16(2))
+	original.WriteString("g1")
+	binary.Write(&original, binary.BigEndian, uint64(0))
+	if err := os.WriteFile(file, original.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// A nonempty directory makes cache removal fail without relying on permissions.
+	cache := filepath.Join(dir, FileGenomeDetails)
+	if err := os.Mkdir(cache, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cache, "keep"), []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, err := runAuditCommand(t, "", "utils", "edit-genome-ids", "--quiet", "-d", dir, "-p", "g1", "-r", "g2")
+	if err == nil || !bytes.Contains(stderr, []byte("failed to invalidate genome details")) {
+		t.Fatalf("invalidation failure ignored: %v, %s", err, stderr)
+	}
+	got, err := os.ReadFile(file)
+	if err != nil || !bytes.Equal(got, original.Bytes()) {
+		t.Fatalf("mapping changed despite invalidation failure: %q, %v", got, err)
+	}
+	if _, err := os.Stat(file + ".bak"); !os.IsNotExist(err) {
+		t.Fatalf("backup changed despite invalidation failure: %v", err)
 	}
 }
 

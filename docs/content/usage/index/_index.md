@@ -41,6 +41,9 @@ Input:
   8. At most 131,072 batches and 131,072 genome chunks per batch are supported.
      Increase --batch-size if there are too many batches. If splitting genomes
      exceeds the chunk limit within a batch, decrease --batch-size or increase --max-genome.
+  9. Input files, file lists, and mask files must be outside the output directory and
+     its temporary merge directory (<out-dir>.tmp).
+     Single-batch builds leave that temporary directory unchanged.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome

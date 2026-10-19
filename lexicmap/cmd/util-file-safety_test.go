@@ -160,6 +160,93 @@ func TestIndexOutputCannotContainInputs(t *testing.T) {
 	}
 }
 
+// The derived merge directory is destructive even when -O does not exist yet.
+func TestIndexTemporaryDirectoryCannotContainInputs(t *testing.T) {
+	for _, mode := range []string{"positional", "list-entry", "list-file", "directory", "mask", "symlink", "parent-symlink"} {
+		t.Run(mode, func(t *testing.T) {
+			dir := t.TempDir()
+			index := filepath.Join(dir, "db.lmi")
+			tmp := index + ExtTmpDir
+			if err := os.Mkdir(tmp, 0700); err != nil {
+				t.Fatal(err)
+			}
+			input := filepath.Join(tmp, "input.fa")
+			if mode == "list-file" {
+				input = filepath.Join(dir, "input.fa") // Only the list is inside the merge directory.
+			}
+			data := []byte(">seq\nACGTACGT\n")
+			if err := os.WriteFile(input, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			var inputs []string
+			switch mode {
+			case "positional":
+				inputs = []string{input}
+			case "list-entry", "list-file":
+				list := filepath.Join(dir, "files.txt")
+				if mode == "list-file" {
+					list = filepath.Join(tmp, "files.txt")
+				}
+				if err := os.WriteFile(list, []byte(input+"\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				inputs = []string{"-X", list}
+			case "directory":
+				inputs = []string{"-I", tmp}
+			case "mask":
+				inputs = []string{"-M", input}
+			case "symlink":
+				link := filepath.Join(dir, "input.fa")
+				if err := os.Symlink(input, link); err != nil {
+					t.Fatal(err)
+				}
+				inputs = []string{link}
+			case "parent-symlink":
+				link := filepath.Join(t.TempDir(), "parent")
+				if err := os.Symlink(dir, link); err != nil {
+					t.Fatal(err)
+				}
+				index = filepath.Join(link, "db.lmi")
+				inputs = []string{input}
+			}
+			logFile := filepath.Join(dir, "run.log")
+			args := []string{"index", "--quiet", "-j", "1", "-m", "64", "--partitions", "4", "-O", index, "--log", logFile}
+			_, stderr, err := runAuditCommand(t, "", append(args, inputs...)...)
+			if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+				t.Fatalf("temporary directory conflict accepted: %v, %s", err, stderr)
+			}
+			got, err := os.ReadFile(input)
+			if err != nil || !bytes.Equal(got, data) {
+				t.Fatalf("input changed: %q, %v", got, err)
+			}
+			if _, err := os.Stat(logFile); !os.IsNotExist(err) {
+				t.Fatalf("log opened before validation: %v", err)
+			}
+		})
+	}
+}
+
+func TestSingleBatchIndexPreservesUnusedTemporaryDirectory(t *testing.T) {
+	dir := t.TempDir()
+	index := filepath.Join(dir, "db.lmi")
+	if err := os.Mkdir(index+ExtTmpDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(index+ExtTmpDir, "keep.txt")
+	if err := os.WriteFile(sentinel, []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	input := filepath.Join(dir, "ref.fa")
+	if err := os.WriteFile(input, []byte(">seq\n"+strings.Repeat("ACGT", 100)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-k", "16", "--partitions", "4", "-O", index, input)
+	got, err := os.ReadFile(sentinel)
+	if err != nil || string(got) != "keep" {
+		t.Fatalf("unused temporary directory changed: %q, %v", got, err)
+	}
+}
+
 func TestIndexedGenomeIDsAreNotFilePaths(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "id")
