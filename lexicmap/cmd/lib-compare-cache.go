@@ -59,8 +59,11 @@ func (idx *Index) prepareCompareGenome(q *GQuery, fragLen, minSeedLen int, ortho
 	}
 	if orthoANI {
 		cpr := idx.poolFragmentComparator.Get().(*FragmentComparator)
-		// Fresh entries avoid retaining an oversized pooled buffer in each cache entry.
-		entries, err := cpr.collectEntries(p.fragments, 0, nil)
+		// A genome has at most one entry per base. Bound each small genome's
+		// private cache buffer by that size; retain the usual initial capacity
+		// for large genomes without copying their entries or borrowing scratch.
+		entries := make([]rtree.BatchEntry, 0, min(1<<20, q.genomeSize))
+		entries, err := cpr.collectEntries(p.fragments, 0, entries)
 		idx.poolFragmentComparator.Put(cpr)
 		if err != nil {
 			return nil, err

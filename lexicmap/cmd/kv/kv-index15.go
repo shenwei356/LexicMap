@@ -37,6 +37,9 @@ import (
 // KVIndex15FileExt is the file extension of the second-level seed index.
 const KVIndex15FileExt = ".idx15"
 
+// index15BackupSuffix retains the last committed sidecar during replacement.
+const index15BackupSuffix = ".bak"
+
 // IndexMainVersionTagged distinguishes the tagged-offset index from the legacy
 // index. Keeping this separate from MainVersion lets the seeds file stay
 // byte-for-byte unchanged.
@@ -88,8 +91,8 @@ var magicIndex15 = [8]byte{'.', 'k', 'v', 'i', 'd', 'x', '1', '5'}
 // The build ID is a nonzero random 16-bit pairing token generated separately
 // for each seeds chunk whenever adaptive indexes are created or rebuilt. The same value is written
 // to the primary .idx header and this .idx15 header. A reader rejects unequal
-// values, which detects a stale or incorrectly paired sidecar, including the
-// state left if replacement stops after renaming only one of the two files.
+// values, which detects a stale or incorrectly paired sidecar. After an
+// interrupted replacement, readers can use the matching .idx15.bak sidecar.
 // It is not a format version, database-wide ID, content hash, or cryptographic
 // integrity check. The seeds size and chunk metadata provide additional
 // consistency checks.
@@ -381,6 +384,9 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 		return stats, err
 	}
 
+	if err = recoverIndex15Backup(file); err != nil {
+		return stats, err
+	}
 	indexFile := filepath.Clean(file) + KVIndexFileExt
 	indexK, indexChunk, indexMasks, maskPrefix, _, err := ReadKVIndexInfo(indexFile)
 	if err != nil {
@@ -444,6 +450,14 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 	buildID, err := randomIndexBuildID()
 	if err != nil {
 		return stats, errors.Wrap(err, "creating index build identifier")
+	}
+	previousID, err := readTaggedIndexBuildID(indexFile)
+	if err != nil && !errors.Is(err, ErrInvalidFileFormat) {
+		return stats, err
+	}
+	// The old primary must never accept the new sidecar between the two renames.
+	if buildID == previousID {
+		buildID = buildID%65535 + 1
 	}
 	dir := filepath.Dir(indexFile)
 	base := filepath.Base(file)
@@ -616,14 +630,10 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 	if err = os.Chmod(index15TmpName, mode); err != nil {
 		return stats, err
 	}
-	index15File := filepath.Clean(file) + KVIndex15FileExt
-	if err = os.Rename(index15TmpName, index15File); err != nil {
+	if err = publishIndex15Files(file, indexTmpName, index15TmpName, os.Rename); err != nil {
 		return stats, err
 	}
 	keepIndex15Tmp = true
-	if err = os.Rename(indexTmpName, indexFile); err != nil {
-		return stats, err
-	}
 	keepIndexTmp = true
 	return stats, nil
 }
@@ -637,7 +647,23 @@ type index15 struct {
 }
 
 func openIndex15(file string, k, maskPrefix, anchorPrefix uint8, chunkIndex, chunkSize uint64, seedsSize uint64, buildID uint16) (*index15, error) {
-	fh, err := os.Open(filepath.Clean(file) + KVIndex15FileExt)
+	path := filepath.Clean(file) + KVIndex15FileExt
+	idx, err := openIndex15File(path, k, maskPrefix, anchorPrefix, chunkIndex, chunkSize, seedsSize, buildID)
+	if err == nil {
+		return idx, nil
+	}
+	// An interrupted replacement can leave the old primary with the new sidecar.
+	// Read-only searches may use the backup only after all pairing checks pass.
+	backup, backupErr := openIndex15File(path+index15BackupSuffix, k, maskPrefix, anchorPrefix, chunkIndex, chunkSize, seedsSize, buildID)
+	if backupErr == nil {
+		return backup, nil
+	}
+	return nil, err
+}
+
+// openIndex15File validates one sidecar against the caller's primary index.
+func openIndex15File(path string, k, maskPrefix, anchorPrefix uint8, chunkIndex, chunkSize uint64, seedsSize uint64, buildID uint16) (*index15, error) {
+	fh, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}

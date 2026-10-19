@@ -92,6 +92,8 @@ Notes on probabilistic pruning:
      -s/--prob-threshold controls an early heuristic that discards pairs unlikely
      to reach that threshold. Higher values prune more aggressively; 0 disables
      the heuristic and computes exact pair statistics.
+     The required mask count is rounded up: with 64 masks, -f 0.18 requires
+     at least 12 matches.
   2. In sparse-map mode, pruning can substantially reduce the number of map entries
      and therefore memory use. In dense-table mode, all pair slots are allocated
      up front, so pruning does not reduce the main table memory or skip pair
@@ -278,7 +280,7 @@ Notes on probabilistic pruning:
 		threshold := uint64(1) << ((k - minPrefix) * 2)
 		minPrefixU8 := uint8(minPrefix) // convert to uint8 for comparison
 
-		requiredMatches := int(minMaskFraction * float64(totalMasks))
+		requiredMatches := requiredMaskMatches(minMaskFraction, totalMasks)
 
 		if outputLog {
 			log.Infof("  minimum prefix length between k-mers captured by a mask: %d", minPrefix)
@@ -886,6 +888,12 @@ type KmerRecord struct {
 	genomes []uint32
 }
 
+// requiredMaskMatches preserves an inclusive fraction threshold for integer
+// counts: for example, 18% of 64 masks requires 12 matches, not 11.
+func requiredMaskMatches(fraction float64, masks int) int {
+	return int(math.Ceil(fraction * float64(masks)))
+}
+
 // computeProbabilityUpperBound computes the upper bound of P(X >= t*S | X = k, n partitions processed)
 // using the Agievich bound approximation from the Onika paper
 // (https://doi.org/10.1101/2025.11.21.689685, Section 2.3.1).
@@ -906,7 +914,7 @@ func shouldKeepPair(n, k int, t float64, S int, probThreshold float64) bool {
 	// }
 
 	// We want to estimate if the pair can reach t*S matches in the remaining partitions
-	requiredMatches := int(t * float64(S))
+	requiredMatches := requiredMaskMatches(t, S)
 
 	// If already reached the threshold, keep the pair
 	if k >= requiredMatches {

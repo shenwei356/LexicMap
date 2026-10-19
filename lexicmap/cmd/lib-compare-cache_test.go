@@ -149,6 +149,47 @@ func TestCompareCacheLRUOrder(t *testing.T) {
 	c.close()
 }
 
+// Small cached genomes must fit their actual data and must not borrow mutable
+// comparator scratch, which subsequent preparations overwrite.
+func TestSmallOrthoGenomeCacheRetention(t *testing.T) {
+	idx := compareTestIndex(t)
+	defer idx.Close()
+	sequence := fragmentIndexTestSequence()
+	q := &GQuery{seqs: []*[]byte{&sequence}, genomeSize: len(sequence)}
+	p, err := idx.prepareCompareGenome(q, 1020, orthoANISeedK, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.entries) == 0 {
+		t.Fatal("fixture has no sampled entries")
+	}
+	want := append(p.entries[:0:0], p.entries...)
+	other := append([]byte(nil), sequence...)
+	for i := 0; i < len(other); i += 7 {
+		other[i] = "ACGT"[i%4]
+	}
+	q2 := &GQuery{seqs: []*[]byte{&other}, genomeSize: len(other)}
+	if _, err = idx.prepareCompareGenome(q2, 1020, orthoANISeedK, true); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(p.entries, want) {
+		t.Fatal("later preparation changed cached entries")
+	}
+	const budget = 1 << 20
+	cache := newCompareGenomeCache(budget, func(string) (*preparedCompareGenome, error) { return p, nil })
+	e := cache.acquire("small")
+	if !e.retained || cache.used > budget {
+		t.Fatalf("small genome did not fit: entries=%d cap=%d charge=%d", len(p.entries), cap(p.entries), p.bytes)
+	}
+	cache.release(e)
+	e = cache.acquire("small")
+	if cache.loads != 1 || cache.hits != 1 {
+		t.Fatal("small prepared genome was not reused")
+	}
+	cache.release(e)
+	cache.close()
+}
+
 // compareTestIndex uses the CLI's alignment settings without reading an index.
 func compareTestIndex(t testing.TB) *Index {
 	t.Helper()

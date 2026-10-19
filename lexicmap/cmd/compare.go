@@ -62,6 +62,9 @@ Attention:
      substantially between genomes of similar sizes.
   2. Prepared genomes and fragment indexes are reused across pairs within
      --max-genome-cache-memory. This budget does not limit total process memory.
+  3. Both genomes must meet --min-af. In the default mode, at least one direction
+     must meet --min-ani; OrthoANI uses its single reciprocal-best-hit ANI.
+     Both thresholds are inclusive.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -409,7 +412,7 @@ Output format:
 
 			g1, g2 := q.g1, q.g2
 
-			if g1.result == nil || len(*g1.result) == 0 || (!orthoANI && (g2.result == nil || len(*g2.result) == 0)) {
+			if !genomePairPassesFilters(g1, g2, orthoANI, minAF, minANI) {
 				RecycleGPair(q)
 
 				if gc && total&gcIntervalMinus1 == 0 {
@@ -674,7 +677,8 @@ Output format:
 					if orthoANI {
 						compareErr = idx.compareTwoGenomesOrthoANIPrepared(q.g1, q.g2, p1, p2, fragSize, minSeedLen, minAF, minANI)
 					} else {
-						compareErr = idx.compareTwoGenomesPrepared(q.g1, q.g2, p1, p2, fragSize, minSeedLen, minAF, minANI)
+						// Keep both directional results: either ANI may satisfy the pair threshold.
+						compareErr = idx.compareTwoGenomesPrepared(q.g1, q.g2, p1, p2, fragSize, minSeedLen, 0, 0)
 					}
 					if compareErr != nil {
 						checkError(fmt.Errorf("compare %s to %s: %s", q.g1.id, q.g2.id, compareErr))
@@ -687,7 +691,7 @@ Output format:
 						// unnecessary
 						// err = idx.CompareTwoGenomesOrthoANI(q.g2, q.g1, fragSize, minSeedLen, minAF, minANI)
 					} else {
-						compareErr := idx.compareTwoGenomesPrepared(q.g2, q.g1, p2, p1, fragSize, minSeedLen, minAF, minANI)
+						compareErr := idx.compareTwoGenomesPrepared(q.g2, q.g1, p2, p1, fragSize, minSeedLen, 0, 0)
 						if compareErr != nil {
 							checkError(fmt.Errorf("compare %s to %s: %s", q.g2.id, q.g1.id, compareErr))
 						}
@@ -822,10 +826,10 @@ func init() {
 	// ani-af related filtering
 
 	compareCmd.Flags().Float64P("min-af", "F", 0,
-		formatFlagUsage(`Only output results where each genome has aligned fraction > than this value (percentage).`))
+		formatFlagUsage(`Minimum aligned fraction for both genomes (percentage, inclusive).`))
 
 	compareCmd.Flags().Float64P("min-ani", "I", 70,
-		formatFlagUsage(`Only output results where one genome has ANI > than this value (percentage).`))
+		formatFlagUsage(`Minimum ANI in at least one direction (percentage, inclusive).`))
 
 	compareCmd.Flags().IntP("kmer-scale", "", 4,
 		formatFlagUsage(`Using 1/scale of k-mers for seeding (default mode) or fragment comparison (OrthoANI mode). Available values: 2, 4, 8.`))
@@ -834,6 +838,23 @@ func init() {
 	compareCmd.Flags().BoolP("OrthoANI", "O", false,
 		formatFlagUsage(`Compute OrthoANI using reciprocal best hit of fragment pairs.`))
 
+}
+
+// genomePairPassesFilters applies pair-level thresholds after both directions
+// finish. OrthoANI has one ANI and stores both fractions in the first result.
+func genomePairPassesFilters(g1, g2 *GQuery, orthoANI bool, minAF, minANI float64) bool {
+	if g1.result == nil || len(*g1.result) == 0 {
+		return false
+	}
+	a := (*g1.result)[0]
+	if orthoANI {
+		return a.AFq >= minAF && a.AFs >= minAF && a.ANI >= minANI
+	}
+	if g2.result == nil || len(*g2.result) == 0 {
+		return false
+	}
+	b := (*g2.result)[0]
+	return a.AFq >= minAF && b.AFq >= minAF && (a.ANI >= minANI || b.ANI >= minANI)
 }
 
 func combinationCount(n int, label string) (int, error) {

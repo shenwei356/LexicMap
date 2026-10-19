@@ -7,7 +7,7 @@ weight: 10
 ## Usage
 
 ```plain
-$ lexicmap genome compare  -h
+$ lexicmap genome compare -h
 Compare genome pairs and compute ANI and AF
 
 Input:
@@ -26,6 +26,9 @@ Attention:
      substantially between genomes of similar sizes.
   2. Prepared genomes and fragment indexes are reused across pairs within
      --max-genome-cache-memory. This budget does not limit total process memory.
+  3. Both genomes must meet --min-af. In the default mode, at least one direction
+     must meet --min-ani; OrthoANI uses its single reciprocal-best-hit ANI.
+     Both thresholds are inclusive.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -83,10 +86,10 @@ Flags:
                                          extraction. Increase this value if you have hundreds of genome
                                          batches or have multiple queries, and do not forgot to set a
                                          bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
-  -F, --min-af float                     ► Only output results where each genome has aligned fraction
-                                         > than this value (percentage).
-  -I, --min-ani float                    ► Only output results where one genome has ANI > than this
-                                         value (percentage). (default 70)
+  -F, --min-af float                     ► Minimum aligned fraction for both genomes (percentage,
+                                         inclusive).
+  -I, --min-ani float                    ► Minimum ANI in at least one direction (percentage,
+                                         inclusive). (default 70)
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP. (default 30)
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
                                          (default "-")

@@ -51,6 +51,12 @@ the original linear-scan path. The command rewrites each primary .idx file and
 creates its matching .idx15 file. Different seeds files are processed in
 parallel using -j/--threads.
 
+Each chunk keeps its previous secondary index until the new primary is installed.
+Failed replacements are rolled back. If the process is interrupted, searches can
+use the matching backup; rerun this command to finish recovery and rebuilding.
+Keep any .idx15.bak files until recovery completes. Stop searches before rebuilding,
+and run only one rebuild per index at a time.
+
 Overall gains are most noticeable for batch queries with "lexicmap search" when
 -n/--top-n-genomes limits downstream alignments, making seed matching a larger
 share of runtime. Without this limit, sequence alignment often dominates runtime.

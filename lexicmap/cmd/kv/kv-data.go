@@ -1538,5 +1538,8 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 	if err = os.Remove(filepath.Clean(file) + KVIndex15FileExt); err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "removing obsolete secondary seed index")
 	}
+	if err = os.Remove(filepath.Clean(file) + KVIndex15FileExt + index15BackupSuffix); err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "removing obsolete secondary seed index backup")
+	}
 	return nil
 }

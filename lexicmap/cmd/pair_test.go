@@ -21,8 +21,14 @@
 package cmd
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -45,6 +51,71 @@ func TestDensePairIndexRoundTrip(t *testing.T) {
 		want := int(nGenomes * (nGenomes - 1) / 2)
 		if len(seen) != want {
 			t.Fatalf("n=%d: got %d indices, want %d", nGenomes, len(seen), want)
+		}
+	}
+}
+
+func TestMaskFractionBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		fraction float64
+		want     int
+	}{{0, 0}, {0.18, 12}, {11.0 / 64, 11}, {0.25, 16}, {1, 64}} {
+		if got := requiredMaskMatches(tc.fraction, 64); got != tc.want {
+			t.Fatalf("fraction=%g: got %d, want %d", tc.fraction, got, tc.want)
+		}
+	}
+	if shouldKeepPair(64, 11, 0.18, 64, 0.001) {
+		t.Fatal("pruning retained a completed pair below the fraction threshold")
+	}
+	if !shouldKeepPair(64, 12, 0.18, 64, 0.001) {
+		t.Fatal("pruning dropped a completed pair above the fraction threshold")
+	}
+}
+
+// TestPairFractionFiltering checks the reported fraction on both storage paths.
+func TestPairFractionFiltering(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(84))
+	a := make([]byte, 4080)
+	for i := range a {
+		a[i] = "ACGT"[rng.Intn(4)]
+	}
+	b := append([]byte(nil), a...)
+	for i := range b {
+		if rng.Intn(10) == 0 {
+			b[i] = "ACGT"[(strings.IndexByte("ACGT", b[i])+1)%4]
+		}
+	}
+	files := []string{filepath.Join(dir, "a.fa"), filepath.Join(dir, "b.fa")}
+	for i, sequence := range [][]byte{a, b} {
+		if err := os.WriteFile(files[i], append([]byte(">s\n"), sequence...), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	db := filepath.Join(dir, "index.lmi")
+	runSeedIndexCommand(t, append([]string{"index", "--quiet", "-j", "1", "-c", "2", "-m", "64", "-k", "16", "--partitions", "4", "-O", db}, files...)...)
+	for _, dense := range []string{"0", "2"} {
+		args := []string{"genome", "pair", "--quiet", "-j", "2", "-d", db, "-m", "0", "-p", "12", "-s", "0", "--max-dense-genomes", dense}
+		output := runSeedIndexCommand(t, append(args, "-f", "0")...)
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		if len(lines) != 2 {
+			t.Fatalf("expected one pair: %s", output)
+		}
+		n, err := strconv.Atoi(strings.Split(lines[1], "\t")[4])
+		if err != nil || n <= 0 || n >= 64 {
+			t.Fatalf("expected a partially matched pair: %s", output)
+		}
+		for _, above := range []bool{false, true} {
+			fraction := float64(n) / 64
+			wantLines := 2
+			if above {
+				fraction += 0.5 / 64
+				wantLines = 1
+			}
+			output = runSeedIndexCommand(t, append(args, "-f", fmt.Sprint(fraction))...)
+			if got := len(strings.Split(strings.TrimSpace(string(output)), "\n")); got != wantLines {
+				t.Fatalf("dense=%s fraction=%g: got %d lines, want %d:\n%s", dense, fraction, got, wantLines, output)
+			}
 		}
 	}
 }

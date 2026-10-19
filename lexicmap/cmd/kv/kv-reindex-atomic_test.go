@@ -31,7 +31,12 @@ import (
 func reindexFixture(t *testing.T) string {
 	t.Helper()
 	file := filepath.Join(t.TempDir(), "seeds")
-	values := []uint64{1, 2, 3}
+	// Exceed the secondary-block threshold so recovery tests exercise lookups,
+	// rather than only validating an otherwise unused sidecar header.
+	values := make([]uint64, 1024)
+	for i := range values {
+		values[i] = uint64(i + 1)
+	}
 	m := map[uint64]*[]uint64{uint64(54) << 18: &values}
 	if _, err := WriteKVData(16, 0, []*map[uint64]*[]uint64{&m}, file, 7, 6, 512, false); err != nil {
 		t.Fatal(err)

@@ -1689,7 +1689,8 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 	// 11) Store result
 	rs := poolGSearchResults.Get().(*[]*GSearchResult)
 	*rs = (*rs)[:0]
-	if gr.AFq >= minAF && gr.ANI >= minANI {
+	// A genome comparison requires the aligned fraction of both genomes.
+	if gr.AFq >= minAF && gr.AFs >= minAF && gr.ANI >= minANI {
 		*rs = append(*rs, gr)
 	} else {
 		poolGSearchResult.Put(gr)

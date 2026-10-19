@@ -7,7 +7,7 @@ weight: 20
 ## Usage
 
 ```plain
-$ lexicmap utils 2blast -h
+$ lexicmap genome pair -h
 Find similar genome pairs in the index
 
 Output format:
@@ -52,6 +52,8 @@ Notes on probabilistic pruning:
      -s/--prob-threshold controls an early heuristic that discards pairs unlikely
      to reach that threshold. Higher values prune more aggressively; 0 disables
      the heuristic and computes exact pair statistics.
+     The required mask count is rounded up: with 64 masks, -f 0.18 requires
+     at least 12 matches.
   2. In sparse-map mode, pruning can substantially reduce the number of map entries
      and therefore memory use. In dense-table mode, all pair slots are allocated
      up front, so pruning does not reduce the main table memory or skip pair

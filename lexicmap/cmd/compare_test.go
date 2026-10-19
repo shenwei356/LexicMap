@@ -21,9 +21,13 @@
 package cmd
 
 import (
+	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -33,6 +37,89 @@ func TestCombinationCount(t *testing.T) {
 	}
 	if _, err := combinationCount(1, "genome IDs"); err == nil {
 		t.Fatal("expected an error for fewer than two genome IDs")
+	}
+}
+
+// TestComparePairThresholds exercises asymmetric AF/ANI through the CLI, with
+// both input orders and both preparation paths. Filtering must use the pair.
+func TestComparePairThresholds(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(84))
+	randomSeq := func(n int) []byte {
+		s := make([]byte, n)
+		for i := range s {
+			s[i] = "ACGT"[rng.Intn(4)]
+		}
+		return s
+	}
+	core := randomSeq(2040)
+	write := func(name string, sequences ...[]byte) string {
+		t.Helper()
+		var data strings.Builder
+		for i, s := range sequences {
+			fmt.Fprintf(&data, ">s%d\n%s\n", i, s)
+		}
+		file := filepath.Join(dir, name+".fa")
+		if err := os.WriteFile(file, []byte(data.String()), 0600); err != nil {
+			t.Fatal(err)
+		}
+		return file
+	}
+	short := write("short", core)
+	long := write("long", core, randomSeq(18360))
+	contigs := [][]byte{core}
+	for range 3 {
+		mutated := append([]byte(nil), core...)
+		for i := range mutated {
+			if rng.Intn(10) == 0 {
+				mutated[i] = "ACGT"[(strings.IndexByte("ACGT", mutated[i])+1)%4]
+			}
+		}
+		contigs = append(contigs, mutated)
+	}
+	asymmetric := write("asymmetric", contigs...)
+	for _, cache := range []string{"0", "1M"} {
+		for _, reverse := range []bool{false, true} {
+			for _, tc := range []struct {
+				name, other, af, ani string
+				ortho, wantMatch     bool
+			}{
+				{"ortho AF below", long, "50", "70", true, false},
+				{"ortho AF equal", long, "10", "70", true, true},
+				{"ordinary AF below", long, "50", "70", false, false},
+				{"ordinary ANI either direction", asymmetric, "0", "99", false, true},
+				{"ordinary ANI equal", asymmetric, "0", "100", false, true},
+			} {
+				t.Run(fmt.Sprintf("%s/cache=%s/reverse=%v", tc.name, cache, reverse), func(t *testing.T) {
+					inputs := []string{short, tc.other}
+					if reverse {
+						inputs[0], inputs[1] = inputs[1], inputs[0]
+					}
+					args := []string{"genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache,
+						"--min-af", tc.af, "--min-ani", tc.ani}
+					if tc.ortho {
+						args = append(args, "-O")
+					}
+					output := runSeedIndexCommand(t, append(args, inputs...)...)
+					lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+					wantLines := 1
+					if tc.wantMatch {
+						wantLines++
+					}
+					if len(lines) != wantLines {
+						t.Fatalf("got %d lines, want %d:\n%s", len(lines), wantLines, output)
+					}
+					if tc.other == asymmetric {
+						fields := strings.Split(lines[1], "\t")
+						a, _ := strconv.ParseFloat(fields[3], 64)
+						b, _ := strconv.ParseFloat(fields[4], 64)
+						if min(a, b) >= 99 || max(a, b) != 100 {
+							t.Fatalf("fixture must have one ANI below 99 and one at 100: %v", fields[3:5])
+						}
+					}
+				})
+			}
+		}
 	}
 }
 
