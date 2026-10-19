@@ -7,12 +7,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap`:
     - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
     - All commands check that the log file differs from the output file before opening it.
-    - Progress bars in `search`, `genome search`, and `genome compare` respect `--quiet`, including when `--debug` is enabled.
 - New commands:
-    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
+    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
 - `lexicmap index`:
@@ -36,10 +35,10 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap search`:
     - **Faster searching speed, mainly for batch querying with `-n/--top-n-genomes`**.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
+        - Reduce memory use during parallel seed collection, genome loading, and large `-a/--all` output.
         - Optimize chaining and Top-N selection to reduce memory use and garbage collection overhead.
         - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
         - Improve pseudoalignment, contig lookup, and result grouping performance.
-        - Reduce memory use during parallel seed collection, genome loading, and large `-a/--all` output.
     - **Add two flags to limit the memory usage when searching in huge indexes** such as the [Logan Project](https://github.com/IndexThePlanet/Logan),
       where the large number of seed matches can cause memory exhaustion during seed collection.
       See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
@@ -50,12 +49,13 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
       In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
     - Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`; the number of retained candidates may exceed N.
-    - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
-    - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
-    - Added new flags `-g/--show-genome-name` and `-s/--show-species-name` to add the taxonomic/species name as a prefix to the `sgenome` field.
-    - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to `sseqid` values.
+    - Taxonomic information
+        - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
+        - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
+        - Added new flags `-g/--show-genome-name` and `-s/--show-species-name` to add the taxonomic/species name as a prefix to the `sgenome` field.
+        - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to `sseqid` values.
+        - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
     - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
-    - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
     - Fixed a data race when extending the pseudoalignment region.
     - Clear stale alignment statistics when reusing pooled results.
 - `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
