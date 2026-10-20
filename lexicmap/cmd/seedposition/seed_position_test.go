@@ -23,6 +23,8 @@ package seedposition
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -115,5 +117,39 @@ func TestSeedPositions(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 		return
+	}
+}
+
+// Closing and reopening pooled readers must reset the record-directory offset.
+func TestSeedPositionReaderReuse(t *testing.T) {
+	files := []string{filepath.Join(t.TempDir(), "a.bin"), filepath.Join(t.TempDir(), "b.bin")}
+	want := [][]uint32{{4, 8, 100}, {20, 60, 900}}
+	for i, file := range files {
+		writer, err := NewWriter(file, uint32(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Write(want[i]); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for n := 0; n < 20; n++ {
+		i := n % len(files)
+		reader, err := NewReader(files[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []uint32
+		err = reader.SeedPositions(0, &got)
+		closeErr := reader.Close()
+		if err != nil || closeErr != nil {
+			t.Fatalf("reopen %d: %v, %v", n, err, closeErr)
+		}
+		if !reflect.DeepEqual(got, want[i]) {
+			t.Fatalf("reopen %d: got %v, want %v", n, got, want[i])
+		}
 	}
 }

@@ -27,6 +27,8 @@ Attention:
      substantially between genomes of similar sizes.
   2. Prepared genomes and fragment indexes are reused across pairs within
      --max-genome-cache-memory. This budget does not limit total process memory.
+     A genome supplied via stdin is read once and retained for all pairs, outside
+     this cache budget, including when the cache is disabled.
   3. Both genomes must meet --min-af. In the default mode, at least one direction
      must meet --min-ani; OrthoANI uses its single reciprocal-best-hit ANI.
      Both thresholds are inclusive.
@@ -34,6 +36,8 @@ Attention:
      A/C/G/T from stored genomes. Two-bit encoding replaces ambiguous bases
      (including N) with A/C/G/T in indexed genomes.
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
+  5. Empty genomes and genomes with no contig long enough for an alignment seed
+     produce no matches; other pairs are still compared.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places

@@ -21,11 +21,14 @@
 package cmd
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -198,5 +201,90 @@ func TestReadGenomeFromFileUppercase(t *testing.T) {
 	defer RecycleGQuery(q)
 	if q.genomeSize != 16 || len(q.seqs) != 2 || string(*q.seqs[0]) != "ACGTNRYACGTNRY" || string(*q.seqs[1]) != "WS" {
 		t.Fatalf("unexpected normalization: size=%d seqs=%v", q.genomeSize, q.seqs)
+	}
+}
+
+// TestCompareStdinReplay covers both pair roles, cache eviction, and concurrent pairs.
+func TestCompareStdinReplay(t *testing.T) {
+	dir := t.TempDir()
+	data := ">seq\n" + indexTestDNA(2040) + "\n"
+	files := make([]string, 3)
+	for i := range files {
+		files[i] = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("g%d.fa", i)), data)
+	}
+	normalize := func(output []byte, input int) string {
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		if len(lines) != 4 {
+			t.Fatalf("expected three pairs: %s", output)
+		}
+		for i := 1; i < len(lines); i++ {
+			fields := strings.Split(lines[i], "\t")
+			for j := 0; j < 2; j++ {
+				if fields[j] == fmt.Sprintf("g%d", input) {
+					fields[j] = "-"
+				}
+			}
+			lines[i] = strings.Join(fields, "\t")
+		}
+		slices.Sort(lines[1:])
+		return strings.Join(lines, "\n")
+	}
+	for _, ortho := range []bool{false, true} {
+		args := []string{"genome", "compare", "--quiet", "-j", "2"}
+		if ortho {
+			args = append(args, "-O")
+		}
+		baseline := runSeedIndexCommand(t, append(slices.Clone(args), files...)...)
+		for _, cache := range []string{"0", "1", "4G"} {
+			for _, threads := range []string{"2", "4"} {
+				for position := 0; position < 3; position++ {
+					inputs := slices.Clone(files)
+					inputs[position] = "-"
+					command := append(slices.Clone(args), "--max-genome-cache-memory", cache, "-j", threads)
+					stdin := data
+					if position == 2 {
+						var compressed bytes.Buffer
+						w := gzip.NewWriter(&compressed)
+						if _, err := w.Write([]byte(data)); err != nil {
+							t.Fatal(err)
+						}
+						if err := w.Close(); err != nil {
+							t.Fatal(err)
+						}
+						stdin = compressed.String()
+					}
+					output, stderr, err := runAuditCommand(t, stdin, append(command, inputs...)...)
+					if err != nil {
+						t.Fatalf("cache=%s threads=%s stdin=%d: %v %s", cache, threads, position, err, stderr)
+					}
+					if normalize(output, position) != normalize(baseline, position) {
+						t.Fatalf("stdin changed results: %s vs %s", output, baseline)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestCompareSeedlessGenomes(t *testing.T) {
+	dir := t.TempDir()
+	long := ">seq\n" + indexTestDNA(2040) + "\n"
+	a := writeTestInput(t, filepath.Join(dir, "a.fa"), long)
+	b := writeTestInput(t, filepath.Join(dir, "b.fa"), long)
+	for _, ortho := range []bool{false, true} {
+		for _, cache := range []string{"0", "1", "4G"} {
+			args := []string{"genome", "compare", "--quiet", "-j", "4", "--max-genome-cache-memory", cache}
+			if ortho {
+				args = append(args, "-O")
+			}
+			baseline := runSeedIndexCommand(t, append(slices.Clone(args), a, b)...)
+			for i, data := range []string{"", ">short\nACGT\n", strings.Repeat(">short\nACGT\n", 8)} {
+				short := writeTestInput(t, filepath.Join(dir, fmt.Sprintf("short%d.fa", i)), data)
+				output := runSeedIndexCommand(t, append(slices.Clone(args), short, a, b)...)
+				if string(output) != string(baseline) {
+					t.Fatalf("seedless genome changed valid pair: %s vs %s", output, baseline)
+				}
+			}
+		}
 	}
 }

@@ -176,6 +176,14 @@ var DefaultIndexSearchingOptions = IndexSearchingOptions{
 	MaxEvalue:                        10,
 }
 
+// genomeChunkLocation links a chunk to its complete genome without another map.
+// group indexes Index.genomeChunks; count/index are used in displayed sequence IDs.
+type genomeChunkLocation struct {
+	count uint32 // total chunks in the genome
+	index uint32 // this chunk's ordinal within the genome
+	group uint32 // complete chunk list in Index.genomeChunks
+}
+
 // Index creates a LexicMap index from a path
 // and supports searching with query sequences.
 type Index struct {
@@ -243,7 +251,7 @@ type Index struct {
 	genomeChunks                 [][]uint64 // original chunk information
 	poolGenomeChunksIdx2List     *sync.Pool
 	poolGenomeChunksPointer2List *sync.Pool
-	genomeChunksIdx              map[uint64][2]uint32 // batch+ref index -> #chunks, chunk index
+	genomeChunksIdx              map[uint64]genomeChunkLocation // batch+ref index -> chunk metadata
 
 	// totalBases
 	totalBases int64
@@ -614,10 +622,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		}}
 
 		// batch+ref index -> #chunks, chunk index
-		m := make(map[uint64][2]uint32, len(idx.genomeChunks))
-		for _, idxs := range idx.genomeChunks {
+		m := make(map[uint64]genomeChunkLocation, len(idx.genomeChunks))
+		for group, idxs := range idx.genomeChunks {
 			for i, idx := range idxs {
-				m[idx] = [2]uint32{uint32(len(idxs)), uint32(i)}
+				m[idx] = genomeChunkLocation{uint32(len(idxs)), uint32(i), uint32(group)}
 			}
 		}
 		idx.genomeChunksIdx = m
@@ -2361,50 +2369,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 						iSeq = iSeqPre // do not want to change iSeq below to iSeqPre
 
-						// ------------------------------------------------------------
-						// convert the positions
-
-						// fmt.Printf("  aligned: (%d, %d) vs (%d, %d) rc:%v\n", qb, qe, tb, te, rc)
-						c.QBegin = qb
-						c.QEnd = qe
-						// alignments might belong to different seqs, so we have to store it for later use
-						c.tPosOffsetBegin = tPosOffsetBegin
-						if rc {
-							c.TBegin = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - te - 1)
-							if c.TBegin < 0 { // position in the interval
-								c.QEnd += c.TBegin
-								c.AlignedBasesQ += c.TBegin
-								c.TBegin = 0
-							}
-							c.TEnd = tBegin - tPosOffsetBegin + (len(tSeq.Seq) - tb - 1)
-							if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-								c.QBegin += c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-								c.TEnd = tSeq.SeqSizes[iSeq] - 1
-							}
-						} else {
-							// fmt.Printf("tBegin: %d, tPosOffsetBegin: %d, tPosOffsetEnd: %d\n",
-							// 	tBegin, tPosOffsetBegin, tPosOffsetEnd)
-							// fmt.Printf("tb: %d, te: %d, tBegin+tb: %d, tBegin+te: %d\n", tb, te, tBegin+tb, tBegin+te)
-							c.TBegin = tBegin - tPosOffsetBegin + tb
-							if c.TBegin < 0 { // position in the interval
-								c.QBegin -= c.TBegin
-								c.AlignedBasesQ += c.TBegin
-								c.TBegin = 0
-							}
-							c.TEnd = tBegin - tPosOffsetBegin + te
-							// fmt.Printf("tmp: t: %d-%d, seqlen: %d \n", c.TBegin, c.TEnd, tSeq.SeqSizes[iSeq])
-							if c.TEnd > tSeq.SeqSizes[iSeq]-1 {
-								c.QEnd -= c.TEnd - (tSeq.SeqSizes[iSeq] - 1)
-								c.TEnd = tSeq.SeqSizes[iSeq] - 1
-							}
-						}
-						c.MaxExtLen = tSeq.SeqSizes[iSeq] - 1 - c.TEnd
-						// fmt.Printf("  adjusted: (%d, %d) vs (%d, %d) rc:%v, iSeq: %d, %s\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc, iSeq, *tSeq.SeqIDs[iSeq])
-
-						// ------------------------------------------------------------
-
-						// fmt.Printf("  add previous one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
-
+						// Finish the previous contig without converting the current chain.
+						// The current chain uses iSeq0 for conversion and deduplication below.
 						if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
 							// only include valid chains
 							r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
@@ -2483,7 +2449,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 									c.TEnd += _s2
 
 									c.TBegin = c.TBegin + (len(_tseq) - cigar.TEnd)
-									c.TEnd = c.TEnd - cigar.TBegin - 1
+									c.TEnd = c.TEnd - (cigar.TBegin - 1)
 								} else {
 									c.TBegin -= _s2
 									c.TEnd += _e2
@@ -2571,8 +2537,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 								// genome chunk info
 								if idx.hasGenomeChunks {
 									if info, ok := idx.genomeChunksIdx[r.BatchGenomeIndex]; ok {
-										sd.NChunks = info[0]
-										sd.ChunkIdx = info[1]
+										sd.NChunks = info.count
+										sd.ChunkIdx = info.index
 									} else {
 										sd.NChunks = 1
 										sd.ChunkIdx = 0
@@ -2590,25 +2556,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 						// ----------
 
-						// create anther HSP
-						iSeqPre = -1
+						// Start the current contig and use the common conversion path.
 						crChains2 = poolChains2.Get().(*[]*Chain2Result)
-
-						// ------------------------------------------------------------
-						// remove duplicated alignments
-
-						key = alignmentKey{c.QBegin, c.QEnd, c.TBegin, c.TEnd, iSeq, rc}
-						if _, duplicated = (*alignmentKeys)[key]; duplicated {
-							// fmt.Printf("  duplicated: (%d, %d) vs (%d, %d) rc:%v\n", c.QBegin, c.QEnd, c.TBegin, c.TEnd, rc)
-							recycleChain2(c)
-							(*cr.Chains)[_i] = nil
-						} else {
-							*crChains2 = append(*crChains2, c)
-							(*alignmentKeys)[key] = struct{}{}
-						}
-
 						iSeq = iSeq0
-						continue
 					}
 				}
 				iSeqPre = iSeq
@@ -2667,6 +2617,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 			// fmt.Printf("  add current one: %d fragments, aligned-bases: %d\n", len(*crChains2), (*crChains2)[0].AlignedBases)
 
+			// A rejected final chain must not change the pending group's contig.
+			// iSeqPre is updated only for chains assigned to a valid contig.
+			iSeq = iSeqPre
 			if iSeq >= 0 {
 				if len(*crChains2) > 0 { // it might be empty after duplicated results are removed
 					// only include valid chains
@@ -2836,8 +2789,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						// genome chunk info
 						if idx.hasGenomeChunks {
 							if info, ok := idx.genomeChunksIdx[r.BatchGenomeIndex]; ok {
-								sd.NChunks = info[0]
-								sd.ChunkIdx = info[1]
+								sd.NChunks = info.count
+								sd.ChunkIdx = info.index
 							} else {
 								sd.NChunks = 1
 								sd.ChunkIdx = 0

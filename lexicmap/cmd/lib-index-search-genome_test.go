@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -329,5 +330,36 @@ func TestTaxidFileExclusions(t *testing.T) {
 				t.Fatalf("got %v / %v, want %v / %v", positive, negative, tc.positive, tc.negative)
 			}
 		})
+	}
+}
+
+// Screening one chunk must still align and report the complete subject genome.
+func TestGenomeSearchIncludesUnmatchedChunks(t *testing.T) {
+	dir, ref, contigs := writeSearchContigFixture(t)
+	query := writeTestInput(t, filepath.Join(dir, "one.fa"), ">a\n"+contigs[0]+"\n")
+	for _, ortho := range []bool{false, true} {
+		var baseline string
+		for _, limit := range []string{"10000", "3000"} {
+			db := filepath.Join(dir, fmt.Sprintf("db-%v-%s", ortho, limit))
+			runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-g", limit, "-O", db, ref)
+			args := []string{"genome", "search", "--quiet", "-j", "1", "-d", db, "-m", "0", "-n", "0", "--frag-size", "1000", "--min-af", "0", "--min-ani", "0"}
+			if ortho {
+				args = append(args, "-O")
+			}
+			output := string(runSeedIndexCommand(t, append(args, query)...))
+			lines := strings.Split(strings.TrimSpace(output), "\n")
+			if len(lines) != 2 {
+				t.Fatalf("expected one match: %s", output)
+			}
+			fields := strings.Split(lines[1], "\t")
+			if fields[4] != "20.833" || fields[7] != "3" || fields[8] != "4800" {
+				t.Fatalf("incomplete subject: %s", output)
+			}
+			if baseline == "" {
+				baseline = output
+			} else if output != baseline {
+				t.Fatalf("chunking changed ANI/AF: %s vs %s", baseline, output)
+			}
+		}
 	}
 }

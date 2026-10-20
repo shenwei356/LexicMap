@@ -60,6 +60,8 @@ Attention:
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
   2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
+  3. Readers are opened only for requested genomes. --max-open-files limits reader
+     concurrency; it must be at least the number of seed chunks plus 2.
 
 Extra columns:
   Using -v/--verbose will output more columns:
@@ -70,6 +72,7 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
+  The plot directory must not contain the input index, even with --force.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -159,58 +162,14 @@ Figures:
 			}
 		}
 
-		// pool of genome reader
-		var hasGenomeRdrs bool
-		var poolGenomeRdrs []chan *genome.Reader
-
-		{
-			openFiles := info.Chunks + 2
-			if maxOpenFiles < openFiles {
-				checkError(fmt.Errorf("invalid max open files: %d, should be >= %d", maxOpenFiles, openFiles))
-			}
-
-			// we can create genome reader pools
-			// n := (maxOpenFiles - info.Chunks) / info.GenomeBatches
-			// if n < 2 {
-			// } else {
-			// 	n >>= 1
-			// 	if n > opt.NumCPUs {
-			// 		n = opt.NumCPUs
-			// 	}
-			n := 1
-			if outputLog {
-				log.Infof("creating genome reader pools, each batch with %d readers...", n)
-			}
-			poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
-			for i := 0; i < info.GenomeBatches; i++ {
-				poolGenomeRdrs[i] = make(chan *genome.Reader, n)
-			}
-
-			// parallelize it
-			var wg sync.WaitGroup
-			tokens := make(chan int, opt.NumCPUs)
-			for i := 0; i < info.GenomeBatches; i++ {
-				for j := 0; j < n; j++ {
-					tokens <- 1
-					wg.Add(1)
-					go func(i int) {
-						fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
-						rdr, err := genome.NewReader(fileGenomes)
-						if err != nil {
-							checkError(fmt.Errorf("failed to create genome reader: %s", err))
-						}
-						poolGenomeRdrs[i] <- rdr
-
-						wg.Done()
-						<-tokens
-					}(i)
-				}
-			}
-			wg.Wait()
-
-			hasGenomeRdrs = true
-			// }
+		// A seed-position reader holds two files. One serial output reader (or
+		// plot writer) may coexist with producers. Readers close before a task
+		// releases its token, so this bounds retained handles, not just opens.
+		minimumFiles := max(3, info.Chunks+2)
+		if maxOpenFiles < minimumFiles {
+			checkError(fmt.Errorf("invalid max open files: %d, should be >= %d", maxOpenFiles, minimumFiles))
 		}
+		readerWorkers := min(opt.NumCPUs, (maxOpenFiles-1)/2)
 
 		// ---------------------------------------------------------------
 
@@ -280,28 +239,9 @@ Figures:
 			poolRef2Locs.Put(r)
 		}
 
-		// seed position readers
-		readers := make([]*seedposition.Reader, 0, info.GenomeBatches) // save for closing them in the end
-		var readersMu sync.Mutex
-		readerPools := make([]*sync.Pool, info.GenomeBatches) // one for each genome batch
-		for batch := 0; batch < info.GenomeBatches; batch++ {
-			_batch := batch
-			readerPools[batch] = &sync.Pool{New: func() interface{} {
-				fileSeedLoc := filepath.Join(dbDir, DirGenomes, batchDir(_batch), FileSeedPositions)
-				rdr, err := seedposition.NewReader(fileSeedLoc)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read seed position data file: %s", err))
-				}
-				readersMu.Lock()
-				readers = append(readers, rdr)
-				readersMu.Unlock()
-				return rdr
-			}}
-		}
-
 		var wg sync.WaitGroup
 		ch := make(chan *Ref2Locs, opt.NumCPUs)
-		tokens := make(chan int, opt.NumCPUs)
+		tokens := make(chan int, readerWorkers)
 		done := make(chan int)
 
 		// 2. receive and output
@@ -365,10 +305,8 @@ Figures:
 				genomeBatch := ref2locs.GenomeBatch
 				genomeIdx = ref2locs.GenomeIdx
 
-				if hasGenomeRdrs {
-					rdr = <-poolGenomeRdrs[ref2locs.GenomeBatch]
-				} else {
-					fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(ref2locs.GenomeBatch), FileGenomes)
+				if moreColumns {
+					fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileGenomes)
 					rdr, err = genome.NewReader(fileGenome)
 					if err != nil {
 						checkError(fmt.Errorf("failed to read genome data file: %s", err))
@@ -462,6 +400,11 @@ Figures:
 					pre = pos
 				}
 
+				if moreColumns {
+					checkError(rdr.Close())
+					rdr = nil
+				}
+
 				if !outputPlotDir || len(v) == 0 { // no distance > -D
 					// ---------------------------------------------------------
 
@@ -470,15 +413,6 @@ Figures:
 					}
 					recycleRef2Locs(ref2locs)
 
-					// return or close genome reader
-					if hasGenomeRdrs {
-						poolGenomeRdrs[genomeBatch] <- rdr
-					} else {
-						err = rdr.Close()
-						if err != nil {
-							checkError(fmt.Errorf("failed to close genome data file: %s", err))
-						}
-					}
 					continue
 				}
 
@@ -586,16 +520,6 @@ Figures:
 					}
 					recycleRef2Locs(ref2locs)
 
-					// return or close genome reader
-					if hasGenomeRdrs {
-						poolGenomeRdrs[genomeBatch] <- rdr
-					} else {
-						err = rdr.Close()
-						if err != nil {
-							checkError(fmt.Errorf("failed to close genome data file: %s", err))
-						}
-					}
-
 					continue
 				}
 
@@ -644,16 +568,6 @@ Figures:
 				}
 				recycleRef2Locs(ref2locs)
 
-				// return or close genome reader
-				if hasGenomeRdrs {
-					poolGenomeRdrs[genomeBatch] <- rdr
-				} else {
-					err = rdr.Close()
-					if err != nil {
-						checkError(fmt.Errorf("failed to close genome data file: %s", err))
-					}
-				}
-
 				// ---------------------------------------------------------
 
 				counter[refname]++
@@ -669,7 +583,6 @@ Figures:
 			wg.Add(1)
 
 			go func(refname string) {
-				var err error
 				defer func() {
 					wg.Done()
 					<-tokens
@@ -702,40 +615,23 @@ Figures:
 					ref2locs.GenomeBatch = genomeBatch
 					ref2locs.GenomeIdx = genomeIdx
 
-					rdr := readerPools[genomeBatch].Get().(*seedposition.Reader)
+					fileSeedLoc := filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileSeedPositions)
+					rdr, err := seedposition.NewReader(fileSeedLoc)
+					checkError(err)
 					err = rdr.SeedPositions(genomeIdx, ref2locs.Locs)
-					if err != nil {
-						checkError(fmt.Errorf("failed to read seed position for %s: %s", refname, err))
-					}
+					closeErr := rdr.Close()
+					checkError(err)
+					checkError(closeErr)
 
-					readerPools[genomeBatch].Put(rdr)
-
-					// sequence length ----------------------------------------------------------
-
-					var gRdr *genome.Reader
-					if hasGenomeRdrs {
-						gRdr = <-poolGenomeRdrs[ref2locs.GenomeBatch]
-					} else {
-						fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(ref2locs.GenomeBatch), FileGenomes)
-						gRdr, err = genome.NewReader(fileGenome)
-						if err != nil {
-							checkError(fmt.Errorf("failed to read genome data file: %s", err))
-						}
-					}
+					// Read metadata after releasing both seed-position descriptors.
+					fileGenome := filepath.Join(dbDir, DirGenomes, batchDir(genomeBatch), FileGenomes)
+					gRdr, err := genome.NewReader(fileGenome)
+					checkError(err)
 					g, err := gRdr.GenomeInfo(genomeIdx)
-					if err != nil {
-						checkError(fmt.Errorf("failed to read genome infomation: %s", err))
-					}
+					closeErr = gRdr.Close()
+					checkError(err)
+					checkError(closeErr)
 					ref2locs.Genome = g
-
-					if hasGenomeRdrs {
-						poolGenomeRdrs[ref2locs.GenomeBatch] <- gRdr
-					} else {
-						err = gRdr.Close()
-						if err != nil {
-							checkError(fmt.Errorf("failed to close genome data file: %s", err))
-						}
-					}
 
 					ch <- ref2locs
 				}
@@ -746,32 +642,6 @@ Figures:
 		wg.Wait()
 		close(ch)
 		<-done
-
-		// close all readers
-		for _, rdr := range readers {
-			checkError(rdr.Close())
-		}
-
-		// genome reader
-		if hasGenomeRdrs {
-			var _err error
-			var wg sync.WaitGroup
-			for _, pool := range poolGenomeRdrs {
-				wg.Add(1)
-				go func(pool chan *genome.Reader) {
-					close(pool)
-					for rdr := range pool {
-						err := rdr.Close()
-						if err != nil {
-							_err = err
-						}
-					}
-					wg.Done()
-				}(pool)
-			}
-			wg.Wait()
-			checkError(_err)
-		}
 
 		if showProgressBar {
 			close(chDuration)
@@ -811,7 +681,7 @@ func init() {
 		formatFlagUsage(`Only output records with seed distance >= this value.`))
 
 	seedPosCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum opened files, used for extracting sequences.`))
+		formatFlagUsage(`Maximum open files for seed-position and genome readers. Limits reader concurrency; minimum: seed chunks + 2.`))
 
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
 		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows.`))

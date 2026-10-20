@@ -193,3 +193,28 @@ func TestMergeSearchResultsLongAlignmentRows(t *testing.T) {
 		t.Fatalf("maximum row length was not enforced: %v %s", err, stderr)
 	}
 }
+
+func TestMergeSearchResultsRejectsMixedQueries(t *testing.T) {
+	for _, sameSubject := range []bool{false, true} {
+		dir := t.TempDir()
+		subject2 := "other"
+		if sameSubject {
+			subject2 = "subject"
+		}
+		row := func(query, subject string) string {
+			return fmt.Sprintf("%s\t100\t1\t%s\ts\t100\t1\t1\t100\t100\t100\t0\t1\t100\t1\t100\t+\t100\t0\t100\n", query, subject)
+		}
+		file := writeTestInput(t, filepath.Join(dir, "mixed.tsv"), auditSearchHeader+"\n"+row("query1", "subject")+row("query2", subject2))
+		_, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", "--quiet", "-n", "1", file)
+		if err == nil || !strings.Contains(string(stderr), "queries") {
+			t.Fatalf("mixed queries accepted: %v %s", err, stderr)
+		}
+		for _, query := range []string{"query1", "query2"} {
+			output := runSeedIndexCommand(t, "utils", "merge-search-results", "--quiet", "-n", "1", "-q", query, file)
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+			if len(lines) != 2 || !strings.HasPrefix(lines[1], query+"\t") {
+				t.Fatalf("query filter changed: %s", output)
+			}
+		}
+	}
+}

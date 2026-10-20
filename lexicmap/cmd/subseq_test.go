@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -109,5 +110,71 @@ func writeSubseqTestGenome(t *testing.T, dbDir string, batch int) {
 	genome.RecycleGenome(g)
 	if err := wtr.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSubseqConcatenatedCoordinates(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	for _, tc := range []struct {
+		region, start, end, sequence string
+		reverse                      bool
+		extra                        []string
+	}{
+		{"1:4", "1", "4", "ACGT", false, nil},
+		{"1:20", "1", "8", "ACGTACGT", false, nil},
+		{"2:5", "2", "5", "TACG", true, nil},
+		{"3:4", "1", "7", "ACGTACG", false, []string{"-U", "2", "-D", "3"}},
+		{"3:4", "1", "6", "GTACGT", true, []string{"-U", "2", "-D", "3"}},
+	} {
+		args := []string{"utils", "subseq", "--quiet", "-d", db, "-n", "g0", "-r", tc.region}
+		strand := "+"
+		if tc.reverse {
+			args = append(args, "-R")
+			strand = "-"
+		}
+		output := runSeedIndexCommand(t, append(args, tc.extra...)...)
+		want := fmt.Sprintf(">g0:%s-%s:%s\n%s\n", tc.start, tc.end, strand, tc.sequence)
+		if string(output) != want {
+			t.Fatalf("got %s, want %s", output, want)
+		}
+	}
+}
+
+func TestSubseqDecoratedSequenceIDs(t *testing.T) {
+	dir := t.TempDir()
+	// Exact IDs that resemble prefixes must win over the stripped fallback.
+	a, b := indexTestDNA(1000), indexTestDNA(2000)[1000:]
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">a:b\n"+a+"\n>c1/1:s1/2:a:b\n"+b+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+a+"\n")
+	result := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", "--show-sseq-idx", query)
+	lines := strings.Split(strings.TrimSpace(string(result)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected one exact hit: %s", result)
+	}
+	file := writeTestInput(t, filepath.Join(dir, "result.tsv"), string(result))
+	// The decorated spelling is also a real ID: exact lookup is intentional.
+	got := string(runSeedIndexCommand(t, "utils", "subseq", "--quiet", "-j", "1", "-d", db, "-f", file, "-w", "0"))
+	if !strings.HasPrefix(got, ">c1/1:s1/2:a:b:1-1000:+ ") || !strings.HasSuffix(got, "\n"+b+"\n") {
+		t.Fatalf("exact prefix-like ID lost: %s", got)
+	}
+	// A nested display prefix around that real ID must fall back once.
+	fields := strings.Split(lines[1], "\t")
+	fields[4] = "c1/1:s2/2:" + fields[4]
+	writeTestInput(t, file, lines[0]+"\n"+strings.Join(fields, "\t")+"\n")
+	got = string(runSeedIndexCommand(t, "utils", "subseq", "--quiet", "-j", "1", "-d", db, "-f", file, "-w", "0"))
+	if !strings.HasSuffix(got, "\n"+b+"\n") {
+		t.Fatalf("decorated ID not resolved: %s", got)
+	}
+	// An unambiguous displayed ID must extract the same bases as its raw ID.
+	fields[4] = "c1/1:s1/2:a:b"
+	fields[3] = "ref"
+	// Use a distinct prefix count to avoid the exact spelling above.
+	fields[4] = "c1/1:s1/3:a:b"
+	writeTestInput(t, file, lines[0]+"\n"+strings.Join(fields, "\t")+"\n")
+	got = string(runSeedIndexCommand(t, "utils", "subseq", "--quiet", "-j", "1", "-d", db, "-f", file, "-w", "0"))
+	if !strings.HasPrefix(got, ">a:b:1-1000:+ ") || !strings.HasSuffix(got, "\n"+a+"\n") {
+		t.Fatalf("plain ID fallback failed: %s", got)
 	}
 }

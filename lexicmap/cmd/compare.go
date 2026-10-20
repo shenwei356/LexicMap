@@ -63,6 +63,8 @@ Attention:
      substantially between genomes of similar sizes.
   2. Prepared genomes and fragment indexes are reused across pairs within
      --max-genome-cache-memory. This budget does not limit total process memory.
+     A genome supplied via stdin is read once and retained for all pairs, outside
+     this cache budget, including when the cache is disabled.
   3. Both genomes must meet --min-af. In the default mode, at least one direction
      must meet --min-ani; OrthoANI uses its single reciprocal-best-hit ANI.
      Both thresholds are inclusive.
@@ -70,6 +72,8 @@ Attention:
      A/C/G/T from stored genomes. Two-bit encoding replaces ambiguous bases
      (including N) with A/C/G/T in indexed genomes.
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
+  5. Empty genomes and genomes with no contig long enough for an alignment seed
+     produce no matches; other pairs are still compared.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -532,6 +536,34 @@ Output format:
 			}
 		}
 
+		// Stdin cannot be replayed after cache eviction. Read it once and keep
+		// its immutable sequences alive until every pair and cache entry is done.
+		var stdinGenome *GQuery
+		if !loadIndex {
+			for _, input := range inputs {
+				if !isStdin(input) {
+					continue
+				}
+				stdinGenome, err = ReadGenomeFromFile(input, reRefName, fullInputPath)
+				checkError(err)
+				if stdinGenome != nil {
+					defer RecycleGQuery(stdinGenome)
+				}
+				break
+			}
+		}
+		readGenome := func(name string) (*GQuery, error) {
+			if isStdin(name) {
+				if stdinGenome == nil {
+					return nil, nil
+				}
+				// Only results are pair-local; comparisons never change these bytes.
+				view := *stdinGenome
+				return &view, nil
+			}
+			return ReadGenomeFromFile(name, reRefName, fullInputPath)
+		}
+
 		if outputLog {
 			log.Info()
 			switch {
@@ -587,7 +619,7 @@ Output format:
 						q.id = append(q.id, name...)
 					}
 				} else {
-					q, readErr = ReadGenomeFromFile(name, reRefName, fullInputPath)
+					q, readErr = readGenome(name)
 				}
 				if readErr != nil {
 					return nil, readErr
@@ -615,6 +647,7 @@ Output format:
 
 				q := poolGPair.Get().(*GPair)
 				q.cache = genomeCache
+				q.borrowed = [2]bool{!loadIndex && isStdin(genome1), !loadIndex && isStdin(genome2)}
 
 				var _wg sync.WaitGroup
 				var readErr1, readErr2 error
@@ -637,7 +670,7 @@ Output format:
 							q.g1.id = append(q.g1.id, []byte(genome1)...)
 						}
 					} else {
-						q.g1, readErr1 = ReadGenomeFromFile(genome1, reRefName, fullInputPath)
+						q.g1, readErr1 = readGenome(genome1)
 					}
 				}()
 				go func() {
@@ -656,7 +689,7 @@ Output format:
 							q.g2.id = append(q.g2.id, []byte(genome2)...)
 						}
 					} else {
-						q.g2, readErr2 = ReadGenomeFromFile(genome2, reRefName, fullInputPath)
+						q.g2, readErr2 = readGenome(genome2)
 					}
 				}()
 				_wg.Wait()
@@ -941,10 +974,11 @@ func readPairs(file string, hasHeaderLine bool) ([]string, error) {
 
 // GPair owns results for one genome pair and pins any borrowed cache entries.
 type GPair struct {
-	g1, g2  *GQuery
-	cache   *compareGenomeCache         // nil for the original uncached path
-	entries [2]*compareGenomeCacheEntry // pinned until results have been printed
-	views   [2]GQuery                   // metadata and sequence views with independent results
+	g1, g2   *GQuery
+	cache    *compareGenomeCache         // nil for the original uncached path
+	entries  [2]*compareGenomeCacheEntry // pinned until results have been printed
+	views    [2]GQuery                   // metadata and sequence views with independent results
+	borrowed [2]bool                     // uncached stdin views borrow command-owned sequences
 }
 
 var poolGPair = &sync.Pool{
@@ -959,6 +993,7 @@ func (q *GPair) Reset() {
 	q.cache = nil
 	q.entries = [2]*compareGenomeCacheEntry{}
 	q.views = [2]GQuery{}
+	q.borrowed = [2]bool{}
 }
 
 // RecycleGPair releases pair results before unpinning borrowed genome sequences.
@@ -975,11 +1010,17 @@ func RecycleGPair(q *GPair) {
 		poolGPair.Put(q)
 		return
 	}
-	if q.g1 != nil {
-		RecycleGQuery(q.g1)
-	}
-	if q.g2 != nil {
-		RecycleGQuery(q.g2)
+	for i, g := range []*GQuery{q.g1, q.g2} {
+		if g == nil {
+			continue
+		}
+		if q.borrowed[i] {
+			if g.result != nil {
+				RecycleGSearchResults(g.result)
+			}
+		} else {
+			RecycleGQuery(g)
+		}
 	}
 	q.Reset()
 	poolGPair.Put(q)

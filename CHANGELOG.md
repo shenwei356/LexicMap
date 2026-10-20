@@ -61,9 +61,11 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
     - Fixed a data race when extending the pseudoalignment region.
     - Clear stale alignment statistics when reusing pooled results.
+    - Fix contig assignment and reverse-strand coordinates when alignments span multiple contigs.
 - `lexicmap utils merge-search-results`:
     - **Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score**. Unlike `search -n`, this filters alignment results rather than chaining scores.
     - Apply `-q/--query` when only one input file is given.
+    - Reject mixed query IDs before grouping merged rows by subject.
 - `lexicmap utils 2sam`:
     - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
     - Fix MAPQ calculation when a later secondary alignment has a higher score.
@@ -77,9 +79,12 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
+    - Fix end coordinates for concatenated regions and accept search results with `--show-sseq-idx`.
 - `lexicmap utils seed-pos`:
     - Skip empty seed results and finish reading result fields before recycling them.
     - Fixed data races in seed-position reader creation and error handling.
+    - Open readers on demand within `--max-open-files` and reset offsets when reusing readers.
+    - Reject plot directories that would overwrite the input index, including with `--force`.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
 - `lexicmap utils reindex-seeds`:
@@ -88,6 +93,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added progress bars to all seed chunks.
 - `lexicmap utils remerge`:
     - Retain original batches until merging succeeds, allowing retries after a later merge group fails.
+    - Reject log paths that alias files in temporary input batches.
     - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
 
 ### v0.9.0 - 2026-03-13

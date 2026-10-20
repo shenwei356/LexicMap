@@ -19,6 +19,8 @@ Attention:
      The positions can be used to extract subsequence with 'lexicmap utils subseq'.
   2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
+  3. Readers are opened only for requested genomes. --max-open-files limits reader
+     concurrency; it must be at least the number of seed chunks plus 2.
 
 Extra columns:
   Using -v/--verbose will output more columns:
@@ -29,6 +31,7 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
+  The plot directory must not contain the input index, even with --force.
 
 Usage:
   lexicmap utils seed-pos [flags]
@@ -42,7 +45,8 @@ Flags:
       --height float         ► Histogram height (unit: inch). (default 4)
   -h, --help                 help for seed-pos
   -d, --index string         ► Index directory created by "lexicmap index".
-      --max-open-files int   ► Maximum opened files, used for extracting sequences. (default 512)
+      --max-open-files int   ► Maximum open files for seed-position and genome readers. Limits reader
+                             concurrency; minimum: seed chunks + 2. (default 512)
   -D, --min-dist int         ► Only output records with seed distance >= this value.
   -o, --out-file string      ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                              (default "-")

@@ -270,3 +270,80 @@ func TestAuxiliaryOutputsCannotShareLog(t *testing.T) {
 		t.Fatal(fmt.Sprintf("output opened before checking: %v", err))
 	}
 }
+
+func TestRemergeProtectsTemporaryBatches(t *testing.T) {
+	for _, name := range []string{FileMasks, filepath.Join(DirGenomes, batchDir(0), FileGenomes), filepath.Join(DirSeeds, "chunk_000.bin")} {
+		for _, alias := range []string{"same", "symlink", "hardlink"} {
+			t.Run(name+"/"+alias, func(t *testing.T) {
+				dir := t.TempDir()
+				db := filepath.Join(dir, "db")
+				input := filepath.Join(db+ExtTmpDir, "batch_0000", name)
+				if err := os.MkdirAll(filepath.Dir(input), 0700); err != nil {
+					t.Fatal(err)
+				}
+				original := []byte("recovery input must survive\n")
+				if err := os.WriteFile(input, original, 0600); err != nil {
+					t.Fatal(err)
+				}
+				output := input
+				if alias != "same" {
+					output = filepath.Join(dir, "run.log")
+					var err error
+					if alias == "symlink" {
+						err = os.Symlink(input, output)
+					} else {
+						err = os.Link(input, output)
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				_, stderr, err := runAuditCommand(t, "", "utils", "remerge", "--quiet", "-d", db, "--log", output)
+				if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+					t.Fatalf("recovery alias accepted: %v %s", err, stderr)
+				}
+				got, err := os.ReadFile(input)
+				if err != nil || !bytes.Equal(got, original) {
+					t.Fatalf("recovery input changed: %v %q", err, got)
+				}
+			})
+		}
+	}
+}
+
+func TestSeedPosPlotDirectoryPreservesIndex(t *testing.T) {
+	for _, location := range []string{"same", "parent", "symlink", "parent-symlink"} {
+		t.Run(location, func(t *testing.T) {
+			dir := t.TempDir()
+			parent := filepath.Join(dir, "parent")
+			db := filepath.Join(parent, "db")
+			if err := os.MkdirAll(db, 0700); err != nil {
+				t.Fatal(err)
+			}
+			original := []byte("input index must survive\n")
+			input := writeTestInput(t, filepath.Join(db, FileInfo), string(original))
+			output := db
+			if location == "parent" {
+				output = parent
+			}
+			if strings.Contains(location, "symlink") {
+				output = filepath.Join(dir, "alias")
+				target := db
+				if location == "parent-symlink" {
+					target = parent
+				}
+				if err := os.Symlink(target, output); err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, stderr, err := runAuditCommand(t, "", "utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", output, "--force")
+			if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+				t.Fatalf("destructive plot directory accepted: %v %s", err, stderr)
+			}
+			got, err := os.ReadFile(input)
+			if err != nil || !bytes.Equal(got, original) {
+				t.Fatalf("input index changed: %v %q", err, got)
+			}
+		})
+	}
+}

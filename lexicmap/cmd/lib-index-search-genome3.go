@@ -1244,8 +1244,22 @@ func (idx *Index) CompareTwoGenomes(query, subject *GQuery, fragLen int, minSeed
 	return idx.compareTwoGenomesPrepared(query, subject, nil, nil, fragLen, minSeedLen, minAF, minANI)
 }
 
+// hasSeedLengthContig reports whether a genome can supply an alignment seed.
+// Short contigs remain in the genome-size denominator when longer contigs align.
+func hasSeedLengthContig(q *GQuery, k int) bool {
+	for _, s := range q.seqs {
+		if len(*s) >= k {
+			return true
+		}
+	}
+	return false
+}
+
 // compareTwoGenomesPrepared borrows cached data while keeping results pair-local.
 func (idx *Index) compareTwoGenomesPrepared(query, subject *GQuery, qp, sp *preparedCompareGenome, fragLen, minSeedLen int, minAF, minANI float64) error {
+	if !hasSeedLengthContig(query, gsa3SampledK) || !hasSeedLengthContig(subject, gsa3SampledK) {
+		return nil
+	}
 	var qfrags *[][]byte
 	var qSeeds *[][]uint64
 	var queryIndexes *queryFragmentIndexes

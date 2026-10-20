@@ -502,16 +502,18 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	trimGSearchScreenResults(rs, idx.opt.TopN, idx)
 
 	// fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
-	var refBatchAndIdxUint64 uint64
 	for _, r := range *rs {
-		tmp := make([]uint64, len(r.BatchGenomeIndex))
-		copy(tmp, r.BatchGenomeIndex)
-		// sortutil.Uint64s(tmp)
-		slices.Sort(tmp)
-		for _, refBatchAndIdxUint64 = range r.BatchGenomeIndex {
-			(*whiteList)[refBatchAndIdxUint64] = &tmp
+		chunks := r.BatchGenomeIndex
+		if location, ok := idx.genomeChunksIdx[chunks[0]]; ok {
+			// Screening scores use matched chunks; alignment and AF denominators
+			// need every chunk of each retained genome, including seedless ones.
+			chunks = idx.genomeChunks[location.group]
 		}
-
+		tmp := slices.Clone(chunks)
+		slices.Sort(tmp)
+		for _, id := range tmp {
+			(*whiteList)[id] = &tmp
+		}
 	}
 
 	// fmt.Println(whiteList)

@@ -121,7 +121,10 @@ Attention:
 			}
 
 			g, err = rdr.Seqs(genomeIdx)
+			// Extracted sequences own their bytes; release this chunk's descriptor.
+			closeErr := rdr.Close()
 			checkError(err)
+			checkError(closeErr)
 
 			for i, s = range g.Seqs {
 				outfh.Write(_mark_fasta)
@@ -136,7 +139,6 @@ Attention:
 			genome.RecycleGenome(g)
 		}
 
-		checkError(rdr.Close())
 	},
 }
 

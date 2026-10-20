@@ -14,6 +14,7 @@ Attention:
   1. These search results should come from the same ONE query.
      If not, please specify one query with the flag -q/--query.
      Query selection also applies when only one input file is given.
+     Merging without -q rejects mixed query IDs, including within one subject group.
   2. We assume that genome IDs are distinct across all indexes.
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.

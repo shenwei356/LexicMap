@@ -43,6 +43,7 @@ Attention:
   1. These search results should come from the same ONE query.
      If not, please specify one query with the flag -q/--query.
      Query selection also applies when only one input file is given.
+     Merging without -q rejects mixed query IDs, including within one subject group.
   2. We assume that genome IDs are distinct across all indexes.
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
@@ -420,7 +421,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 		var _bitscore int
 		var _hits int
 
-		var sgenomePre string
+		var sgenomePre, firstQuery string
 
 		items := make([]string, ncols)
 
@@ -447,6 +448,15 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 
 			if checkQuery && query != r.query {
 				continue
+			}
+			// Validate before subject grouping can discard a row's query ID.
+			// An explicit -q still filters a multi-query file as documented.
+			if !checkQuery {
+				if firstQuery == "" {
+					firstQuery = query
+				} else if query != firstQuery {
+					checkError(fmt.Errorf("multiple queries in %s: %s and %s; use -q/--query", file, firstQuery, query))
+				}
 			}
 
 			qlen = items[1]

@@ -79,11 +79,15 @@ func (idx *Index) prepareCompareGenome(q *GQuery, fragLen, minSeedLen int, ortho
 			}
 			p.seeds[i] = seeds
 		}
-		concat, sketch, err := idx.buildComparisonSubject(q, fragLen, false)
-		if err != nil {
-			return nil, err
+		// Seedless genomes have no matches in either direction. Keep their
+		// metadata without asking the subject builder for an invalid layout.
+		if hasSeedLengthContig(q, gsa3SampledK) {
+			concat, sketch, err := idx.buildComparisonSubject(q, fragLen, false)
+			if err != nil {
+				return nil, err
+			}
+			p.concat, p.sketch = *concat, sketch
 		}
-		p.concat, p.sketch = *concat, sketch
 	}
 	p.bytes = p.retainedBytes()
 	return p, nil

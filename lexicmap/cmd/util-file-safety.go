@@ -78,12 +78,12 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		outputs = append(outputs, outputPath{path, absolute, info, directory})
 		return nil
 	}
-	for _, name := range []string{"out-file", "log", "big-genomes", "out-dir"} {
+	for _, name := range []string{"out-file", "log", "big-genomes", "out-dir", "plot-dir"} {
 		path := flag(name)
 		if path == "" || (path == "-" && name == "out-file") {
 			continue
 		}
-		if err := addOutput(path, name == "out-dir"); err != nil {
+		if err := addOutput(path, name == "out-dir" || name == "plot-dir"); err != nil {
 			return err
 		}
 	}
@@ -212,9 +212,32 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 
 	// Protect index metadata, including files created lazily by utilities.
 	index := flag("index")
+	var inputIndexes []string
 	if index != "" {
+		inputIndexes = append(inputIndexes, index)
+	}
+	if cmd.Name() == "remerge" && index != "" {
+		// Recovery reads the temporary batches, before the final index exists.
+		// Discover these inputs before setupCommandLog can truncate any of them.
+		tmpDir := filepath.Clean(index) + ExtTmpDir
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		batchPattern := regexp.MustCompile(`^batch_\d+$`)
+		for _, entry := range entries {
+			if entry.IsDir() && batchPattern.MatchString(entry.Name()) {
+				inputIndexes = append(inputIndexes, filepath.Join(tmpDir, entry.Name()))
+			}
+		}
+	}
+	for _, dir := range inputIndexes {
+		// Directory outputs such as --plot-dir must not remove an input index.
+		if err := check(dir); err != nil {
+			return err
+		}
 		for _, name := range []string{FileInfo, FileMasks, FileGenomeIndex, FileGenomeChunks, FileGenomeDetails, FileGenomeIndex + ".bak", FileGenomeIndex + ".new"} {
-			if err := check(filepath.Join(index, name)); err != nil {
+			if err := check(filepath.Join(dir, name)); err != nil {
 				return err
 			}
 		}
@@ -270,10 +293,10 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-	if index != "" {
+	for _, dir := range inputIndexes {
 		allFiles := regexp.MustCompile(".*")
 		for _, name := range []string{DirSeeds, DirGenomes} {
-			if err := walk(filepath.Join(index, name), allFiles); err != nil {
+			if err := walk(filepath.Join(dir, name), allFiles); err != nil {
 				return err
 			}
 		}

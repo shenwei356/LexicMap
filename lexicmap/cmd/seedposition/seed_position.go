@@ -270,7 +270,7 @@ var poolReader = &sync.Pool{New: func() interface{} {
 
 // NewReader returns a reader from a seed position file.
 // The reader is recycled after calling Close().
-func NewReader(file string) (*Reader, error) {
+func NewReader(file string) (reader *Reader, err error) {
 	if strings.HasSuffix(file, PositionsIndexFileExt) {
 		return nil, fmt.Errorf("seed position file, not the index file should be given")
 	}
@@ -278,8 +278,16 @@ func NewReader(file string) (*Reader, error) {
 	// ------------  index file ----------------
 
 	fileIndex := filepath.Clean(file) + PositionsIndexFileExt
-	var err error
 	r := poolReader.Get().(*Reader)
+	// A closed reader may come from another batch; do not accumulate offsets.
+	r.offset = 0
+	r.fh, r.fhData = nil, nil
+	defer func() {
+		if err != nil {
+			// Failed construction owns every handle opened so far.
+			_ = r.Close()
+		}
+	}()
 
 	r.fh, err = os.Open(fileIndex)
 	if err != nil {
@@ -348,20 +356,20 @@ func NewReader(file string) (*Reader, error) {
 
 // Close closes and recycles the reader.
 func (r *Reader) Close() error {
-	err := r.fh.Close()
-	if err != nil {
-		poolReader.Put(r)
-		return err
+	var err error
+	if r.fh != nil {
+		err = r.fh.Close()
+		r.fh = nil
 	}
-
-	err = r.fhData.Close()
-	if err != nil {
-		poolReader.Put(r)
-		return err
+	if r.fhData != nil {
+		if closeErr := r.fhData.Close(); err == nil {
+			err = closeErr
+		}
+		r.fhData = nil
 	}
-
+	r.offset = 0
 	poolReader.Put(r)
-	return nil
+	return err
 }
 
 // SeedPositions returns the seed positions with an index of idx (0-based).
