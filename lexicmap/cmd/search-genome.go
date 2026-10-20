@@ -810,7 +810,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+		formatFlagUsage(`Index reader file budget, including 8 descriptors reserved for other files. Seed concurrency is reduced to fit. Minimum: seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.`))
 
 	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries.`))

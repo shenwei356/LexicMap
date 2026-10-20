@@ -4,17 +4,17 @@
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
 
-- `lexicmap`:
-    - All commands log the invocation, working directory, software version, build commit (when available), and project URL at startup, and total elapsed time on completion.
+- **`lexicmap`**:
+    - All commands log the working directory, command and arguments at startup.
     - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
-- New commands:
+- **New commands**:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
     - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
     - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
     - `lexicmap utils genome-details`: Extract or view genome details in the index.
     - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
-- `lexicmap index`:
+- **`lexicmap index`**:
     - **Faster indexing (30-45% less time) and ~30% lower memory usage by optimizing seed computation and merging**.
     - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
@@ -32,8 +32,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
-- `lexicmap search`:
-    - **Faster searching speed, mainly for batch querying with `-n/--top-n-genomes`**.
+- **`lexicmap search`**:
+    - **Faster searches, especially for single queries with few matches and batch queries using `-n/--top-n-genomes`**.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
         - Reduce memory use during parallel seed collection, genome loading, and large `-a/--all` output.
         - Optimize chaining and Top-N selection to reduce memory use and garbage collection overhead.

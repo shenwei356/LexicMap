@@ -717,7 +717,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+		formatFlagUsage(`Index reader file budget, including 8 descriptors reserved for other files. Seed concurrency is reduced to fit. Minimum: seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))

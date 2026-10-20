@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"math/rand"
@@ -254,5 +255,25 @@ func TestBuildGenomeOrdinals(t *testing.T) {
 		if got := genomeOrdinal(code, ordinals); got != uint32(ordinal) {
 			t.Fatalf("ordinal for code %d: got %d, want %d", code, got, ordinal)
 		}
+	}
+}
+
+func TestPairRejectsPrefixBeforeOpeningOutput(t *testing.T) {
+	db, _ := buildMultiBatchSearchFixture(t)
+	output := filepath.Join(t.TempDir(), "keep.tsv")
+	for _, prefix := range []string{"0", "17", "21"} {
+		if err := os.WriteFile(output, []byte("keep"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		_, stderr, err := runAuditCommand(t, "", "genome", "pair", "--quiet", "-d", db, "-m", "0", "-p", prefix, "-o", output)
+		if err == nil || bytes.Contains(stderr, []byte("panic:")) || !bytes.Contains(stderr, []byte("min-prefix")) {
+			t.Fatalf("unexpected prefix error: %v, %s", err, stderr)
+		}
+		if got, err := os.ReadFile(output); err != nil || string(got) != "keep" {
+			t.Fatalf("invalid prefix touched output: %q, %v", got, err)
+		}
+	}
+	for _, prefix := range []string{"1", "16"} {
+		runSeedIndexCommand(t, "genome", "pair", "--quiet", "-j", "1", "-d", db, "-m", "0", "-p", prefix)
 	}
 }

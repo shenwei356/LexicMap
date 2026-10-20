@@ -24,13 +24,18 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"math/rand"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // Do not rely on os.File finalizers to release a batch before the next opens.
@@ -120,5 +125,157 @@ func TestRedirectedStdinOutputCollision(t *testing.T) {
 	got, err := os.ReadFile(file)
 	if err != nil || !bytes.Equal(got, data) {
 		t.Fatalf("stdin overwritten: %q, %v", got, err)
+	}
+}
+
+// TestResourceLimitedCommand applies limits only in a child, after Go startup.
+func TestResourceLimitedCommand(t *testing.T) {
+	kind := os.Getenv("LEXICMAP_RESOURCE_LIMIT")
+	if kind == "" {
+		return
+	}
+	resource, limit := syscall.RLIMIT_NOFILE, uint64(64)
+	if kind == "file-size" {
+		resource, limit = syscall.RLIMIT_FSIZE, 8
+		signal.Ignore(syscall.SIGXFSZ)
+	}
+	var old syscall.Rlimit
+	if err := syscall.Getrlimit(resource, &old); err != nil {
+		t.Fatal(err)
+	}
+	old.Cur = limit
+	if err := syscall.Setrlimit(resource, &old); err != nil {
+		t.Fatal(err)
+	}
+	for i, arg := range os.Args {
+		if arg == "--" {
+			RootCmd.SetArgs(os.Args[i+1:])
+			if err := RootCmd.Execute(); err != nil {
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
+	t.Fatal("missing command arguments")
+}
+
+// runResourceLimitedCommand catches both descriptor exhaustion and budget deadlocks.
+func runResourceLimitedCommand(t *testing.T, kind string, args ...string) ([]byte, []byte, error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestResourceLimitedCommand$", "--"}, args...)...)
+	command.Env = append(os.Environ(), "LEXICMAP_RESOURCE_LIMIT="+kind)
+	var output, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &output, &stderr
+	err := command.Run()
+	if ctx.Err() != nil {
+		t.Fatalf("command timed out: %v", args)
+	}
+	return output.Bytes(), stderr.Bytes(), err
+}
+
+func TestGenomeDetailsResourceLimits(t *testing.T) {
+	db := writeDetailsFixture(t, 64)
+	args := []string{"utils", "genome-details", "--quiet", "-j", "1", "-i", "-e", "-d", db}
+	_, stderr, err := runResourceLimitedCommand(t, "file-size", args...)
+	if err == nil || !bytes.Contains(stderr, []byte("file too large")) {
+		t.Fatalf("write failure not propagated: %v, %s", err, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(db, FileGenomeDetails)); !os.IsNotExist(err) {
+		t.Fatalf("failed write published cache: %v", err)
+	}
+	if files, err := filepath.Glob(filepath.Join(db, "."+FileGenomeDetails+"-*")); err != nil || len(files) != 0 {
+		t.Fatalf("failed write left temporary cache: %v, %v", files, err)
+	}
+	got, stderr, err := runResourceLimitedCommand(t, "open-files", args...)
+	if err != nil {
+		t.Fatalf("bounded-reader extraction failed: %v, %s", err, stderr)
+	}
+	if bytes.Count(got, []byte("\n")) != 65 {
+		t.Fatalf("retry lost genomes: %s", got)
+	}
+	want := runSeedIndexCommand(t, args...)
+	if !bytes.Equal(got, want) {
+		t.Fatal("cached details differ from extraction")
+	}
+}
+
+func TestSearchResourceFileBudget(t *testing.T) {
+	db, query := buildMultiBatchSearchFixture(t)
+	for _, command := range [][]string{{"search", "-P", "12", "-n", "0", "-N", "0"}, {"genome", "search", "-m", "0", "-n", "10"}} {
+		args := append(append([]string{}, command...), "--quiet", "-j", "16", "-J", "32", "-d", db, "-p", "12", query)
+		want := runSeedIndexCommand(t, args...)
+		if bytes.Count(want, []byte("\n")) < 2 {
+			t.Fatalf("fixture produced no hits: %s", want)
+		}
+		for _, budget := range []int{32, 13, 9} {
+			limited := append(append([]string{}, args...), "--max-open-files", strconv.Itoa(budget))
+			if budget == 9 {
+				limited = append(limited, "-w")
+			}
+			got, stderr, err := runResourceLimitedCommand(t, "open-files", limited...)
+			if err != nil {
+				t.Fatalf("budget %d: %v, %s", budget, err, stderr)
+			}
+			if !bytes.Equal(got, want) {
+				t.Fatalf("budget %d changed output:\ngot: %s\nwant: %s", budget, got, want)
+			}
+		}
+	}
+}
+
+// TestSearchReaderDescriptorAccounting checks real handles, including the
+// in-memory path and on-demand readers when not every batch can have a pool.
+func TestSearchReaderDescriptorAccounting(t *testing.T) {
+	db, _ := buildMultiBatchSearchFixture(t)
+	count := func() int {
+		t.Helper()
+		entries, err := os.ReadDir("/proc/self/fd")
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for _, entry := range entries {
+			target, err := os.Readlink(filepath.Join("/proc/self/fd", entry.Name()))
+			if err == nil && strings.HasPrefix(target, db+string(os.PathSeparator)) {
+				n++
+			}
+		}
+		return n
+	}
+	for _, budget := range []int{32, 13, 9} {
+		opt := DefaultIndexSearchingOptions
+		opt.NumCPUs, opt.MaxOpenFiles, opt.MaxSeedSearchingConcurrency = 16, budget, 16
+		opt.MinPrefix, opt.MinSinglePrefix = 12, 12
+		opt.InMemorySearch = budget == 9
+		idx, err := NewIndexSearcher(db, &opt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		check := func() {
+			t.Helper()
+			if got := count(); got != len(idx.openFileTokens) || got > budget-searchReservedFiles {
+				t.Fatalf("budget %d: %d descriptors, %d tokens", budget, got, len(idx.openFileTokens))
+			}
+		}
+		check()
+		for batch := 0; batch < 2; batch++ {
+			rdr, err := idx.acquireGenomeReader(batch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			check()
+			if err := idx.releaseGenomeReader(batch, rdr); err != nil {
+				t.Fatal(err)
+			}
+			check()
+		}
+		if err := idx.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if got := count(); got != 0 {
+			t.Fatalf("Close leaked %d descriptors", got)
+		}
 	}
 }

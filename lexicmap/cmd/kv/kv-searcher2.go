@@ -34,8 +34,6 @@ type InMemorySearcher struct {
 	ChunkIndex int   // index of the first mask in this chunk
 	ChunkSize  int   // the number of masks in this chunk
 
-	rdr *Reader // reader of the kv-data file
-
 	maskPrefix   uint8 // length of mask prefix
 	anchorPrefix uint8 // length of anchor prefix
 
@@ -49,11 +47,19 @@ type InMemorySearcher struct {
 }
 
 // NewSearcher creates a new Searcher for the given kv-data file.
-func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
+func NewInMemomrySearcher(file string) (searcher *InMemorySearcher, err error) {
 	rdr, err := NewReader(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
+
+	// Loaded data owns its slices; keeping the source reader open would consume
+	// a descriptor per chunk even though later searches perform no file I/O.
+	defer func() {
+		if closeErr := rdr.Close(); err == nil && closeErr != nil {
+			searcher, err = nil, closeErr
+		}
+	}()
 
 	kvdata := make([][]uint64, rdr.ChunkSize)
 	indexes := make([][]int, rdr.ChunkSize)
@@ -74,7 +80,6 @@ func NewInMemomrySearcher(file string) (*InMemorySearcher, error) {
 		K:          rdr.K,
 		ChunkIndex: rdr.ChunkIndex,
 		ChunkSize:  rdr.ChunkSize,
-		rdr:        rdr,
 		KVdata:     kvdata,
 		Indexes:    indexes,
 		getAnchor:  getAnchor,
@@ -630,7 +635,7 @@ func (scr *InMemorySearcher) search2(kmers [][]uint64, p uint8, checkFlag bool, 
 	return sink.results, nil
 }
 
-// Close closes the searcher.
+// Close is a no-op: the source reader is closed after loading.
 func (scr *InMemorySearcher) Close() error {
-	return scr.rdr.Close()
+	return nil
 }

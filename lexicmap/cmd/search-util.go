@@ -110,6 +110,10 @@ func parseTaxids(taxdumpDir string, genome2taxidFile string, taxidsStr []string,
 		}
 	}
 	if taxidFile != "" {
+		// File-only filters need both maps, including exclusion-only lists.
+		if negativeM == nil {
+			negativeM = make(map[uint32]struct{})
+		}
 		if m == nil {
 			m = make(map[uint32]struct{}, len(taxidsStr))
 		}
@@ -118,6 +122,8 @@ func parseTaxids(taxdumpDir string, genome2taxidFile string, taxidsStr []string,
 		if err != nil {
 			checkError(fmt.Errorf("failed to read taxid file: %s", taxidFile))
 		}
+
+		defer func() { checkError(fh.Close()) }()
 
 		scanner := bufio.NewScanner(fh)
 		var line string

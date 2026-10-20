@@ -83,7 +83,8 @@ Flags:
                                   memory usage. (default 20000)
   -f, --min-mask-fraction float   ► Minimum fraction of masks that must match for a genome pair to be
                                   reported. (default 0.25)
-  -p, --min-prefix int            ► Minimum prefix length between k-mers captured by a mask. (default 21)
+  -p, --min-prefix int            ► Minimum prefix length between k-mers captured by a mask (1 to the
+                                  index k-mer length). (default 21)
   -o, --out-file string           ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                                   (default "-")
   -s, --prob-threshold float      ► Probability threshold for early pruning (higher = more aggressive;

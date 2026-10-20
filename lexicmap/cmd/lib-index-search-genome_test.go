@@ -22,6 +22,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -305,4 +307,27 @@ func TestTrimGSearchResultsSortsANIQueryAFSubjectAF(t *testing.T) {
 
 func TestRecycleGSearchScreenDetailResultsAcceptsNil(t *testing.T) {
 	(&Index{}).RecycleGSearchScreenDetailResults(nil)
+}
+
+func TestTaxidFileExclusions(t *testing.T) {
+	for _, tc := range []struct {
+		name, text         string
+		args               []string
+		positive, negative []uint32
+	}{
+		{"negative-only", "-2\n-2\n-3\n", nil, nil, []uint32{2, 3}},
+		{"mixed", "2\n-2\n0\n3\n-4\n", nil, []uint32{2, 3}, []uint32{2, 4}},
+		{"combined", "2\n-3\n4\n-5\n", []string{"2", "-3"}, []uint32{2, 4}, []uint32{3, 5}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "taxids.txt")
+			if err := os.WriteFile(file, []byte(tc.text), 0600); err != nil {
+				t.Fatal(err)
+			}
+			positive, negative := parseTaxids("taxdump", "mapping", tc.args, file)
+			if !reflect.DeepEqual(positive, tc.positive) || !reflect.DeepEqual(negative, tc.negative) {
+				t.Fatalf("got %v / %v, want %v / %v", positive, negative, tc.positive, tc.negative)
+			}
+		})
+	}
 }

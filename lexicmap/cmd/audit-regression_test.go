@@ -32,6 +32,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 )
 
 // runAuditCommand isolates CLI exits and global command state, including failures.
@@ -322,3 +324,138 @@ func TestSAMMappingQualityAtQueryBoundaryAndEOF(t *testing.T) {
 
 // Check delayed errors without relying on device files on non-Linux platforms.
 var _ io.WriteCloser = (*failingOutput)(nil)
+
+// writeDetailsFixture creates only the metadata needed by genome-details.
+// Each batch contains one eight-base genome; no local index is required.
+func writeDetailsFixture(t *testing.T, batches int) string {
+	t.Helper()
+	dir := t.TempDir()
+	info := writeRecountFixture(t, dir, batches)
+	// Include multiple contigs so chunk and contig loop indexes cannot alias.
+	writer, err := genome.NewWriter(filepath.Join(dir, DirGenomes, batchDir(0), FileGenomes), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id1, id2 := []byte("contig1"), []byte("contig2")
+	g := &genome.Genome{ID: []byte("shared"), Seq: []byte("ACGTACGT"), GenomeSize: 8, Len: 8, NumSeqs: 2,
+		SeqSizes: []int{3, 5}, SeqIDs: []*[]byte{&id1, &id2}}
+	if err := writer.Write(g); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	info.InputGenomes, info.Genomes = batches, batches
+	if err := writeIndexInfo(filepath.Join(dir, FileInfo), info); err != nil {
+		t.Fatal(err)
+	}
+	var mapping bytes.Buffer
+	for i := 0; i < batches; i++ {
+		id := fmt.Sprintf("g%d", i)
+		binary.Write(&mapping, binary.BigEndian, uint16(len(id)))
+		mapping.WriteString(id)
+		binary.Write(&mapping, binary.BigEndian, uint64(i)<<BITS_GENOME_IDX)
+	}
+	if err := os.WriteFile(filepath.Join(dir, FileGenomeIndex), mapping.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestGenomeDetailsAtomicCache(t *testing.T) {
+	dir := writeDetailsFixture(t, 3)
+	opt := &Options{NumCPUs: 1}
+	cache := filepath.Join(dir, FileGenomeDetails)
+	if err := extractGenomeDetails(opt, dir, true); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A source read failure after the first record must preserve the old cache.
+	missing := filepath.Join(dir, DirGenomes, batchDir(1), FileGenomes)
+	if err := os.Rename(missing, missing+".bak"); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractGenomeDetails(opt, dir, true); err == nil {
+		t.Fatal("read failure was ignored")
+	}
+	got, err := os.ReadFile(cache)
+	if err != nil || !bytes.Equal(got, original) {
+		t.Fatalf("failed extraction replaced cache: %v", err)
+	}
+	if paths, err := filepath.Glob(filepath.Join(dir, "."+FileGenomeDetails+"-*")); err != nil || len(paths) != 0 {
+		t.Fatalf("temporary cache remains: %v, %v", paths, err)
+	}
+	if err := os.Rename(missing+".bak", missing); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractGenomeDetails(opt, dir, true); err != nil {
+		t.Fatal(err)
+	}
+	got, err = os.ReadFile(cache)
+	if err != nil || !bytes.Equal(got, original) {
+		t.Fatalf("retry changed complete cache: %v", err)
+	}
+	for _, length := range []int{8, len(original) / 2, len(original)} {
+		if err := os.WriteFile(cache, original[:length], 0600); err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		writer := bufio.NewWriter(&out)
+		err := readGenomeDetails(cache, writer, true, 3)
+		if length < len(original) {
+			if !errors.Is(err, ErrBrokenFile) {
+				t.Fatalf("truncated cache accepted: length=%d, err=%v", length, err)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Flush(); err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Count(out.Bytes(), []byte("\n")) != 4 || !strings.Contains(out.String(), "\t3,5\tcontig1,contig2\n") {
+				t.Fatalf("wrong details: %s", out.String())
+			}
+		}
+	}
+}
+
+func TestGenomeDetailsSplitAcrossBatches(t *testing.T) {
+	dir := writeDetailsFixture(t, 3)
+	// The first genome spans batches 0 and 2; the next record revisits batch 1.
+	var chunks bytes.Buffer
+	for _, v := range []uint64{2, 0, 2 << BITS_GENOME_IDX} {
+		binary.Write(&chunks, binary.BigEndian, v)
+	}
+	if err := os.WriteFile(filepath.Join(dir, FileGenomeChunks), chunks.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	info, err := readIndexInfo(filepath.Join(dir, FileInfo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info.InputGenomes = 2
+	if err := writeIndexInfo(filepath.Join(dir, FileInfo), info); err != nil {
+		t.Fatal(err)
+	}
+	for _, saveIDs := range []bool{false, true} {
+		if err := extractGenomeDetails(&Options{NumCPUs: 2}, dir, saveIDs); err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		writer := bufio.NewWriter(&out)
+		if err := readGenomeDetails(filepath.Join(dir, FileGenomeDetails), writer, true, 3); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Flush(); err != nil {
+			t.Fatal(err)
+		}
+		rows := strings.Split(strings.TrimSpace(out.String()), "\n")
+		if len(rows) != 4 || !strings.HasPrefix(rows[1], "g0\t16\t2\t1\t0\t") || !strings.HasPrefix(rows[2], "g0\t16\t2\t2\t2\t") || !strings.HasPrefix(rows[3], "g1\t8\t1\t1\t1\t") {
+			t.Fatalf("wrong split genome details: %s", out.String())
+		}
+	}
+}

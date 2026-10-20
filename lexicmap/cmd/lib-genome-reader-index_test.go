@@ -22,8 +22,10 @@ package cmd
 
 import (
 	"bytes"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -137,4 +139,44 @@ func TestSharedGenomeReaderDirectoryIsIndexLocal(t *testing.T) {
 	if &ra.Index[0] == &rb.Index[0] {
 		t.Fatal("different indexes share a batch directory")
 	}
+}
+
+func TestSearchSeedFileBudget(t *testing.T) {
+	for _, tc := range []struct {
+		budget, chunks, request, want int
+		memory                        bool
+	}{
+		{32, 4, 16, 5, false}, {13, 4, 16, 1, false}, {12, 4, 16, 0, false},
+		{1024, 4, 0, 2, false}, {9, 16, 16, 16, true}, {8, 16, 16, 0, true},
+	} {
+		got, err := searchSeedConcurrency(tc.budget, tc.chunks, tc.request, tc.memory)
+		if got != tc.want || (err != nil) != (tc.want == 0) {
+			t.Fatalf("%+v: got %d, %v", tc, got, err)
+		}
+	}
+}
+
+// buildMultiBatchSearchFixture builds four chunks from deterministic temporary data.
+func buildMultiBatchSearchFixture(t *testing.T) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	query := filepath.Join(dir, "ref.fa")
+	seq := make([]byte, 16000)
+	rng := rand.New(rand.NewSource(13))
+	for i := range seq {
+		seq[i] = "ACGT"[rng.Intn(4)]
+	}
+	if err := os.WriteFile(query, append([]byte(">seq\n"), seq...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	reference := filepath.Join(dir, "ref2.fa")
+	for i := 0; i < len(seq); i += 37 {
+		seq[i] = "ACGT"[(strings.IndexByte("ACGT", seq[i])+1)%4]
+	}
+	if err := os.WriteFile(reference, append([]byte(">seq2\n"), seq...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	db := filepath.Join(dir, "db.lmi")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-c", "4", "-m", "64", "-k", "16", "--partitions", "4", "-b", "1", "-O", db, query, reference)
+	return db, query
 }

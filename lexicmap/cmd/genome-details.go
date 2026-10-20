@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
@@ -47,6 +46,8 @@ var genomeDetailsCmd = &cobra.Command{
 
 On the first run, this command will extract genome details and save them to 'genomes.details.bin'.
 If the file exists, it will be read directly and details will be printed.
+The cache is published only after extraction succeeds. Extraction keeps one genome batch open at a time.
+If an older cache is reported as incomplete, remove genomes.details.bin and rerun.
 Renaming IDs with edit-genome-ids removes this cache. The next run rebuilds it;
 use -i/--save-seqids again if sequence IDs are needed.
 
@@ -118,7 +119,9 @@ Output format:
 			log.Infof("reading genome details from %s", fileGenomeDetails)
 		}
 		timeStart1 := time.Now()
-		checkError(readGenomeDetails(fileGenomeDetails, outfh, extra))
+		info, err := readIndexInfo(filepath.Join(dbDir, FileInfo))
+		checkError(err)
+		checkError(readGenomeDetails(fileGenomeDetails, outfh, extra, info.Genomes))
 		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart1))
 		}
@@ -182,38 +185,34 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	}
 
 	// ---------------------------------------------------------------
-	// genome readers
-	nReaders := 1
-
-	if outputLog {
-		log.Infof("  creating reader pools for %d genome batches, each with %d reader(s)...", info.GenomeBatches, nReaders)
-	}
-	poolGenomeRdrs := make([]chan *genome.Reader, info.GenomeBatches)
-	for i := 0; i < info.GenomeBatches; i++ {
-		poolGenomeRdrs[i] = make(chan *genome.Reader, nReaders)
-	}
-
-	// parallelize it
-	var wg sync.WaitGroup
-	tokens := make(chan int, opt.NumCPUs)
-	for i := 0; i < info.GenomeBatches; i++ {
-		for j := 0; j < nReaders; j++ {
-			tokens <- 1
-			wg.Add(1)
-			go func(i int) {
-				fileGenomes := filepath.Join(dbDir, DirGenomes, batchDir(i), FileGenomes)
-				rdr, err := genome.NewReader(fileGenomes)
-				if err != nil {
-					checkError(fmt.Errorf("failed to create genome reader: %s", err))
-				}
-				poolGenomeRdrs[i] <- rdr
-
-				wg.Done()
-				<-tokens
-			}(i)
+	// Keep only the current batch open. Mapping records are normally grouped
+	// by batch; split genomes may revisit a batch, which is reopened on demand.
+	var rdr *genome.Reader
+	readerBatch := -1
+	defer func() {
+		if rdr != nil {
+			_ = rdr.Close()
 		}
+	}()
+	readGenomeInfo := func(batch, ref int) (*genome.Genome, error) {
+		if rdr == nil || readerBatch != batch {
+			if rdr != nil {
+				closeErr := rdr.Close()
+				rdr = nil
+				if closeErr != nil {
+					return nil, closeErr
+				}
+			}
+			file := filepath.Join(dbDir, DirGenomes, batchDir(batch), FileGenomes)
+			var openErr error
+			rdr, openErr = genome.NewReader(file)
+			if openErr != nil {
+				return nil, fmt.Errorf("failed to open genome batch %d: %w", batch, openErr)
+			}
+			readerBatch = batch
+		}
+		return rdr.GenomeInfo(ref)
 	}
-	wg.Wait()
 
 	// ---------------------------------------------------------------
 	// read genome chunks data if existed
@@ -222,7 +221,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	}
 	genomeChunks, err := readGenomeChunksLists(filepath.Join(dbDir, FileGenomeChunks))
 	if err != nil {
-		checkError(fmt.Errorf("failed to read genome chunk file: %s", err))
+		return fmt.Errorf("failed to read genome chunk file: %w", err)
 	}
 	var hasGenomeChunks bool
 	var genomeChunkFlags map[uint64]*bool
@@ -245,10 +244,15 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	// ---------------------------------------------------------------
 	// writer
 	fileGenomeDetails := filepath.Join(dbDir, FileGenomeDetails)
-	fhw, err := os.Create(fileGenomeDetails)
+	// Publish only a fully written and closed cache, on the same filesystem.
+	fhw, err := os.CreateTemp(dbDir, "."+FileGenomeDetails+"-*")
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = fhw.Close()
+		_ = os.Remove(fhw.Name())
+	}()
 	bw := bufio.NewWriterSize(fhw, IOBufferSize)
 
 	// ---------------------------------------------------------------
@@ -259,9 +263,17 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 
 	fh, err := os.Open(filepath.Join(dbDir, FileGenomeIndex))
 	if err != nil {
-		checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
+		return fmt.Errorf("failed to read genome index mapping file: %w", err)
 	}
 	defer fh.Close()
+	// Keep shared indexes readable to the same users as the genome mapping.
+	stat, err := fh.Stat()
+	if err != nil {
+		return err
+	}
+	if err = fhw.Chmod(stat.Mode().Perm()); err != nil {
+		return err
+	}
 
 	r := bufio.NewReaderSize(fh, IOBufferSize)
 
@@ -272,10 +284,16 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	var chunked bool
 	var processed *bool
 	_genomes := make([]*genome.Genome, 0, 1024)
+	defer func() {
+		for _, g := range _genomes {
+			if g != nil {
+				genome.RecycleGenome(g)
+			}
+		}
+	}()
 	_idxs := make([]uint64, 0, 1024)
 	var g *genome.Genome
 	var seqid []byte
-	var size int
 	var buf1 bytes.Buffer
 
 	var flags uint64
@@ -314,7 +332,15 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			doneDuration <- 1
 		}()
 	}
-	// fcpus := float64(opt.NumCPUs)
+	// Stop the progress worker on read/write failures as well as success.
+	if opt.Verbose {
+		defer func() {
+			close(chDuration)
+			<-doneDuration
+			bar.Abort(true)
+			pbs.Wait()
+		}()
+	}
 	// -----------------------------------------------------------
 
 	var timeStart time.Time
@@ -326,22 +352,22 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			if err == io.EOF {
 				break
 			}
-			checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
+			return fmt.Errorf("failed to read genome index mapping file: %w", err)
 		}
 		if n < 2 {
-			checkError(fmt.Errorf("broken genome map file"))
+			return fmt.Errorf("broken genome map file")
 		}
 		lenID = int(be.Uint16(buf[:2]))
 		id := make([]byte, lenID)
 
 		n, _ = io.ReadFull(r, id)
 		if n < lenID {
-			checkError(fmt.Errorf("broken genome map file"))
+			return fmt.Errorf("broken genome map file")
 		}
 
 		n, _ = io.ReadFull(r, buf)
 		if n < 8 {
-			checkError(fmt.Errorf("broken genome map file"))
+			return fmt.Errorf("broken genome map file")
 		}
 
 		batchIDAndRefID = be.Uint64(buf)
@@ -360,12 +386,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 					genomeBatch = int(idx >> BITS_GENOME_IDX)
 					genomeIdx = int(idx & MASK_GENOME_IDX)
 
-					rdr := <-poolGenomeRdrs[genomeBatch]
-					g, err = rdr.GenomeInfo(int(genomeIdx))
+					g, err = readGenomeInfo(genomeBatch, genomeIdx)
 					if err != nil {
 						return fmt.Errorf("failed to read genome info: %s", err)
 					}
-					poolGenomeRdrs[genomeBatch] <- rdr
 
 					_genomes = append(_genomes, g)
 					_idxs = append(_idxs, idx)
@@ -381,12 +405,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			genomeBatch = int(idx >> BITS_GENOME_IDX)
 			genomeIdx = int(idx & MASK_GENOME_IDX)
 
-			rdr := <-poolGenomeRdrs[genomeBatch]
-			g, err = rdr.GenomeInfo(int(genomeIdx))
+			g, err = readGenomeInfo(genomeBatch, genomeIdx)
 			if err != nil {
 				return fmt.Errorf("failed to read genome info: %s", err)
 			}
-			poolGenomeRdrs[genomeBatch] <- rdr
 
 			_genomes = append(_genomes, g)
 			_idxs = append(_idxs, idx)
@@ -422,7 +444,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			//
 			// seq sizes
 			buf1.Reset()
-			for i, size = range g.SeqSizes {
+			for i, size := range g.SeqSizes {
 				// seq size
 				be.PutUint32(buf[:4], uint32(size))
 				bw.Write(buf[:4])
@@ -447,6 +469,7 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			}
 
 			genome.RecycleGenome(g) // do not forget to recycle it.
+			_genomes[i] = nil
 		}
 		clear(_genomes)
 
@@ -454,12 +477,6 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 		if opt.Verbose {
 			chDuration <- time.Since(timeStart)
 		}
-	}
-
-	if opt.Verbose {
-		close(chDuration)
-		<-doneDuration
-		pbs.Wait()
 	}
 
 	if err = bw.Flush(); err != nil {
@@ -471,33 +488,29 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 		return err
 	}
 
-	// ---------------------------------------------------------------
-	// close genome readers
-	var _err error
-	for _, pool := range poolGenomeRdrs {
-		wg.Add(1)
-		go func(pool chan *genome.Reader) {
-			close(pool)
-			for rdr := range pool {
-				err := rdr.Close()
-				if err != nil {
-					_err = err
-				}
-			}
-			wg.Done()
-		}(pool)
+	if rdr != nil {
+		err = rdr.Close()
+		rdr = nil
+		if err != nil {
+			return err
+		}
 	}
-	wg.Wait()
-
-	return _err
+	if err = fh.Close(); err != nil {
+		return err
+	}
+	return os.Rename(fhw.Name(), fileGenomeDetails)
 }
 
 // ErrBrokenFile means the file is not complete.
 var ErrBrokenFile = errors.New("genome chunk detail data: broken file")
 
-func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool) error {
+// readGenomeDetails checks the chunk count so legacy caches truncated at a
+// record boundary cannot silently appear complete. The binary format is unchanged.
+func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool, expectedChunks int) error {
 	fh, err := os.Open(fileGenomeDetails)
-	checkError(err)
+	if err != nil {
+		return err
+	}
 	defer fh.Close()
 
 	br := bufio.NewReaderSize(fh, IOBufferSize)
@@ -507,6 +520,7 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 	var batchIDAndRefID uint64
 	var l16 uint16
 	var nChunks, nSeqs uint32
+	var chunksRead uint64
 	genomeID := make([]byte, 0, 1024)
 	var genomeSize, seqSize uint32
 	var i, j, lenID int
@@ -547,6 +561,10 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 		l16 = be.Uint16(buf[:2])      // length of genome id
 		nChunks = be.Uint32(buf[2:6]) // number of chunks
+		chunksRead += uint64(nChunks)
+		if nChunks == 0 || chunksRead > uint64(expectedChunks) {
+			return ErrBrokenFile
+		}
 
 		n, err = io.ReadFull(br, buf[:l16])
 		if n < int(l16) {
@@ -659,5 +677,8 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 		}
 	}
 
+	if chunksRead != uint64(expectedChunks) {
+		return fmt.Errorf("%w: read %d genome chunks, expected %d; remove %s and rerun to rebuild the cache", ErrBrokenFile, chunksRead, expectedChunks, fileGenomeDetails)
+	}
 	return nil
 }

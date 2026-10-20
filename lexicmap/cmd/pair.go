@@ -164,6 +164,12 @@ Notes on probabilistic pruning:
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
 
+		// Validate before opening output or allocating pair tables: a longer
+		// prefix would make the k-mer threshold use a negative shift.
+		if minPrefix > int(info.K) {
+			checkError(fmt.Errorf("-p/--min-prefix (%d) should be in the range [1, %d] for this index", minPrefix, info.K))
+		}
+
 		if outputLog {
 			log.Infof("  checking passed")
 			log.Infof("reading seed data of all masks...")
@@ -866,7 +872,7 @@ func init() {
 	pairCmd.SetUsageTemplate(usageTemplate("-d <index path> [-o out.tsv.gz]"))
 
 	pairCmd.Flags().IntP("min-prefix", "p", 21,
-		formatFlagUsage(`Minimum prefix length between k-mers captured by a mask.`))
+		formatFlagUsage(`Minimum prefix length between k-mers captured by a mask (1 to the index k-mer length).`))
 
 	pairCmd.Flags().Float64P("min-mask-fraction", "f", 0.25,
 		formatFlagUsage(`Minimum fraction of masks that must match for a genome pair to be reported.`))

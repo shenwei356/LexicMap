@@ -163,10 +163,10 @@ Flags:
                                          candidate genomes, shared by concurrent queries (supports
                                          K/M/G; 0 disables reuse). Other search memory is additional.
                                          (default "4G")
-      --max-open-files int               ► Maximum opened files. It mainly affects candidate genome
-                                         extraction. Increase this value if you have hundreds of genome
-                                         batches or have multiple queries, and do not forgot to set a
-                                         bigger "ulimit -n" in shell if the value is > 1024. (default 1024)
+      --max-open-files int               ► Index reader file budget, including 8 descriptors reserved
+                                         for other files. Seed concurrency is reduced to fit. Minimum:
+                                         seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.
+                                         (default 1024)
   -J, --max-query-conc int               ► Maximum number of concurrent queries. (default 8)
       --max-subject-genome-size int      ► Maximum size of subject genomes to be considered (in MB).
                                          (default 20)

@@ -60,7 +60,7 @@ type IndexSearchingOptions struct {
 	NumCPUs      int
 	Verbose      bool // show log
 	Log2File     bool // log file
-	MaxOpenFiles int  // maximum opened files, used in merging indexes
+	MaxOpenFiles int  // search file budget, including seed readers and reserved descriptors
 
 	// concurrency of searching for each kv searcher
 	MaxSeedSearchingConcurrency int
@@ -372,11 +372,6 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	idx.info = info
 
-	if idx.opt.MaxOpenFiles < info.Chunks+2 {
-		return nil, fmt.Errorf("max open files (%d) should not be < chunks (%d) + 2",
-			idx.opt.MaxOpenFiles, info.Chunks)
-	}
-
 	idx.contigInterval = info.ContigInterval
 	idx.softMasking = info.SoftMaksing
 
@@ -631,14 +626,12 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	// read index of seeds
 
 	inMemorySearch := idx.opt.InMemorySearch
-	seedSearchingConcurrency := idx.opt.MaxSeedSearchingConcurrency
-	if seedSearchingConcurrency < 2 {
-		seedSearchingConcurrency = 2
-	}
 
 	threads := opt.NumCPUs
 	dirSeeds := filepath.Join(outDir, DirSeeds)
 	fileSeeds := make([]string, 0, 64)
+	// Trust indexes produced by the index commands to be complete. Deliberately
+	// do not rescan chunk counts or mask coverage here, including in-memory loads.
 	fs.WalkDir(os.DirFS(dirSeeds), ".", func(p string, d fs.DirEntry, err error) error {
 		if filepath.Ext(p) == ExtSeeds {
 			fileSeeds = append(fileSeeds, filepath.Join(dirSeeds, p))
@@ -648,6 +641,17 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 	if len(fileSeeds) == 0 {
 		return nil, fmt.Errorf("seeds file not found in: %s", dirSeeds)
+	}
+	seedSearchingConcurrency, err := searchSeedConcurrency(opt.MaxOpenFiles, len(fileSeeds), opt.MaxSeedSearchingConcurrency, inMemorySearch)
+	if err != nil {
+		return nil, err
+	}
+	// The allowance covers standard streams, output, query/log files, and
+	// transient metadata opens. Tokens count every persistent seed/genome reader.
+	idx.openFileTokens = make(chan int, opt.MaxOpenFiles-searchReservedFiles)
+	if inMemorySearch {
+		// Each in-memory loader can briefly hold a seed file and its index.
+		threads = min(threads, max(1, cap(idx.openFileTokens)/2))
 	}
 	if inMemorySearch {
 		idx.InMemorySearchers = make([]*kv.InMemorySearcher, 0, len(fileSeeds))
@@ -669,12 +673,6 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		tmp := make([][]int, len(idx.lh.Masks))
 		return &tmp
 	}}
-
-	// check options again
-	if opt.MaxOpenFiles < len(fileSeeds) {
-		return nil, fmt.Errorf("MaxOpenFiles (%d) should be > number of seeds files (%d), or even bigger", opt.MaxOpenFiles, len(fileSeeds))
-	}
-	idx.openFileTokens = make(chan int, opt.MaxOpenFiles) // tokens
 
 	// read indexes
 
@@ -723,7 +721,9 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 
 				idx.Searchers = append(idx.Searchers, scr)
 
-				idx.openFileTokens <- 1 // increase the number of open files
+				for range seedSearchingConcurrency {
+					idx.openFileTokens <- 1 // one token per seed reader
+				}
 			}
 			done <- 1
 		}()
@@ -781,7 +781,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	<-done
 
 	// we can create genome reader pools
-	n := (idx.opt.MaxOpenFiles - len(fileSeeds)*seedSearchingConcurrency - 1) / info.GenomeBatches // 1 is for the output file
+	n := (cap(idx.openFileTokens) - len(idx.openFileTokens)) / info.GenomeBatches
 	if n < 1 {
 		idx.hasGenomeRdrs = false
 		log.Warningf("  no reader pools created for %d genome batches, please consider increasing the number of max open files (%d).",
@@ -832,6 +832,28 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	return idx, nil
+}
+
+// searchReservedFiles leaves room for standard streams, command output, query/log
+// files, and transient metadata opens outside the persistent index-reader pools.
+const searchReservedFiles = 8
+
+// searchSeedConcurrency keeps at least one genome-reader slot available. Reduce
+// seed parallelism before opening any files; in-memory search retains no seed FDs.
+func searchSeedConcurrency(maxFiles, chunks, requested int, inMemory bool) (int, error) {
+	available := maxFiles - searchReservedFiles
+	if available < 1 || (!inMemory && available < chunks+1) {
+		minimum := searchReservedFiles + 1
+		if !inMemory {
+			minimum += chunks
+		}
+		return 0, fmt.Errorf("--max-open-files (%d) should be >= %d for %d seed chunks (including %d reserved descriptors)", maxFiles, minimum, chunks, searchReservedFiles)
+	}
+	concurrency := max(2, requested)
+	if !inMemory {
+		concurrency = min(concurrency, (available-1)/chunks)
+	}
+	return concurrency, nil
 }
 
 // NewGenomeComparator opens only the genome data needed by genome compare.
