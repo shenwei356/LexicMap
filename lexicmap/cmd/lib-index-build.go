@@ -109,7 +109,7 @@ type IndexBuildingOptions struct {
 	MaxOpenFiles int  // maximum opened files, used in merging indexes
 	MergeThreads int  // Maximum Concurrent Merge Jobs
 
-	MinSeqLen int // minimum sequence length, should be >= k
+	MinSeqLen int // minimum sequence length; values below the loaded k use k
 
 	// skipping extremely large genome
 	MaxGenomeSize int    // Maximum genome size. Extremely large genomes (non-isolate assemblies) will be skipped
@@ -225,6 +225,14 @@ func loadIndexMasks(opt *IndexBuildingOptions) (*lexichash.LexicHash, error) {
 	return lh, nil
 }
 
+// indexSeedChunkCount drops empty tails without changing the legacy chunk width.
+// For positive masks and chunks <= masks, ceil(masks / result) retains that width,
+// so readers using info.Chunks keep the same mask-to-file mapping.
+func indexSeedChunkCount(masks, chunks int) int {
+	width := (masks + chunks - 1) / chunks
+	return (masks + width - 1) / width
+}
+
 // indexBatchCount rejects unrepresentable batch IDs before allocating build data.
 func indexBatchCount(files, batchSize int) (int, error) {
 	if files < 0 || batchSize < 1 || batchSize > 1<<BITS_GENOME_IDX {
@@ -292,6 +300,14 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	lh, err := loadIndexMasks(opt)
 	if err != nil {
 		return err
+	}
+	// Normalize once for every batch, the summary, and the final merge.
+	actualChunks := indexSeedChunkCount(opt.Masks, opt.Chunks)
+	if actualChunks != opt.Chunks {
+		if opt.Verbose || opt.Log2File {
+			log.Infof("using %d non-empty seed chunks (requested %d)", actualChunks, opt.Chunks)
+		}
+		opt.Chunks = actualChunks
 	}
 	if opt.SoftMasking {
 		lh.SupportSoftMasking()
@@ -1598,6 +1614,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				//        use a map, map[id1][id2]interface{}, map[id2][id1]interface{}
 
 				seqSize = len(refseq.Seq) + len(record.Seq.Seq)
+				if i > 0 {
+					// The pending spacer also occupies packed seed coordinates.
+					seqSize += len(nnn)
+				}
 				if seqSize > maxGenomeSize {
 					oversized := len(record.Seq.Seq)
 					if oversized <= maxGenomeSize && chunks == 1 {

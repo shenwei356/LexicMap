@@ -313,7 +313,8 @@ func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFrom
 			return files
 		}
 
-		if len(files) == 1 && isStdin(files[0]) {
+		// Replace only implicit stdin; an explicit "-" remains an input.
+		if len(args) == 0 {
 			return _files
 		}
 		files = append(files, _files...)

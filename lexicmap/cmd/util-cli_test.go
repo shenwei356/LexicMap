@@ -22,6 +22,8 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
+	"reflect"
 
 	"bytes"
 	"strings"
@@ -29,7 +31,46 @@ import (
 	"time"
 
 	"github.com/shenwei356/go-logging"
+	"github.com/spf13/cobra"
 )
+
+func TestInputListPreservesExplicitStdin(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		args []string
+		list string
+		want []string
+	}{
+		{"implicit", nil, "listed.fa\n", []string{"listed.fa"}},
+		{"explicit", []string{"-"}, "listed.fa\n", []string{"-", "listed.fa"}},
+		{"mixed", []string{"first.fa", "-"}, "listed.fa\n", []string{"first.fa", "-", "listed.fa"}},
+		{"listed_stdin", nil, "-\nlisted.fa\n", []string{"-", "listed.fa"}},
+		{"empty_list", []string{"-"}, "", []string{"-"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			list := writeTestInput(t, filepath.Join(dir, tc.name), tc.list)
+			cmd := &cobra.Command{}
+			cmd.Flags().String("infile-list", list, "")
+			got := getFileListFromArgsAndFile(cmd, tc.args, false, "infile-list", false)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("inputs=%v, want %v", got, tc.want)
+			}
+		})
+	}
+
+	sequence := indexTestDNA(1500)
+	input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">g\n"+sequence+"\n")
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">file_query\n"+sequence+"\n")
+	list := writeTestInput(t, filepath.Join(dir, "queries.txt"), query+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, input)
+	out, stderr, err := runAuditCommand(t, ">stdin_query\n"+sequence+"\n", "search", "--quiet", "-j", "1",
+		"-d", db, "-n", "0", "-N", "0", "-X", list, "-")
+	if err != nil || !bytes.Contains(out, []byte("stdin_query\t")) || !bytes.Contains(out, []byte("file_query\t")) {
+		t.Fatalf("missing mixed input: %v\n%s\n%s", err, stderr, out)
+	}
+}
 
 // TestLogStartupInfoDate checks that the local date follows the command line.
 func TestLogStartupInfoDate(t *testing.T) {

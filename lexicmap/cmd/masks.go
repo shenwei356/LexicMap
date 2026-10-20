@@ -60,18 +60,9 @@ var masksCmd = &cobra.Command{
 		seed := getFlagPositiveInt(cmd, "seed")
 
 		// ---------------------------------------------------------------
-		// output file handler
-		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
-		checkError(err)
-		defer func() {
-			checkError(closeOutStream(outfh, gw, w))
-		}()
-
-		// ---------------------------------------------------------------
 
 		var lh *lexichash.LexicHash
-
-		decoder := lexichash.MustDecoder()
+		maskChanged := cmd.Flags().Lookup("masks").Changed
 
 		if dbDir != "" { // from the index
 			if outputLog {
@@ -90,21 +81,14 @@ var masksCmd = &cobra.Command{
 			if err != nil {
 				checkError(fmt.Errorf("%s", err))
 			}
+			// Reject invalid selections before opening or truncating output.
+			if maskChanged && nMasks > len(lh.Masks) {
+				checkError(fmt.Errorf("mask number should be in range [1, %d], got %d", len(lh.Masks), nMasks))
+			}
 
 			if outputLog {
 				log.Infof("  checking passed")
 				log.Infof("reading masks...")
-			}
-
-			_k := uint8(lh.K)
-
-			maskChanged := cmd.Flags().Lookup("masks").Changed
-			if maskChanged {
-				fmt.Fprintf(outfh, "%d\t%s\n", nMasks, decoder(lh.Masks[nMasks-1], _k))
-			} else {
-				for i, code := range lh.Masks {
-					fmt.Fprintf(outfh, "%d\t%s\n", i+1, decoder(code, _k))
-				}
 			}
 		} else { // re generate
 			if outputLog {
@@ -112,9 +96,18 @@ var masksCmd = &cobra.Command{
 			}
 			lh, err = lexichash.NewWithSeed(k, nMasks, int64(seed), lcPrefix)
 			checkError(err)
+		}
 
-			_k := uint8(lh.K)
-
+		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
+		checkError(err)
+		defer func() {
+			checkError(closeOutStream(outfh, gw, w))
+		}()
+		decoder := lexichash.MustDecoder()
+		_k := uint8(lh.K)
+		if dbDir != "" && maskChanged {
+			fmt.Fprintf(outfh, "%d\t%s\n", nMasks, decoder(lh.Masks[nMasks-1], _k))
+		} else {
 			for i, code := range lh.Masks {
 				fmt.Fprintf(outfh, "%d\t%s\n", i+1, decoder(code, _k))
 			}
@@ -135,7 +128,7 @@ func init() {
 		formatFlagUsage(`Maximum k-mer size. K needs to be <= 32.`))
 
 	masksCmd.Flags().IntP("masks", "m", 20000,
-		formatFlagUsage(`Number of masks.`))
+		formatFlagUsage(`Number of masks to generate. With -d, select a 1-based mask number (omit to show all).`))
 
 	masksCmd.Flags().IntP("seed", "s", 1,
 		formatFlagUsage(`The seed for generating random masks.`))
@@ -143,5 +136,5 @@ func init() {
 	masksCmd.Flags().IntP("prefix", "p", 0,
 		formatFlagUsage(`Length of mask k-mer prefix for checking low-complexity (0 for no checking).`))
 
-	masksCmd.SetUsageTemplate(usageTemplate("{ -d <index path> | [-k <k>] [-n <masks>] [-s <seed>] } [-o out.tsv.gz]"))
+	masksCmd.SetUsageTemplate(usageTemplate("{ -d <index path> [-m <mask number>] | [-k <k>] [-m <masks>] [-s <seed>] } [-o out.tsv.gz]"))
 }

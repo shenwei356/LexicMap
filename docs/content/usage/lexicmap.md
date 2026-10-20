@@ -44,6 +44,10 @@ hard links. This also applies to file lists, auxiliary inputs, and index data.
 Commands exit with an error if writing, flushing, or closing their result output
 fails.
 
+Files from `-X/--infile-list` are appended to positional inputs, including an
+explicit `-` for stdin. With no positional inputs, a non-empty file list supplies
+the inputs without adding stdin.
+
 Result output is gzip-compressed when the output filename ends in `.gz`.
 Use the global flag `--force-gzip-output` to enable gzip compression for other
 filenames or stdout, for example:

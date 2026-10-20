@@ -7,6 +7,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - **`lexicmap`**:
     - All commands log the working directory, command and arguments at startup.
     - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
+    - Preserve explicit stdin input (`-`) when appending files from `--infile-list`.
     - Add `--force-gzip-output` to gzip-compress result output regardless of the filename, including stdout.
 - **New commands**:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
@@ -31,6 +32,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation, progress reporting, and parser shutdown.
     - Preserve batch numbering when a batch contains no valid genomes.
+    - Include contig intervals when enforcing genome chunk size limits.
+    - Omit empty trailing seed chunks while preserving the existing index format and mask-to-file mapping.
     - Skip an entire genome when a later contig exceeds `--max-genome`, without retaining earlier chunks.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
@@ -87,6 +90,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Reject plot directories that would overwrite the input index, including with `--force`.
 - `lexicmap util kmers`:
     - Faster speed for printing all seed data (`--mask 0`).
+- `lexicmap utils masks`:
+    - Reject out-of-range mask numbers before opening the output file.
 - `lexicmap utils reindex-seeds`:
     - Preserve each chunk's existing primary index if rebuilding it fails.
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.

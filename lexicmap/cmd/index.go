@@ -57,6 +57,7 @@ Input:
          are checked in an extra read pass before their first chunk is indexed.
        - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
+         Chunk lengths include the N intervals between contigs.
      You need to increase the value for indexing fungi genomes.
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
@@ -129,6 +130,7 @@ Important parameters:
                             speed, decrease the indexing memory occupation and decrease the index size. While the
                             alignment speed is almost not affected.
   2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: value of -j/--threads).
+                            Empty trailing chunks are omitted without changing the index format or chunk width.
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
                             operating systems.
@@ -173,15 +175,8 @@ Important parameters:
 		if k < minK || k > 32 {
 			checkError(fmt.Errorf("the value of flag -k/--kmer should be in range of [%d, 32]", minK))
 		}
+		// Resolve the minimum against the actual k after loading custom masks.
 		minSeqLen := getFlagInt(cmd, "min-seq-len")
-		if minSeqLen < k {
-			minSeqLen = -1
-			// checkError(fmt.Errorf("the value (%d) of flag -l/--min-seq-len should be >= k (%d)", minSeqLen, k))
-		}
-		if minSeqLen <= 0 {
-			minSeqLen = k
-		}
-		minSeqLen = max(minSeqLen, k)
 
 		nMasks := getFlagPositiveInt(cmd, "masks")
 		seed := getFlagPositiveInt(cmd, "rand-seed")
@@ -545,7 +540,7 @@ func init() {
 		formatFlagUsage(`Skip input file checking when given files or a file list.`))
 
 	indexCmd.Flags().IntP("min-seq-len", "l", -1,
-		formatFlagUsage(`Maximum sequence length to index. The value would be k for values <= 0.`))
+		formatFlagUsage(`Minimum sequence length to index. Values below the actual k (including custom masks) use k.`))
 
 	indexCmd.Flags().IntP("max-genome", "g", 20000000,
 		formatFlagUsage(fmt.Sprintf(`Maximum genome size. Genomes with any single contig larger than the threshold will be skipped, while fragmented (with many contigs) genomes larger than the threshold will be split into chunks and alignments from these chunks will be merged in "lexicmap search". The value needs to be smaller than the maximum supported genome size: %d.`, MAX_GENOME_SIZE)))

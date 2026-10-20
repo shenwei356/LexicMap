@@ -9,13 +9,14 @@ $ lexicmap utils masks -h
 View masks of the index or generate new masks randomly
 
 Usage:
-  lexicmap utils masks [flags] { -d <index path> | [-k <k>] [-n <masks>] [-s <seed>] } [-o out.tsv.gz]
+  lexicmap utils masks [flags] { -d <index path> [-m <mask number>] | [-k <k>] [-m <masks>] [-s <seed>] } [-o out.tsv.gz]
 
 Flags:
   -h, --help              help for masks
   -d, --index string      ► Index directory created by "lexicmap index".
   -k, --kmer int          ► Maximum k-mer size. K needs to be <= 32. (default 31)
-  -m, --masks int         ► Number of masks. (default 20000)
+  -m, --masks int         ► Number of masks to generate. With -d, select a 1-based mask number
+                          (omit to show all). (default 20000)
   -o, --out-file string   ► Out file, supports and recommends a ".gz" suffix ("-" for stdout).
                           (default "-")
   -p, --prefix int        ► Length of mask k-mer prefix for checking low-complexity (0 for no checking).

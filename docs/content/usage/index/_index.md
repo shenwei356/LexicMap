@@ -35,6 +35,7 @@ Input:
          are checked in an extra read pass before their first chunk is indexed.
        - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
+         Chunk lengths include the N intervals between contigs.
      You need to increase the value for indexing fungi genomes.
   5. Maximum genome size: 268,435,456.
      More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
@@ -107,6 +108,7 @@ Important parameters:
                             speed, decrease the indexing memory occupation and decrease the index size. While the
                             alignment speed is almost not affected.
   2. -c/--chunks,           ► Number of seed file chunks (maximum: 128, default: value of -j/--threads).
+                            Empty trailing chunks are omitted without changing the index format or chunk width.
                             ► Bigger values accelerate the search speed at the cost of a high disk reading load.
                             The maximum number should not exceed the maximum number of open files set by the
                             operating systems.
@@ -176,8 +178,8 @@ Flags:
                                        files (minimum: 12 for multiple batches, or 13 with
                                        --seed-index2). Large batch counts are merged in multiple rounds.
                                        Set "ulimit -n" at least this high. (default 1024)
-  -l, --min-seq-len int                ► Maximum sequence length to index. The value would be k for
-                                       values <= 0. (default -1)
+  -l, --min-seq-len int                ► Minimum sequence length to index. Values below the actual k
+                                       (including custom masks) use k. (default -1)
       --no-desert-filling              ► Disable sketching desert filling (only for debug).
   -O, --out-dir string                 ► Output LexicMap index directory.
       --partitions int                 ► Number of partitions for indexing seeds (k-mer-value data)

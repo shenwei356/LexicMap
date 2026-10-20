@@ -32,8 +32,159 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/lexichash"
 )
+
+func TestIndexSeedChunkCountPreservesLayout(t *testing.T) {
+	// Check every supported chunk count across divisible and uneven mask counts.
+	for masks := 64; masks <= 1024; masks++ {
+		for requested := 1; requested <= min(masks, 128); requested++ {
+			chunks := indexSeedChunkCount(masks, requested)
+			oldWidth := (masks + requested - 1) / requested
+			width := (masks + chunks - 1) / chunks
+			if chunks > requested || width != oldWidth || (chunks-1)*width >= masks || chunks*width < masks {
+				t.Fatalf("masks=%d requested=%d: chunks=%d width=%d, legacy width=%d", masks, requested, chunks, width, oldWidth)
+			}
+			if (requested-1)*oldWidth < masks && chunks != requested {
+				t.Fatalf("changed a valid legacy layout: masks=%d requested=%d", masks, requested)
+			}
+		}
+	}
+}
+
+func TestIndexSeedChunks(t *testing.T) {
+	for _, batch := range []string{"1", "2"} {
+		t.Run("batch="+batch, func(t *testing.T) {
+			dir := t.TempDir()
+			input := writeTestInput(t, filepath.Join(dir, "g1.fa"), ">s\n"+indexTestDNA(1800)+"\n")
+			other := writeTestInput(t, filepath.Join(dir, "g2.fa"), ">s\n"+indexTestDNA(1600)+"\n")
+			var wantKmers, wantSearch []byte
+			for _, tc := range []struct{ requested, actual int }{{32, 32}, {63, 32}, {3, 3}} {
+				db := filepath.Join(dir, fmt.Sprintf("db%d", tc.requested))
+				runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64",
+					"-c", fmt.Sprint(tc.requested), "--partitions", "4", "-b", batch, "-O", db, input, other)
+				info, err := readIndexInfo(filepath.Join(db, FileInfo))
+				if err != nil || info.Chunks != tc.actual {
+					t.Fatalf("incorrect chunk summary: %+v, %v", info, err)
+				}
+				width := (64 + tc.actual - 1) / tc.actual
+				for c := 0; c < tc.actual; c++ {
+					_, offset, masks, _, _, _, err := kv.ReadKVIndex(filepath.Join(db, DirSeeds, chunkFile(c)) + kv.KVIndexFileExt)
+					if err != nil || offset != c*width || len(masks) != min(width, 64-c*width) {
+						t.Fatalf("chunk %d: offset=%d masks=%d, %v", c, offset, len(masks), err)
+					}
+				}
+				if _, err := os.Stat(filepath.Join(db, DirSeeds, chunkFile(tc.actual))); !os.IsNotExist(err) {
+					t.Fatalf("unexpected extra chunk: %v", err)
+				}
+				// Both all-mask and selected-mask readers must agree across layouts.
+				kmers := runSeedIndexCommand(t, "utils", "kmers", "--quiet", "-d", db, "-m", "0")
+				last := runSeedIndexCommand(t, "utils", "kmers", "--quiet", "-d", db, "-m", "64")
+				lines := bytes.SplitAfter(kmers, []byte("\n"))
+				selected := bytes.Clone(lines[0])
+				for _, line := range lines[1:] {
+					if bytes.HasPrefix(line, []byte("64\t")) {
+						selected = append(selected, line...)
+					}
+				}
+				if !bytes.Equal(last, selected) || bytes.Count(last, []byte("\n")) < 2 {
+					t.Fatal("selected mask differs from all-mask output")
+				}
+				if wantKmers == nil {
+					wantKmers = kmers
+				} else if !bytes.Equal(kmers, wantKmers) {
+					t.Fatal("seed output changed across chunk layouts")
+				}
+				for _, load := range []bool{false, true} {
+					args := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", input}
+					if load {
+						args = append(args, "--load-whole-seeds")
+					}
+					out := runSeedIndexCommand(t, args...)
+					if wantSearch == nil {
+						wantSearch = out
+						if bytes.Count(out, []byte("\n")) < 3 {
+							t.Fatalf("missing search hits: %s", out)
+						}
+					} else if !bytes.Equal(out, wantSearch) {
+						t.Fatalf("search output changed across chunk layouts or loading modes:\n%s\n%s", wantSearch, out)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestIndexContigIntervalLengthLimit(t *testing.T) {
+	for _, tc := range []struct {
+		limit int
+		want  []int
+	}{{1800, []int{1800}}, {1799, []int{400, 400}}, {1000, []int{400, 400}}} {
+		t.Run(fmt.Sprint(tc.limit), func(t *testing.T) {
+			dir := t.TempDir()
+			input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">a\n"+indexTestDNA(400)+"\n>b\n"+indexTestDNA(400)+"\n")
+			db := filepath.Join(dir, "db")
+			runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2",
+				"--partitions", "4", "-g", fmt.Sprint(tc.limit), "-O", db, input)
+			info, err := readIndexInfo(filepath.Join(db, FileInfo))
+			if err != nil || info.Genomes != len(tc.want) || info.InputGenomes != 1 {
+				t.Fatalf("wrong chunk counts: %+v, %v", info, err)
+			}
+			reader, err := genome.NewReader(filepath.Join(db, DirGenomes, batchDir(0), FileGenomes))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			for i, length := range tc.want {
+				g, err := reader.GenomeInfo(i)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if g.Len != length || g.Len > tc.limit {
+					t.Fatalf("chunk %d length=%d, want %d (limit %d)", i, g.Len, length, tc.limit)
+				}
+				genome.RecycleGenome(g)
+			}
+		})
+	}
+}
+
+func TestIndexCustomMaskMinSequenceLength(t *testing.T) {
+	dir := t.TempDir()
+	lh, err := lexichash.NewWithSeed(16, 64, 1, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var masks strings.Builder
+	for _, mask := range lh.Masks {
+		fmt.Fprintf(&masks, "%s\n", lexichash.MustDecode(mask, 16))
+	}
+	maskFile := writeTestInput(t, filepath.Join(dir, "masks.txt"), masks.String())
+	input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">short\n"+indexTestDNA(25)+"\n")
+	for _, tc := range []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"default", nil, 1},
+		{"explicit_k", []string{"-k", "16"}, 1},
+		{"explicit_min_below_cli_k", []string{"-l", "20"}, 1},
+		{"explicit_min", []string{"-l", "26"}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := filepath.Join(dir, tc.name)
+			args := []string{"index", "--quiet", "-j", "1", "-c", "2", "--partitions", "4",
+				"-M", maskFile, "-O", db, input}
+			runSeedIndexCommand(t, append(args, tc.args...)...)
+			info, err := readIndexInfo(filepath.Join(db, FileInfo))
+			if err != nil || info.Genomes != tc.want {
+				t.Fatalf("genomes: %+v, %v; want %d", info, err, tc.want)
+			}
+		})
+	}
+}
 
 func TestLoadIndexMasksUsesCustomMaskCount(t *testing.T) {
 	lh, err := lexichash.NewWithSeed(31, 64, 1, 0)
