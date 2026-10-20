@@ -72,6 +72,7 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
+  The current directory and its aliases cannot be used as the plot directory, even with --force.
   The plot directory must not contain the input index, even with --force.
 
 `,
@@ -110,7 +111,7 @@ Figures:
 
 		outputPlotDir := plotDir != ""
 		if outputPlotDir {
-			makeOutDir(plotDir, force, "plot-dir", outputLog)
+			checkError(makeOutDir(plotDir, force, "plot-dir", outputLog))
 		}
 
 		bins := getFlagPositiveInt(cmd, "bins")

@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -137,6 +138,116 @@ func TestSubseqConcatenatedCoordinates(t *testing.T) {
 		if string(output) != want {
 			t.Fatalf("got %s, want %s", output, want)
 		}
+	}
+}
+
+// TestSubseqInvalidStart rejects contig and concatenated requests without FASTA.
+func TestSubseqInvalidStart(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	for _, tc := range []struct {
+		seqid  string
+		length int
+	}{
+		{"", 8}, {"contig1", 3}, {"contig2", 5},
+	} {
+		for _, start := range []int{tc.length + 1, tc.length + 8} {
+			args := []string{"utils", "subseq", "--quiet", "-d", db, "-n", "g0", "-s", tc.seqid, "-r", fmt.Sprintf("%d:%d", start, start+20)}
+			out, stderr, err := runAuditCommand(t, "", args...)
+			want := fmt.Sprintf("start (%d) out of range: [0, %d]", start-1, tc.length-1)
+			if err == nil || len(out) != 0 || !strings.Contains(string(stderr), want) || strings.Contains(string(stderr), "panic:") {
+				t.Fatalf("seqid=%q start=%d: error=%v stdout=%s stderr=%s", tc.seqid, start, err, out, stderr)
+			}
+		}
+	}
+	// A valid start at the final base still permits an oversized end.
+	for _, tc := range []struct{ seqid, region, want string }{
+		{"contig1", "3:20", ">contig1:3-3:+\nG\n"},
+		{"contig2", "5:20", ">contig2:5-5:+\nT\n"},
+	} {
+		out := runSeedIndexCommand(t, "utils", "subseq", "--quiet", "-d", db, "-n", "g0", "-s", tc.seqid, "-r", tc.region)
+		if string(out) != tc.want {
+			t.Fatalf("got %s, want %s", out, tc.want)
+		}
+	}
+}
+
+// TestSubseqSearchResultInvalidStart checks fail-fast and skip-record behavior.
+func TestSubseqSearchResultInvalidStart(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	row := func(start, end int) string {
+		return fmt.Sprintf("q%d\t3\t1\tg0\tcontig1\t100\t1\t1\t100\t3\t100\t0\t1\t3\t%d\t%d\t+\t3\t0\t10\n", start, start, end)
+	}
+	args := []string{"utils", "subseq", "--quiet", "-j", "2", "-d", db, "-f", "-", "-H"}
+	out, stderr, err := runAuditCommand(t, row(4, 9), args...)
+	if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "failed to extract subsequence") || strings.Contains(string(stderr), "panic:") {
+		t.Fatalf("error=%v stdout=%s stderr=%s", err, out, stderr)
+	}
+	// Invalid records surround valid reads, including one whose end is clipped.
+	out, stderr, err = runAuditCommand(t, row(4, 9)+row(1, 3)+row(6, 10)+row(3, 9), append(args, "--ignore-err")...)
+	if err != nil {
+		t.Fatalf("--ignore-err failed: %v\n%s", err, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != 4 || !strings.HasPrefix(lines[0], ">contig1:1-3:+ query=q1 ") || lines[1] != "ACG" ||
+		!strings.HasPrefix(lines[2], ">contig1:3-3:+ query=q3 ") || lines[3] != "G" {
+		t.Fatalf("--ignore-err did not retain only valid records in order: %s", out)
+	}
+}
+
+// TestSubseqExactIDExtractionErrors preserves exact-ID precedence across chunks.
+func TestSubseqExactIDExtractionErrors(t *testing.T) {
+	db := writeDetailsFixture(t, 2)
+	const exact = "c1/1:s1/2:a:b"
+	var mapping []byte
+	// The earlier chunk has only the longer fallback ID; the exact ID is later.
+	for batch, contig := range []struct{ id, sequence string }{{"a:b", "ACGTACGT"}, {exact, "TGA"}} {
+		writer, err := genome.NewWriter(filepath.Join(db, DirGenomes, batchDir(batch), FileGenomes), uint32(batch))
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := []byte(contig.id)
+		g := &genome.Genome{ID: []byte("g0"), Seq: []byte(contig.sequence), GenomeSize: len(contig.sequence),
+			Len: len(contig.sequence), NumSeqs: 1, SeqSizes: []int{len(contig.sequence)}, SeqIDs: []*[]byte{&id}}
+		if err := writer.Write(g); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		mapping = binary.BigEndian.AppendUint16(mapping, 2)
+		mapping = append(mapping, "g0"...)
+		mapping = binary.BigEndian.AppendUint64(mapping, uint64(batch)<<BITS_GENOME_IDX)
+	}
+	if err := os.WriteFile(filepath.Join(db, FileGenomeIndex), mapping, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Direct requests must pass an earlier miss and preserve a later range error.
+	args := []string{"utils", "subseq", "--quiet", "-d", db, "-n", "g0", "-s", exact}
+	if got := string(runSeedIndexCommand(t, append(args, "-r", "1:2")...)); got != ">"+exact+":1-2:+\nTG\n" {
+		t.Fatalf("exact ID in later chunk lost: %s", got)
+	}
+	out, stderr, err := runAuditCommand(t, "", append(args, "-r", "4:5")...)
+	if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "start (3) out of range: [0, 2]") || strings.Contains(string(stderr), "panic:") {
+		t.Fatalf("direct exact-ID range error lost: error=%v stdout=%s stderr=%s", err, out, stderr)
+	}
+	row := func(query, seqid string, start, end int) string {
+		return fmt.Sprintf("%s\t3\t1\tg0\t%s\t100\t1\t1\t100\t3\t100\t0\t1\t3\t%d\t%d\t+\t3\t0\t10\n", query, seqid, start, end)
+	}
+	input := row("before", exact, 1, 2) + row("invalid", exact, 4, 5) + row("after", exact, 3, 20) + row("fallback", "c1/1:s1/3:a:b", 4, 5)
+	args = []string{"utils", "subseq", "--quiet", "-j", "2", "-d", db, "-f", "-", "-H"}
+	out, stderr, err = runAuditCommand(t, input, args...)
+	if err == nil || !strings.Contains(string(stderr), "failed to extract subsequence: "+exact+":4-5:+") || strings.Contains(string(stderr), "panic:") {
+		t.Fatalf("search-result exact-ID range error lost: error=%v stdout=%s stderr=%s", err, out, stderr)
+	}
+	out, stderr, err = runAuditCommand(t, input, append(args, "--ignore-err")...)
+	if err != nil {
+		t.Fatalf("--ignore-err failed: %v\n%s", err, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != 6 || !strings.HasPrefix(lines[0], ">"+exact+":1-2:+ query=before ") || lines[1] != "TG" ||
+		!strings.HasPrefix(lines[2], ">"+exact+":3-3:+ query=after ") || lines[3] != "A" ||
+		!strings.HasPrefix(lines[4], ">a:b:4-5:+ query=fallback ") || lines[5] != "TA" {
+		t.Fatalf("--ignore-err lost exact-ID precedence, fallback or record order: %s", out)
 	}
 }
 

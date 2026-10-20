@@ -38,6 +38,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
+    - Reject the current directory and its aliases as the output directory, even with `--force`.
 - **`lexicmap search`**:
     - **Faster searches, especially for single queries with few matches and batch queries using `-n/--top-n-genomes`**.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
@@ -63,6 +64,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
         - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
     - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
     - Fixed a data race when extending the pseudoalignment region.
+    - Preserve valid terminal matches during alignment extension, including single-anchor extensions.
     - Clear stale alignment statistics when reusing pooled results.
     - Fix contig assignment and reverse-strand coordinates when alignments span multiple contigs.
 - `lexicmap utils merge-search-results`:
@@ -83,7 +85,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
     - Fix end coordinates for concatenated regions and accept search results with `--show-sseq-idx`.
+    - Reject starts beyond the sequence length before decoding, while clipping oversized ends for valid starts.
 - `lexicmap utils seed-pos`:
+    - Reject the current directory and its aliases as the plot directory, even with `--force`.
     - Skip empty seed results and finish reading result fields before recycling them.
     - Fixed data races in seed-position reader creation and error handling.
     - Open readers on demand within `--max-open-files` and reset offsets when reusing readers.
@@ -94,6 +98,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Reject out-of-range mask numbers before opening the output file.
 - `lexicmap utils reindex-seeds`:
     - Preserve each chunk's existing primary index if rebuilding it fails.
+    - Reject invalid partition counts before replacing existing seed indexes.
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
     - Added progress bars to all seed chunks.
 - `lexicmap utils remerge`:

@@ -20,6 +20,8 @@ Input:
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
+  - After extension, a start beyond the sequence length is an error; an oversized end is clipped.
+    In search-result mode, -e/--ignore-err skips records that cannot be extracted.
   - If the search results are merged from multiple indexes, it would report error
     "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
@@ -204,7 +206,8 @@ Global Flags:
         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
         AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTGGA
 
-1. It detects if the end position is larger than the sequence length.
+1. An end beyond the sequence length is clipped when the start is valid.
+   A start beyond the sequence length returns an error instead of an empty or padded sequence.
 
         # the length of NZ_CP033092.2 is 4903501
 
@@ -214,5 +217,5 @@ Global Flags:
 
 
         $ lexicmap utils subseq -d demo.lmi/ -n GCF_003697165.2 -s NZ_CP033092.2 -r 4903502:1000000000
-        >NZ_CP033092.2:4903502-4903501:+
+        [ERRO] failed to extract subsequence: GCF_003697165.2:4903502-1000000000 with upstream=0 downstream=0: start (4903501) out of range: [0, 4903500]
 

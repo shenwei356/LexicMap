@@ -152,6 +152,7 @@ func referenceChaining3(ce *Chainer3, subs *[]SubstrPair) *Chain3Result {
 	maxDistance := float64(ce.options.MaxDistance)
 	a = (*subs)[0]
 	m = float64(a.Len) - distance2(sub0, a) - gap2(sub0, a)
+	M, Mi = m, 0 // Include the first anchor; later ties keep the earlier optimum.
 	*maxscoresIdxs = append(*maxscoresIdxs, int64(m)<<32)
 	for i = 1; i < n; i++ {
 		a = (*subs)[i] // current seed/anchor

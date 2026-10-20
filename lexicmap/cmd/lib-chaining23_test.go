@@ -77,6 +77,51 @@ func TestChaining3DistanceAndGapMatchesFloat(t *testing.T) {
 	}
 }
 
+// TestChaining3FirstAnchorSelection checks optima independently of the reference kernel.
+func TestChaining3FirstAnchorSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		subs []SubstrPair
+		want *denseChainSummary
+	}{
+		{
+			name: "singleton",
+			subs: []SubstrPair{{Len: 2}},
+			want: &denseChainSummary{matched: 2, alignedQ: 2, alignedT: 2, qe: 1, te: 1, identity: 100},
+		},
+		{
+			name: "first sole maximum",
+			subs: []SubstrPair{{Len: 4}, {QBegin: 5, TBegin: 5, Len: 2}},
+			want: &denseChainSummary{matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
+		},
+		{
+			name: "first tied maximum",
+			subs: []SubstrPair{{Len: 4}, {QBegin: 4, TBegin: 4, Len: 2}},
+			want: &denseChainSummary{matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
+		},
+		{
+			name: "later maximum with tied predecessor score",
+			// Equal predecessor and standalone scores must still link to the earlier anchor.
+			subs: []SubstrPair{{Len: 2}, {QBegin: 1, TBegin: 1, Len: 4}},
+			want: &denseChainSummary{matched: 5, alignedQ: 5, alignedT: 5, qe: 4, te: 4, identity: 100},
+		},
+		{
+			name: "negative score rejected",
+			subs: []SubstrPair{{QBegin: 3, TBegin: 3, Len: 2}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := NewChainer3(&DefaultChaining3Options).Chain(&tc.subs)
+			if got != nil {
+				defer poolChain3.Put(got)
+			}
+			if summary := denseChain3Summary(got); !reflect.DeepEqual(summary, tc.want) {
+				t.Fatalf("chain = %+v, want %+v", summary, tc.want)
+			}
+		})
+	}
+}
+
 func TestChaining23MatchesFloatReference(t *testing.T) {
 	rng := rand.New(rand.NewSource(2302))
 	fixtures := [][]SubstrPair{

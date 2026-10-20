@@ -1182,13 +1182,19 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 	if err != nil {
 		return err
 	}
+	anchorPrefix, err := anchorPrefixForPartitions(nAnchors)
+	if err != nil {
+		return err
+	}
+	// Validate before subtraction and publication; a single-level prefix may fill K.
+	if maskPrefix > K || anchorPrefix > K-maskPrefix {
+		return fmt.Errorf("mask prefix (%d) + anchor prefix (%d) should not exceed k (%d)", maskPrefix, anchorPrefix, K)
+	}
 	if progress != nil {
 		progress(0, ChunkSize)
 	}
 
-	anchorPrefix := max(int(math.Log2(float64(nAnchors))/2), 1)
-
-	getAnchor := AnchorExtracter(K, maskPrefix, uint8(anchorPrefix))
+	getAnchor := AnchorExtracter(K, maskPrefix, anchorPrefix)
 
 	// Build beside the old index so a read/write failure leaves it searchable.
 	oldInfo, err := os.Stat(indexFile)
@@ -1213,7 +1219,7 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 	}
 
 	// 8-byte meta info
-	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, uint8(anchorPrefix), config1})
+	err = binary.Write(wi, be, [8]uint8{MainVersion, MinorVersion, K, maskPrefix, anchorPrefix, config1})
 	if err != nil {
 		return err
 	}

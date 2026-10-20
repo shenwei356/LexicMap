@@ -60,6 +60,9 @@ var ErrInvalidFileFormat = errors.New("genome data: invalid binary format")
 // ErrEmptySeq means the sequence is empty
 var ErrEmptySeq = errors.New("genome data: empty seq")
 
+// ErrSeqIDNotFound means the requested contig is absent from this genome chunk.
+var ErrSeqIDNotFound = errors.New("seqid not found")
+
 // ErrInvalidTwoBitData means the length of two bit seq slice does not match the number of bases
 var ErrInvalidTwoBitData = errors.New("genome data: invalid two-bit data")
 
@@ -660,6 +663,10 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	if start < 0 {
 		start = 0
 	}
+	// Reject starts outside the sequence before clipping the end or decoding padding.
+	if start >= nBases {
+		return nil, fmt.Errorf("start (%d) out of range: [0, %d]", start, nBases-1)
+	}
 	if end >= nBases-1 {
 		end = nBases - 1
 	}
@@ -877,6 +884,11 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 	if start < 0 {
 		start = 0
 	}
+	// Extraction errors also release a caller-transferred genome.
+	if start >= nBases {
+		RecycleGenome(g)
+		return nil, fmt.Errorf("start (%d) out of range: [0, %d]", start, nBases-1)
+	}
 	if end >= nBases-1 {
 		end = nBases - 1
 	}
@@ -1002,6 +1014,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 // SubSeq2 returns the subsequence of one genome (idx is 0-based),
 // from start to end (both are 0-based and included).
 // It also return the actual end position (0-based).
+// An absent sequence ID returns an error wrapping ErrSeqIDNotFound.
 // Please call RecycleGenome() after using the result.
 func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, int, error) {
 	if idx < 0 || idx >= int(r.nSeqs) {
@@ -1168,7 +1181,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	// --------------------------------------------------
 	if !foundSeqID {
 		RecycleGenome(g)
-		return nil, -1, fmt.Errorf("seqid not found: %s", seqid)
+		return nil, -1, fmt.Errorf("%w: %s", ErrSeqIDNotFound, seqid)
 	}
 	// --------------------------------------------------
 
@@ -1178,8 +1191,10 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 		end = endS
 		endR = seqLen - 1
 	}
-	if start0 > seqLen {
-		return g, endR, nil
+	// Validate against the target contig, not the concatenated genome length.
+	if max(start0, 0) >= seqLen {
+		RecycleGenome(g)
+		return nil, -1, fmt.Errorf("start (%d) out of range: [0, %d]", start0, seqLen-1)
 	}
 
 	// start of byte, 8 is #bytes+#bases

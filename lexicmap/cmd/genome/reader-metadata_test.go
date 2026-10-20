@@ -173,6 +173,49 @@ func TestDeferredMetadataRejectAndLaterLoad(t *testing.T) {
 	RecycleGenome(g)
 }
 
+// TestDeferredMetadataInvalidStartRecycles covers transferred eager and lazy state.
+func TestDeferredMetadataInvalidStartRecycles(t *testing.T) {
+	file, sequences := writeDeferredFixture(t, 2)
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	for _, read := range []func(int, int, int, *Genome) (*Genome, error){r.SubSeq3, r.SubSeqWithoutMetadata} {
+		for idx, sequence := range sequences {
+			for _, start := range []int{len(sequence), len(sequence) + 5} {
+				g, err := read(idx, 0, 0, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				g, err = r.LoadMetadata(idx, g)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Keep the ID slots to verify error-path recycling without pool ordering.
+				ids := g.SeqIDs
+				g, err = read(idx, start, start+1, g)
+				if err == nil || g != nil {
+					t.Fatal("invalid start must return an error and nil genome")
+				}
+				for _, id := range ids {
+					if id != nil {
+						t.Fatal("invalid start retained a borrowed contig ID")
+					}
+				}
+				g, err = read(idx, 0, len(sequence)+10, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(g.Seq, sequence) {
+					t.Fatal("read after an invalid start returned stale sequence")
+				}
+				RecycleGenome(g)
+			}
+		}
+	}
+}
+
 func TestDeferredMetadataFallbackAndErrors(t *testing.T) {
 	t.Run("trailing-data", func(t *testing.T) {
 		file, sequences := writeDeferredFixture(t, 2)

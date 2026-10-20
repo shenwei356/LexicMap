@@ -14,6 +14,9 @@ The seeds files are not changed. Different seeds files are processed in
 parallel using -j/--threads, and --partitions controls the number of anchor
 partitions in each primary index.
 
+The partition count must be a power of 4 and at least 4. The mask prefix length
+plus log4(partitions) must not exceed the k-mer size; equality is allowed.
+
 This command writes single-level .idx files and removes their corresponding
 .idx15 files afterward. Use "lexicmap utils reindex-seeds2" to create adaptive
 two-level indexes that can reduce seed-matching time for large primary-prefix
@@ -28,8 +31,9 @@ Usage:
 Flags:
   -h, --help             help for reindex-seeds
   -d, --index string     ► Index directory created by "lexicmap index".
-      --partitions int   ► Number of anchor partitions in each primary seed index. The value needs to
-                         be a power of 4. (default 4096)
+      --partitions int   ► Number of anchor partitions in each primary seed index. Must be a power of
+                         4 and at least 4; mask prefix length + log4(value) must not exceed the k-mer
+                         size. (default 4096)
 
 Global Flags:
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are

@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -118,6 +119,117 @@ func TestCommandInputOutputCollisions(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCommandOutputCurrentDirectory(t *testing.T) {
+	inputs := t.TempDir()
+	writeTestInput(t, filepath.Join(inputs, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")
+	db := writeSeedPosFixture(t, 1)
+
+	for _, commandKind := range []string{"index", "plot"} {
+		for _, pathKind := range []string{"dot", "dot-slash", "absolute", "normalized-relative", "symlink"} {
+			for _, force := range []bool{false, true} {
+				forceName := "without-force"
+				if force {
+					forceName = "with-force"
+				}
+				t.Run(commandKind+"/"+pathKind+"/"+forceName, func(t *testing.T) {
+					root := t.TempDir()
+					cwd := filepath.Join(root, "work")
+					if err := os.Mkdir(cwd, 0700); err != nil {
+						t.Fatal(err)
+					}
+					sentinel := writeTestInput(t, filepath.Join(cwd, "sentinel"), "preserve")
+					var outDir string
+					switch pathKind {
+					case "dot":
+						outDir = "."
+					case "dot-slash":
+						outDir = "." + string(filepath.Separator)
+					case "absolute":
+						outDir = cwd
+					case "normalized-relative":
+						outDir = "nested" + string(filepath.Separator) + ".."
+					case "symlink":
+						outDir = filepath.Join(root, "cwd-alias")
+						if err := os.Symlink(cwd, outDir); err != nil {
+							t.Fatal(err)
+						}
+					}
+
+					// Keep the input outside cwd so input-alias checks cannot mask output validation.
+					var args []string
+					if commandKind == "index" {
+						args = []string{"index", "--quiet", "-j", "1", "-m", "64", "-k", "16", "--partitions", "4", "-I", inputs, "-O", outDir}
+					} else {
+						args = []string{"utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", outDir, "--plot-ext", ".svg"}
+					}
+					if force {
+						args = append(args, "--force")
+					}
+					command := exec.Command(os.Args[0], append([]string{"-test.run=^TestSeedIndexCommand$", "--"}, args...)...)
+					command.Dir = cwd
+					command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1")
+					command.Stdin = strings.NewReader("")
+					var stdout, stderr bytes.Buffer
+					command.Stdout, command.Stderr = &stdout, &stderr
+					err := command.Run()
+					if err == nil || !bytes.Contains(stderr.Bytes(), []byte("should not be current directory")) {
+						t.Fatalf("current directory accepted: %v\n%s\n%s", err, stderr.Bytes(), stdout.Bytes())
+					}
+					if got, err := os.ReadFile(sentinel); err != nil || string(got) != "preserve" {
+						t.Fatalf("sentinel changed: %q, %v", got, err)
+					}
+					entries, err := os.ReadDir(cwd)
+					if err != nil || len(entries) != 1 || entries[0].Name() != "sentinel" {
+						t.Fatalf("unexpected output in cwd: %v, %v", entries, err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestCommandOutputDirectoryExistingBehavior(t *testing.T) {
+	root := t.TempDir()
+	input := writeTestInput(t, filepath.Join(root, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")
+	baseArgs := []string{"index", "--quiet", "-j", "1", "-m", "64", "-k", "16", "--partitions", "4"}
+
+	empty := filepath.Join(root, "empty")
+	if err := os.Mkdir(empty, 0700); err != nil {
+		t.Fatal(err)
+	}
+	args := append(append([]string{}, baseArgs...), "-O", empty, input)
+	if _, stderr, err := runAuditCommand(t, "", args...); err != nil {
+		t.Fatalf("empty output directory rejected: %v, %s", err, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(empty, FileInfo)); err != nil {
+		t.Fatalf("index was not written to empty output directory: %v", err)
+	}
+
+	nonempty := filepath.Join(root, "nonempty")
+	if err := os.Mkdir(nonempty, 0700); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := writeTestInput(t, filepath.Join(nonempty, "sentinel"), "preserve without force")
+	args = append(append([]string{}, baseArgs...), "-O", nonempty, input)
+	if _, stderr, err := runAuditCommand(t, "", args...); err == nil || !bytes.Contains(stderr, []byte("not empty")) {
+		t.Fatalf("nonempty output directory accepted without --force: %v, %s", err, stderr)
+	}
+	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "preserve without force" {
+		t.Fatalf("nonempty output directory changed without --force: %q, %v", got, err)
+	}
+
+	args = append(append([]string{}, baseArgs...), "-O", nonempty, input, "--force")
+	if _, stderr, err := runAuditCommand(t, "", args...); err != nil {
+		t.Fatalf("nonempty output directory rejected with --force: %v, %s", err, stderr)
+	}
+	if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
+		t.Fatalf("--force did not replace old output directory: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(nonempty, FileInfo)); err != nil {
+		t.Fatalf("index was not written to forced output directory: %v", err)
 	}
 }
 

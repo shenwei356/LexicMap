@@ -22,11 +22,103 @@ package genome
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestSubSeqBounds covers packed-byte padding and reads beyond a record or contig.
+func TestSubSeqBounds(t *testing.T) {
+	for _, length := range []int{0, 4, 5, 6, 7} {
+		t.Run(fmt.Sprintf("length=%d", length), func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "genomes.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			first, last := []byte("first"), []byte("last")
+			contigs := []string{"ACGTACG"[:length], "TGCTA"}
+			sequence := contigs[0] + "AAA" + contigs[1]
+			// Identical nonlast/last records exercise both next-record bytes and EOF.
+			for record := 0; record < 2; record++ {
+				g := &Genome{ID: []byte(fmt.Sprintf("record-%d", record)), Seq: []byte(sequence),
+					GenomeSize: length + 5, Len: len(sequence), NumSeqs: 2,
+					SeqSizes: []int{length, 5}, SeqIDs: []*[]byte{&first, &last}}
+				if err := w.Write(g); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			g, end, err := r.SubSeq2(0, []byte("missing"), 0, 0)
+			if g != nil || end != -1 || !errors.Is(err, ErrSeqIDNotFound) || err.Error() != "seqid not found: missing" {
+				t.Fatalf("missing ID: genome=%v end=%d error=%v", g, end, err)
+			}
+			for record := 0; record < 2; record++ {
+				for _, method := range []string{"SubSeq", "SubSeq3", "SubSeqWithoutMetadata", "SubSeq2-first", "SubSeq2-last"} {
+					t.Run(fmt.Sprintf("record=%d/%s", record, method), func(t *testing.T) {
+						want := sequence
+						var seqid []byte
+						if method == "SubSeq2-first" {
+							seqid, want = first, contigs[0]
+						} else if method == "SubSeq2-last" {
+							seqid, want = last, contigs[1]
+						}
+						read := func(start, end int) (*Genome, error) {
+							switch method {
+							case "SubSeq":
+								return r.SubSeq(record, start, end)
+							case "SubSeq3":
+								return r.SubSeq3(record, start, end, nil)
+							case "SubSeqWithoutMetadata":
+								return r.SubSeqWithoutMetadata(record, start, end, nil)
+							default:
+								g, actualEnd, err := r.SubSeq2(record, seqid, start, end)
+								if err != nil && actualEnd != -1 || err == nil && actualEnd != min(end, len(want)-1) {
+									t.Fatalf("incorrect returned end: %d (error: %v)", actualEnd, err)
+								}
+								return g, err
+							}
+						}
+						for _, start := range []int{len(want), len(want) + 1, len(want) + 8} {
+							g, err := read(start, start+20)
+							message := fmt.Sprintf("start (%d) out of range: [0, %d]", start, len(want)-1)
+							if g != nil || err == nil || errors.Is(err, ErrSeqIDNotFound) || !strings.Contains(err.Error(), message) {
+								t.Fatalf("start=%d: genome=%v error=%v, want %q", start, g, err, message)
+							}
+							if len(want) == 0 {
+								if g, err := read(-3, 20); g != nil || err == nil {
+									t.Fatal("empty contig accepted a normalized start of zero")
+								}
+								continue
+							}
+							// A failed read must leave the reader and pooled buffers reusable.
+							for _, bounds := range [][2]int{{len(want) - 1, len(want) - 1}, {len(want) - 1, len(want) + 20}, {-3, len(want) + 20}} {
+								g, err := read(bounds[0], bounds[1])
+								if err != nil {
+									t.Fatal(err)
+								}
+								if string(g.Seq) != want[max(bounds[0], 0):] {
+									t.Fatalf("bounds=%v: got %s, want suffix of %s", bounds, g.Seq, want)
+								}
+								RecycleGenome(g)
+							}
+						}
+					})
+				}
+			}
+		})
+	}
+}
 
 func TestGenomeWritingAndSeqExtraction(t *testing.T) {
 	_seq := []byte("ACTAGACGACGTACGCGTACGTAGTACGATGCTCGA")

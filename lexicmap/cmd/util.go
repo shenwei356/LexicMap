@@ -93,31 +93,61 @@ func checkFileSuffix(suffix string, files ...string) {
 	}
 }
 
-func makeOutDir(outDir string, force bool, logname string, verbose bool) {
-	pwd, _ := os.Getwd()
-	if outDir != "./" && outDir != "." && pwd != filepath.Clean(outDir) {
-		existed, err := pathutil.DirExists(outDir)
-		checkError(errors.Wrap(err, outDir))
-		if existed {
-			empty, err := pathutil.IsEmpty(outDir)
-			checkError(errors.Wrap(err, outDir))
-			if !empty {
-				if force {
-					if verbose {
-						log.Infof("removing old output directory: %s", outDir)
-					}
-					checkError(os.RemoveAll(outDir))
-				} else {
-					checkError(fmt.Errorf("%s not empty: %s, use --force to overwrite", logname, outDir))
+func makeOutDir(outDir string, force bool, logname string, verbose bool) error {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	pwd, err = filepath.Abs(pwd)
+	if err != nil {
+		return err
+	}
+	outDirAbs, err := filepath.Abs(outDir)
+	if err != nil {
+		return err
+	}
+	// Reject cwd aliases before removal, even when --force is set.
+	isCwd := filepath.Clean(outDirAbs) == filepath.Clean(pwd)
+	if !isCwd {
+		if outDirInfo, err := os.Stat(outDir); err == nil {
+			pwdInfo, err := os.Stat(pwd)
+			if err != nil {
+				return err
+			}
+			isCwd = os.SameFile(outDirInfo, pwdInfo)
+		} else if !os.IsNotExist(err) {
+			return errors.Wrap(err, outDir)
+		}
+	}
+	if isCwd {
+		return fmt.Errorf("%s should not be current directory", logname)
+	}
+
+	existed, err := pathutil.DirExists(outDir)
+	if err != nil {
+		return errors.Wrap(err, outDir)
+	}
+	if existed {
+		empty, err := pathutil.IsEmpty(outDir)
+		if err != nil {
+			return errors.Wrap(err, outDir)
+		}
+		if !empty {
+			if force {
+				if verbose {
+					log.Infof("removing old output directory: %s", outDir)
+				}
+				if err := os.RemoveAll(outDir); err != nil {
+					return err
 				}
 			} else {
-				checkError(os.RemoveAll(outDir))
+				return fmt.Errorf("%s not empty: %s, use --force to overwrite", logname, outDir)
 			}
+		} else if err := os.RemoveAll(outDir); err != nil {
+			return err
 		}
-		checkError(os.MkdirAll(outDir, 0777))
-	} else {
-		log.Errorf("%s should not be current directory", logname)
 	}
+	return os.MkdirAll(outDir, 0777)
 }
 
 func getFileListFromDir(path string, pattern *regexp.Regexp, threads int) ([]string, error) {

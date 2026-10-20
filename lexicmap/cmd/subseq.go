@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -52,6 +53,8 @@ Input:
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
+  - After extension, a start beyond the sequence length is an error; an oversized end is clipped.
+    In search-result mode, -e/--ignore-err skips records that cannot be extracted.
   - If the search results are merged from multiple indexes, it would report error
     "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
@@ -376,6 +379,7 @@ Attention:
 					var err error
 					// Prefer an exact ID in any chunk before interpreting a display prefix.
 					// Real IDs may themselves contain colons or look like c1/1:s1/1:...
+				sequenceLookup:
 					for _, candidate := range [2]string{sseqid, undecorateSearchSequenceID(sseqid)} {
 						if candidate == "" {
 							continue
@@ -397,15 +401,12 @@ Attention:
 
 							checkError(readers.release(genomeBatch, rdr))
 
-							if err == nil && tSeq != nil {
-								found = true
-								break
+							// Only a missing ID permits another chunk or a stripped display ID.
+							if !errors.Is(err, genome.ErrSeqIDNotFound) {
+								found = err == nil && tSeq != nil
+								sseqid = candidate
+								break sequenceLookup
 							}
-							// the sequence might not be in this genome chunk
-						}
-						if found {
-							sseqid = candidate
-							break
 						}
 					}
 
@@ -573,10 +574,10 @@ Attention:
 
 			// Close every chunk, including misses; returned sequence bytes are owned.
 			checkError(rdr.Close())
-			if err == nil && tSeq != nil {
-				found = true
+			// Extraction errors must not be hidden by a later chunk.
+			if !errors.Is(err, genome.ErrSeqIDNotFound) {
+				found = err == nil && tSeq != nil
 				break
-				// checkError(fmt.Errorf("failed to read subsequence: %s", err))
 			}
 			// the sequence might not be in this genome chunk
 		}

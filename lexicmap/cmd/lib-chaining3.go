@@ -135,6 +135,7 @@ func (ce *Chainer3) Chain(subs *[]SubstrPair) *Chain3Result {
 	a = &(*subs)[0]
 	d, g = chaining3DistanceAndGap(sub0.QBegin, sub0.TBegin, a.QBegin, a.TBegin)
 	m = int64(a.Len) - d - g
+	M, Mi = m, 0 // Include the first anchor; later ties keep the earlier optimum.
 	*maxscoresIdxs = append(*maxscoresIdxs, int64(m)<<32)
 
 	for i = 1; i < n; i++ {
