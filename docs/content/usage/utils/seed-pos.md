@@ -26,6 +26,7 @@ Extra columns:
   Using -v/--verbose will output more columns:
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
+     Zero-distance seeds have len_aaa=0 and an empty seq field.
 
 Figures:
   Using -O/--plot-dir will write plots into given directory:

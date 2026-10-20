@@ -92,6 +92,42 @@ func TestSeedPosReadsRequestedBatches(t *testing.T) {
 	}
 }
 
+// TestSeedPosZeroDistance keeps coincident seeds while emitting empty intervals.
+func TestSeedPosZeroDistance(t *testing.T) {
+	db := writeSeedPosFixture(t, 1)
+	writer, err := seedposition.NewWriter(filepath.Join(db, DirGenomes, batchDir(0), FileSeedPositions), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Both strands at the first base and at an internal base have zero distance.
+	if err := writer.Write([]uint32{0, 2, 10 << 2, 10<<2 | 2, 30 << 2}); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	sequence := indexTestDNA(128)
+	wantSeqs := []string{"", "", sequence[:10], "", sequence[10:30]}
+	args := []string{"utils", "seed-pos", "--quiet", "-j", "1", "-d", db, "-n", "g0", "--max-open-files", "4"}
+	plain := strings.Split(strings.TrimSuffix(string(runSeedIndexCommand(t, args...)), "\n"), "\n")
+	verbose := strings.Split(strings.TrimSuffix(string(runSeedIndexCommand(t, append(args, "-v")...)), "\n"), "\n")
+	if len(plain) != len(wantSeqs)+1 || len(verbose) != len(plain) {
+		t.Fatalf("lost seed rows: plain=%q verbose=%q", plain, verbose)
+	}
+	for i, want := range wantSeqs {
+		fields := strings.Split(verbose[i+1], "\t")
+		if len(fields) != 8 || strings.Join(fields[:6], "\t") != plain[i+1] {
+			t.Fatalf("row %d changed seed fields: %q", i, verbose[i+1])
+		}
+		if fields[5] != fmt.Sprint(len(want)) || fields[7] != want {
+			t.Fatalf("row %d: distance=%s sequence=%q, want %d bases %q", i, fields[5], fields[7], len(want), want)
+		}
+		if want == "" && fields[6] != "0" {
+			t.Fatalf("row %d: empty interval has len_aaa=%s", i, fields[6])
+		}
+	}
+}
+
 func TestSeedPosPlotsWithBoundedReaders(t *testing.T) {
 	db := writeSeedPosFixture(t, 2)
 	plots := filepath.Join(t.TempDir(), "plots")

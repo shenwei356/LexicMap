@@ -67,6 +67,7 @@ Extra columns:
   Using -v/--verbose will output more columns:
      len_aaa,  length of consecutive A's.
      seq,      sequence between the previous and current seed.
+     Zero-distance seeds have len_aaa=0 and an empty seq field.
 
 Figures:
   Using -O/--plot-dir will write plots into given directory:
@@ -386,14 +387,19 @@ Figures:
 					fmt.Fprintf(outfh, "%s\t%s\t%d\t%d\t%c\t%d", refname, sseqid, pos+1, int(pos)-rs+1, lexichash.Strands[pos2str>>1&1], dist)
 
 					if moreColumns {
-						tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
-						if err != nil {
-							checkError(fmt.Errorf("failed to read subsequence: %s", err))
+						if dist == 0 {
+							// SubSeq uses inclusive bounds and cannot represent an empty interval.
+							fmt.Fprint(outfh, "\t0\t")
+						} else {
+							tSeq, err = rdr.SubSeq(genomeIdx, int(pre), int(pos)-1)
+							if err != nil {
+								checkError(fmt.Errorf("failed to read subsequence: %s", err))
+							}
+
+							fmt.Fprintf(outfh, "\t%d\t%s", lengthAAs(tSeq.Seq), tSeq.Seq)
+
+							genome.RecycleGenome(tSeq)
 						}
-
-						fmt.Fprintf(outfh, "\t%d\t%s", lengthAAs(tSeq.Seq), tSeq.Seq)
-
-						genome.RecycleGenome(tSeq)
 					}
 
 					fmt.Fprintln(outfh)

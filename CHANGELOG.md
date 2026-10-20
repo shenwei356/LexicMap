@@ -87,6 +87,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fix end coordinates for concatenated regions and accept search results with `--show-sseq-idx`.
     - Reject starts beyond the sequence length before decoding, while clipping oversized ends for valid starts.
 - `lexicmap utils seed-pos`:
+    - Output an empty sequence for zero-distance seeds with `-v/--verbose`.
     - Reject the current directory and its aliases as the plot directory, even with `--force`.
     - Skip empty seed results and finish reading result fields before recycling them.
     - Fixed data races in seed-position reader creation and error handling.
