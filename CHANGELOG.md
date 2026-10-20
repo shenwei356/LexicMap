@@ -7,6 +7,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - **`lexicmap`**:
     - All commands log the working directory, command and arguments at startup.
     - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
+    - Add `--force-gzip-output` to gzip-compress result output regardless of the filename, including stdout.
 - **New commands**:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.

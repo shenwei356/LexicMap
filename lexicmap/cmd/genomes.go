@@ -55,7 +55,7 @@ var genomesCmd = &cobra.Command{
 		extra := getFlagBool(cmd, "extra")
 
 		// output file handler
-		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz"), opt.CompressionLevel)
+		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
 		checkError(err)
 		defer func() {
 			checkError(closeOutStream(outfh, gw, w))

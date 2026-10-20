@@ -55,6 +55,7 @@ type Options struct {
 
 	Compress         bool
 	CompressionLevel int
+	ForceGzipOutput  bool // Compress result output regardless of its filename, including stdout.
 }
 
 func getOptions(cmd *cobra.Command) *Options {
@@ -76,6 +77,7 @@ func getOptions(cmd *cobra.Command) *Options {
 
 		Compress:         true,
 		CompressionLevel: -1,
+		ForceGzipOutput:  getFlagBool(cmd, "force-gzip-output"),
 	}
 }
 

@@ -26,6 +26,7 @@ Available Commands:
   version        Print version information and check for update
 
 Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -h, --help                 help for lexicmap
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
@@ -42,3 +43,11 @@ Output and log files must differ from input files, including symbolic links and
 hard links. This also applies to file lists, auxiliary inputs, and index data.
 Commands exit with an error if writing, flushing, or closing their result output
 fails.
+
+Result output is gzip-compressed when the output filename ends in `.gz`.
+Use the global flag `--force-gzip-output` to enable gzip compression for other
+filenames or stdout, for example:
+
+```bash
+lexicmap search -d db.lmi query.fasta --force-gzip-output > results.tsv.gz
+```

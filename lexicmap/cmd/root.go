@@ -72,6 +72,9 @@ func init() {
 
 	RootCmd.PersistentFlags().StringP("log", "", "", formatFlagUsage("Log file."))
 
+	RootCmd.PersistentFlags().Bool("force-gzip-output", false,
+		formatFlagUsage("Gzip-compress result output regardless of the filename, including stdout."))
+
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	RootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
