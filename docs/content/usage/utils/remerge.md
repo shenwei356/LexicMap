@@ -28,6 +28,9 @@ When to use this command?
 
 Large batch counts are merged in multiple rounds within --max-open-files,
 including 8 files reserved for standard streams, logging, and runtime use.
+Original batches are retained until the final index is published, so failed
+merges can be retried. Genome data use hard links where supported; otherwise,
+retaining the batches requires extra disk space for copies.
 
 Use -2/--seed-index2 to write adaptive two-level seed indexes during the final
 merge, as in "lexicmap index". Set --seed-index2-threshold to the threshold used

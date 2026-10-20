@@ -24,6 +24,8 @@ Attention:
      bitscore * pident, retaining all ties at the cutoff score.
      Unlike 'lexicmap search -n', this does not use chaining scores.
      Selected genome results are buffered in memory to count retained genome hits.
+  6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
+     -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
 
 Usage:
   lexicmap utils merge-search-results [flags] 

@@ -30,6 +30,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation, progress reporting, and parser shutdown.
+    - Preserve batch numbering when a batch contains no valid genomes.
+    - Skip an entire genome when a later contig exceeds `--max-genome`, without retaining earlier chunks.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
@@ -65,6 +67,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap utils 2sam`:
     - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
     - Fix MAPQ calculation when a later secondary alignment has a higher score.
+    - Output TLEN=0 for unpaired records; add custom `ZA:i`, `ZQ:i`, and `ZR:i` tags for alignment length, query span, and reference span.
+- `lexicmap utils 2blast`:
+    - Restore subject headings at query, genome, and input-file boundaries.
 - `lexicmap utils edit-genome-ids`:
     - Refresh cached genome details after renaming IDs.
     - Preserve the mapping file when no genome IDs change.
@@ -82,6 +87,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
     - Added progress bars to all seed chunks.
 - `lexicmap utils remerge`:
+    - Retain original batches until merging succeeds, allowing retries after a later merge group fails.
     - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
 
 ### v0.9.0 - 2026-03-13

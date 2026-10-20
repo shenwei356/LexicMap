@@ -168,3 +168,28 @@ func TestMergeSearchResultsTopN(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeSearchResultsLongAlignmentRows(t *testing.T) {
+	dir := t.TempDir()
+	header := auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n"
+	sequence := strings.Repeat("ACGT", 1<<18) // each row exceeds 3 MiB
+	rows, files := make([]string, 2), make([]string, 2)
+	for i := range files {
+		rows[i] = fmt.Sprintf("q\t1048576\t1\tg%d\ts\t100\t1\t1\t100\t1048576\t100\t0\t1\t1048576\t1\t1048576\t+\t1048576\t0\t%d\t1048576M\t%s\t%s\t%s\n",
+			i, 100-i, sequence, sequence, strings.Repeat("|", len(sequence)))
+		files[i] = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("%d.tsv", i)), header+rows[i])
+	}
+	args := []string{"utils", "merge-search-results", "--quiet"}
+	got := runSeedIndexCommand(t, append(args, files...)...)
+	want := header
+	for _, row := range rows {
+		want += strings.Replace(row, "\t1\tg", "\t2\tg", 1)
+	}
+	if string(got) != want {
+		t.Fatal("long alignment rows changed")
+	}
+	_, stderr, err := runAuditCommand(t, "", append(append(args, "-b", "1M"), files...)...)
+	if err == nil || !strings.Contains(string(stderr), "token too long") {
+		t.Fatalf("maximum row length was not enforced: %v %s", err, stderr)
+	}
+}

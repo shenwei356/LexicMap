@@ -195,3 +195,59 @@ func TestRemergeRejectsAdaptiveBudget(t *testing.T) {
 		}
 	}
 }
+
+func TestRemergeRetriesAfterCompletedGroup(t *testing.T) {
+	dir := t.TempDir()
+	want, got := filepath.Join(dir, "want"), filepath.Join(dir, "got")
+	makeRemergeBatches(t, want, 3)
+	paths := makeRemergeBatches(t, got, 3)
+	// The first group completes before a later group's seed input fails.
+	broken := filepath.Join(paths[2], DirSeeds, chunkFile(0))
+	original, err := os.ReadFile(broken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestInput(t, broken, "")
+	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-J", "1", "--max-open-files", "12", "-d", got}
+	_, stderr, err := runAuditCommand(t, "", args...)
+	if err == nil {
+		t.Fatal("failure injection did not fail")
+	}
+	if _, err := os.Stat(filepath.Join(got+ExtTmpDir, "r1_b1", FileInfo)); err != nil {
+		t.Fatalf("first group did not finish: %v\n%s", err, stderr)
+	}
+	for _, path := range paths {
+		if _, err := os.Stat(filepath.Join(path, FileMasks)); err != nil {
+			t.Fatalf("original batch was consumed: %v", err)
+		}
+	}
+	if err := os.WriteFile(broken, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	runSeedIndexCommand(t, args...)
+	args[len(args)-1] = want
+	runSeedIndexCommand(t, args...)
+	if err := filepath.WalkDir(want, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(want, path)
+		if err != nil {
+			return err
+		}
+		a, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		b, err := os.ReadFile(filepath.Join(got, rel))
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(a, b) {
+			t.Errorf("retry differs from uninterrupted merge: %s", rel)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

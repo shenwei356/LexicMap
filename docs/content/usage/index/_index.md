@@ -22,6 +22,7 @@ Input:
   2. Input plain or gzip/xz/zstd/bzip2/lz4 compressed FASTA/Q files can be given via positional arguments or
      the flag -X/--infile-list with a list of input files.
      Flag -S/--skip-file-check is optional for skipping file checking if you trust the file list.
+     Indexing from stdin or a pipe requires temporary disk space for the input.
   3. Input can also be a directory containing sequence files via the flag -I/--in-dir, with multiple-level
      sub-directories allowed. A regular expression for matching sequencing files is available via the flag
      -r/--file-regexp.
@@ -30,6 +31,8 @@ Input:
      (-G/--big-genomes).
      Changes since v0.5.0:
        - Genomes with any single contig larger than the threshold will be skipped as before.
+         No chunks from a skipped genome are retained. Genomes requiring splitting
+         are checked in an extra read pass before their first chunk is indexed.
        - However, fragmented (with many contigs) genomes with the total bases larger than the threshold will
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
      You need to increase the value for indexing fungi genomes.

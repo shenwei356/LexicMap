@@ -129,6 +129,11 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		// --------------------------------------------------------------------
 		// data structure
 
+		// A retry may use different fan-in or adaptive-index settings. Discard
+		// this group's old outputs; all source batches remain available.
+		if err := os.RemoveAll(outdir1); err != nil {
+			return fmt.Errorf("failed to clear previous merge output: %w", err)
+		}
 		err := os.MkdirAll(outdir1, 0755)
 		if err != nil {
 			checkError(fmt.Errorf("failed to create dir: %s", err))
@@ -221,7 +226,8 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		wg.Wait()
 
 		// -------------------------------------------------------------------
-		// genomes/, just move
+		// Keep original batches intact until final publication, so remerge can
+		// restart after any failed round. Hard links avoid copying genome data.
 		var dirGenomesIn, dirG string
 		var files []fs.DirEntry
 		var file fs.DirEntry
@@ -234,9 +240,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			for _, file = range files {
 				dirG = file.Name()
 				if file.IsDir() && strings.HasPrefix(dirG, "batch_") {
-					err = os.Rename(filepath.Join(dirGenomesIn, dirG), filepath.Join(dirGenomes, dirG))
+					err = linkOrCopyIndexDir(filepath.Join(dirGenomesIn, dirG), filepath.Join(dirGenomes, dirG))
 					if err != nil {
-						checkError(fmt.Errorf("failed to move genome data"))
+						checkError(fmt.Errorf("failed to retain genome data: %w", err))
 					}
 				}
 			}
@@ -324,9 +330,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 		// -------------------------------------------------------------------
 		// masks.bin, just copy one
-		err = os.Rename(filepath.Join(pathB[0], FileMasks), filepath.Join(outdir1, FileMasks))
+		err = linkOrCopyIndexFile(filepath.Join(pathB[0], FileMasks), filepath.Join(outdir1, FileMasks))
 		if err != nil {
-			checkError(fmt.Errorf("failed to move mask data"))
+			checkError(fmt.Errorf("failed to retain mask data: %w", err))
 		}
 
 	}
@@ -371,6 +377,54 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 	runtime.GC()
 	return mergeIndexes(lh, maskPrefix, anchorPrefix, opt, kvChunks, outdir, tmpIndexes, tmpDir, round+1)
+}
+
+// linkOrCopyIndexDir retains immutable batch data for retrying interrupted merges.
+func linkOrCopyIndexDir(src, dst string) error {
+	return filepath.WalkDir(src, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if entry.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		return linkOrCopyIndexFile(path, target)
+	})
+}
+
+// linkOrCopyIndexFile replaces a previous attempt's link without truncating the
+// shared inode. Filesystems without hard links fall back to a checked copy.
+func linkOrCopyIndexFile(src, dst string) error {
+	if err := os.Remove(dst); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.Link(src, dst); err == nil {
+		return nil
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	stat, err := in.Stat()
+	if err != nil {
+		return err
+	}
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, stat.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(out, in)
+	closeErr := out.Close()
+	if err != nil {
+		return err
+	}
+	return closeErr
 }
 
 var poolUint64s = &sync.Pool{New: func() interface{} {

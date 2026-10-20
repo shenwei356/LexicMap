@@ -23,7 +23,9 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -399,7 +401,6 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 
 	var begin, end int
 	var kvChunks int
-	var hasSomeGenomes bool
 	for batch := 0; batch < nBatches; batch++ {
 		// files for this batch
 		begin = batch * opt.GenomeBatchSize
@@ -418,9 +419,11 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		}
 
 		// build index for this batch
-		kvChunks, hasSomeGenomes = buildAnIndex(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
+		kvChunks, _ = buildAnIndex(lh, uint8(maskPrefix), uint8(anchorPrefix), opt, &datas, outdirB, files, batch, nBatches, outputBigGenomes, chBG)
 
-		if nBatches > 1 && hasSomeGenomes { // only merge indexes with valid genomes
+		// Seed values retain their original batch IDs. Keep empty batches too,
+		// so genome readers can open every ID from zero to GenomeBatches-1.
+		if nBatches > 1 {
 			tmpIndexes = append(tmpIndexes, outdirB)
 			runtime.GC()
 		}
@@ -1511,7 +1514,14 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 			// --------------------------------
 			// read sequence
 
-			fastxReader, err := fastx.NewReader(nil, file, "")
+			// Streams must be replayable before a split genome can be accepted.
+			// Regular files keep their original path and need no temporary copy.
+			inputFile, err := replayableGenomeInput(file, outdir)
+			checkError(err)
+			if inputFile != file {
+				defer os.Remove(inputFile)
+			}
+			fastxReader, err := fastx.NewReader(nil, inputFile, "")
 			if err != nil {
 				checkError(fmt.Errorf("failed to read seq file: %s", err))
 			}
@@ -1589,14 +1599,21 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 				seqSize = len(refseq.Seq) + len(record.Seq.Seq)
 				if seqSize > maxGenomeSize {
-					if len(record.Seq.Seq) > maxGenomeSize { // the current sequence is larger than maxGenomeSize
+					oversized := len(record.Seq.Seq)
+					if oversized <= maxGenomeSize && chunks == 1 {
+						// Before publishing the first chunk, check for a later
+						// oversized contig. Unsplit genomes need no extra pass.
+						oversized, err = oversizedGenomeContig(inputFile, minSeqLen, maxGenomeSize, opt.ReSeqExclude)
+						checkError(err)
+					}
+					if oversized > maxGenomeSize {
 						if outputBigGenomes {
 							chBG <- file + "\t" + TOO_LARGE_GENOME + "\n"
 						}
 						// genome.PoolGenome.Put(refseq) // important
 						genome.RecycleGenome(refseq) // important
 						if opt.Verbose || opt.Log2File {
-							log.Warningf("  skipping a big genome with a sequence of %d bp: %s", len(record.Seq.Seq), file)
+							log.Warningf("  skipping a big genome with a sequence of %d bp: %s", oversized, file)
 							if !opt.Log2File {
 								log.Info()
 							}
@@ -1942,21 +1959,120 @@ type IndexInfo struct {
 	MaxKmerFreq      int   `toml:"max-kmer-freq" comment:"If a mask captures the same k-mer at more than N positions of a genome,\nonly the first N positions are retained. (0 for no filtering)"`
 }
 
-// writeIndexInfo writes summary of one index
+// replayableGenomeInput stages streams on disk so the eligibility pass can
+// reopen them. The caller retains the original name for genome IDs and logs,
+// and removes the returned temporary file after parsing.
+func replayableGenomeInput(file, dir string) (string, error) {
+	stdin := isStdin(file)
+	if !stdin {
+		stat, err := os.Stat(file)
+		if err != nil {
+			return "", err
+		}
+		if stat.Mode().IsRegular() {
+			return file, nil
+		}
+	}
+	input := os.Stdin
+	var err error
+	if !stdin {
+		input, err = os.Open(file)
+		if err != nil {
+			return "", err
+		}
+	}
+	tmp, err := os.CreateTemp(dir, ".genome-input-*")
+	if err != nil {
+		if !stdin {
+			_ = input.Close()
+		}
+		return "", err
+	}
+	_, copyErr := io.Copy(tmp, input)
+	var readCloseErr error
+	if !stdin {
+		readCloseErr = input.Close()
+	}
+	if err = errors.Join(copyErr, readCloseErr, tmp.Close()); err != nil {
+		_ = os.Remove(tmp.Name())
+		return "", err
+	}
+	return tmp.Name(), nil
+}
+
+// oversizedGenomeContig checks eligibility before any split chunk is published.
+// Apply the same sequence filters as the parser; excluded contigs cannot reject
+// a genome. Only genomes requiring splitting pay for this additional read.
+func oversizedGenomeContig(file string, minSeqLen, maxGenomeSize int, exclude []*regexp.Regexp) (int, error) {
+	reader, err := fastx.NewReader(nil, file, "")
+	if err != nil {
+		return 0, err
+	}
+	defer reader.Close()
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			return 0, nil
+		}
+		if err != nil {
+			return 0, fmt.Errorf("checking genome %s before splitting: %w", file, err)
+		}
+		if len(record.Seq.Seq) < minSeqLen || len(record.Seq.Seq) <= maxGenomeSize {
+			continue
+		}
+		ignored := false
+		for _, re := range exclude {
+			if re.Match(record.Name) {
+				ignored = true
+				break
+			}
+		}
+		if !ignored {
+			return len(record.Seq.Seq), nil
+		}
+	}
+}
+
+// writeIndexInfo publishes metadata only after a complete, successful write.
 func writeIndexInfo(file string, info *IndexInfo) error {
-	fh, err := os.Create(file)
+	data, err := toml.Marshal(info)
 	if err != nil {
 		return err
 	}
-
-	data, err := toml.Marshal(info)
-	if err != nil {
-		log.Fatalf("error: %v", err)
+	mode := os.FileMode(0666)
+	preserveMode := false
+	if stat, err := os.Lstat(file); err == nil {
+		// Never replace a device, directory, or symlink with index metadata.
+		if !stat.Mode().IsRegular() {
+			return fmt.Errorf("index summary is not a regular file: %s", file)
+		}
+		mode = stat.Mode().Perm()
+		preserveMode = true
+	} else if !os.IsNotExist(err) {
+		return err
 	}
-
-	fh.Write(data)
-
-	return fh.Close()
+	// Exclusive creation applies the process umask for a new index. Existing
+	// metadata keeps its permissions even if the current umask is stricter.
+	tmp := filepath.Join(filepath.Dir(file), "."+filepath.Base(file)+"-"+rand.Text())
+	fh, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(fh.Name())
+	if preserveMode {
+		err = fh.Chmod(mode)
+	}
+	if err == nil {
+		_, err = fh.Write(data)
+	}
+	closeErr := fh.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	return os.Rename(fh.Name(), file)
 }
 
 // readIndexInfo reads summary frm a file

@@ -53,6 +53,8 @@ Attention:
      bitscore * pident, retaining all ties at the cutoff score.
      Unlike 'lexicmap search -n', this does not use chaining scores.
      Selected genome results are buffered in memory to count retained genome hits.
+  6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
+     -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -402,7 +404,8 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 	// ------------------------------------------
 
 	scanner := bufio.NewScanner(fh)
-	buf := make([]byte, bufferSize)
+	// Start small per input; Scanner grows for long -a rows up to bufferSize.
+	buf := make([]byte, min(bufferSize, 64<<10))
 	scanner.Buffer(buf, int(bufferSize))
 	ncols := 20
 

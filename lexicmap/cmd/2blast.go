@@ -109,6 +109,7 @@ Input:
 		var cigar, qseq, sseq, align string
 
 		var headerLine bool
+		var firstRecord bool // each input starts a new query/subject group
 		var iGenome, iSeq int
 		var preQuery, preGenome, preSeq string
 		var rows, i, j, end int
@@ -127,7 +128,7 @@ Input:
 			checkError(err)
 
 			headerLine = true
-			preQuery = "shenwei356"
+			firstRecord = true
 
 			scanner = bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
@@ -194,11 +195,14 @@ Input:
 
 				_ = cigar
 
-				if preQuery != query {
+				newQuery := firstRecord || preQuery != query
+				newGenome := newQuery || preGenome != sgenome
+				newSeq := newGenome || preSeq != sseqid
+				if newQuery {
 					iGenome = 0
 					fmt.Fprintf(outfh, "Query = %s\nLength = %s\n\n", query, qlen)
 				}
-				if preGenome != sgenome {
+				if newGenome {
 					iGenome++
 					value = ""
 					if hasKVGenome {
@@ -211,7 +215,7 @@ Input:
 					fmt.Fprintf(outfh, "[Subject genome #%d/%s] = %s %s\nQuery coverage per genome = %s%%\n\n",
 						iGenome, hits, sgenome, value, qcovGnm)
 				}
-				if preSeq != sseqid {
+				if newSeq {
 					iSeq = 1
 					value = ""
 					if hasKVSeq {
@@ -225,6 +229,7 @@ Input:
 				}
 
 				fmt.Fprintf(outfh, " HSP cluster #%s, HSP #%s\n", cls, hsp)
+				firstRecord = false
 				fmt.Fprintf(outfh, " Score = %s bits, Expect = %s\n", bitscore, evalue)
 				fmt.Fprintf(outfh, " Query coverage per seq = %s%%, Aligned length = %s, Identities = %s%%, Gaps = %s\n",
 					qcovHSP, alenHSP, pident, gaps)

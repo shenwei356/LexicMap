@@ -42,6 +42,7 @@ var toSamCmd = &cobra.Command{
 
 Input:
    - Output file of 'lexicmap search' with the flag -a/--all.
+     Results with --show-avg-qual are also supported.
    - Do not support STDIN.
 
 Output:
@@ -50,8 +51,14 @@ Output:
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
    - NM (edit distance) and AS (alignment score) fields are produced.
+   - Custom integer length tags are emitted in this order:
+     ZA:i: alignment length (alenHSP, without the optional quality suffix).
+     ZQ:i: query alignment span (qend - qstart + 1).
+     ZR:i: reference alignment span (send - sstart + 1).
+     Both spans exclude clipping; ZQ includes insertions, ZR includes deletions.
    - Reverse-strand alignments use reverse-complemented SEQ and reversed
      CIGAR operation order, including soft clipping.
+   - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -103,7 +110,6 @@ Output:
 
 		var headerLine bool
 		var preQuery string
-		var _sstart, _send int
 
 		// ---------------------------------------------------------------
 		// 1st round: extract subject sequence id and length
@@ -191,7 +197,7 @@ Output:
 		var _qcovHSP, _pident float64
 		var flag uint32
 		aligns := make([]*SearchResultOfASequence2, 0, 1024)
-		var _qlen, _qstart, _qend int
+		var _qlen int
 		var clip5, clip3 string
 		for _, file := range files {
 			fh, err = xopen.Ropen(file)
@@ -238,16 +244,22 @@ Output:
 				cigar = items[20]
 
 				_qcovHSP, _ = strconv.ParseFloat(qcovHSP, 64)
-				_alenHSP, _ = strconv.Atoi(alenHSP)
+				// --show-avg-qual decorates the length as length:quality.
+				length, _, _ := strings.Cut(alenHSP, ":")
+				_alenHSP, err = strconv.Atoi(length)
+				if err != nil || _alenHSP <= 0 {
+					checkError(fmt.Errorf("invalid alenHSP %q in %s", alenHSP, file))
+				}
 				_pident, _ = strconv.ParseFloat(pident, 64)
 				_gaps, _ = strconv.Atoi(gaps)
-				_sstart, _ = strconv.Atoi(sstart)
-				_send, _ = strconv.Atoi(send)
 				_bitscore, _ = strconv.Atoi(bitscore)
 				algnScore = int((float64(_bitscore)*math.Ln2 + lnK) / lambda)
 				_qlen, _ = strconv.Atoi(qlen)
-				_qstart, _ = strconv.Atoi(qstart)
-				_qend, _ = strconv.Atoi(qend)
+				_qstart, qstartErr := strconv.Atoi(qstart)
+				_qend, qendErr := strconv.Atoi(qend)
+				if qstartErr != nil || qendErr != nil || _qstart <= 0 || _qend < _qstart || _qend > _qlen {
+					checkError(fmt.Errorf("invalid query coordinates %q..%q for length %q in %s", qstart, qend, qlen, file))
+				}
 
 				flag = 0
 				if sstr == "-" {
@@ -262,7 +274,7 @@ Output:
 				r.qcovHSP = _qcovHSP
 				r.pident = _pident
 				r.gaps = float64(_gaps)
-				r.alenHSP = float64(_alenHSP)
+				r.alenHSP = _alenHSP
 
 				// sam data
 				r.FLAG = flag
@@ -286,7 +298,15 @@ Output:
 				r.CIGAR = cigar
 				r.RNEXT = "*"
 				r.PNEXT = "0"
-				r.TLEN = _send - _sstart + 1
+				r.TLEN = 0 // SAM single-segment templates have no paired template length.
+				// Keep the former TLEN value in a custom tag with explicit span semantics.
+				start, startErr := strconv.Atoi(sstart)
+				end, endErr := strconv.Atoi(send)
+				if startErr != nil || endErr != nil || start <= 0 || end < start {
+					checkError(fmt.Errorf("invalid subject coordinates %q..%q in %s", sstart, send, file))
+				}
+				r.ReferenceSpan = end - start + 1
+				r.QuerySpan = _qend - _qstart + 1
 				if len(aligns) == 0 || preQuery != query {
 					r.SEQ = strings.Repeat("N", _qstart-1) + strings.ReplaceAll(qseq, "-", "") + strings.Repeat("N", _qlen-_qend)
 				} else {
@@ -363,13 +383,13 @@ func writeSAMQuery(w io.Writer, query string, aligns []*SearchResultOfASequence2
 		}
 		mapq := 40 * float64(a.score-maxScore) / float64(a.score)
 		mapq *= a.qcovHSP / 100
-		mapq *= (a.pident / 100) * (1 - a.gaps/a.alenHSP)
+		mapq *= (a.pident / 100) * (1 - a.gaps/float64(a.alenHSP))
 		a.MAPQ = uint32(min(60, max(0, int(mapq))))
 	}
 	for _, a := range aligns {
-		if _, err := fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\n",
+		if _, err := fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\tZA:i:%d\tZQ:i:%d\tZR:i:%d\n",
 			query, a.FLAG, a.RNAME, a.POS, a.MAPQ, a.CIGAR, a.RNEXT, a.PNEXT,
-			a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS); err != nil {
+			a.TLEN, a.SEQ, a.QUAL, a.NM, a.AS, a.alenHSP, a.QuerySpan, a.ReferenceSpan); err != nil {
 			return err
 		}
 		recycleSearchResultOfASequence2(a)
@@ -384,7 +404,7 @@ type SearchResultOfASequence2 struct {
 	qcovHSP float64
 	pident  float64
 	gaps    float64
-	alenHSP float64
+	alenHSP int // Alignment length used by MAPQ and the ZA tag.
 
 	FLAG  uint32
 	RNAME string
@@ -398,6 +418,9 @@ type SearchResultOfASequence2 struct {
 	QUAL  string
 	NM    int
 	AS    int
+
+	QuerySpan     int // ZQ: inclusive query span, excluding clipping.
+	ReferenceSpan int // ZR: inclusive reference span, independent of strand and query clipping.
 }
 
 var poolSearchResultOfASequence2 = &sync.Pool{New: func() interface{} {

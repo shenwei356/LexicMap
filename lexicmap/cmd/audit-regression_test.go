@@ -278,6 +278,12 @@ func TestSAMReferenceOrientation(t *testing.T) {
 		{"272", "3S1M1I3M1D2M2S", "*"},
 	} {
 		r := records[i]
+		if r[6] != "*" || r[7] != "0" || r[8] != "0" {
+			t.Fatalf("unpaired SAM record has mate/template fields: %v", r)
+		}
+		if len(r) != 16 || strings.Join(r[13:], "\t") != "ZA:i:8\tZQ:i:7\tZR:i:7" {
+			t.Fatalf("wrong alignment length tags: %v", r)
+		}
 		if r[1] != want.flag || r[3] != "10" || r[5] != want.cigar || r[9] != want.seq || r[11] != "NM:i:2" {
 			t.Fatalf("SAM record %d: %v", i, r)
 		}

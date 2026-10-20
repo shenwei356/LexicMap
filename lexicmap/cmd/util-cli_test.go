@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"os"
+
 	"bytes"
 	"strings"
 	"testing"
@@ -57,4 +59,13 @@ func TestLogStartupInfoDate(t *testing.T) {
 		return
 	}
 	t.Fatal("missing CMD in startup log")
+}
+
+// writeTestInput writes a small input without depending on local databases.
+func writeTestInput(t *testing.T, file, data string) string {
+	t.Helper()
+	if err := os.WriteFile(file, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return file
 }
