@@ -4,6 +4,25 @@
 
 We use 15 bacterial genomes for demonstration.
 
+    $ seqkit stats -a refs/* -T | csvtk cut -t -F -f "-Q*\(*,-Avg*" | csvtk pretty -t
+    file                         format   type   num_seqs   sum_len   min_len   avg_len     max_len   Q1        Q2        Q3        sum_gap   N50       N50_num   GC(%)   sum_n
+    --------------------------   ------   ----   --------   -------   -------   ---------   -------   -------   -------   -------   -------   -------   -------   -----   -----
+    refs/GCF_000006945.2.fa.gz   FASTA    DNA    2          4951383   93933     2475691.5   4857450   93933     2475692   4857450   0         4857450   1         52.24   0    
+    refs/GCF_000017205.1.fa.gz   FASTA    DNA    1          6588339   6588339   6588339.0   6588339   6588339   6588339   6588339   0         6588339   1         66.45   0    
+    refs/GCF_000148585.2.fa.gz   FASTA    DNA    1          1868883   1868883   1868883.0   1868883   1868883   1868883   1868883   0         1868883   1         40.45   0    
+    refs/GCF_000392875.1.fa.gz   FASTA    DNA    3          2881400   274762    960466.7    1924212   478594    682426    1303319   0         1924212   1         37.58   4965 
+    refs/GCF_000742135.1.fa.gz   FASTA    DNA    5          5545784   16331     1109156.8   5284261   42420     95930     106842    0         5284261   1         56.99   1100 
+    refs/GCF_001027105.1.fa.gz   FASTA    DNA    2          2782562   27490     1391281.0   2755072   27490     1391281   2755072   0         2755072   1         32.84   0    
+    refs/GCF_001096185.1.fa.gz   FASTA    DNA    24         2117177   366       88215.7     543880    9252      48418     133692    0         163740    4         40.12   4    
+    refs/GCF_001457655.1.fa.gz   FASTA    DNA    1          1890645   1890645   1890645.0   1890645   1890645   1890645   1890645   0         1890645   1         38.23   0    
+    refs/GCF_001544255.1.fa.gz   FASTA    DNA    38         2484851   563       65390.8     386577    1364      20536     115935    0         191690    5         38.08   0    
+    refs/GCF_002949675.1.fa.gz   FASTA    DNA    2          4578459   182697    2289229.5   4395762   182697    2289230   4395762   0         4395762   1         50.98   0    
+    refs/GCF_002950215.1.fa.gz   FASTA    DNA    3          4938295   113130    1646098.3   4659463   139416    165702    2412582   0         4659463   1         50.67   0    
+    refs/GCF_003697165.2.fa.gz   FASTA    DNA    2          5034834   131333    2517417.0   4903501   131333    2517417   4903501   0         4903501   1         50.64   0    
+    refs/GCF_006742205.1.fa.gz   FASTA    DNA    2          2427041   4439      1213520.5   2422602   4439      1213520   2422602   0         2422602   1         32.29   0    
+    refs/GCF_009759685.1.fa.gz   FASTA    DNA    2          3990388   9540      1995194.0   3980848   9540      1995194   3980848   0         3980848   1         39.16   0    
+    refs/GCF_900638025.1.fa.gz   FASTA    DNA    1          2062405   2062405   2062405.0   2062405   2062405   2062405   2062405   0         2062405   1         39.37   0    
+
 Taxonomy information (NCBI Taxonomy):
 
     cat taxid.map \
@@ -484,3 +503,95 @@ Query  130      GAAAACACTCTTTTGGATACCTAGAGTCTGATAAGCGATTATTCTCTCTATGTTACT  186
                  || |||||||||    |||||  |||||||||||||||||||||||| |||| |||
 Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  1124989
 ```
+
+## Genome similarity searching
+
+A single query
+
+    $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz | csvtk pretty -t
+    10:15:08.632 [INFO] LexicMap v0.10.0
+    10:15:08.632 [INFO]   https://github.com/shenwei356/LexicMap
+    10:15:08.632 [INFO] 
+    10:15:08.632 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+    10:15:08.632 [INFO]  CMD: lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz
+    10:15:08.632 [INFO] DATE: 2026-10-20
+    10:15:08.632 [INFO] 
+    10:15:08.632 [INFO] checking input files ...
+    10:15:08.633 [INFO]   1 input file given: refs/GCF_003697165.2.fa.gz
+    10:15:08.633 [INFO] 
+    10:15:08.633 [INFO] loading index: demo.lmi/
+    10:15:08.633 [INFO]   reading masks...
+    10:15:08.634 [INFO]   reading indexes of seeds (k-mer-value) data...
+    10:15:08.634 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+    10:15:08.684 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    10:15:08.685 [INFO] index loaded in 52.056919ms
+    10:15:08.685 [INFO] 
+    10:15:08.685 [INFO] searching with 16 threads...
+    10:15:08.685 [INFO]   screen genomes with seed data of 1024 masks
+    10:15:08.685 [INFO]     keep the top 10 screened genomes, including all ties at the cutoff score
+    10:15:08.685 [INFO]   minimum query coverage per HSP: 30.00%
+    10:15:08.685 [INFO]   minimum base identity in a HSP segment: 70.00%
+    10:15:08.685 [INFO]   maximum evalue: 1.00e-15
+    10:15:08.685 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 4 queries
+    10:15:08.685 [INFO]   threads per query: 16
+
+    10:15:12.097 [INFO] 
+    10:15:12.097 [INFO] processed queries: 1, speed: 17.583 queries per minute
+    10:15:12.097 [INFO] 100.0000% (1/1) queries matched
+    10:15:12.097 [INFO] done searching
+    10:15:12.098 [INFO] 
+    10:15:12.098 [INFO] elapsed time: 3.46511184s
+    10:15:12.098 [INFO] 
+    query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
+    ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   -----
+    GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834        
+    GCF_003697165.2   GCF_002949675.1   96.8012    67.613    74.353    2          5034834   2          4578459        
+    GCF_003697165.2   GCF_002950215.1   96.7220    73.252    74.685    2          5034834   3          4938295        
+    GCF_003697165.2   GCF_000006945.2   81.6285    55.366    56.299    2          5034834   2          4951383        
+    GCF_003697165.2   GCF_000742135.1   80.5980    46.226    41.967    2          5034834   5          5545784        
+    
+    # with species name
+    $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz \
+            --taxdump ~/.taxonkit/ --genome2taxid taxid.map --show-species-name --quiet \
+        | csvtk pretty -t
+        
+    query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname                
+    ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   ---------------------
+    GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834   Escherichia coli     
+    GCF_003697165.2   GCF_002949675.1   96.8012    67.613    74.353    2          5034834   2          4578459   Shigella dysenteriae 
+    GCF_003697165.2   GCF_002950215.1   96.7220    73.252    74.685    2          5034834   3          4938295   Shigella flexneri    
+    GCF_003697165.2   GCF_000006945.2   81.6285    55.366    56.299    2          5034834   2          4951383   Salmonella enterica  
+    GCF_003697165.2   GCF_000742135.1   80.5980    46.226    41.967    2          5034834   5          5545784   Klebsiella pneumoniae
+
+Self-alignment
+
+    $ lexicmap genome search -d demo.lmi/ refs/* -n 1 --quiet | csvtk pretty -t
+    query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
+    ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   -----
+    GCF_000148585.2   GCF_000148585.2   100.0000   100.000   100.000   1          1868883   1          1868883        
+    GCF_001457655.1   GCF_001457655.1   100.0000   100.000   100.000   1          1890645   1          1890645        
+    GCF_001096185.1   GCF_001096185.1   100.0000   100.000   100.000   24         2117177   24         2117177        
+    GCF_000392875.1   GCF_000392875.1   100.0000   100.000   100.000   3          2881400   3          2881400        
+    GCF_001027105.1   GCF_001027105.1   100.0000   100.000   100.000   2          2782562   2          2782562        
+    GCF_001544255.1   GCF_001544255.1   100.0000   100.000   100.000   38         2484851   38         2484851        
+    GCF_000006945.2   GCF_000006945.2   100.0000   100.000   100.000   2          4951383   2          4951383        
+    GCF_006742205.1   GCF_006742205.1   100.0000   100.000   100.000   2          2427041   2          2427041        
+    GCF_000742135.1   GCF_000742135.1   100.0000   100.000   100.000   5          5545784   5          5545784        
+    GCF_900638025.1   GCF_900638025.1   100.0000   100.000   100.000   1          2062405   1          2062405        
+    GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834        
+    GCF_009759685.1   GCF_009759685.1   100.0000   100.000   100.000   2          3990388   2          3990388        
+    GCF_000017205.1   GCF_000017205.1   100.0000   100.000   100.000   1          6588339   1          6588339        
+    GCF_002950215.1   GCF_002950215.1   100.0000   100.000   100.000   3          4938295   3          4938295        
+    GCF_002949675.1   GCF_002949675.1   100.0000   100.000   100.000   2          4578459   2          4578459        
+    
+Pairwise comparison
+
+    $ lexicmap genome compare refs/GCF_003697165.2.fa.gz refs/GCF_002949675.1.fa.gz refs/GCF_002950215.1.fa.gz --quiet \
+        | csvtk pretty -t
+
+    genome1           genome2           tANI      ANI1      ANI2      AF1      AF2      ctgs1   size1     ctgs2   size2  
+    ---------------   ---------------   -------   -------   -------   ------   ------   -----   -------   -----   -------
+    GCF_003697165.2   GCF_002950215.1   73.4098   96.7220   96.8348   73.252   77.978   2       5034834   3       4938295
+    GCF_003697165.2   GCF_002949675.1   71.8008   96.8012   96.5448   67.613   81.014   2       5034834   2       4578459
+    GCF_002949675.1   GCF_002950215.1   77.0516   97.0923   97.6772   82.972   74.934   2       4578459   3       4938295
+

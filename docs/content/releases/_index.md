@@ -13,6 +13,90 @@ weight: 30
 - Please run `lexicmap autocompletion` to update the shell autocompletion script.
 {{< /hint >}}
 
+### v0.10.0 - 2026-10-20 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.0)
+
+There is a small change in the seed computation, but re-indexing is unnecessary.
+
+- **`lexicmap`**:
+    - All commands log the working directory, command and arguments at startup.
+    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
+- **New commands**:
+    - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
+    - **`lexicmap genome pair`: Find similar genome pairs in the index**.
+    - **`lexicmap genome compare`: Compare genome pairs and compute ANI and AF**.
+    - **`lexicmap utils reindex-seeds2`: Recreate adaptive two-level indexes of seed data to speed up prefix matching in large indexes.**
+    - `lexicmap utils genome-details`: Extract or view genome details in the index.
+    - `lexicmap utils genome-seqs`: Extract all sequences of a given genome.
+- **`lexicmap index`**:
+    - **Faster indexing (30-45% less time) and ~30% lower memory usage by optimizing seed computation and merging**.
+    - **Fixed a strand bias in seed computation that skipped some negative-strand k-mers during the first round of probe capture (k-mer masking)**.
+      This caused more k-mers to be captured on the positive strand, but had a negligible effect
+      on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
+      when rebuilding an index.
+      To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
+    - **Add `-2/--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
+      with `--seed-index2-threshold` (default `8K`, minimum `4K`) controlling the minimum block size.
+      These indexes speed up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks.
+      Overall gains are most noticeable for batch queries with `lexicmap search` when `-n/--top-n-genomes` limits downstream alignments,
+      making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
+    - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
+      as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
+    - Fixed data races in parallel seed computation, progress reporting, and parser shutdown.
+    - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
+      The mask file now determines the number of masks.
+    - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
+- **`lexicmap search`**:
+    - **Faster searches, especially for single queries with few matches and batch queries using `-n/--top-n-genomes`**.
+        - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
+        - Reduce memory use during parallel seed collection, genome loading, and large `-a/--all` output.
+        - Optimize chaining and Top-N selection to reduce memory use and garbage collection overhead.
+        - Release seed anchors after chaining, and retain only output fields after alignment. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
+        - **Delay reading contig lengths and IDs until pseudoalignment finds a match**, faster for genomes with many contigs such as MAGs or samples in the [Logan Project](https://github.com/IndexThePlanet/Logan).
+        - **Improve pseudoalignment**, contig lookup, and result grouping performance.
+    - **Add two flags to limit the memory usage when searching in huge indexes** such as the [Logan Project](https://github.com/IndexThePlanet/Logan),
+      where the large number of seed matches can cause memory exhaustion during seed collection.
+      See how to [trade off speed for memory usage](https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage).
+        - **Add `--max-seed-memory` (default `0`, disabled) to stream seed data and spill sorted anchors before their collection buffers exceed the budget divided among query slots**. Use this and set a large value (such as 1/2 to 3/4 of the available free RAM). See the help message for more details. Inspired by @d-callan's proposal in [#37](https://github.com/shenwei356/LexicMap/pull/37).
+        - **Add `--max-align-result-memory` (default `1G`) to spill large `-a/--all` output fields to temporary files once their global in-memory budget is exhausted**. Useful when long queries or many alignment hits consume substantial memory for retained CIGAR strings, aligned sequences, and alignment text, especially with concurrent queries. Inspired by @d-callan's proposal in [#38](https://github.com/shenwei356/LexicMap/pull/38).
+    - **Updated the WFA implementation to follow standard end-to-end global alignment semantics and WFA2-compatible tie-breaking**.
+      This may slightly change CIGAR strings and derived statistics for some low-similarity hits.
+      In limited tests, the resulting alignments tended to be slightly shorter and contain fewer gaps.
+    - **Keep all genome matches tied at the Nth chaining score when using `-n/--top-n-genomes`**; the number of retained candidates may exceed N.
+    - **Taxonomic information**
+        - Flag `-T/--taxdump`: set a default value `<index path>/taxdump`.
+        - Flag `-G/--genome2taxid`: set a default value `<taxdump path>/taxid.map`.
+        - Added new flags `-g/--show-genome-name` and `-s/--show-species-name` to add the taxonomic/species name as a prefix to the `sgenome` field.
+        - Added a new flag `--show-sseq-idx` to add 1-based genome chunk and subject-sequence index prefixes to `sseqid` values.
+        - Fixed TaxId filtering with only negative TaxIds, which discarded the first seed hit from each allowed genome.
+    - Added a new flag `--show-avg-qual` to add the average quality of the aligned region as a suffix to the `alenHSP` field.
+    - Fixed a data race when extending the pseudoalignment region.
+    - Clear stale alignment statistics when reusing pooled results.
+- `lexicmap utils merge-search-results`:
+    - **Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score**. Unlike `search -n`, this filters alignment results rather than chaining scores.
+    - Apply `-q/--query` when only one input file is given.
+- `lexicmap utils 2sam`:
+    - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
+    - Fix MAPQ calculation when a later secondary alignment has a higher score.
+- `lexicmap utils edit-genome-ids`:
+    - Refresh cached genome details after renaming IDs.
+    - Preserve the mapping file when no genome IDs change.
+- `lexicmap index, lexicmap utils edit-genome-ids/genome-details`:
+    - Truncate genome/sequence IDs longer than 65,535 characters.
+- `lexicmap utils subseq`:
+    - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
+- `lexicmap utils seed-pos`:
+    - Skip empty seed results and finish reading result fields before recycling them.
+    - Fixed data races in seed-position reader creation and error handling.
+- `lexicmap util kmers`:
+    - Faster speed for printing all seed data (`--mask 0`).
+- `lexicmap utils reindex-seeds`:
+    - Preserve each chunk's existing primary index if rebuilding it fails.
+    - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
+    - Added progress bars to all seed chunks.
+- `lexicmap utils remerge`:
+    - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
+
+
 ### v0.9.0 - 2026-03-13 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.9.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.9.0)
 
 - New commands:

@@ -98,7 +98,7 @@ Linux and macOS (both x86 and ARM CPUs) are supported.
     |OS     |Arch      |File                                                                                                                                       |
     |:------|:---------|:------------------------------------------------------------------------------------------------------------------------------------------|
     |Windows|**64-bit**|[**lexicmap_windows_amd64.exe.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.10.0/lexicmap_windows_amd64.exe.tar.gz) |
-
+    |Windows|arm64     |[**lexicmap_windows_arm64.exe.tar.gz**](https://github.com/shenwei356/LexicMap/releases/download/v0.10.0/lexicmap_windows_arm64.exe.tar.gz) |
 
 2. Decompress it.
 

@@ -535,13 +535,12 @@ LexicMap search and other utility commands check compatibility via the main vers
 
 |Index version|LexicMap version|Supported LexicMap versions|Date      |Changes                                                                                                                |
 |:------------|:---------------|:--------------------------|:---------|:----------------------------------------------------------------------------------------------------------------------|
-|3.5          |0.10.0          |0.6.0 +                    |2026-xx-xx|A small fraction of seeds change after fixing the lexichash computation.                                              |
+|3.5          |0.10.0          |0.10.0 +                   |2026-10-20|A small part of seeds are changed after fixing the lexichash computation.                                              |
 |3.4          |0.7.0           |0.6.0 +                    |2025-04-11|Fix filling the seed desert region behind the last seed of a genome.                                                   |
 |3.3          |0.6.0           |0.6.0 +                    |2025-03-25|Reduce index size for batches <= 512. Add the total bases of index to info.toml for computing the Evalue. Denser seeds.|
 |3.1          |0.5.0           |0.4.0 +                    |2024-12-18|Change the default partitions of seed data index.                                                                      |
-|3.0          |0.4.0           |0.4.0 +                    |2024-08-15|Support suffix matching of seeds. Better seed desert filling for highly-repetitive regions. Denser seeds.              |
+|3            |0.4.0           |0.4.0 +                    |2024-08-15|Support suffix matching of seeds. Better seed desert filling for highly-repetitive regions. Denser seeds.              |
 |1.1          |0.3.0           |0.3.0                      |2024-05-14|Change the format of seed data index. Use longer contig intervals.                                                     |
 |0.1          |0.1.0           |0.1.0 - 0.2.0              |2024-01-25|First version.                                                                                                         |
-
 
 **What's next:** {{< button size="small" relref="tutorials/search" >}}Searching{{< /button >}}
