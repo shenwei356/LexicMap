@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
-  <meta name="description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4. (default 4096) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
+  <meta name="description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate the primary indexes of seeds data. The seeds files are not changed. Different seeds files are processed in parallel using -j/--threads, and --partitions controls the number of anchor partitions in each primary index. The partition count must be a power of 4 and at least 4. The mask prefix length plus log4(partitions) must not exceed the k-mer size; equality is allowed. This command writes single-level .idx files and removes their corresponding .idx15 files afterward. Use &#34;lexicmap utils reindex-seeds2&#34; to create adaptive two-level indexes that can reduce seed-matching time for large primary-prefix blocks. Each primary index is replaced only after its new file has been written and closed successfully. A failed rebuild leaves that chunk&#39;s old index intact. Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of anchor partitions in each primary seed index. Must be a power of 4 and at least 4; mask prefix length &#43; log4(value) must not exceed the k-mer size. (default 4096) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
 
-    <title>reindex-seeds | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>lexicmap utils reindex-seeds | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,10 +35,10 @@
     
   <meta
     property="og:title"
-    content="reindex-seeds"
+    content="lexicmap utils reindex-seeds"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4. (default 4096) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
+  <meta property="og:description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate the primary indexes of seeds data. The seeds files are not changed. Different seeds files are processed in parallel using -j/--threads, and --partitions controls the number of anchor partitions in each primary index. The partition count must be a power of 4 and at least 4. The mask prefix length plus log4(partitions) must not exceed the k-mer size; equality is allowed. This command writes single-level .idx files and removes their corresponding .idx15 files afterward. Use &#34;lexicmap utils reindex-seeds2&#34; to create adaptive two-level indexes that can reduce seed-matching time for large primary-prefix blocks. Each primary index is replaced only after its new file has been written and closed successfully. A failed rebuild leaves that chunk&#39;s old index intact. Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of anchor partitions in each primary seed index. Must be a power of 4 and at least 4; mask prefix length &#43; log4(value) must not exceed the k-mer size. (default 4096) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/" />
 
@@ -46,8 +46,8 @@
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="reindex-seeds" />
-  <meta name="twitter:description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4. (default 4096) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
+<meta name="twitter:title" content="lexicmap utils reindex-seeds" />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils reindex-seeds -h Recreate the primary indexes of seeds data. The seeds files are not changed. Different seeds files are processed in parallel using -j/--threads, and --partitions controls the number of anchor partitions in each primary index. The partition count must be a power of 4 and at least 4. The mask prefix length plus log4(partitions) must not exceed the k-mer size; equality is allowed. This command writes single-level .idx files and removes their corresponding .idx15 files afterward. Use &#34;lexicmap utils reindex-seeds2&#34; to create adaptive two-level indexes that can reduce seed-matching time for large primary-prefix blocks. Each primary index is replaced only after its new file has been written and closed successfully. A failed rebuild leaves that chunk&#39;s old index intact. Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --partitions int ► Number of anchor partitions in each primary seed index. Must be a power of 4 and at least 4; mask prefix length &#43; log4(value) must not exceed the k-mer size. (default 4096) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/ processed files: 16 / 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] " />
 
 
   <script type="application/ld+json">
@@ -55,11 +55,11 @@
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Usage",
-      "name": "reindex-seeds",
+      "name": "lexicmap utils reindex-seeds",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/",
-      "headline": "reindex-seeds",
-      "description": " Usage $ lexicmap utils reindex-seeds -h Recreate indexes of k-mer-value (seeds) data Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --partitions int ► Number of partitions for re-indexing seeds (k-mer-value data) files. The value needs to be the power of 4. (default 4096) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi\/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi\/ processed files: 16 \/ 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi\/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi\/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] ",""
-      "wordCount" : "176",
+      "headline": "lexicmap utils reindex-seeds",
+      "description": " Usage $ lexicmap utils reindex-seeds -h Recreate the primary indexes of seeds data. The seeds files are not changed. Different seeds files are processed in parallel using -j\/--threads, and --partitions controls the number of anchor partitions in each primary index. The partition count must be a power of 4 and at least 4. The mask prefix length plus log4(partitions) must not exceed the k-mer size; equality is allowed. This command writes single-level .idx files and removes their corresponding .idx15 files afterward. Use \u0022lexicmap utils reindex-seeds2\u0022 to create adaptive two-level indexes that can reduce seed-matching time for large primary-prefix blocks. Each primary index is replaced only after its new file has been written and closed successfully. A failed rebuild leaves that chunk\u0027s old index intact. Usage: lexicmap utils reindex-seeds [flags] Flags: -h, --help help for reindex-seeds -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --partitions int ► Number of anchor partitions in each primary seed index. Must be a power of 4 and at least 4; mask prefix length \u002b log4(value) must not exceed the k-mer size. (default 4096) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples $ lexicmap utils reindex-seeds -d demo.lmi\/ --partitions 1024 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi\/ processed files: 16 \/ 16 [======================================] ETA: 0s. done 10:20:29.166 [INFO] update index information file: demo.lmi\/info.toml 10:20:29.166 [INFO] finished updating the index information file: demo.lmi\/info.toml 10:20:29.166 [INFO] 10:20:29.166 [INFO] elapsed time: 15.981266ms 10:20:29.166 [INFO] ",
+      "wordCount" : "311",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -322,6 +322,7 @@
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1065,6 +1066,202 @@
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 checked
               
@@ -1357,6 +1554,102 @@
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1471,6 +1764,50 @@
                     class="gdoc-nav__entry is-active"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1855,7 +2192,7 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>reindex-seeds</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>lexicmap utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>lexicmap utils reindex-seeds</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1876,7 +2213,7 @@
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>reindex-seeds</h1>
+    <h1>lexicmap utils reindex-seeds</h1>
     
     <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="usage"
@@ -1888,7 +2225,22 @@
     </a>
 </div>
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils reindex-seeds -h
-</span></span><span class="line"><span class="cl">Recreate indexes of k-mer-value (seeds) data
+</span></span><span class="line"><span class="cl">Recreate the primary indexes of seeds data.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">The seeds files are not changed. Different seeds files are processed in
+</span></span><span class="line"><span class="cl">parallel using -j/--threads, and --partitions controls the number of anchor
+</span></span><span class="line"><span class="cl">partitions in each primary index.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">The partition count must be a power of 4 and at least 4. The mask prefix length
+</span></span><span class="line"><span class="cl">plus log4(partitions) must not exceed the k-mer size; equality is allowed.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">This command writes single-level .idx files and removes their corresponding
+</span></span><span class="line"><span class="cl">.idx15 files afterward. Use &#34;lexicmap utils reindex-seeds2&#34; to create adaptive
+</span></span><span class="line"><span class="cl">two-level indexes that can reduce seed-matching time for large primary-prefix
+</span></span><span class="line"><span class="cl">blocks.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Each primary index is replaced only after its new file has been written and
+</span></span><span class="line"><span class="cl">closed successfully. A failed rebuild leaves that chunk&#39;s old index intact.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils reindex-seeds [flags]
@@ -1896,10 +2248,12 @@
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">  -h, --help             help for reindex-seeds
 </span></span><span class="line"><span class="cl">  -d, --index string     ► Index directory created by &#34;lexicmap index&#34;.
-</span></span><span class="line"><span class="cl">      --partitions int   ► Number of partitions for re-indexing seeds (k-mer-value data) files. The
-</span></span><span class="line"><span class="cl">                         value needs to be the power of 4. (default 4096)
+</span></span><span class="line"><span class="cl">      --partitions int   ► Number of anchor partitions in each primary seed index. Must be a power of
+</span></span><span class="line"><span class="cl">                         4 and at least 4; mask prefix length + log4(value) must not exceed the k-mer
+</span></span><span class="line"><span class="cl">                         size. (default 4096)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
@@ -1920,7 +2274,7 @@
 10:20:29.150 [INFO] recreating seed indexes with 1024 partitions for: demo.lmi/
 processed files:  16 / 16 [======================================] ETA: 0s. done
 10:20:29.166 [INFO] update index information file: demo.lmi/info.toml
-10:20:29.166 [INFO]   finished updating the index information file: demo.lmi/info.toml
+10:20:29.166 [INFO] finished updating the index information file: demo.lmi/info.toml
 10:20:29.166 [INFO]
 10:20:29.166 [INFO] elapsed time: 15.981266ms
 10:20:29.166 [INFO]
@@ -2554,6 +2908,146 @@ processed files:  16 / 16 [======================================] ETA: 0s. done
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2709,6 +3203,81 @@ processed files:  16 / 16 [======================================] ETA: 0s. done
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -2829,6 +3398,39 @@ processed files:  16 / 16 [======================================] ETA: 0s. done
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         
@@ -3002,10 +3604,10 @@ processed files:  16 / 16 [======================================] ETA: 0s. done
     <a
       class="gdoc-page__nav--prev flex align-center"
       href="/LexicMap/usage/utils/seed-pos/"
-      title="seed-pos"
+      title="lexicmap utils seed-pos"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      seed-pos
+      lexicmap utils seed-pos
     </a>
   
 </span>
@@ -3013,10 +3615,10 @@ processed files:  16 / 16 [======================================] ETA: 0s. done
   
     <a
       class="gdoc-page__nav--next flex align-center"
-      href="/LexicMap/usage/utils/remerge/"
-      title="remerge"
+      href="/LexicMap/usage/utils/reindex-seeds2/"
+      title="lexicmap utils reindex-seeds2"
     >
-      remerge
+      lexicmap utils reindex-seeds2
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

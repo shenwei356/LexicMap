@@ -9,13 +9,13 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
   <meta name="description" content="Info:
-GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
-wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
+GlobDB, a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets. https://x.com/daanspeth/status/1822964436950192218 Data:
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget -c https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_genome_fasta.tar.gz tar -zxf globdb_r232_genome_fasta.tar.gz # file list find globdb_r232_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt wc -l files.txt # 346233 files.txt Indexing with LexicMap
+# elapsed time: 9h:02m:28s # peak rss: 89.99 GB lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48 Taxonomy data for filtering by TaxId in lexicmap search since LexicMap v0.8.0." />
 
     <title>Indexing GlobDB | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -42,9 +42,9 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
   <meta property="og:description" content="Info:
-GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
-wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
+GlobDB, a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets. https://x.com/daanspeth/status/1822964436950192218 Data:
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget -c https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_genome_fasta.tar.gz tar -zxf globdb_r232_genome_fasta.tar.gz # file list find globdb_r232_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt wc -l files.txt # 346233 files.txt Indexing with LexicMap
+# elapsed time: 9h:02m:28s # peak rss: 89.99 GB lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48 Taxonomy data for filtering by TaxId in lexicmap search since LexicMap v0.8.0." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/" />
 
@@ -54,9 +54,9 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Indexing GlobDB" />
   <meta name="twitter:description" content="Info:
-GlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https://x.com/daanspeth/status/1822964436950192218 Data:
-# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.
-wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump/taxid.map Indexing with LexicMap" />
+GlobDB, a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets. https://x.com/daanspeth/status/1822964436950192218 Data:
+# check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/ # download data wget -c https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_genome_fasta.tar.gz tar -zxf globdb_r232_genome_fasta.tar.gz # file list find globdb_r232_genome_fasta/ -name &#34;*.fa.gz&#34; &gt; files.txt wc -l files.txt # 346233 files.txt Indexing with LexicMap
+# elapsed time: 9h:02m:28s # peak rss: 89.99 GB lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48 Taxonomy data for filtering by TaxId in lexicmap search since LexicMap v0.8.0." />
 
 
   <script type="application/ld+json">
@@ -67,8 +67,8 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
       "name": "Indexing GlobDB",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-globdb/",
       "headline": "Indexing GlobDB",
-      "description": "Info:\nGlobDB , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_genome_fasta.tar.gz tar -zxf globdb_r220_genome_fasta.tar.gz # file list find globdb_r220_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt Taxonomy data to limit TaxId in lexicmap search since LexicMap v0.8.0.\nwget https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r220\/globdb_r220_tax.tsv # Create taxdump files with TaxonKit: https:\/\/bioinf.shenwei.me\/taxonkit\/usage\/#create-taxdump taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump # It has a file mapping assembly accession to TaxId ln -s taxdump\/taxid.map Indexing with LexicMap",""
-      "wordCount" : "111",
+      "description": "Info:\nGlobDB, a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets. https:\/\/x.com\/daanspeth\/status\/1822964436950192218 Data:\n# check the latest version here: https:\/\/fileshare.lisc.univie.ac.at\/globdb\/ # download data wget -c https:\/\/fileshare.lisc.univie.ac.at\/globdb\/globdb_r232\/globdb_r232_genome_fasta.tar.gz tar -zxf globdb_r232_genome_fasta.tar.gz # file list find globdb_r232_genome_fasta\/ -name \u0022*.fa.gz\u0022 \u003e files.txt wc -l files.txt # 346233 files.txt Indexing with LexicMap\n# elapsed time: 9h:02m:28s # peak rss: 89.99 GB lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48 Taxonomy data for filtering by TaxId in lexicmap search since LexicMap v0.8.0.",
+      "wordCount" : "271",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -331,6 +331,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1074,6 +1075,202 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 
               
@@ -1366,6 +1563,102 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1480,6 +1773,50 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1892,7 +2229,7 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
 <li><a
   class="gdoc-markdown__link"
   href="https://globdb.org/"
->GlobDB</a> , a dereplicated dataset of the species reps of the GTDB, GEM, SPIRE and SMAG datasets a lot.</li>
+>GlobDB</a>, a dereplicated dataset of species representatives from the GTDB, GEM, SPIRE, and SMAG datasets.</li>
 <li><a
   class="gdoc-markdown__link"
   href="https://x.com/daanspeth/status/1822964436950192218"
@@ -1902,27 +2239,62 @@ wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv 
 <pre><code># check the latest version here: https://fileshare.lisc.univie.ac.at/globdb/
 
 # download data
-wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_genome_fasta.tar.gz
+wget -c https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_genome_fasta.tar.gz
 
-tar -zxf globdb_r220_genome_fasta.tar.gz
+tar -zxf globdb_r232_genome_fasta.tar.gz
 
 # file list
-find globdb_r220_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt
-</code></pre>
-<p>Taxonomy data to limit TaxId in <code>lexicmap search</code> since LexicMap v0.8.0.</p>
-<pre><code>wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r220/globdb_r220_tax.tsv
+find globdb_r232_genome_fasta/ -name &quot;*.fa.gz&quot; &gt; files.txt
 
-# Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump    
-taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump
-
-# It has a file mapping assembly accession to TaxId
-ln -s taxdump/taxid.map
+wc -l files.txt 
+# 346233 files.txt
 </code></pre>
 <p>Indexing with LexicMap</p>
-<pre><code># elapsed time: 3h:40m:38s
-# peak rss: 87.15 GB
-lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000000
+<pre><code># elapsed time: 9h:02m:28s
+# peak rss: 89.99 GB
+lexicmap index -S -X files.txt -O globdb_r232.lmi --log globdb_r232.lmi.log -g 50000000 -b 8000 -j 48
 </code></pre>
+<p>Taxonomy data for filtering by TaxId in <code>lexicmap search</code> since LexicMap v0.8.0.</p>
+<pre><code>wget https://fileshare.lisc.univie.ac.at/globdb/globdb_r232/globdb_r232_taxonomy.tsv.gz
+
+# Create taxdump files with TaxonKit: https://bioinf.shenwei.me/taxonkit/usage/#create-taxdump
+# 
+# for older versions with tab-delimited data:
+#    taxonkit create-taxdump -A 1 -R superkingdom,phylum,class,order,family,genus,species globdb_r220_tax.tsv -O taxdump
+#
+taxonkit create-taxdump --gtdb globdb_r232_taxonomy.tsv.gz -O taxdump
+
+# It has a file mapping assembly accession to TaxId (below the species rank)
+ln -s taxdump/taxid.map
+</code></pre>
+<p>What does the taxdump data look like?</p>
+<pre><code>$ echo Escherichia coli | taxonkit name2taxid --data-dir taxdump/
+Escherichia coli        599451526
+
+$ echo 599451526 | taxonkit lineage --data-dir taxdump/ -r
+599451526       Bacteria;Pseudomonadota;Gammaproteobacteria;Enterobacterales;Enterobacteriaceae;Escherichia;Escherichia coli    species
+
+$ echo 599451526 | taxonkit list --data-dir taxdump/ -nr 
+599451526 [species] Escherichia coli
+1395899945 [no rank] GCF_003697165
+
+$ grep 1395899945 taxdump/taxid.map 
+GCF_003697165   1395899945
+
+# the number of species
+$ echo 1 | taxonkit list --data-dir taxdump/ -I &quot;&quot; | taxonkit filter -E species --data-dir taxdump/ | wc -l
+346233
+</code></pre>
+<p>Search in specific taxa.</p>
+<pre><code># a species (Escherichia coli)
+lexicmap search -d globdb_r232.lmi -T taxdump/ -G taxdump/taxid.map -t 599451526 b.gene_E_coli_16S.fasta --debug
+
+# a genus (Escherichia)
+# echo Escherichia | taxonkit name2taxid --data-dir taxdump/
+# Escherichia     1028471294
+lexicmap search -d globdb_r232.lmi -T taxdump/ -G taxdump/taxid.map -t 1028471294 b.gene_E_coli_16S.fasta --debug
+</code></pre>
+<p>(last update: 2026-07-02)</p>
 
   </article>
 
@@ -2560,6 +2932,146 @@ lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2715,6 +3227,114 @@ lexicmap index -S -X files.txt -O globdb_r220.lmi --log globdb_r220.lmi -g 50000
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       

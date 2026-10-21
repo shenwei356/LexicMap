@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
-  <meta name="description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
+  <meta name="description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. Results with --show-avg-qual are also supported. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. - Custom integer length tags are emitted in this order: ZA:i: alignment length (alenHSP, without the optional quality suffix). ZQ:i: query alignment span (qend - qstart &#43; 1). ZR:i: reference alignment span (send - sstart &#43; 1). Both spans exclude clipping; ZQ includes insertions, ZR includes deletions. - Reverse-strand alignments use reverse-complemented SEQ and reversed CIGAR operation order, including soft clipping. - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 
-    <title>2sam | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>lexicmap utils 2sam | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,10 +35,10 @@
     
   <meta
     property="og:title"
-    content="2sam"
+    content="lexicmap utils 2sam"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
+  <meta property="og:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. Results with --show-avg-qual are also supported. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. - Custom integer length tags are emitted in this order: ZA:i: alignment length (alenHSP, without the optional quality suffix). ZQ:i: query alignment span (qend - qstart &#43; 1). ZR:i: reference alignment span (send - sstart &#43; 1). Both spans exclude clipping; ZQ includes insertions, ZR includes deletions. - Reverse-strand alignments use reverse-complemented SEQ and reversed CIGAR operation order, including soft clipping. - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/" />
 
@@ -46,8 +46,8 @@
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="2sam" />
-  <meta name="twitter:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
+<meta name="twitter:title" content="lexicmap utils 2sam" />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of &#39;lexicmap search&#39; with the flag -a/--all. Results with --show-avg-qual are also supported. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N&#39;s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match). - NM (edit distance) and AS (alignment score) fields are produced. - Custom integer length tags are emitted in this order: ZA:i: alignment length (alenHSP, without the optional quality suffix). ZQ:i: query alignment span (qend - qstart &#43; 1). ZR:i: reference alignment span (send - sstart &#43; 1). Both spans exclude clipping; ZQ includes insertions, ZR includes deletions. - Reverse-strand alignments use reverse-complemented SEQ and reversed CIGAR operation order, including soft clipping. - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when &#34;bufio.Scanner: token too long&#34; error reported (default &#34;20M&#34;) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -s, --separater string ► Separater between sgenome and sseqid (default &#34;~&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data." />
 
 
   <script type="application/ld+json">
@@ -55,11 +55,11 @@
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Usage",
-      "name": "2sam",
+      "name": "lexicmap utils 2sam",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/2sam/",
-      "headline": "2sam",
-      "description": " Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of \u0027lexicmap search\u0027 with the flag -a\/--all. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N\u0027s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, \u0027X\u0027 (mismatch) in CIGAR is not converted to \u0027M\u0027 (match). - NM (edit distance) and AS (alignment score) fields are produced. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -s, --separater string ► Separater between sgenome and sseqid (default \u0022~\u0022) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data.",""
-      "wordCount" : "665",
+      "headline": "lexicmap utils 2sam",
+      "description": " Usage $ lexicmap utils 2sam -h Convert the default search output to SAM format Input: - Output file of \u0027lexicmap search\u0027 with the flag -a\/--all. Results with --show-avg-qual are also supported. - Do not support STDIN. Output: - Clipped regions in SEQ are represented as N\u0027s, as the input contains only the aligned portion of the sequences. - Different from SAM files produced by Minimap2, \u0027X\u0027 (mismatch) in CIGAR is not converted to \u0027M\u0027 (match). - NM (edit distance) and AS (alignment score) fields are produced. - Custom integer length tags are emitted in this order: ZA:i: alignment length (alenHSP, without the optional quality suffix). ZQ:i: query alignment span (qend - qstart \u002b 1). ZR:i: reference alignment span (send - sstart \u002b 1). Both spans exclude clipping; ZQ includes insertions, ZR includes deletions. - Reverse-strand alignments use reverse-complemented SEQ and reversed CIGAR operation order, including soft clipping. - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0. Usage: lexicmap utils 2sam [flags] Flags: -b, --buffer-size string ► Size of buffer, supported unit: K, M, G. You need increase the value when \u0022bufio.Scanner: token too long\u0022 error reported (default \u002220M\u0022) -c, --concat-sgenome-sseqid ► Concatenate sgenome and sseqid to make sure the reference sequence names are distinct. -h, --help help for 2sam -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -s, --separater string ► Separater between sgenome and sseqid (default \u0022~\u0022) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Index with demo data.",
+      "wordCount" : "794",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -322,6 +322,7 @@
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1065,6 +1066,202 @@
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 checked
               
@@ -1357,6 +1554,102 @@
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1471,6 +1764,50 @@
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1855,7 +2192,7 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>2sam</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>lexicmap utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>lexicmap utils 2sam</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1876,7 +2213,7 @@
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>2sam</h1>
+    <h1>lexicmap utils 2sam</h1>
     
     <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="usage"
@@ -1892,6 +2229,7 @@
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Input:
 </span></span><span class="line"><span class="cl">   - Output file of &#39;lexicmap search&#39; with the flag -a/--all.
+</span></span><span class="line"><span class="cl">     Results with --show-avg-qual are also supported.
 </span></span><span class="line"><span class="cl">   - Do not support STDIN.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Output:
@@ -1900,9 +2238,17 @@
 </span></span><span class="line"><span class="cl">   - Different from SAM files produced by Minimap2,
 </span></span><span class="line"><span class="cl">     &#39;X&#39; (mismatch) in CIGAR is not converted to &#39;M&#39; (match).
 </span></span><span class="line"><span class="cl">   - NM (edit distance) and AS (alignment score) fields are produced.
+</span></span><span class="line"><span class="cl">   - Custom integer length tags are emitted in this order:
+</span></span><span class="line"><span class="cl">     ZA:i: alignment length (alenHSP, without the optional quality suffix).
+</span></span><span class="line"><span class="cl">     ZQ:i: query alignment span (qend - qstart + 1).
+</span></span><span class="line"><span class="cl">     ZR:i: reference alignment span (send - sstart + 1).
+</span></span><span class="line"><span class="cl">     Both spans exclude clipping; ZQ includes insertions, ZR includes deletions.
+</span></span><span class="line"><span class="cl">   - Reverse-strand alignments use reverse-complemented SEQ and reversed
+</span></span><span class="line"><span class="cl">     CIGAR operation order, including soft clipping.
+</span></span><span class="line"><span class="cl">   - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
-</span></span><span class="line"><span class="cl">  lexicmap utils 2sam [flags] 
+</span></span><span class="line"><span class="cl">  lexicmap utils 2sam [flags]
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
 </span></span><span class="line"><span class="cl">  -b, --buffer-size string      ► Size of buffer, supported unit: K, M, G. You need increase the value
@@ -1915,6 +2261,7 @@
 </span></span><span class="line"><span class="cl">  -s, --separater string        ► Separater between sgenome and sseqid (default &#34;~&#34;)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
@@ -1937,55 +2284,56 @@
 <pre tabindex="0"><code># use -a to output more fields.
 # use -n to limit matched genomes. But in practice, the value can&#39;t be too small.
 
-lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n 2
+lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_top-2-genomes_all.tsv -a -n 2
 </code></pre><p>Preview</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ cat q.gene.fasta.lexicmap_all.tsv \
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ cat q.gene.fasta.lexicmap_top-2-genomes_all.tsv \
 </span></span><span class="line"><span class="cl">    | csvtk cut -t -f query,sgenome,sseqid,qcovHSP,alenHSP,pident,bitscore,cigar \
 </span></span><span class="line"><span class="cl">    | csvtk pretty -t -S 3line
-</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-</span></span><span class="line"><span class="cl"> query                         sgenome           sseqid          qcovHSP   alenHSP   pident   bitscore   cigar                                                    
-</span></span><span class="line"><span class="cl">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       75M1X3M1X8M1X1453M                                       
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                                     
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002949675.1   NZ_CP026774.1   100.000   1542      99.027   2713       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M 
-</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</span></span><span class="line"><span class="cl"> query                         sgenome           sseqid          qcovHSP   alenHSP   pident   bitscore   cigar                               
+</span></span><span class="line"><span class="cl">─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       75M1X3M1X8M1X1453M                  
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_003697165.2   NZ_CP033092.2   100.000   1542      99.805   2767       79M1X8M1X120M1X1332M                
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.676   2758       79M1X8M2X2M1X801M1X647M             
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.611   2755       79M1X8M2X2M1X380M1X373M1X694M       
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.611   2755       79M1X8M2X2M1X717M1X36M1X694M        
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.546   2749       79M1X8M2X2M1X380M1X336M1X36M1X694M  
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.546   2749       79M1X8M2X2M1X322M1X394M1X36M1X694M  
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.546   2746       79M1I1X7M1X3M1X156M1X2M1X19M1X1269M 
+</span></span><span class="line"><span class="cl"> NC_000913.3:4166659-4168200   GCF_002950215.1   NZ_CP026788.1   100.000   1542      99.481   2746       78M2X8M2X2M1X717M1X36M1X46M1X647M   
+</span></span><span class="line"><span class="cl">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 </span></span></code></pre></div><p>2sam</p>
-<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils 2sam q.gene.fasta.lexicmap_all.tsv 
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ lexicmap utils 2sam q.gene.fasta.lexicmap_top-2-genomes_all.tsv
 </span></span><span class="line"><span class="cl">10:25:03.274 [INFO] round 1/2: extracting subject sequence IDs and lengths ...
 </span></span><span class="line"><span class="cl">10:25:03.274 [INFO]   elapsed time: 188.502µs
 </span></span><span class="line"><span class="cl">10:25:03.274 [INFO] round 2/2: converting to SAM format ...
 </span></span><span class="line"><span class="cl">10:25:03.274 [INFO]   elapsed time: 75.289µs
 </span></span><span class="line"><span class="cl">@HD     VN:1.6  SO:unsorted     GO:query
 </span></span><span class="line"><span class="cl">@SQ     SN:NZ_CP033092.2        LN:4903501
-</span></span><span class="line"><span class="cl">@SQ     SN:NZ_CP026774.1        LN:4395762
-</span></span><span class="line"><span class="cl">@PG     ID:lexicmap     PN:lexicmap     VN:0.9.0
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     0       NZ_CP033092.2   458559  0       79M1X8M1X120M1X1332M    *       0       1542    AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCATAACGTCGCAAGACCAAAGAGGGGGACCTTCGGGCCTCTTGCCATCGGATGTGCCCAGATGGGATTAGCTAGTAGGTGGGGTAACGGCTCACCTAGGCGACGATCCCTAGCTGGTCTGAGAGGATGACCAGCCACACTGGAACTGAGACACGGTCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGCACAATGGGCGCAAGCCTGATGCAGCCATGCCGCGTGTATGAAGAAGGCCTTCGGGTTGTAAAGTACTTTCAGCGGGGAGGAAGGGAGTAAAGTTAATACCTTTGCTCATTGACGTTACCCGCAGAAGAAGCACCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCACGCAGGCGGTTTGTTAAGTCAGATGTGAAATCCCCGGGCTCAACCTGGGAACTGCATCTGATACTGGCAAGCTTGAGTCTCGTAGAGGGGGGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGGTGGCGAAGGCGGCCCCCTGGACGAAGACTGACGCTCAGGTGCGAAAGCGTGGGGAGCAAACAGGATTAGATACCCTGGTAGTCCACGCCGTAAACGATGTCGACTTGGAGGTTGTGCCCTTGAGGCGTGGCTTCCGGAGCTAACGCGTTAAGTCGACCGCCTGGGGAGTACGGCCGCAAGGTTAAAACTCAAATGAATTGACGGGGGCCCGCACAAGCGGTGGAGCATGTGGTTTAATTCGATGCAACGCGAAGAACCTTACCTGGTCTTGACATCCACGGAAGTTTTCAGAGATGAGAATGTGCCTTCGGGAACCGTGAGACAGGTGCTGCATGGCTGTCGTCAGCTCGTGTTGTGAAATGTTGGGTTAAGTCCCGCAACGAGCGCAACCCTTATCCTTTGTTGCCAGCGGTCCGGCCGGGAACTCAAAGGAGACTGCCAGTGATAAACTGGAGGAAGGTGGGGATGACGTCAAGTCATCATGGCCCTTACGACCAGGGCTACACACGTGCTACAATGGCGCATACAAAGAGAAGCGACCTCGCGAGAGCAAGCGGACCTCATAAAGTGCGTCGTAGTCCGGATTGGAGTCTGCAACTCGACTCCATGAAGTCGGAATCGCTAGTAATCGTGGATCAGAATGCCACGGTGAATACGTTCCCGGGCCTTGTACACACCGCCCGTCACACCATGGGAGTGGGTTGCAAAAGAAGTAGGTAGCTTAACCTTCGGGAGGGCGCTTACCACTTTGTGATTCATGACTGGGGTGAAGTCGTAACAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA     *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP033092.2   1285123 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   3780640 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4551515 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4591684 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4726193 0       75M1X3M1X8M1X1453M      *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP033092.2   4844587 0       79M1X8M1X120M1X1332M    *       0       1542    *       *       NM:i:3  AS:i:3067
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     272     NZ_CP026774.1   1662010 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2536624 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2636477 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2768883 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   2810845 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   3061592 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
-</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200     256     NZ_CP026774.1   3646778 0       75M1X3M1X8M1X658M1X253M1X3M2X2M2X6M2X2M2X14M1X327M1X176M        *       0       1542    *       * NM:i:15  AS:i:3007
+</span></span><span class="line"><span class="cl">@SQ     SN:NZ_CP026788.1        LN:4659463
+</span></span><span class="line"><span class="cl">@PG     ID:lexicmap     PN:lexicmap     VN:0.10.0
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	0	NZ_CP033092.2	458559	0	79M1X8M1X120M1X1332M	*	0	0	AAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCATAACGTCGCAAGACCAAAGAGGGGGACCTTCGGGCCTCTTGCCATCGGATGTGCCCAGATGGGATTAGCTAGTAGGTGGGGTAACGGCTCACCTAGGCGACGATCCCTAGCTGGTCTGAGAGGATGACCAGCCACACTGGAACTGAGACACGGTCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGCACAATGGGCGCAAGCCTGATGCAGCCATGCCGCGTGTATGAAGAAGGCCTTCGGGTTGTAAAGTACTTTCAGCGGGGAGGAAGGGAGTAAAGTTAATACCTTTGCTCATTGACGTTACCCGCAGAAGAAGCACCGGCTAACTCCGTGCCAGCAGCCGCGGTAATACGGAGGGTGCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCACGCAGGCGGTTTGTTAAGTCAGATGTGAAATCCCCGGGCTCAACCTGGGAACTGCATCTGATACTGGCAAGCTTGAGTCTCGTAGAGGGGGGTAGAATTCCAGGTGTAGCGGTGAAATGCGTAGAGATCTGGAGGAATACCGGTGGCGAAGGCGGCCCCCTGGACGAAGACTGACGCTCAGGTGCGAAAGCGTGGGGAGCAAACAGGATTAGATACCCTGGTAGTCCACGCCGTAAACGATGTCGACTTGGAGGTTGTGCCCTTGAGGCGTGGCTTCCGGAGCTAACGCGTTAAGTCGACCGCCTGGGGAGTACGGCCGCAAGGTTAAAACTCAAATGAATTGACGGGGGCCCGCACAAGCGGTGGAGCATGTGGTTTAATTCGATGCAACGCGAAGAACCTTACCTGGTCTTGACATCCACGGAAGTTTTCAGAGATGAGAATGTGCCTTCGGGAACCGTGAGACAGGTGCTGCATGGCTGTCGTCAGCTCGTGTTGTGAAATGTTGGGTTAAGTCCCGCAACGAGCGCAACCCTTATCCTTTGTTGCCAGCGGTCCGGCCGGGAACTCAAAGGAGACTGCCAGTGATAAACTGGAGGAAGGTGGGGATGACGTCAAGTCATCATGGCCCTTACGACCAGGGCTACACACGTGCTACAATGGCGCATACAAAGAGAAGCGACCTCGCGAGAGCAAGCGGACCTCATAAAGTGCGTCGTAGTCCGGATTGGAGTCTGCAACTCGACTCCATGAAGTCGGAATCGCTAGTAATCGTGGATCAGAATGCCACGGTGAATACGTTCCCGGGCCTTGTACACACCGCCCGTCACACCATGGGAGTGGGTTGCAAAAGAAGTAGGTAGCTTAACCTTCGGGAGGGCGCTTACCACTTTGTGATTCATGACTGGGGTGAAGTCGTAACAAGGTAACCGTAGGGGAACCTGCGGTTGGATCACCTCCTTA	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP033092.2	1285123	0	79M1X8M1X120M1X1332M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP033092.2	3780640	0	1332M1X120M1X8M1X79M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP033092.2	4551515	0	1332M1X120M1X8M1X79M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP033092.2	4591684	0	1332M1X120M1X8M1X79M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP033092.2	4726193	0	1453M1X8M1X3M1X75M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP033092.2	4844587	0	1332M1X120M1X8M1X79M	*	0	0	*	*	NM:i:3	AS:i:3067	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	3216505	0	79M1X8M2X2M1X801M1X647M	*	0	0	*	*	NM:i:5	AS:i:3057	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	3119331	0	79M1X8M2X2M1X380M1X373M1X694M	*	0	0	*	*	NM:i:6	AS:i:3053	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	3396068	0	79M1X8M2X2M1X717M1X36M1X694M	*	0	0	*	*	NM:i:6	AS:i:3053	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	3355632	0	79M1X8M2X2M1X380M1X336M1X36M1X694M	*	0	0	*	*	NM:i:7	AS:i:3047	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	4223146	0	79M1X8M2X2M1X322M1X394M1X36M1X694M	*	0	0	*	*	NM:i:7	AS:i:3047	ZA:i:1542	ZQ:i:1542	ZR:i:1542
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	272	NZ_CP026788.1	2125377	0	1269M1X19M1X2M1X156M1X3M1X7M1X1I79M	*	0	0	*	*	NM:i:7	AS:i:3043	ZA:i:1542	ZQ:i:1542	ZR:i:1541
+</span></span><span class="line"><span class="cl">NC_000913.3:4166659-4168200	256	NZ_CP026788.1	3540450	0	78M2X8M2X2M1X717M1X36M1X46M1X647M	*	0	0	*	*	NM:i:8	AS:i:3043	ZA:i:1542	ZQ:i:1542	ZR:i:1542
 </span></span></code></pre></div><p>Validate with samtools</p>
-<pre tabindex="0"><code>$ lexicmap utils 2sam q.gene.fasta.lexicmap_all.tsv | samtool view -bS &gt; q.gene.fasta.lexicmap_all.tsv.bam
+<pre tabindex="0"><code>$ lexicmap utils 2sam q.gene.fasta.lexicmap_top-2-genomes_all.tsv | samtools view -bS &gt; q.gene.fasta.lexicmap_all.tsv.bam
 </code></pre>
   </article>
 
@@ -2615,6 +2963,146 @@ lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2778,6 +3266,114 @@ lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -3063,10 +3659,10 @@ lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n
     <a
       class="gdoc-page__nav--prev flex align-center"
       href="/LexicMap/usage/utils/2blast/"
-      title="2blast"
+      title="lexicmap utils 2blast"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      2blast
+      lexicmap utils 2blast
     </a>
   
 </span>
@@ -3075,9 +3671,9 @@ lexicmap search -d demo.lmi/ q.gene.fasta -o q.gene.fasta.lexicmap_all.tsv -a -n
     <a
       class="gdoc-page__nav--next flex align-center"
       href="/LexicMap/usage/utils/merge-search-results/"
-      title="merge-search-results"
+      title="lexicmap utils merge-search-results"
     >
-      merge-search-results
+      lexicmap utils merge-search-results
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

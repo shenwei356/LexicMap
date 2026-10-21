@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
-  <meta name="description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used for extracting sequences. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 200) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 500) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
+  <meta name="description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. 3. Readers are opened only for requested genomes. --max-open-files limits reader concurrency after reserving 9 descriptors for other files (minimum: 11). Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Zero-distance seeds have len_aaa=0 and an empty seq field. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. The current directory and its aliases cannot be used as the plot directory, even with --force. The plot directory must not contain the input index, even with --force. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► File budget for seed-position and genome readers, including 9 reserved descriptors. Limits reader concurrency; minimum: 11. Set &#34;ulimit -n&#34; at least this high. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 100) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 250) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
 
-    <title>seed-pos | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>lexicmap utils seed-pos | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,10 +35,10 @@
     
   <meta
     property="og:title"
-    content="seed-pos"
+    content="lexicmap utils seed-pos"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used for extracting sequences. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 200) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 500) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
+  <meta property="og:description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. 3. Readers are opened only for requested genomes. --max-open-files limits reader concurrency after reserving 9 descriptors for other files (minimum: 11). Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Zero-distance seeds have len_aaa=0 and an empty seq field. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. The current directory and its aliases cannot be used as the plot directory, even with --force. The plot directory must not contain the input index, even with --force. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► File budget for seed-position and genome readers, including 9 reserved descriptors. Limits reader concurrency; minimum: 11. Set &#34;ulimit -n&#34; at least this high. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 100) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 250) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/" />
 
@@ -46,8 +46,8 @@
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="seed-pos" />
-  <meta name="twitter:description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used for extracting sequences. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 200) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 500) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
+<meta name="twitter:title" content="lexicmap utils seed-pos" />
+  <meta name="twitter:description" content=" Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N&#39;s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes. 3. Readers are opened only for requested genomes. --max-open-files limits reader concurrency after reserving 9 descriptors for other files (minimum: 11). Extra columns: Using -v/--verbose will output more columns: len_aaa, length of consecutive A&#39;s. seq, sequence between the previous and current seed. Zero-distance seeds have len_aaa=0 and an empty seq field. Figures: Using -O/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. The current directory and its aliases cannot be used as the plot directory, even with --force. The plot directory must not contain the input index, even with --force. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► File budget for seed-position and genome readers, including 9 reserved descriptors. Limits reader concurrency; minimum: 11. Set &#34;ulimit -n&#34; at least this high. (default 512) -D, --min-dist int ► Only output records with seed distance &gt;= this value. -o, --out-file string ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout). (default &#34;-&#34;) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default &#34;.png&#34;) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 100) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 250) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it&#39;s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building." />
 
 
   <script type="application/ld+json">
@@ -55,11 +55,11 @@
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Usage",
-      "name": "seed-pos",
+      "name": "lexicmap utils seed-pos",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/",
-      "headline": "seed-pos",
-      "description": " Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A\u0027s in output might be N\u0027s in the genomes. Extra columns: Using -v\/--verbose will output more columns: len_aaa, length of consecutive A\u0027s. seq, sequence between the previous and current seed. Figures: Using -O\/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --max-open-files int ► Maximum opened files, used for extracting sequences. (default 512) -D, --min-dist int ► Only output records with seed distance \u003e= this value. -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default \u0022.png\u0022) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 200) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 500) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it\u0027s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building.",""
-      "wordCount" : "1281",
+      "headline": "lexicmap utils seed-pos",
+      "description": " Usage $ lexicmap utils seed-pos -h Extract and plot seed positions via reference name(s) Attention: 0. This command requires the index to be created with the flag --save-seed-pos in lexicmap index. 1. Seed\/K-mer positions (column pos) are 1-based. For reference genomes with multiple sequences, the sequences were concatenated to a single sequence with intervals of N\u0027s. So values of column pos_gnm and pos_seq might be different. The positions can be used to extract subsequence with \u0027lexicmap utils subseq\u0027. 2. All degenerate bases in reference genomes were converted to the lexicographic first bases. E.g., N was converted to A. Therefore, consecutive A\u0027s in output might be N\u0027s in the genomes. 3. Readers are opened only for requested genomes. --max-open-files limits reader concurrency after reserving 9 descriptors for other files (minimum: 11). Extra columns: Using -v\/--verbose will output more columns: len_aaa, length of consecutive A\u0027s. seq, sequence between the previous and current seed. Zero-distance seeds have len_aaa=0 and an empty seq field. Figures: Using -O\/--plot-dir will write plots into given directory: - Histograms of seed distances. - Histograms of numbers of seeds in sliding windows. The current directory and its aliases cannot be used as the plot directory, even with --force. The plot directory must not contain the input index, even with --force. Usage: lexicmap utils seed-pos [flags] Flags: -a, --all-refs ► Output for all reference genomes. This would take a long time for an index with a lot of genomes. -b, --bins int ► Number of bins in histograms. (default 100) --color-index int ► Color index (1-7). (default 1) --force ► Overwrite existing output directory. --height float ► Histogram height (unit: inch). (default 4) -h, --help help for seed-pos -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --max-open-files int ► File budget for seed-position and genome readers, including 9 reserved descriptors. Limits reader concurrency; minimum: 11. Set \u0022ulimit -n\u0022 at least this high. (default 512) -D, --min-dist int ► Only output records with seed distance \u003e= this value. -o, --out-file string ► Out file, supports and recommends a \u0022.gz\u0022 suffix (\u0022-\u0022 for stdout). (default \u0022-\u0022) -O, --plot-dir string ► Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows. --plot-ext string ► Histogram plot file extention. (default \u0022.png\u0022) -n, --ref-name strings ► Reference name(s). -s, --slid-step int ► The step size of sliding windows for counting the number of seeds (default 100) -w, --slid-window int ► The window size of sliding windows for counting the number of seeds (default 250) -v, --verbose ► Show more columns including position of the previous seed and sequence between the two seeds. Warning: it\u0027s slow to extract the sequences, recommend set -D 1000 or higher values to filter results --width float ► Histogram width (unit: inch). (default 6) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) Examples Adding the flag --save-seed-pos in index building.",
+      "wordCount" : "1363",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -322,6 +322,7 @@
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1065,6 +1066,202 @@
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 checked
               
@@ -1357,6 +1554,102 @@
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1471,6 +1764,50 @@
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1855,7 +2192,7 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>seed-pos</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>lexicmap utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>lexicmap utils seed-pos</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1876,7 +2213,7 @@
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>seed-pos</h1>
+    <h1>lexicmap utils seed-pos</h1>
     
     <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="usage"
@@ -1899,16 +2236,21 @@
 </span></span><span class="line"><span class="cl">     The positions can be used to extract subsequence with &#39;lexicmap utils subseq&#39;.
 </span></span><span class="line"><span class="cl">  2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
 </span></span><span class="line"><span class="cl">     E.g., N was converted to A. Therefore, consecutive A&#39;s in output might be N&#39;s in the genomes.
+</span></span><span class="line"><span class="cl">  3. Readers are opened only for requested genomes. --max-open-files limits reader
+</span></span><span class="line"><span class="cl">     concurrency after reserving 9 descriptors for other files (minimum: 11).
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Extra columns:
 </span></span><span class="line"><span class="cl">  Using -v/--verbose will output more columns:
 </span></span><span class="line"><span class="cl">     len_aaa,  length of consecutive A&#39;s.
 </span></span><span class="line"><span class="cl">     seq,      sequence between the previous and current seed.
+</span></span><span class="line"><span class="cl">     Zero-distance seeds have len_aaa=0 and an empty seq field.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Figures:
 </span></span><span class="line"><span class="cl">  Using -O/--plot-dir will write plots into given directory:
 </span></span><span class="line"><span class="cl">    - Histograms of seed distances.
 </span></span><span class="line"><span class="cl">    - Histograms of numbers of seeds in sliding windows.
+</span></span><span class="line"><span class="cl">  The current directory and its aliases cannot be used as the plot directory, even with --force.
+</span></span><span class="line"><span class="cl">  The plot directory must not contain the input index, even with --force.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils seed-pos [flags]
@@ -1922,7 +2264,9 @@
 </span></span><span class="line"><span class="cl">      --height float         ► Histogram height (unit: inch). (default 4)
 </span></span><span class="line"><span class="cl">  -h, --help                 help for seed-pos
 </span></span><span class="line"><span class="cl">  -d, --index string         ► Index directory created by &#34;lexicmap index&#34;.
-</span></span><span class="line"><span class="cl">      --max-open-files int   ► Maximum opened files, used for extracting sequences. (default 512)
+</span></span><span class="line"><span class="cl">      --max-open-files int   ► File budget for seed-position and genome readers, including 9 reserved
+</span></span><span class="line"><span class="cl">                             descriptors. Limits reader concurrency; minimum: 11. Set &#34;ulimit -n&#34; at
+</span></span><span class="line"><span class="cl">                             least this high. (default 512)
 </span></span><span class="line"><span class="cl">  -D, --min-dist int         ► Only output records with seed distance &gt;= this value.
 </span></span><span class="line"><span class="cl">  -o, --out-file string      ► Out file, supports and recommends a &#34;.gz&#34; suffix (&#34;-&#34; for stdout).
 </span></span><span class="line"><span class="cl">                             (default &#34;-&#34;)
@@ -1931,15 +2275,16 @@
 </span></span><span class="line"><span class="cl">      --plot-ext string      ► Histogram plot file extention. (default &#34;.png&#34;)
 </span></span><span class="line"><span class="cl">  -n, --ref-name strings     ► Reference name(s).
 </span></span><span class="line"><span class="cl">  -s, --slid-step int        ► The step size of sliding windows for counting the number of seeds
-</span></span><span class="line"><span class="cl">                             (default 200)
+</span></span><span class="line"><span class="cl">                             (default 100)
 </span></span><span class="line"><span class="cl">  -w, --slid-window int      ► The window size of sliding windows for counting the number of seeds
-</span></span><span class="line"><span class="cl">                             (default 500)
+</span></span><span class="line"><span class="cl">                             (default 250)
 </span></span><span class="line"><span class="cl">  -v, --verbose              ► Show more columns including position of the previous seed and sequence
 </span></span><span class="line"><span class="cl">                             between the two seeds. Warning: it&#39;s slow to extract the sequences,
 </span></span><span class="line"><span class="cl">                             recommend set -D 1000 or higher values to filter results
 </span></span><span class="line"><span class="cl">      --width float          ► Histogram width (unit: inch). (default 6)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
@@ -1963,21 +2308,21 @@
 </code></pre>
 </li>
 <li>
-<p>Listing seed position of one genome.</p>
+<p>Listing seed positions of one genome.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv
 
  $ head -n 10 seed_distance.tsv | csvtk pretty -t
  ref               seqid         pos_gnm   pos_seq   strand   distance
  ---------------   -----------   -------   -------   ------   --------
  GCF_000017205.1   NC_009656.1   90        90        -        89      
- GCF_000017205.1   NC_009656.1   122       122       -        32      
- GCF_000017205.1   NC_009656.1   160       160       -        38      
+ GCF_000017205.1   NC_009656.1   160       160       -        70      
  GCF_000017205.1   NC_009656.1   209       209       -        49      
  GCF_000017205.1   NC_009656.1   259       259       -        50      
  GCF_000017205.1   NC_009656.1   309       309       +        50      
  GCF_000017205.1   NC_009656.1   357       357       +        48      
  GCF_000017205.1   NC_009656.1   360       360       +        3       
- GCF_000017205.1   NC_009656.1   387       387       -        27      
+ GCF_000017205.1   NC_009656.1   410       410       -        50      
+ GCF_000017205.1   NC_009656.1   460       460       -        50      
 </code></pre>
 <p>Check the biggest seed distances.</p>
 <pre><code> $ csvtk freq -t -f distance seed_distance.tsv \
@@ -1988,14 +2333,14 @@
  distance   frequency
  --------   ---------
  126        1        
- 99         32       
- 98         36       
- 97         40       
- 96         36       
- 95         40       
- 94         37       
- 93         48       
- 92         62       
+ 99         36       
+ 98         41       
+ 97         38       
+ 96         38       
+ 95         47       
+ 94         36       
+ 93         46       
+ 92         65       
 </code></pre>
 <p>Or only list records with seed distances longer than a threshold.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -D 100 \
@@ -2004,10 +2349,10 @@
  ---------------   -----------   -------   -------   ------   --------
  GCF_000017205.1   NC_009656.1   168652    168652    +        126 
 </code></pre>
-<p>Plot histogram of distances between seeds and histogram of number of seeds in sliding windows.</p>
+<p>Plot a histogram of distances between seeds and a histogram of the number of seeds in sliding windows.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -o seed_distance.tsv  --plot-dir seed_distance -w 250
 </code></pre>
-<p>In the plot below, there&rsquo;s a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default.</p>
+<p>In the plot below, there&rsquo;s a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) spaced 50 bp apart by default.</p>
  <img src="/LexicMap/GCF_000017205.1.png" alt="" width="400"/>
 </li>
 <li>
@@ -2017,10 +2362,10 @@
  ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
  ---------------   -----------   -------   -------   ------   --------   -------   ----------------------------------------
  GCF_000017205.1   NC_009656.1   90        90        -        89         9         TTAAAGAGACCGGCGATTCTAGTGAAATCGAACGGGC...
- GCF_000017205.1   NC_009656.1   122       122       -        32         3         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTC        
- GCF_000017205.1   NC_009656.1   160       160       -        38         3         TTGGTTGGACCGGTTTCTGTGTATAACTCATTGAAAGC  
+ GCF_000017205.1   NC_009656.1   160       160       -        70         6         TTTCTTTTAAAGGATAGAAGCGGTTATTGCTCTTGGT...
+ GCF_000017205.1   NC_009656.1   209       209       -        49         5         CATTAGGGGCGGGCATTTCCCATGGGCAAAAGGTTGT...
 </code></pre>
-<p>Or only list records with seed distance longer than a threshold.</p>
+<p>Or only list records with seed distances longer than a threshold.</p>
 <pre><code>$ lexicmap utils seed-pos -d demo.lmi/ -n GCF_000017205.1 -v -D 100 \
      | csvtk pretty -t -W 40
 ref               seqid         pos_gnm   pos_seq   strand   distance   len_aaa   seq                                     
@@ -2068,28 +2413,28 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
 </code></pre>
 </li>
 <li>
-<p>Listing seed position of all genomes.</p>
+<p>Listing seed positions of all genomes.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz
 </code></pre>
 <p>Show the <strong>number of seed</strong> positions in each genome.</p>
 <pre><code> $ csvtk freq -t -f ref -nr seed-pos.tsv.gz | csvtk pretty -t
  ref               frequency
  ---------------   ---------
- GCF_000017205.1   143165   
- GCF_000742135.1   120758   
- GCF_003697165.2   110132   
- GCF_000006945.2   108387   
- GCF_002950215.1   108272   
- GCF_002949675.1   101098   
- GCF_009759685.1   88632    
- GCF_000392875.1   65403    
- GCF_001027105.1   64176    
- GCF_001544255.1   57167    
- GCF_006742205.1   57086    
- GCF_001096185.1   49482    
- GCF_900638025.1   48959    
- GCF_001457655.1   45771    
- GCF_000148585.2   44752    
+ GCF_000017205.1   142999   
+ GCF_000742135.1   120743   
+ GCF_003697165.2   110146   
+ GCF_000006945.2   108338   
+ GCF_002950215.1   108332   
+ GCF_002949675.1   101026   
+ GCF_009759685.1   88531    
+ GCF_000392875.1   65422    
+ GCF_001027105.1   64216    
+ GCF_001544255.1   57247    
+ GCF_006742205.1   57050    
+ GCF_001096185.1   49582    
+ GCF_900638025.1   48887    
+ GCF_001457655.1   45853    
+ GCF_000148585.2   44731    
 </code></pre>
 <p>Plot the histograms of distances between seeds for all genomes.</p>
 <pre><code> $ lexicmap utils seed-pos -d demo.lmi/ --all-refs -o seed-pos.tsv.gz \
@@ -2112,7 +2457,7 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
  GCF_000392875.1.png              GCF_001457655.1.png              GCF_003697165.2.png
  GCF_000392875.1.seed_number.png  GCF_001457655.1.seed_number.png  GCF_003697165.2.seed_number.png
 </code></pre>
-<p>In the plots below, there&rsquo;s a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) of which their distance is 50 bp by default. And they show that the seed number, seed distance and seed density are related to genome sizes.</p>
+<p>In the plots below, there&rsquo;s a peak at 50 bp, because LexicMap fills sketching deserts with extra k-mers (seeds) spaced 50 bp apart by default. And they show that the seed number, seed distance and seed density are related to genome sizes.</p>
 <ul>
 <li>
 <p>GCF_000392875.1 (genome size: 2.9 Mb)</p>
@@ -2139,7 +2484,7 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
 <a
   class="gdoc-markdown__link"
   href="https://github.com/shenwei356/seqkit"
->SeqKit</a> is used to locating subsequences from fasta files.
+>SeqKit</a> is used to locate subsequences in FASTA files.
 <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/"
@@ -2773,6 +3118,146 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2928,6 +3413,81 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -3015,6 +3575,39 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
             
             
           
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
         
 
         
@@ -3221,10 +3814,10 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
     <a
       class="gdoc-page__nav--prev flex align-center"
       href="/LexicMap/usage/utils/subseq/"
-      title="subseq"
+      title="lexicmap utils subseq"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      subseq
+      lexicmap utils subseq
     </a>
   
 </span>
@@ -3233,9 +3826,9 @@ GCF_003697165.2   NZ_CP033092.2   1563265   1563265   -        202        29    
     <a
       class="gdoc-page__nav--next flex align-center"
       href="/LexicMap/usage/utils/reindex-seeds/"
-      title="reindex-seeds"
+      title="lexicmap utils reindex-seeds"
     >
-      reindex-seeds
+      lexicmap utils reindex-seeds
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

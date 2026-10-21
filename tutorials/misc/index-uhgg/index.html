@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
   <meta name="description" content="Info:
@@ -67,7 +67,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
       "name": "Indexing UHGG",
       "url" : "https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/",
       "headline": "Indexing UHGG",
-      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files\/ -name \u0022*.gff.gz\u0022 \\ | rush --eta \\ \u0027zcat {} | perl -ne \u0022print if \\$s; \\$s=true if \/^##FASTA\/\u0022 | seqkit seq -w 0 -o {\/}\/{%:}.fna.gz\u0027 \\ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b.",""
+      "description": "Info:\nUnified Human Gastrointestinal Genome (UHGG) v2.0.2 A unified catalog of 204,938 reference genomes from the human gut microbiome Number of Genomes: 289,232 Tools:\nhttps:\/\/github.com\/shenwei356\/seqkit, for checking sequence files https:\/\/github.com\/shenwei356\/rush, for running jobs Data:\n# meta data wget https:\/\/ftp.ebi.ac.uk\/pub\/databases\/metagenomics\/mgnify_genomes\/human-gut\/v2.0.2\/genomes-all_metadata.tsv # gff url sed 1d genomes-all_metadata.tsv | cut -f 20 | sed \u0027s\/v2.0\/v2.0.2\/\u0027 | sed -E \u0027s\/^ftp\/https\/\u0027 \u003e url.txt # download gff files mkdir -p files; cd files time cat ..\/url.txt \\ | rush --eta -v \u0027dir={\/\/\/%}\/{\/\/%}\u0027 \\ \u0027mkdir -p {dir}; curl -s -o {dir}\/{%} {}\u0027 \\ -c -C download.rush -j 12 cd .. # extract sequences from gff files find files\/ -name \u0022*.gff.gz\u0022 \\ | rush --eta \\ \u0027zcat {} | perl -ne \u0022print if \\$s; \\$s=true if \/^##FASTA\/\u0022 | seqkit seq -w 0 -o {\/}\/{%:}.fna.gz\u0027 \\ -c -C extract.rush Indexing. On a 48-CPU machine, time: 3 h, ram: 41 GB, index size: 426 GB. If you don’t have enough memory, please decrease the value of -b.",
       "wordCount" : "213",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
@@ -331,6 +331,7 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1074,6 +1075,202 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 
               
@@ -1366,6 +1563,102 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1480,6 +1773,50 @@ https://github.com/shenwei356/seqkit, for checking sequence files https://github
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -2595,6 +2932,146 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2750,6 +3227,114 @@ uhgg.lmi: 425.15 GiB (456,497,171,291)
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       

@@ -9,12 +9,12 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
-  <meta name="description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs be &lt;= 4096/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used in merging indexes. If there are &gt;100 batches, please increase this value and set a bigger &#34;ulimit -n&#34; in shell. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are &gt;100 batches, please also increase the value of --max-open-files and set a bigger &#34;ulimit -n&#34; in shell. (default 8) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
+  <meta name="description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs to be &lt;= (4096-9)/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Large batch counts are merged in multiple rounds within --max-open-files, including 9 files reserved for standard streams, logging, and runtime use. Original batches are retained until the final index is published, so failed merges can be retried. Genome data use hard links where supported; otherwise, retaining the batches requires extra disk space for copies. Log paths must not alias files in the original temporary batches. Neither the output index directory nor its temporary directory (&lt;index&gt;.tmp) may be the current directory or an alias of it. Use -2/--seed-index2 to write adaptive two-level seed indexes during the final merge, as in &#34;lexicmap index&#34;. Set --seed-index2-threshold to the threshold used for the original build. Prefix lengths are read from the existing batch indexes. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum open files for merging indexes, including 9 reserved descriptors (minimum: 13 for multiple batches, or 14 with --seed-index2). Large batch counts are merged in multiple rounds. Set &#34;ulimit -n&#34; at least this high. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files. (default 8) -2, --seed-index2 ► Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in &#34;lexicmap index --seed-index2&#34;. Prefix lengths are read from the existing batch indexes. --seed-index2-threshold string ► Minimum seed block size for creating a secondary index with --seed-index2. Use the threshold from the original build. Minimum: 4K. The default 8K is recommended. (default &#34;8K&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
 
-    <title>remerge | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
+    <title>lexicmap utils remerge | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
     <link rel="icon" type="image/svg+xml" href="/LexicMap/favicon/favicon.svg" />
 <link
@@ -35,10 +35,10 @@
     
   <meta
     property="og:title"
-    content="remerge"
+    content="lexicmap utils remerge"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs be &lt;= 4096/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used in merging indexes. If there are &gt;100 batches, please increase this value and set a bigger &#34;ulimit -n&#34; in shell. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are &gt;100 batches, please also increase the value of --max-open-files and set a bigger &#34;ulimit -n&#34; in shell. (default 8) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
+  <meta property="og:description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs to be &lt;= (4096-9)/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Large batch counts are merged in multiple rounds within --max-open-files, including 9 files reserved for standard streams, logging, and runtime use. Original batches are retained until the final index is published, so failed merges can be retried. Genome data use hard links where supported; otherwise, retaining the batches requires extra disk space for copies. Log paths must not alias files in the original temporary batches. Neither the output index directory nor its temporary directory (&lt;index&gt;.tmp) may be the current directory or an alias of it. Use -2/--seed-index2 to write adaptive two-level seed indexes during the final merge, as in &#34;lexicmap index&#34;. Set --seed-index2-threshold to the threshold used for the original build. Prefix lengths are read from the existing batch indexes. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum open files for merging indexes, including 9 reserved descriptors (minimum: 13 for multiple batches, or 14 with --seed-index2). Large batch counts are merged in multiple rounds. Set &#34;ulimit -n&#34; at least this high. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files. (default 8) -2, --seed-index2 ► Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in &#34;lexicmap index --seed-index2&#34;. Prefix lengths are read from the existing batch indexes. --seed-index2-threshold string ► Minimum seed block size for creating a secondary index with --seed-index2. Use the threshold from the original build. Minimum: 4K. The default 8K is recommended. (default &#34;8K&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/" />
 
@@ -46,8 +46,8 @@
 
 
   <meta name="twitter:card" content="summary" />
-<meta name="twitter:title" content="remerge" />
-  <meta name="twitter:description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs be &lt;= 4096/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum opened files, used in merging indexes. If there are &gt;100 batches, please increase this value and set a bigger &#34;ulimit -n&#34; in shell. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c/--chunks]. If there are &gt;100 batches, please also increase the value of --max-open-files and set a bigger &#34;ulimit -n&#34; in shell. (default 8) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
+<meta name="twitter:title" content="lexicmap utils remerge" />
+  <meta name="twitter:description" content="$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (&gt;200 batches) of batches ($inpu_files / --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J/--seed-data-threads (e.g., 12. 12 needs to be &lt;= (4096-9)/(297&#43;2)=13.7). And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024. - The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that. - Disk quota is reached in the merging step. Large batch counts are merged in multiple rounds within --max-open-files, including 9 files reserved for standard streams, logging, and runtime use. Original batches are retained until the final index is published, so failed merges can be retried. Genome data use hard links where supported; otherwise, retaining the batches requires extra disk space for copies. Log paths must not alias files in the original temporary batches. Neither the output index directory nor its temporary directory (&lt;index&gt;.tmp) may be the current directory or an alias of it. Use -2/--seed-index2 to write adaptive two-level seed indexes during the final merge, as in &#34;lexicmap index&#34;. Set --seed-index2-threshold to the threshold used for the original build. Prefix lengths are read from the existing batch indexes. Usage: lexicmap utils remerge [flags] [flags] -d &lt;index path&gt; Flags: -h, --help help for remerge -d, --index string ► Index directory created by &#34;lexicmap index&#34;. --max-open-files int ► Maximum open files for merging indexes, including 9 reserved descriptors (minimum: 13 for multiple batches, or 14 with --seed-index2). Large batch counts are merged in multiple rounds. Set &#34;ulimit -n&#34; at least this high. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files. (default 8) -2, --seed-index2 ► Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in &#34;lexicmap index --seed-index2&#34;. Prefix lengths are read from the existing batch indexes. --seed-index2-threshold string ► Minimum seed block size for creating a secondary index with --seed-index2. Use the threshold from the original build. Minimum: 4K. The default 8K is recommended. (default &#34;8K&#34;) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) " />
 
 
   <script type="application/ld+json">
@@ -55,11 +55,11 @@
       "@context": "http://schema.org",
       "@type": "TechArticle",
       "articleSection": "Usage",
-      "name": "remerge",
+      "name": "lexicmap utils remerge",
       "url" : "https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/",
-      "headline": "remerge",
-      "description": "$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (\u003e200 batches) of batches ($inpu_files \/ --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1\/1, merging 297 indexes to xxx.lmi.tmp\/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J\/--seed-data-threads (e.g., 12. 12 needs be \u003c= 4096\/(297\u002b2)=13.7). And you need to set a bigger \u0027ulimit -n\u0027 if the value of --max-open-files is bigger than 1024. - The Slurm\/PBS job time limit is almost reached and the merging step won\u0027t be finished before that. - Disk quota is reached in the merging step. Usage: lexicmap utils remerge [flags] [flags] -d \u003cindex path\u003e Flags: -h, --help help for remerge -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --max-open-files int ► Maximum opened files, used in merging indexes. If there are \u003e100 batches, please increase this value and set a bigger \u0022ulimit -n\u0022 in shell. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, the value should be in range of [1, -c\/--chunks]. If there are \u003e100 batches, please also increase the value of --max-open-files and set a bigger \u0022ulimit -n\u0022 in shell. (default 8) Global Flags: -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) ",""
-      "wordCount" : "309",
+      "headline": "lexicmap utils remerge",
+      "description": "$ lexicmap utils remerge -h Rerun the merging step for an unfinished index When to use this command? - Only one thread is used for merging indexes, which happens when there are a lot (\u003e200 batches) of batches ($inpu_files \/ --batch-size) and the value of --max-open-files is not big enough. E.g., 22:54:24.420 [INFO] merging 297 indexes... 22:54:24.455 [INFO] [round 1] 22:54:24.455 [INFO] batch 1\/1, merging 297 indexes to xxx.lmi.tmp\/r1_b1 with 1 threads... ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and -J\/--seed-data-threads (e.g., 12. 12 needs to be \u003c= (4096-9)\/(297\u002b2)=13.7). And you need to set a bigger \u0027ulimit -n\u0027 if the value of --max-open-files is bigger than 1024. - The Slurm\/PBS job time limit is almost reached and the merging step won\u0027t be finished before that. - Disk quota is reached in the merging step. Large batch counts are merged in multiple rounds within --max-open-files, including 9 files reserved for standard streams, logging, and runtime use. Original batches are retained until the final index is published, so failed merges can be retried. Genome data use hard links where supported; otherwise, retaining the batches requires extra disk space for copies. Log paths must not alias files in the original temporary batches. Neither the output index directory nor its temporary directory (\u003cindex\u003e.tmp) may be the current directory or an alias of it. Use -2\/--seed-index2 to write adaptive two-level seed indexes during the final merge, as in \u0022lexicmap index\u0022. Set --seed-index2-threshold to the threshold used for the original build. Prefix lengths are read from the existing batch indexes. Usage: lexicmap utils remerge [flags] [flags] -d \u003cindex path\u003e Flags: -h, --help help for remerge -d, --index string ► Index directory created by \u0022lexicmap index\u0022. --max-open-files int ► Maximum open files for merging indexes, including 9 reserved descriptors (minimum: 13 for multiple batches, or 14 with --seed-index2). Large batch counts are merged in multiple rounds. Set \u0022ulimit -n\u0022 at least this high. (default 1024) -J, --seed-data-threads int ► Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c\/--chunks]. Merging threads are limited by --max-open-files. (default 8) -2, --seed-index2 ► Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in \u0022lexicmap index --seed-index2\u0022. Prefix lengths are read from the existing batch indexes. --seed-index2-threshold string ► Minimum seed block size for creating a secondary index with --seed-index2. Use the threshold from the original build. Minimum: 4K. The default 8K is recommended. (default \u00228K\u0022) Global Flags: --force-gzip-output ► Gzip-compress result output regardless of the filename, including stdout. -X, --infile-list string ► File of input file list (one file per line). If given, they are appended to files from CLI arguments. --log string ► Log file. --quiet ► Do not print any verbose information. But you can write them to a file with --log. -j, --threads int ► Number of CPU cores to use. By default, it uses all available cores. (default 16) ",
+      "wordCount" : "491",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -322,6 +322,7 @@
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1065,6 +1066,202 @@
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 checked
               
@@ -1357,6 +1554,102 @@
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1471,6 +1764,50 @@
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1855,7 +2192,7 @@
     
   
   
-    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>remerge</span><meta itemprop='position' content='5' /></li>
+    <li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/' href='/LexicMap/'><span itemprop='name'></span></a><meta itemprop='position' content='2' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/' href='/LexicMap/usage/'><span itemprop='name'>Usage</span></a><meta itemprop='position' content='3' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><a itemscope itemtype='https://schema.org/WebPage' itemprop='item' itemid='/LexicMap/usage/utils/' href='/LexicMap/usage/utils/'><span itemprop='name'>lexicmap utils</span></a><meta itemprop='position' content='4' /></li><li> / </li><li itemprop='itemListElement' itemscope itemtype='https://schema.org/ListItem'><span itemprop='name'>lexicmap utils remerge</span><meta itemprop='position' content='5' /></li>
   
 
   
@@ -1876,7 +2213,7 @@
     class="gdoc-markdown gdoc-markdown__align--left"
     id="main-content" tabindex="-1"
   >
-    <h1>remerge</h1>
+    <h1>lexicmap utils remerge</h1>
     
     <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-plain" data-lang="plain"><span class="line"><span class="cl">$ lexicmap utils remerge -h
 </span></span><span class="line"><span class="cl">Rerun the merging step for an unfinished index
@@ -1892,28 +2229,48 @@
 </span></span><span class="line"><span class="cl">  22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">  ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and
-</span></span><span class="line"><span class="cl">  -J/--seed-data-threads (e.g., 12. 12 needs be &lt;= 4096/(297+2)=13.7).
+</span></span><span class="line"><span class="cl">  -J/--seed-data-threads (e.g., 12. 12 needs to be &lt;= (4096-9)/(297+2)=13.7).
 </span></span><span class="line"><span class="cl">  And you need to set a bigger &#39;ulimit -n&#39; if the value of --max-open-files is bigger than 1024.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">- The Slurm/PBS job time limit is almost reached and the merging step won&#39;t be finished before that.
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">- Disk quota is reached in the merging step.
 </span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Large batch counts are merged in multiple rounds within --max-open-files,
+</span></span><span class="line"><span class="cl">including 9 files reserved for standard streams, logging, and runtime use.
+</span></span><span class="line"><span class="cl">Original batches are retained until the final index is published, so failed
+</span></span><span class="line"><span class="cl">merges can be retried. Genome data use hard links where supported; otherwise,
+</span></span><span class="line"><span class="cl">retaining the batches requires extra disk space for copies.
+</span></span><span class="line"><span class="cl">Log paths must not alias files in the original temporary batches.
+</span></span><span class="line"><span class="cl">Neither the output index directory nor its temporary directory (&lt;index&gt;.tmp)
+</span></span><span class="line"><span class="cl">may be the current directory or an alias of it.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Use -2/--seed-index2 to write adaptive two-level seed indexes during the final
+</span></span><span class="line"><span class="cl">merge, as in &#34;lexicmap index&#34;. Set --seed-index2-threshold to the threshold used
+</span></span><span class="line"><span class="cl">for the original build. Prefix lengths are read from the existing batch indexes.
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Usage:
 </span></span><span class="line"><span class="cl">  lexicmap utils remerge [flags] [flags] -d &lt;index path&gt;
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Flags:
-</span></span><span class="line"><span class="cl">  -h, --help                    help for remerge
-</span></span><span class="line"><span class="cl">  -d, --index string            ► Index directory created by &#34;lexicmap index&#34;.
-</span></span><span class="line"><span class="cl">      --max-open-files int      ► Maximum opened files, used in merging indexes. If there are &gt;100
-</span></span><span class="line"><span class="cl">                                batches, please increase this value and set a bigger &#34;ulimit -n&#34; in
-</span></span><span class="line"><span class="cl">                                shell. (default 1024)
-</span></span><span class="line"><span class="cl">  -J, --seed-data-threads int   ► Number of threads for writing seed data and merging seed chunks from
-</span></span><span class="line"><span class="cl">                                all batches, the value should be in range of [1, -c/--chunks]. If there
-</span></span><span class="line"><span class="cl">                                are &gt;100 batches, please also increase the value of --max-open-files and
-</span></span><span class="line"><span class="cl">                                set a bigger &#34;ulimit -n&#34; in shell. (default 8)
+</span></span><span class="line"><span class="cl">  -h, --help                           help for remerge
+</span></span><span class="line"><span class="cl">  -d, --index string                   ► Index directory created by &#34;lexicmap index&#34;.
+</span></span><span class="line"><span class="cl">      --max-open-files int             ► Maximum open files for merging indexes, including 9 reserved
+</span></span><span class="line"><span class="cl">                                       descriptors (minimum: 13 for multiple batches, or 14 with
+</span></span><span class="line"><span class="cl">                                       --seed-index2). Large batch counts are merged in multiple rounds.
+</span></span><span class="line"><span class="cl">                                       Set &#34;ulimit -n&#34; at least this high. (default 1024)
+</span></span><span class="line"><span class="cl">  -J, --seed-data-threads int          ► Number of threads for writing seed data and merging seed
+</span></span><span class="line"><span class="cl">                                       chunks from all batches, in range [1, -c/--chunks]. Merging
+</span></span><span class="line"><span class="cl">                                       threads are limited by --max-open-files. (default 8)
+</span></span><span class="line"><span class="cl">  -2, --seed-index2                    ► Write adaptive two-level seed indexes (.idx and .idx15)
+</span></span><span class="line"><span class="cl">                                       alongside the final seeds, as in &#34;lexicmap index --seed-index2&#34;.
+</span></span><span class="line"><span class="cl">                                       Prefix lengths are read from the existing batch indexes.
+</span></span><span class="line"><span class="cl">      --seed-index2-threshold string   ► Minimum seed block size for creating a secondary index with
+</span></span><span class="line"><span class="cl">                                       --seed-index2. Use the threshold from the original build.
+</span></span><span class="line"><span class="cl">                                       Minimum: 4K. The default 8K is recommended. (default &#34;8K&#34;)
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl">Global Flags:
+</span></span><span class="line"><span class="cl">      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
 </span></span><span class="line"><span class="cl">  -X, --infile-list string   ► File of input file list (one file per line). If given, they are
 </span></span><span class="line"><span class="cl">                             appended to files from CLI arguments.
 </span></span><span class="line"><span class="cl">      --log string           ► Log file.
@@ -2550,6 +2907,146 @@
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2705,6 +3202,114 @@
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -2997,11 +3602,11 @@
   
     <a
       class="gdoc-page__nav--prev flex align-center"
-      href="/LexicMap/usage/utils/reindex-seeds/"
-      title="reindex-seeds"
+      href="/LexicMap/usage/utils/reindex-seeds2/"
+      title="lexicmap utils reindex-seeds2"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      reindex-seeds
+      lexicmap utils reindex-seeds2
     </a>
   
 </span>
@@ -3010,9 +3615,9 @@
     <a
       class="gdoc-page__nav--next flex align-center"
       href="/LexicMap/usage/utils/edit-genome-ids/"
-      title="edit-genome-ids"
+      title="lexicmap utils edit-genome-ids"
     >
-      edit-genome-ids
+      lexicmap utils edit-genome-ids
       <i class="gdoc-icon">gdoc_arrow_right_alt</i>
     </a>
   

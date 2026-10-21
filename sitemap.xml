@@ -8,6 +8,8 @@
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/masks/</loc>
   </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/genome/compare/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/index/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-genbank/</loc>
@@ -26,13 +28,21 @@
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/installation/</loc>
   </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/genome/pair/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/search/</loc>
   </url><url>
-    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/</loc>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/genome-details/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/genome-seqs/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/misc/index-uhgg/</loc>
   </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/releases/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/genome/search/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/seed-pos/</loc>
   </url><url>
@@ -40,15 +50,19 @@
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/tutorials/</loc>
   </url><url>
-    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/</loc>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/genome/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/</loc>
   </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/reindex-seeds2/</loc>
+  </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/faqs/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/remerge/</loc>
+  </url><url>
+    <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/</loc>
   </url><url>
     <loc>https://bioinf.shenwei.me/LexicMap/usage/utils/edit-genome-ids/</loc>
   </url><url>

@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.157.0">
+<meta name="generator" content="Hugo 0.165.0">
 
 
-  <meta name="description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How&rsquo;s the hardware requirement? How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
+  <meta name="description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
 
     <title>FAQs | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="FAQs"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
+  <meta property="og:description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/faqs/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="FAQs" />
-  <meta name="twitter:description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
+  <meta name="twitter:description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "FAQs",
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
-      "description": " Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungi genomes? How’s the hardware requirement? How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 150 bp by default.",""
-      "wordCount" : "1172",
+      "description": " Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 150 bp by default.",
+      "wordCount" : "1235",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -322,6 +322,7 @@
     <h2>Navigation</h2>
     
       
+
 
   
 
@@ -1065,6 +1066,202 @@
             <input
               type="checkbox"
               
+                class="gdoc-nav__toggle" id="navtree-5460d1c4"
+                
+              
+            />
+            <label
+              
+                for="navtree-5460d1c4" class="flex justify-between align-center"
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome
+                  </a>
+                </span>
+              
+              
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_left">
+                  <use xlink:href="#gdoc_keyboard_arrow_left"></use>
+                </svg>
+                <svg class="gdoc-icon toggle gdoc_keyboard_arrow_down">
+                  <use xlink:href="#gdoc_keyboard_arrow_down"></use>
+                </svg>
+              
+            </label>
+
+            
+              
+  
+
+
+  <ul class="gdoc-nav__list">
+    
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/compare/"
+                    class="gdoc-nav__entry"
+                  >
+                    compare
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/pair/"
+                    class="gdoc-nav__entry"
+                  >
+                    pair
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/genome/search/"
+                    class="gdoc-nav__entry"
+                  >
+                    search
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+  </ul>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
                 class="gdoc-nav__toggle" id="navtree-bc817233"
                 
               
@@ -1357,6 +1554,102 @@
           </li>
         
       
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-details/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-details
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/genome-seqs/"
+                    class="gdoc-nav__entry"
+                  >
+                    genome-seqs
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
         
           
           
@@ -1471,6 +1764,50 @@
                     class="gdoc-nav__entry"
                   >
                     reindex-seeds
+                  </a>
+                </span>
+              
+              
+            </label>
+
+            
+          </li>
+        
+      
+    
+      
+
+      
+        
+      
+
+      
+        
+          
+          
+          
+          
+          
+          
+
+
+          <li>
+            <input
+              type="checkbox"
+              
+                class="hidden"
+              
+            />
+            <label
+              
+            >
+              
+                <span class="flex">
+                  <a
+                    href="/LexicMap/usage/utils/reindex-seeds2/"
+                    class="gdoc-nav__entry"
+                  >
+                    reindex-seeds2
                   </a>
                 </span>
               
@@ -1874,14 +2211,15 @@
       <nav id="TableOfContents"><ul>
         <li><a href="#table-of-contents">Table of contents</a></li>
         <li><a href="#does-lexicmap-support-short-reads">Does LexicMap support short reads?</a></li>
-        <li><a href="#does-lexicmap-support-fungi-genomes">Does LexicMap support fungi genomes?</a></li>
-        <li><a href="#hows-the-hardware-requirement">How&rsquo;s the hardware requirement?</a></li>
-        <li><a href="#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step">How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?</a></li>
+        <li><a href="#does-lexicmap-support-fungi-genomes">Does LexicMap support fungal genomes?</a></li>
+        <li><a href="#hows-the-hardware-requirement">What are the hardware requirements?</a></li>
+        <li><a href="#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step">How can I resume indexing when a Slurm job is near its time limit during merging?</a></li>
         <li><a href="#can-i-extract-the-matched-sequences">Can I extract the matched sequences?</a></li>
         <li><a href="#how-can-i-extract-the-upstream-and-downstream-flanking-sequences-of-matched-regions">How can I extract the upstream and downstream flanking sequences of matched regions?</a></li>
         <li><a href="#why-isnt-the-pident-100-when-aligning-with-a-sequence-from-the-reference-genomes">Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes?</a></li>
         <li><a href="#why-is-lexicmap-slow-for-batch-searching">Why is LexicMap slow for batch searching?</a></li>
         <li><a href="#how-can-i-know-if-an-index-is-compatible-with-a-lexicmap-version-should-i-rebuild-an-existing-index">How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index?</a></li>
+        <li><a href="#out-of-memory-during-searching">Out of memory during searching</a></li>
       </ul></nav>
       <hr />
     </div>
@@ -1895,55 +2233,55 @@
     </a>
 </div>
 <p><strong>LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default</strong>.</p>
-<p><strong>If you want to search some short reads, you need to build the index with small <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 60 -d 30</code> for 125bp reads, or <code>-D 50 -D 25</code> for 100bp reads</strong>. It will increase the indexing time and increase the index size. Don&rsquo;t worry this, if you have a small scale of genomes, like &lt; 10,000.</p>
+<p><strong>If you want to search some short reads, you need to build the index with small values of <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 60 -d 30</code> for 125bp reads, or <code>-D 50 -D 25</code> for 100bp reads</strong>. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as &lt; 10,000.</p>
 <p>If you just want to search long (&gt;1kb) queries for highly similar (&gt;95%) targets, you can build an index with a bigger <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 300 -d 150</code>. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
-speed, decrease the indexing memory occupation and decrease the index size. While the alignment speed is almost not affected.</p>
+process, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.</p>
 <p>Note that <strong>LexicMap is slow for ultra-long (&gt;1Mb) queries, and the alignment might be fragmented</strong>.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="does-lexicmap-support-fungi-genomes"
     >
-        Does LexicMap support fungi genomes?
+        Does LexicMap support fungal genomes?
     </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-fungi-genomes" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Does LexicMap support fungi genomes?" aria-label="Anchor to: Does LexicMap support fungi genomes?" href="#does-lexicmap-support-fungi-genomes">
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#does-lexicmap-support-fungi-genomes" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Does LexicMap support fungal genomes?" aria-label="Anchor to: Does LexicMap support fungal genomes?" href="#does-lexicmap-support-fungi-genomes">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
 <p>Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-<strong>Fungi can also be supported, just remember to increase the value of <code>-g/--max-genome</code> when running <code>lexicmap index</code>,
+<strong>Fungal genomes are also supported; remember to increase the value of <code>-g/--max-genome</code> when running <code>lexicmap index</code>,
 which is used to skip genomes larger than 15Mb by default</strong>.</p>
 <pre tabindex="0"><code>  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
                                   assemblies from Genbank) will be skipped. (default 15000000)
 </code></pre><p>Maximum genome size is about 268 Mb (268,435,456). More precisely:</p>
 <pre><code>$total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456
 </code></pre>
-<p>as we concatenate contigs with 1000-bp intervals of N’s to reduce the sequence scale to index.</p>
-<p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap would be slow to align.
+<p>as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.</p>
+<p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap alignment can be slow.
 Since v0.9.0, you can set a small value of <code>-N, --top-n-chains</code> to keep a few matches if you only want to check if sequences match any position in a human genome, which would be faster.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="hows-the-hardware-requirement"
     >
-        How&rsquo;s the hardware requirement?
+        What are the hardware requirements?
     </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#hows-the-hardware-requirement" class="gdoc-page__anchor clip flex align-center" title="Anchor to: How&rsquo;s the hardware requirement?" aria-label="Anchor to: How&rsquo;s the hardware requirement?" href="#hows-the-hardware-requirement">
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#hows-the-hardware-requirement" class="gdoc-page__anchor clip flex align-center" title="Anchor to: What are the hardware requirements?" aria-label="Anchor to: What are the hardware requirements?" href="#hows-the-hardware-requirement">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
 <ul>
-<li>For index building. See details <a
+<li>For index building, see the <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/index/#hardware-requirements"
->hardware requirement</a>.</li>
-<li>For seaching. See details <a
+>hardware requirements</a>.</li>
+<li>For searching, see the <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#hardware-requirements"
->hardware requirement</a>.</li>
+>hardware requirements</a>.</li>
 </ul>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step"
     >
-        How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?
+        How can I resume indexing when a Slurm job is near its time limit during merging?
     </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step" class="gdoc-page__anchor clip flex align-center" title="Anchor to: How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?" aria-label="Anchor to: How to resume the indexing as Slurm job time limit is almost reached while lexicmap index is still in the merging step?" href="#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step">
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step" class="gdoc-page__anchor clip flex align-center" title="Anchor to: How can I resume indexing when a Slurm job is near its time limit during merging?" aria-label="Anchor to: How can I resume indexing when a Slurm job is near its time limit during merging?" href="#how-to-resume-the-indexing-as-slurm-job-time-limit-is-almost-reached-while-lexicmap-index-is-still-in-the-merging-step">
         <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
     </a>
 </div>
@@ -1961,18 +2299,18 @@ of <code>--max-open-files</code> is not big enough.</li>
 <li>Disk quota is reached in the merging step.</li>
 </ul>
 </blockquote>
-<p>So you can stop the indexing command by press <code>Ctrl</code> + <code>C</code> (<strong>make sure it is in the merging step</strong>, see example below), and run <code>lexicmap utils remerge -d index.lmi</code>,
+<p>So you can stop the indexing command by pressing <code>Ctrl</code> + <code>C</code> (<strong>make sure it is in the merging step</strong>, see the example below), and run <code>lexicmap utils remerge -d index.lmi</code>,
 where <code>index.lmi</code> is the output index directory in <code>lexicmap index</code>.</p>
 <p>Optionally, you might set bigger values of
-flag <code>--max-open-files</code> and <code>-J/--seed-data-threads</code> if you have hundreds of thousands of input genomes or have set
+the flags <code>--max-open-files</code> and <code>-J/--seed-data-threads</code> if you have hundreds of thousands of input genomes or have set
 a small batch size with <code>-b/--batch-size</code>. E.g.,</p>
 <pre><code>22:54:24.420 [INFO] merging 297 indexes...
 22:54:24.455 [INFO]   [round 1]
 22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 </code></pre>
-<p>There&rsquo;s only one thread was used for seed data merging, it would take a long time.
+<p>Only one thread was used for seed data merging, so it would take a long time.
 So we can set a larger <code>--max-open-files</code>, e.g., <code>4096</code>,
-and it would allow <code>4096 / (297+2) = 13.7</code> threads for merging, let&rsquo;s set <code>--seed-data-threads 12</code>.</p>
+and it would allow <code>(4096-9) / (297+2) = 13.7</code> threads for merging. Let&rsquo;s set <code>--seed-data-threads 12</code>.</p>
 <pre><code># specify the maximum open files per process
 ulimit -n 4096
 
@@ -2010,7 +2348,7 @@ See <a
 <p>Yes, <code>lexicmap search</code> has a flag</p>
 <pre tabindex="0"><code>  -a, --all                            ► Output more columns, e.g., matched sequences. Use this if you
                                        want to output blast-style format with &#34;lexicmap utils 2blast&#34;.
-</code></pre><p>to output CIGAR string, aligned query and subject sequences.</p>
+</code></pre><p>to output the CIGAR string and aligned query and subject sequences.</p>
 <pre><code>21. cigar,    CIGAR string of the alignment.                      (optional with -a/--all)
 22. qseq,     Aligned part of query sequence.                     (optional with -a/--all)
 23. sseq,     Aligned part of subject sequence.                   (optional with -a/--all)
@@ -2050,8 +2388,8 @@ see <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/usage/utils/subseq/"
 >lexicmap utils subseq</a>
-can extract subsequencess via genome ID, sequence ID and positions.
-So you can use these information from the search result and expand the region positions to extract flanking sequences.</p>
+can extract subsequences via genome ID, sequence ID and positions.
+So you can use this information from the search result and extend the regions to extract flanking sequences.</p>
 <p><strong>Update: since v0.8.0, you can extract the extended aligned region with <code>lexicmap utils subseq</code></strong>.
 See <a
   class="gdoc-markdown__link"
@@ -2067,8 +2405,8 @@ See <a
     </a>
 </div>
 <p>It happens if there are some degenerate bases (e.g., <code>N</code>) in the query sequence.
-In the indexing step, all degenerate bases are converted to their lexicographic first bases. E.g., <code>N</code> is converted to <code>A</code>.
-While for the query sequences, we don&rsquo;t convert them.</p>
+In the indexing step, all degenerate bases are converted to their lexicographically first bases. E.g., <code>N</code> is converted to <code>A</code>.
+For query sequences, we don&rsquo;t convert them.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="why-is-lexicmap-slow-for-batch-searching"
     >
@@ -2079,22 +2417,10 @@ While for the query sequences, we don&rsquo;t convert them.</p>
     </a>
 </div>
 <p>LexicMap is mainly designed for sequence alignment with a small number of queries against a database with a huge number (millions) of genomes.</p>
-<p>There are some ways to improve the search speed of <code>lexicmap search</code>:
-<a
+<p>There are <a
   class="gdoc-markdown__link"
-  href="http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed"
->http://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed</a></p>
-<p>
-
-
-<span class="gdoc-button gdoc-button--regular">
-  <a
-    class="gdoc-button__link" href="/LexicMap/usage/search/"
-  >
-    Click
-  </a>
-</span>
-  to read more detail of the usage.</p>
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#improving-searching-speed"
+>some ways to improve the search speed</a> of <code>lexicmap search</code>.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h2 id="how-can-i-know-if-an-index-is-compatible-with-a-lexicmap-version-should-i-rebuild-an-existing-index"
     >
@@ -2109,6 +2435,28 @@ The change history and compatibility information are available <a
   class="gdoc-markdown__link"
   href="https://bioinf.shenwei.me/LexicMap/tutorials/index/#index-format-changelog"
 >here</a>.</p>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="out-of-memory-during-searching"
+    >
+        Out of memory during searching
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/faqs/#out-of-memory-during-searching" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Out of memory during searching" aria-label="Anchor to: Out of memory during searching" href="#out-of-memory-during-searching">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<p><strong>Queries with very many seed matches in large indexes can run out of memory (200GB) during seed collection</strong>.</p>
+<ul>
+<li>This happens when searching in huge Logan Project indexes, where each sample (treated as a genome in LexicMap) has a large number of short contigs.</li>
+<li>Searching with long queries, such as plasmids or even bacterial genomes in large indexes (GenBank or <a
+  class="gdoc-markdown__link"
+  href="https://allthebacteria.org/"
+>AllTheBacteria</a>),
+may consume hundreds of GB of memory.</li>
+</ul>
+<p>See how to <a
+  class="gdoc-markdown__link"
+  href="https://bioinf.shenwei.me/LexicMap/tutorials/search/#trade-off-speed-for-memory-usage"
+>trade off speed for memory usage</a>.</p>
 
   </article>
 
@@ -2738,6 +3086,146 @@ The change history and compatibility information are available <a
         
       
     
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+          
+  
+  
+
+  
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
       
       
 
@@ -2893,6 +3381,114 @@ The change history and compatibility information are available <a
         
         
       
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
+    
+      
+      
+
+      
+        
+        
+        
+        
+
+        
+        
+
+        
+
+        
+
+        
+          
+        
+
+        
+        
+      
+    
+
+  
+    
+
+    
+      
+    
+
     
       
       
@@ -3188,10 +3784,10 @@ The change history and compatibility information are available <a
     <a
       class="gdoc-page__nav--prev flex align-center"
       href="/LexicMap/usage/utils/edit-genome-ids/"
-      title="edit-genome-ids"
+      title="lexicmap utils edit-genome-ids"
     >
       <i class="gdoc-icon">gdoc_arrow_left_alt</i>
-      edit-genome-ids
+      lexicmap utils edit-genome-ids
     </a>
   
 </span>
