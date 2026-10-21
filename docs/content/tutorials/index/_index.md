@@ -74,7 +74,7 @@ If you save *a few* **small** (viral) **complete** genomes (one sequence per gen
     - **One or more sequences (contigs) in each file are allowed**.
         - **Unwanted sequences** (such as plasmids) can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
     - **Genome size limit**. Some non-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
-     The flag `-g/--max-genome` (default 15 Mb) is used to skip these input files, and the file list would be written to a file
+     The flag `-g/--max-genome` (default 20 Mb) is used to skip these input files, and the file list would be written to a file
      via the flag `-G/--big-genomes`.
         - **Changes since v0.5.0**:
             - Genomes with any single contig larger than the threshold will be skipped as before.
@@ -105,6 +105,10 @@ LexicMap is designed to provide fast and low-memory sequence alignment against m
     - No specific requirements on CPU type and instruction sets. Both x86 and ARM chips are supported.
     - More is better as LexicMap is CPU-intensive software. **It uses all CPUs by default (`-j/--threads`)**.
 - **RAM**
+    - **Examples (v0.10.0)**:
+        - 0.2 million GTDB r232 representative prokaryotic genomes (-b 5000): 78 G. 
+        - 2.3 million GenBank+Refseq prokaryotic genomes (-b 25000): 134 GB.
+        - 2.3 million AllTheBacteria bacterial genomes (-b 25000): 117 GB.
     - More RAM (> 200 GB for >2 million genomes) is preferred. The memory usage in index building is mainly related to:
         - **The number of masks** (`-m/--masks`, default 20,000). Bigger values improve the search sensitivity slightly, increase the index size, and slow down the search speed. For smaller genomes like phages/viruses, m=5,000 is high enough.
         - **The number of genomes**. Generally, more genomes consume more memory, but we can reduce it by using smaller genome batch sizes (see below).
@@ -535,7 +539,7 @@ LexicMap search and other utility commands check compatibility via the main vers
 
 |Index version|LexicMap version|Supported LexicMap versions|Date      |Changes                                                                                                                |
 |:------------|:---------------|:--------------------------|:---------|:----------------------------------------------------------------------------------------------------------------------|
-|3.5          |0.10.0          |0.10.0 +                   |2026-10-20|A small part of seeds are changed after fixing the lexichash computation.                                              |
+|3.5          |0.10.0          |0.10.0 +                   |2026-10-21|A small part of seeds are changed after fixing the lexichash computation.                                              |
 |3.4          |0.7.0           |0.6.0 +                    |2025-04-11|Fix filling the seed desert region behind the last seed of a genome.                                                   |
 |3.3          |0.6.0           |0.6.0 +                    |2025-03-25|Reduce index size for batches <= 512. Add the total bases of index to info.toml for computing the Evalue. Denser seeds.|
 |3.1          |0.5.0           |0.4.0 +                    |2024-12-18|Change the default partitions of seed data index.                                                                      |

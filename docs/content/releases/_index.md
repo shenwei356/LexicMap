@@ -13,7 +13,7 @@ weight: 30
 - Please run `lexicmap autocompletion` to update the shell autocompletion script.
 {{< /hint >}}
 
-### v0.10.0 - 2026-10-20 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.0)
+### v0.10.0 - 2026-10-21 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.0)
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
 

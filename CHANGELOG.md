@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.10.0 - 2026-10-20
+### v0.10.0 - 2026-10-21
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
 
