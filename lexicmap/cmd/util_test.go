@@ -23,6 +23,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -114,5 +115,46 @@ func TestMakeOutDirRejectsCurrentDirectory(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Reused split buffers must recover their full length after skipped short rows.
+func TestSplitNReusesShortRows(t *testing.T) {
+	for _, split := range []func(string, *[]string){
+		func(s string, a *[]string) { stringSplitN(s, "\t", 2, a) },
+		func(s string, a *[]string) { stringSplitNByByte(s, '\t', 2, a) },
+	} {
+		fields := make([]string, 2)
+		for _, row := range []string{"short", "a\tb", "short", "c\td\te"} {
+			split(row, &fields)
+			if want := strings.SplitN(row, "\t", 2); !reflect.DeepEqual(fields, want) {
+				t.Fatalf("row %q: got %v, want %v", row, fields, want)
+			}
+		}
+	}
+	fields := make([][]byte, 2)
+	for _, row := range []string{"short", "a\tb", "short", "c\td\te"} {
+		bytesSplitN([]byte(row), []byte("\t"), 2, &fields)
+		want := strings.SplitN(row, "\t", 2)
+		if len(fields) != len(want) {
+			t.Fatalf("row %q: %q", row, fields)
+		}
+		for i := range fields {
+			if string(fields[i]) != want[i] {
+				t.Fatalf("row %q: %q", row, fields)
+			}
+		}
+	}
+}
+
+func TestMappingReadersSkipShortRows(t *testing.T) {
+	file := writeTestInput(t, filepath.Join(t.TempDir(), "map.tsv"), "short\nA\t12\n\nshort\nB\t34\n")
+	got, err := readKVs(file, true)
+	if err != nil || !reflect.DeepEqual(got, map[string]string{"a": "12", "b": "34"}) {
+		t.Fatalf("string map: %v, %v", got, err)
+	}
+	numbers, err := readKVsUint32(file, true, true)
+	if err != nil || !reflect.DeepEqual(numbers, map[string]uint32{"a": 12, "b": 34}) {
+		t.Fatalf("numeric map: %v, %v", numbers, err)
 	}
 }

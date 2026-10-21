@@ -214,3 +214,28 @@ func buildMultiBatchSearchFixture(t *testing.T) (string, string) {
 	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-c", "4", "-m", "64", "-k", "16", "--partitions", "4", "-b", "1", "-O", db, query, reference)
 	return db, query
 }
+
+// Raw FASTA comparisons use the same process allowance as indexed comparisons.
+func TestRawGenomeComparatorFileBudget(t *testing.T) {
+	for _, budget := range []int{0, 8, 9, 24} {
+		opt := DefaultIndexSearchingOptions
+		opt.NoIndex, opt.MaxOpenFiles = true, budget
+		idx, err := NewGenomeComparator("", &opt)
+		if budget <= searchReservedFiles {
+			if err == nil {
+				idx.Close()
+				t.Fatalf("accepted budget %d", budget)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cap(idx.openFileTokens) != budget-searchReservedFiles {
+			t.Fatalf("incorrect raw reader allowance: %d", cap(idx.openFileTokens))
+		}
+		if err := idx.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

@@ -73,8 +73,9 @@ Attention:
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
   5. Empty genomes and genomes with no contig long enough for an alignment seed
      produce no matches; other pairs are still compared.
-  6. Index mode reserves 8 of --max-open-files for standard streams and other command
-     files (minimum: 9). Readers are opened on demand when batch pools do not fit.
+  6. Both input modes reserve 8 of --max-open-files for standard streams and other
+     command files (minimum: 9). Raw FASTA reads are bounded independently of pair
+     concurrency. Index readers open on demand when batch pools do not fit.
      Set "ulimit -n" at least as high as --max-open-files.
 
 Output format:
@@ -551,6 +552,10 @@ Output format:
 				view := *stdinGenome
 				return &view, nil
 			}
+			// Bound raw input readers in both cached and uncached comparisons.
+			// Release before reading the other genome or starting pair work.
+			idx.openFileTokens <- 1
+			defer func() { <-idx.openFileTokens }()
 			return ReadGenomeFromFile(name, reRefName, fullInputPath)
 		}
 
@@ -806,7 +811,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	compareCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files. It mainly affects candidate genome extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+		formatFlagUsage(`File budget for raw FASTA or index readers, including 8 reserved descriptors (minimum: 9). Raise "ulimit -n" when needed.`))
 
 	compareCmd.Flags().String("max-genome-cache-memory", "4G",
 		formatFlagUsage(`Memory budget for reusing prepared genomes and fine-alignment indexes across pairs (supports K/M/G; 0 disables reuse). Uses conservative cache accounting; active uncached comparisons, alignment scratch, readers, and runtime memory are additional.`))

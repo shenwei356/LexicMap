@@ -288,3 +288,17 @@ func TestCompareSeedlessGenomes(t *testing.T) {
 		}
 	}
 }
+
+func TestReadPairsSkipsShortRows(t *testing.T) {
+	for _, header := range []bool{false, true} {
+		data := "short\na\tb\nshort\nc\td\textra\n"
+		if header {
+			data = "query\tsubject\n" + data
+		}
+		file := writeTestInput(t, filepath.Join(t.TempDir(), "pairs.tsv"), data)
+		got, err := readPairs(file, header)
+		if err != nil || !reflect.DeepEqual(got, []string{"a", "b", "c", "d"}) {
+			t.Fatalf("header=%v: %v, %v", header, got, err)
+		}
+	}
+}

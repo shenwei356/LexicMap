@@ -24,6 +24,10 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +40,26 @@ func TestCompareResourceFileBudget(t *testing.T) {
 		got, stderr, err := runResourceLimitedCommand(t, "open-files=24", append(args, "--max-open-files", budget)...)
 		if err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("budget %s: error=%v stdout=%s stderr=%s", budget, err, got, stderr)
+		}
+	}
+}
+
+func TestCompareRawInputFileBudget(t *testing.T) {
+	dir := t.TempDir()
+	files := make([]string, 24)
+	for i := range files {
+		files[i] = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("g%d.fa", i)), ">s\n"+strings.Repeat("ACGT", 50000)+"\n")
+	}
+	baseline := append([]string{"genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", "0"}, files...)
+	want := strings.Split(string(runSeedIndexCommand(t, baseline...)), "\n")
+	slices.Sort(want)
+	for _, cache := range []string{"0", "64M"} {
+		args := append([]string{"genome", "compare", "--quiet", "-j", "64", "--max-open-files", "9", "--max-genome-cache-memory", cache}, files...)
+		out, stderr, err := runResourceLimitedCommand(t, "open-files=24", args...)
+		got := strings.Split(string(out), "\n")
+		slices.Sort(got)
+		if err != nil || !slices.Equal(got, want) {
+			t.Fatalf("cache=%s: error=%v stderr=%s output differs=%v", cache, err, stderr, !slices.Equal(got, want))
 		}
 	}
 }

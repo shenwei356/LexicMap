@@ -110,3 +110,65 @@ func writeTestInput(t *testing.T, file, data string) string {
 	}
 	return file
 }
+
+func TestCommandsRejectRepeatedStdin(t *testing.T) {
+	dir := t.TempDir()
+	list := writeTestInput(t, filepath.Join(dir, "files.txt"), "-\n")
+	for _, command := range [][]string{
+		{"index", "-O", filepath.Join(dir, "db")}, {"search", "-d", dir}, {"genome", "search", "-d", dir},
+		{"genome", "compare"}, {"utils", "2blast"}, {"utils", "2sam"}, {"utils", "merge-search-results"},
+	} {
+		for _, inputs := range [][]string{{"-", "-"}, {"-X", list, "-"}, {"-X", "-", "-"}} {
+			// Logging must not truncate an existing file before reporting invalid stdin.
+			logFile := writeTestInput(t, filepath.Join(dir, "command.log"), "preserve\n")
+			args := append(append([]string{}, command...), "--quiet", "--log", logFile)
+			args = append(args, inputs...)
+			out, stderr, err := runAuditCommand(t, "", args...)
+			if err == nil || !bytes.Contains(stderr, []byte("stdin (-) may only be used once")) || len(out) != 0 {
+				t.Fatalf("%v: %v, %s, %s", args, err, out, stderr)
+			}
+			if got, err := os.ReadFile(logFile); err != nil || string(got) != "preserve\n" {
+				t.Fatalf("log changed: %q, %v", got, err)
+			}
+		}
+	}
+	for _, args := range [][]string{
+		{"utils", "merge-search-results", "-", "-"},  // stdout-only path
+		{"utils", "merge-search-results", "-X", "-"}, // stdin list itself contains stdin
+		{"utils", "2blast", "--kv-file-genome", "-", "-"},
+		{"genome", "compare", "-d", dir, "-P", "-", "-P", "-"},
+	} {
+		_, stderr, err := runAuditCommand(t, "-\n", args...)
+		if err == nil || !bytes.Contains(stderr, []byte("stdin (-) may only be used once")) {
+			t.Fatalf("%v: %v, %s", args, err, stderr)
+		}
+	}
+
+	output := writeTestInput(t, filepath.Join(dir, "output.tsv"), "preserve\n")
+	_, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", "-", "-", "-o", output)
+	if err == nil || !bytes.Contains(stderr, []byte("stdin (-) may only be used once")) {
+		t.Fatalf("output preflight: %v, %s", err, stderr)
+	}
+	if got, err := os.ReadFile(output); err != nil || string(got) != "preserve\n" {
+		t.Fatalf("output changed: %q, %v", got, err)
+	}
+	// Even an empty stdin file list would otherwise fall back to reading stdin again.
+	_, stderr, err = runAuditCommand(t, "", "utils", "merge-search-results", "-X", "-")
+	if err == nil || !bytes.Contains(stderr, []byte("stdin (-) may only be used once")) {
+		t.Fatalf("empty stdin list: %v, %s", err, stderr)
+	}
+}
+
+func TestStdinPreflightDistinguishesGenomeIDs(t *testing.T) {
+	cmd := &cobra.Command{Use: "compare"}
+	cmd.Flags().String("index", filepath.Join(t.TempDir(), "db"), "")
+	if err := checkCommandFiles(cmd, []string{"-", "-"}); err != nil {
+		t.Fatalf("genome IDs treated as stdin: %v", err)
+	}
+	// File-list entries in index mode are IDs as well.
+	list := writeTestInput(t, filepath.Join(t.TempDir(), "ids.txt"), "-\n-\n")
+	cmd.Flags().String("infile-list", list, "")
+	if err := checkCommandFiles(cmd, nil); err != nil {
+		t.Fatalf("listed genome IDs treated as stdin: %v", err)
+	}
+}

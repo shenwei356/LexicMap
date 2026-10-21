@@ -246,6 +246,8 @@ func stringSplitN(s string, sep string, n int, a *[]string) {
 		tmp := make([]string, n)
 		a = &tmp
 	}
+	// A previous short row shrinks the slice, but retains its reusable capacity.
+	*a = (*a)[:n]
 
 	n--
 	i := 0
@@ -269,6 +271,8 @@ func bytesSplitN(s []byte, sep []byte, n int, a *[][]byte) {
 		tmp := make([][]byte, n)
 		a = &tmp
 	}
+	// Restore all writable slots after a previous short row.
+	*a = (*a)[:n]
 
 	n--
 	i := 0
@@ -292,6 +296,8 @@ func stringSplitNByByte(s string, sep byte, n int, a *[]string) {
 		tmp := make([]string, n)
 		a = &tmp
 	}
+	// Restore all writable slots after a previous short row.
+	*a = (*a)[:n]
 
 	n--
 	i := 0

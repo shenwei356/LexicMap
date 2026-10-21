@@ -247,9 +247,8 @@ func getFileList(args []string, checkFile bool) []string {
 	return files
 }
 
-func getFileListFromFile(file string, checkFile bool) ([]string, error) {
+func getFileListFromFile(file string, checkFile bool) (files []string, err error) {
 	var fh *os.File
-	var err error
 	if file == "-" {
 		fh = os.Stdin
 	} else {
@@ -257,6 +256,11 @@ func getFileListFromFile(file string, checkFile bool) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read file list from '%s': %s", file, err)
 		}
+		defer func() {
+			if closeErr := fh.Close(); err == nil {
+				err = closeErr
+			}
+		}()
 	}
 
 	var _file string
@@ -274,7 +278,7 @@ func getFileListFromFile(file string, checkFile bool) ([]string, error) {
 	}
 
 	if !checkFile {
-		return lists, fh.Close()
+		return lists, nil
 	}
 
 	for _, _file = range lists {
@@ -285,7 +289,7 @@ func getFileListFromFile(file string, checkFile bool) ([]string, error) {
 		}
 	}
 
-	return lists, fh.Close()
+	return lists, nil
 }
 
 func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFromArgs bool, flag string, checkFileFromFile bool) []string {

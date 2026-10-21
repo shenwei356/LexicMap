@@ -22,7 +22,9 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func newPayloadTestResult(qseq, tseq string) *SearchResult {
@@ -216,5 +218,48 @@ func TestAlignmentPayloadStoreDropsFilteredSpillReferences(t *testing.T) {
 	}
 	if err := store.close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAlignmentPayloadSlotReleasedAfterClose(t *testing.T) {
+	for _, failOpen := range []bool{false, true} {
+		budget := newAlignmentPayloadBudget(1)
+		budget.tempDir = t.TempDir()
+		if failOpen {
+			budget.tempDir = filepath.Join(budget.tempDir, "missing")
+		}
+		budget.slots = make(chan struct{}, 1)
+		store := newAlignmentPayloadStore(budget)
+		defer store.close()
+		previous := []*SearchResult{}
+		err := store.retain(newPayloadTestResult("AC", "AG"), &previous)
+		if (err != nil) != failOpen {
+			t.Fatalf("failOpen=%v: %v", failOpen, err)
+		}
+		next := make(chan *alignmentPayloadStore, 1)
+		go func() { next <- newAlignmentPayloadStore(budget) }()
+		select {
+		case s := <-next:
+			s.close()
+			t.Fatal("second store acquired an occupied slot")
+		case <-time.After(20 * time.Millisecond):
+		}
+		if err := store.close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.close(); err != nil {
+			t.Fatal(err)
+		} // Close must release only once.
+		select {
+		case s := <-next:
+			if err := s.close(); err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("close did not release the slot")
+		}
+		if len(budget.slots) != 0 {
+			t.Fatal("file reservation leaked")
+		}
 	}
 }

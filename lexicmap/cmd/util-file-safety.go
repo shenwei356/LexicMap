@@ -41,6 +41,27 @@ type commandFileList struct {
 	files []string
 }
 
+// resolveOutputPath resolves existing parent symlinks even before a log or its
+// containing output directory exists.
+func resolveOutputPath(path string) (string, error) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	parent, tail := absolute, ""
+	for {
+		real, err := filepath.EvalSymlinks(parent)
+		if err == nil {
+			return filepath.Join(real, tail), nil
+		}
+		if !os.IsNotExist(err) || filepath.Dir(parent) == parent {
+			return "", err
+		}
+		tail = filepath.Join(filepath.Base(parent), tail)
+		parent = filepath.Dir(parent)
+	}
+}
+
 // checkCommandFiles runs before logging or output creation. Paths named as
 // genome IDs are not files; explicit auxiliary inputs and file lists are.
 func checkCommandFiles(cmd *cobra.Command, args []string) error {
@@ -63,22 +84,21 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		directory      bool
 	}
 	var outputs []outputPath
+	var replacedDirs []string
 	addOutput := func(path string, directory bool) error {
 		if directory {
 			if err := checkOutputDirectory(path, path); err != nil {
 				return err
 			}
+			replacedDirs = append(replacedDirs, path)
 		}
-		absolute, err := filepath.Abs(path)
+		absolute, err := resolveOutputPath(path)
 		if err != nil {
 			return err
 		}
 		info, err := os.Stat(path)
 		if err != nil && !os.IsNotExist(err) {
 			return err
-		}
-		if real, err := filepath.EvalSymlinks(absolute); err == nil {
-			absolute = real
 		}
 		outputs = append(outputs, outputPath{path, absolute, info, directory})
 		return nil
@@ -106,10 +126,29 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			if err := checkOutputDirectory(path, path); err != nil {
 				return err
 			}
+			replacedDirs = append(replacedDirs, path)
 		}
 	}
-	if len(outputs) == 0 {
-		return nil
+	// Logs open before directory cleanup. Reject containment before either the
+	// log or an existing directory can be modified, including symlink aliases.
+	// Preserve the more specific input-alias errors when both checks apply.
+	var logDirectoryErr error
+	if path := flag("log"); path != "" {
+		logPath, err := resolveOutputPath(path)
+		if err != nil {
+			return err
+		}
+		for _, dir := range replacedDirs {
+			real, err := resolveOutputPath(dir)
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(real, logPath)
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				logDirectoryErr = fmt.Errorf("log path %s must be outside output directory %s", path, dir)
+				break
+			}
+		}
 	}
 	for i, a := range outputs {
 		for _, b := range outputs[:i] {
@@ -171,15 +210,27 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Count actual stdin consumers, not genome IDs named "-". Run even when
+	// every output is stdout, and reject explicit reuse before reading -X -.
+	stdinInputs := 0
+	checkInput := func(path string) error {
+		if isStdin(path) {
+			stdinInputs++
+			if stdinInputs > 1 {
+				return fmt.Errorf("stdin (-) may only be used once across input files and auxiliary inputs")
+			}
+		}
+		return check(path)
+	}
 	for _, name := range []string{"infile-list", "mask-file", "taxid-file", "genome2taxid", "kv-file-seq", "kv-file-genome", "search-result"} {
-		if err := check(flag(name)); err != nil {
+		if err := checkInput(flag(name)); err != nil {
 			return err
 		}
 	}
 	if cmd.Flags().Lookup("pair-file") != nil {
 		pairs, _ := cmd.Flags().GetStringSlice("pair-file")
 		for _, path := range pairs {
-			if err := check(path); err != nil {
+			if err := checkInput(path); err != nil {
 				return err
 			}
 		}
@@ -194,22 +245,19 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		usesList, positionalFiles = true, flag("index") == ""
 	}
 	if positionalFiles {
-		if len(args) == 0 && flag("infile-list") == "" && flag("in-dir") == "" {
-			if err := check("-"); err != nil {
-				return err
-			}
-		}
 		for _, path := range args {
-			if err := check(path); err != nil {
+			if err := checkInput(path); err != nil {
 				return err
 			}
 		}
 	}
+	var listedFiles []string
 	if list := flag("infile-list"); usesList && list != "" {
 		files, err := getFileListFromFile(list, false)
 		if err != nil {
 			return err
 		}
+		listedFiles = files
 		ctx := cmd.Context()
 		if ctx == nil {
 			ctx = context.Background()
@@ -217,10 +265,16 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		cmd.SetContext(context.WithValue(ctx, commandFileListKey{}, commandFileList{list, files}))
 		if positionalFiles {
 			for _, path := range files {
-				if err := check(path); err != nil {
+				if err := checkInput(path); err != nil {
 					return err
 				}
 			}
+		}
+	}
+	// An empty file list falls back to implicit stdin, just like no list.
+	if positionalFiles && len(args) == 0 && len(listedFiles) == 0 && flag("in-dir") == "" {
+		if err := checkInput("-"); err != nil {
+			return err
 		}
 	}
 
@@ -282,7 +336,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		existingOutput = existingOutput || output.info != nil
 	}
 	if !existingOutput {
-		return nil
+		return logDirectoryErr
 	}
 	walk := func(dir string, pattern *regexp.Regexp) error {
 		if dir == "" {
@@ -324,5 +378,5 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return nil
+	return logDirectoryErr
 }

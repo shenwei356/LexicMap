@@ -19,8 +19,8 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 
 - **`lexicmap`**:
     - All commands log the working directory, command and arguments at startup.
-    - Preserve explicit stdin input (`-`) when appending files from `--infile-list`.
-    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
+    - Preserve explicit stdin input (`-`) when appending files from `--infile-list`, and reject repeated stdin use across input files and auxiliary inputs.
+    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data. Keep logs outside directories that the command may replace.
     - Reject output or temporary merge directories that alias the current directory or would overwrite an input index, before opening logs and even with `--force`.
     - Add `--force-gzip-output` to gzip-compress result output regardless of the filename, including stdout.
 - **New commands**:

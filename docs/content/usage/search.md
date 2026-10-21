@@ -139,10 +139,11 @@ Flags:
                                          the affected query spills these fields to a temporary file.
                                          This is not a total RSS limit (0 disables spilling). (default "1G")
   -e, --max-evalue float                 ► Maximum evalue of a HSP segment. (default 10)
-      --max-open-files int               ► Index reader file budget, including 8 descriptors reserved
-                                         for other files. Seed concurrency is reduced to fit. Minimum:
-                                         seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.
-                                         (default 1024)
+      --max-open-files int               ► File budget for index readers and spill files, including 8
+                                         reserved descriptors. Base minimum: seed chunks + 9 (9 with
+                                         -w); add 3 for seed spilling and 1 for alignment-result
+                                         spilling. Concurrency is reduced to fit. Raise "ulimit -n" when
+                                         needed. (default 1024)
   -J, --max-query-conc int               ► Maximum number of concurrent queries. Bigger values do not
                                          improve the batch searching speed and consume much memory.
                                          Reduce this value when memory is limited. (default 8)

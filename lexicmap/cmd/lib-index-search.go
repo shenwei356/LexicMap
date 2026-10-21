@@ -650,11 +650,30 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if len(fileSeeds) == 0 {
 		return nil, fmt.Errorf("seeds file not found in: %s", dirSeeds)
 	}
+	// Reserve a separate allowance for payload files, which can outlive Search
+	// while output is blocked. Acquire each slot before taking any genome reader
+	// so waiting queries cannot prevent a slot owner from finishing alignment.
+	alignmentFiles := 0
+	if idx.alignmentPayloadBudget != nil {
+		minimum := searchReservedFiles + 1
+		if !inMemorySearch {
+			minimum += len(fileSeeds)
+		}
+		if idx.seedMemoryBudget != nil {
+			minimum += 3
+		}
+		if opt.MaxOpenFiles <= minimum {
+			return nil, fmt.Errorf("--max-open-files (%d) should be >= %d with alignment-result spilling", opt.MaxOpenFiles, minimum+1)
+		}
+		// Split spare capacity with readers; even the minimum needs one spill slot.
+		alignmentFiles = min(max(1, opt.MaxQueryConcurrency), max(1, (opt.MaxOpenFiles-minimum)/2))
+		idx.alignmentPayloadBudget.slots = make(chan struct{}, alignmentFiles)
+	}
 	// Leave room for a complete spill merge before sizing persistent reader
 	// pools. At least two inputs and one output are needed to make progress.
 	spillFiles := 0
 	if idx.seedMemoryBudget != nil {
-		minimum := searchReservedFiles + 1 // one genome reader
+		minimum := searchReservedFiles + alignmentFiles + 1 // one genome reader
 		if !inMemorySearch {
 			minimum += len(fileSeeds) // one seed reader per chunk
 		}
@@ -663,13 +682,14 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		}
 		spillFiles = min(seedSpillMergeFanIn+1, opt.MaxOpenFiles-minimum)
 	}
-	seedSearchingConcurrency, err := searchSeedConcurrency(opt.MaxOpenFiles-spillFiles, len(fileSeeds), opt.MaxSeedSearchingConcurrency, inMemorySearch)
+	seedSearchingConcurrency, err := searchSeedConcurrency(opt.MaxOpenFiles-spillFiles-alignmentFiles, len(fileSeeds), opt.MaxSeedSearchingConcurrency, inMemorySearch)
 	if err != nil {
 		return nil, err
 	}
 	// The allowance covers standard streams, output, query/log files, and
-	// transient metadata opens. Tokens count seed/genome readers and spill files.
-	idx.openFileTokens = make(chan int, opt.MaxOpenFiles-searchReservedFiles)
+	// transient metadata opens. Payload slots have their own reserved allowance;
+	// these tokens count seed/genome readers and seed spill files.
+	idx.openFileTokens = make(chan int, opt.MaxOpenFiles-searchReservedFiles-alignmentFiles)
 	if idx.seedMemoryBudget != nil {
 		idx.seedMemoryBudget.fileTokens = idx.openFileTokens
 		idx.seedMemoryBudget.mergeFanIn = spillFiles - 1
@@ -884,13 +904,13 @@ func searchSeedConcurrency(maxFiles, chunks, requested int, inMemory bool) (int,
 // NewGenomeComparator opens only the genome data needed by genome compare.
 // Seed masks, seed indexes, and seed-search pools are deliberately omitted.
 func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, error) {
-	if opt.NoIndex {
-		idx := &Index{path: outDir, opt: opt}
-		idx.initChainingResources()
-		return idx, nil
-	}
 	if opt.MaxOpenFiles <= searchReservedFiles {
 		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d (including %d reserved descriptors)", opt.MaxOpenFiles, searchReservedFiles+1, searchReservedFiles)
+	}
+	if opt.NoIndex {
+		idx := &Index{path: outDir, opt: opt, openFileTokens: make(chan int, opt.MaxOpenFiles-searchReservedFiles)}
+		idx.initChainingResources()
+		return idx, nil
 	}
 
 	ok, err := pathutil.DirExists(outDir)

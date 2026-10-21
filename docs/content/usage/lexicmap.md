@@ -41,12 +41,18 @@ Use "lexicmap [command] --help" for more information about a command.
 
 Output and log files must differ from input files, including symbolic links and
 hard links. This also applies to file lists, auxiliary inputs, and index data.
+Log files must be outside output directories and temporary merge directories
+that the command may replace, including when `--force` is used.
 Commands exit with an error if writing, flushing, or closing their result output
 fails.
 
 Files from `-X/--infile-list` are appended to positional inputs, including an
 explicit `-` for stdin. With no positional inputs, a non-empty file list supplies
 the inputs without adding stdin.
+
+Stdin (`-`) may be used only once across positional files, file-list entries, and
+auxiliary inputs. For example, `-X -` cannot be combined with a sequence input
+from stdin. In indexed `genome compare`, a genome ID named `-` remains an ID.
 
 Result output is gzip-compressed when the output filename ends in `.gz`.
 Use the global flag `--force-gzip-output` to enable gzip compression for other

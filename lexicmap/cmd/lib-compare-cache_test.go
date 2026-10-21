@@ -193,7 +193,7 @@ func TestSmallOrthoGenomeCacheRetention(t *testing.T) {
 // compareTestIndex uses the CLI's alignment settings without reading an index.
 func compareTestIndex(t testing.TB) *Index {
 	t.Helper()
-	idx, err := NewGenomeComparator("", &IndexSearchingOptions{NoIndex: true, ExtendLength2: 50, MaxEvalue: 1e-15, MaxGenomeCacheMemory: defaultGenomeSearchFragmentIndexMemory})
+	idx, err := NewGenomeComparator("", &IndexSearchingOptions{NoIndex: true, MaxOpenFiles: searchReservedFiles + 1, ExtendLength2: 50, MaxEvalue: 1e-15, MaxGenomeCacheMemory: defaultGenomeSearchFragmentIndexMemory})
 	if err != nil {
 		t.Fatal(err)
 	}

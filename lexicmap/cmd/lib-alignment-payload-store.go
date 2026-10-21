@@ -36,6 +36,9 @@ type alignmentPayloadBudget struct {
 	limit   int64
 	used    int64
 	tempDir string
+	// slots reserves one possible spill file before alignment starts. The
+	// reservation survives until output finishes, including buffered results.
+	slots chan struct{}
 }
 
 func newAlignmentPayloadBudget(limit int64) *alignmentPayloadBudget {
@@ -99,6 +102,9 @@ type alignmentPayloadStore struct {
 func newAlignmentPayloadStore(budget *alignmentPayloadBudget) *alignmentPayloadStore {
 	if budget == nil {
 		return nil
+	}
+	if budget.slots != nil {
+		budget.slots <- struct{}{}
 	}
 	return &alignmentPayloadStore{budget: budget}
 }
@@ -343,5 +349,8 @@ func (s *alignmentPayloadStore) close() error {
 	}
 	clear(s.refs)
 	s.refs = nil
+	if s.budget.slots != nil {
+		<-s.budget.slots
+	}
 	return firstErr
 }

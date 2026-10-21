@@ -510,3 +510,69 @@ func TestCommandTemporaryDirectoryCurrentDirectory(t *testing.T) {
 		}
 	}
 }
+
+func TestLogOutsideReplacedDirectories(t *testing.T) {
+	for _, kind := range []string{"index", "index-tmp", "plot", "remerge", "remerge-tmp"} {
+		for _, alias := range []bool{false, true} {
+			for _, existingLog := range []bool{false, true} {
+				for _, force := range []bool{false, true} {
+					if force && strings.HasPrefix(kind, "remerge") {
+						continue
+					}
+					t.Run(fmt.Sprintf("%s/alias=%v/existing=%v/force=%v", kind, alias, existingLog, force), func(t *testing.T) {
+						root := t.TempDir()
+						outDir := filepath.Join(root, "output")
+						replaced := outDir
+						if strings.HasSuffix(kind, "-tmp") {
+							replaced += ExtTmpDir
+						}
+						if err := os.Mkdir(replaced, 0700); err != nil {
+							t.Fatal(err)
+						}
+						sentinel := writeTestInput(t, filepath.Join(replaced, "sentinel"), "preserve\n")
+						logFile := filepath.Join(replaced, "run.log")
+						if existingLog {
+							writeTestInput(t, logFile, "original log\n")
+						}
+						passedLog := logFile
+						if alias {
+							link := filepath.Join(root, "alias")
+							if err := os.Symlink(replaced, link); err != nil {
+								t.Fatal(err)
+							}
+							passedLog = filepath.Join(link, "run.log")
+						}
+						var args []string
+						switch kind {
+						case "index", "index-tmp":
+							args = []string{"index", "-O", outDir}
+						case "plot":
+							args = []string{"utils", "seed-pos", "-d", filepath.Join(root, "db"), "--plot-dir", outDir}
+						default:
+							args = []string{"utils", "remerge", "-d", outDir}
+						}
+						args = append(args, "--log", passedLog, "--quiet")
+						if force {
+							args = append(args, "--force")
+						}
+						_, stderr, err := runAuditCommand(t, "", args...)
+						if err == nil || !bytes.Contains(stderr, []byte("must be outside output directory")) {
+							t.Fatalf("%v: %v, %s", args, err, stderr)
+						}
+						if got, err := os.ReadFile(sentinel); err != nil || string(got) != "preserve\n" {
+							t.Fatalf("directory changed: %q, %v", got, err)
+						}
+						got, err := os.ReadFile(logFile)
+						if existingLog {
+							if err != nil || string(got) != "original log\n" {
+								t.Fatalf("log changed: %q, %v", got, err)
+							}
+						} else if !os.IsNotExist(err) {
+							t.Fatalf("log created: %v", err)
+						}
+					})
+				}
+			}
+		}
+	}
+}
