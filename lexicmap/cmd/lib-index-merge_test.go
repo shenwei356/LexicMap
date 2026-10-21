@@ -38,13 +38,13 @@ func TestPlanIndexMerge(t *testing.T) {
 		inputs, files, threads, batch, workers int
 	}{
 		{10, 1024, 8, 10, 8},
-		{1014, 1024, 8, 1014, 1},
-		{1025, 1024, 8, 1014, 1},
+		{1013, 1024, 8, 1013, 1},
+		{1025, 1024, 8, 1013, 1},
 		{11, 1024, 8, 11, 8}, // the last group has its own concurrency budget
-		{40, 32, 8, 22, 1},
-		{2, 32, 8, 2, 6},
-		{40, 12, 8, 2, 1}, // minimum budget still makes progress
-		{1, 11, 8, 1, 1},
+		{40, 32, 8, 21, 1},
+		{2, 32, 8, 2, 5},
+		{40, 13, 8, 2, 1}, // minimum budget still makes progress
+		{1, 12, 8, 1, 1},
 	} {
 		batch, workers, err := planIndexMerge(tc.inputs, tc.files, tc.threads)
 		if err != nil || batch != tc.batch || workers != tc.workers {
@@ -60,7 +60,7 @@ func TestPlanIndexMerge(t *testing.T) {
 
 // TestIndexMergeRoundsFitFileBudget checks budget compliance and progress in every round.
 func TestIndexMergeRoundsFitFileBudget(t *testing.T) {
-	for _, files := range []int{12, 13, 16, 32, 1024} {
+	for _, files := range []int{13, 14, 16, 32, 1024} {
 		for _, inputs := range []int{2, 3, 40, 1014, 1015, 1025, 100000} {
 			for _, threads := range []int{1, 8, 128} {
 				for n := inputs; n > 1; {
@@ -75,7 +75,7 @@ func TestIndexMergeRoundsFitFileBudget(t *testing.T) {
 					for start := 0; start < n; start += batch {
 						size := min(batch, n-start)
 						_, workers, err := planIndexMerge(size, files, threads)
-						if err != nil || workers < 1 || workers*(size+2)+indexMergeReservedFiles > files {
+						if err != nil || workers < 1 || workers*(size+2)+reservedOpenFiles > files {
 							t.Fatalf("group exceeds budget: inputs=%d workers=%d files=%d err=%v", size, workers, files, err)
 						}
 					}
@@ -179,9 +179,9 @@ func TestMergeIndexesMultipleRoundsMatchesSingleRound(t *testing.T) {
 
 // TestAdaptiveIndexMergeFileBudget checks the third output at minimum and large budgets.
 func TestAdaptiveIndexMergeFileBudget(t *testing.T) {
-	for _, tc := range [][5]int{{2, 13, 8, 2, 1}, {3, 13, 8, 2, 1}, {10, 32, 8, 10, 1}, {2, 32, 8, 2, 4}, {1, 12, 8, 1, 1}} {
+	for _, tc := range [][5]int{{2, 14, 8, 2, 1}, {3, 14, 8, 2, 1}, {10, 32, 8, 10, 1}, {2, 32, 8, 2, 4}, {1, 13, 8, 1, 1}} {
 		batch, workers, err := planIndexMergeWithOutputs(tc[0], tc[1], tc[2], 3)
-		if err != nil || batch != tc[3] || workers != tc[4] || workers*(batch+3)+indexMergeReservedFiles > tc[1] {
+		if err != nil || batch != tc[3] || workers != tc[4] || workers*(batch+3)+reservedOpenFiles > tc[1] {
 			t.Fatalf("adaptive plan %v: batch=%d workers=%d err=%v", tc, batch, workers, err)
 		}
 	}

@@ -141,28 +141,13 @@ func TestSharedGenomeReaderDirectoryIsIndexLocal(t *testing.T) {
 	}
 }
 
-func TestSearchSeedFileBudget(t *testing.T) {
-	for _, tc := range []struct {
-		budget, chunks, request, want int
-		memory                        bool
-	}{
-		{32, 4, 16, 5, false}, {13, 4, 16, 1, false}, {12, 4, 16, 0, false},
-		{1024, 4, 0, 2, false}, {9, 16, 16, 16, true}, {8, 16, 16, 0, true},
-	} {
-		got, err := searchSeedConcurrency(tc.budget, tc.chunks, tc.request, tc.memory)
-		if got != tc.want || (err != nil) != (tc.want == 0) {
-			t.Fatalf("%+v: got %d, %v", tc, got, err)
-		}
-	}
-}
-
 func TestGenomeComparatorFileBudget(t *testing.T) {
 	db := writeDetailsFixture(t, 2)
-	for _, budget := range []int{8, 9, 10, 16} {
+	for _, budget := range []int{8, 9, 10, 11, 16} {
 		opt := DefaultIndexSearchingOptions
 		opt.MaxOpenFiles, opt.NumCPUs = budget, 4
 		idx, err := NewGenomeComparator(db, &opt)
-		if budget == 8 {
+		if budget < 11 {
 			if err == nil {
 				idx.Close()
 				t.Fatal("accepted a budget without room for a genome reader")
@@ -172,7 +157,7 @@ func TestGenomeComparatorFileBudget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cap(idx.openFileTokens) != budget-searchReservedFiles || idx.hasGenomeRdrs != (budget >= 10) {
+		if cap(idx.openFileTokens) != budget-reservedOpenFiles || !idx.hasGenomeRdrs {
 			t.Fatalf("budget %d: incorrect process allowance or reader pool", budget)
 		}
 		ids := []uint64{0, 1 << BITS_GENOME_IDX}
@@ -217,11 +202,11 @@ func buildMultiBatchSearchFixture(t *testing.T) (string, string) {
 
 // Raw FASTA comparisons use the same process allowance as indexed comparisons.
 func TestRawGenomeComparatorFileBudget(t *testing.T) {
-	for _, budget := range []int{0, 8, 9, 24} {
+	for _, budget := range []int{0, 8, 9, 10, 24} {
 		opt := DefaultIndexSearchingOptions
 		opt.NoIndex, opt.MaxOpenFiles = true, budget
 		idx, err := NewGenomeComparator("", &opt)
-		if budget <= searchReservedFiles {
+		if budget <= reservedOpenFiles {
 			if err == nil {
 				idx.Close()
 				t.Fatalf("accepted budget %d", budget)
@@ -231,7 +216,7 @@ func TestRawGenomeComparatorFileBudget(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if cap(idx.openFileTokens) != budget-searchReservedFiles {
+		if cap(idx.openFileTokens) != budget-reservedOpenFiles {
 			t.Fatalf("incorrect raw reader allowance: %d", cap(idx.openFileTokens))
 		}
 		if err := idx.Close(); err != nil {

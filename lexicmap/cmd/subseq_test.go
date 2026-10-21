@@ -88,7 +88,7 @@ func TestSubseqGenomeReadersWithoutPool(t *testing.T) {
 		writeSubseqTestGenome(t, dbDir, batch)
 	}
 
-	readers, err := newSubseqGenomeReaders(dbDir, 2, 1, 2)
+	readers, err := newSubseqGenomeReaders(dbDir, 2, reservedOpenFiles+1, 2)
 	if err != nil {
 		t.Fatal(err)
 	}

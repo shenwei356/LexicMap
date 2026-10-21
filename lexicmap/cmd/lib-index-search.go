@@ -64,6 +64,9 @@ type IndexSearchingOptions struct {
 
 	// concurrency of searching for each kv searcher
 	MaxSeedSearchingConcurrency int
+	// MaxQueryFileConcurrency bounds concurrent genome-query file reads. One
+	// reader fits in reservedOpenFiles; additional readers need their own slots.
+	MaxQueryFileConcurrency int
 
 	InMemorySearch bool  // load the seed/kv data into memory
 	LazyGenomeMeta bool  // defer contig metadata until pseudoalignment succeeds; ordinary search only
@@ -191,7 +194,8 @@ type Index struct {
 
 	info *IndexInfo // index info
 
-	openFileTokens chan int // control the max open files
+	openFileTokens  chan int      // control the max open files
+	queryFileTokens chan struct{} // genome-query files have a separate allowance
 
 	// lexichash
 	lh *lexichash.LexicHash
@@ -363,13 +367,21 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if info.MainVersion != MainVersion {
 		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
 	}
+	// Validate all persistent pools before recounting old indexes or opening
+	// readers. Every seed chunk and genome batch must have at least one reader.
+	filePlan, err := planSearchFiles(opt, info.Chunks, info.GenomeBatches)
+	if err != nil {
+		return nil, err
+	}
+	idx.queryFileTokens = make(chan struct{}, filePlan.queryReaders)
 	if info.InputBases == 0 {
 		// checkError(fmt.Errorf(`please run "lexicmap utils recount-bases -d %s"`, outDir))
 		startTime := time.Now()
 		if outputLog {
 			log.Info("  counting total bases for this index (run only once) ...")
 		}
-		totalBases, err := updateInputBases(info, outDir, opt.NumCPUs)
+		// No persistent readers are open yet; recount readers use the same cap.
+		totalBases, err := updateInputBases(info, outDir, min(opt.NumCPUs, opt.MaxOpenFiles-reservedOpenFiles))
 		checkError(err)
 		if outputLog {
 			log.Infof("  done counting total bases (%s) in %s", humanize.Comma(int64(totalBases)), time.Since(startTime))
@@ -650,46 +662,18 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if len(fileSeeds) == 0 {
 		return nil, fmt.Errorf("seeds file not found in: %s", dirSeeds)
 	}
-	// Reserve a separate allowance for payload files, which can outlive Search
-	// while output is blocked. Acquire each slot before taking any genome reader
-	// so waiting queries cannot prevent a slot owner from finishing alignment.
-	alignmentFiles := 0
+	// Payload files can outlive Search while output is blocked. Their allowance
+	// and query-file slots cannot consume the persistent readers' reservations.
+	alignmentFiles := filePlan.alignmentFiles
 	if idx.alignmentPayloadBudget != nil {
-		minimum := searchReservedFiles + 1
-		if !inMemorySearch {
-			minimum += len(fileSeeds)
-		}
-		if idx.seedMemoryBudget != nil {
-			minimum += 3
-		}
-		if opt.MaxOpenFiles <= minimum {
-			return nil, fmt.Errorf("--max-open-files (%d) should be >= %d with alignment-result spilling", opt.MaxOpenFiles, minimum+1)
-		}
-		// Split spare capacity with readers; even the minimum needs one spill slot.
-		alignmentFiles = min(max(1, opt.MaxQueryConcurrency), max(1, (opt.MaxOpenFiles-minimum)/2))
 		idx.alignmentPayloadBudget.slots = make(chan struct{}, alignmentFiles)
 	}
-	// Leave room for a complete spill merge before sizing persistent reader
-	// pools. At least two inputs and one output are needed to make progress.
-	spillFiles := 0
-	if idx.seedMemoryBudget != nil {
-		minimum := searchReservedFiles + alignmentFiles + 1 // one genome reader
-		if !inMemorySearch {
-			minimum += len(fileSeeds) // one seed reader per chunk
-		}
-		if opt.MaxOpenFiles < minimum+3 {
-			return nil, fmt.Errorf("--max-open-files (%d) should be >= %d with --max-seed-memory (including seed readers, a genome reader, three spill files, and %d reserved descriptors)", opt.MaxOpenFiles, minimum+3, searchReservedFiles)
-		}
-		spillFiles = min(seedSpillMergeFanIn+1, opt.MaxOpenFiles-minimum)
-	}
-	seedSearchingConcurrency, err := searchSeedConcurrency(opt.MaxOpenFiles-spillFiles-alignmentFiles, len(fileSeeds), opt.MaxSeedSearchingConcurrency, inMemorySearch)
-	if err != nil {
-		return nil, err
-	}
+	spillFiles := filePlan.seedSpillFiles
+	seedSearchingConcurrency := filePlan.seedReaders
 	// The allowance covers standard streams, output, query/log files, and
 	// transient metadata opens. Payload slots have their own reserved allowance;
 	// these tokens count seed/genome readers and seed spill files.
-	idx.openFileTokens = make(chan int, opt.MaxOpenFiles-searchReservedFiles-alignmentFiles)
+	idx.openFileTokens = make(chan int, opt.MaxOpenFiles-reservedOpenFiles-alignmentFiles-(filePlan.queryReaders-1))
 	if idx.seedMemoryBudget != nil {
 		idx.seedMemoryBudget.fileTokens = idx.openFileTokens
 		idx.seedMemoryBudget.mergeFanIn = spillFiles - 1
@@ -826,15 +810,8 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	<-done
 
 	// we can create genome reader pools
-	n := (cap(idx.openFileTokens) - len(idx.openFileTokens) - spillFiles) / info.GenomeBatches
-	if n < 1 {
-		idx.hasGenomeRdrs = false
-		log.Warningf("  no reader pools created for %d genome batches, please consider increasing the number of max open files (%d).",
-			info.GenomeBatches, idx.opt.MaxOpenFiles)
-	} else {
-		if n > opt.NumCPUs {
-			n = opt.NumCPUs
-		}
+	n := filePlan.genomeReaders
+	{
 		if outputLog {
 			log.Infof("  creating reader pools for %d genome batches, each with %d readers...", info.GenomeBatches, n)
 		}
@@ -879,36 +856,66 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	return idx, nil
 }
 
-// searchReservedFiles leaves room for standard streams, command output, query/log
-// files, and transient metadata opens outside the persistent index-reader pools.
-const searchReservedFiles = 8
+// searchFilePlan reserves one reader per persistent pool before distributing
+// spare descriptors. Query files and alignment payloads have separate slots;
+// seed spills share tokens with the persistent seed/genome readers.
+type searchFilePlan struct {
+	seedReaders, genomeReaders int // readers per seed chunk and genome batch
+	queryReaders               int // simultaneous query files, including one reserved slot
+	seedSpillFiles             int // complete merge: at least two inputs and one output
+	alignmentFiles             int // payload files retained through output
+}
 
-// searchSeedConcurrency keeps at least one genome-reader slot available. Reduce
-// seed parallelism before opening any files; in-memory search retains no seed FDs.
-func searchSeedConcurrency(maxFiles, chunks, requested int, inMemory bool) (int, error) {
-	available := maxFiles - searchReservedFiles
-	if available < 1 || (!inMemory && available < chunks+1) {
-		minimum := searchReservedFiles + 1
-		if !inMemory {
-			minimum += chunks
-		}
-		return 0, fmt.Errorf("--max-open-files (%d) should be >= %d for %d seed chunks (including %d reserved descriptors)", maxFiles, minimum, chunks, searchReservedFiles)
+func planSearchFiles(opt *IndexSearchingOptions, chunks, batches int) (searchFilePlan, error) {
+	p := searchFilePlan{seedReaders: max(2, opt.MaxSeedSearchingConcurrency), queryReaders: 1}
+	if chunks < 1 || batches < 1 {
+		return p, fmt.Errorf("invalid seed chunk or genome batch count: %d, %d", chunks, batches)
 	}
-	concurrency := max(2, requested)
-	if !inMemory {
-		concurrency = min(concurrency, (available-1)/chunks)
+	seedFiles := chunks
+	if opt.InMemorySearch {
+		seedFiles = 0
 	}
-	return concurrency, nil
+	if opt.MaxSeedMemory > 0 {
+		p.seedSpillFiles = 3
+	}
+	if opt.OutputSeq && opt.MaxAlignResultMemory > 0 {
+		p.alignmentFiles = 1
+	}
+	minimum := reservedOpenFiles + seedFiles + batches + p.seedSpillFiles + p.alignmentFiles
+	if opt.MaxOpenFiles < minimum {
+		return p, fmt.Errorf("--max-open-files (%d) should be >= %d for %d seed chunks and %d genome batches (including %d reserved descriptors and %d spill files); increase --max-open-files", opt.MaxOpenFiles, minimum, chunks, batches, reservedOpenFiles, p.seedSpillFiles+p.alignmentFiles)
+	}
+	spare := opt.MaxOpenFiles - minimum
+	// Extra query readers must not borrow persistent reader or spill slots.
+	extra := min(max(1, opt.MaxQueryFileConcurrency)-1, spare)
+	p.queryReaders += extra
+	spare -= extra
+	if p.alignmentFiles > 0 {
+		extra = min(max(1, opt.MaxQueryConcurrency)-1, spare/2)
+		p.alignmentFiles += extra
+		spare -= extra
+	}
+	if p.seedSpillFiles > 0 {
+		extra = min(seedSpillMergeFanIn+1-p.seedSpillFiles, spare)
+		p.seedSpillFiles += extra
+		spare -= extra
+	}
+	if !opt.InMemorySearch {
+		p.seedReaders = min(p.seedReaders, 1+spare/chunks)
+		spare -= (p.seedReaders - 1) * chunks
+	}
+	p.genomeReaders = min(max(1, opt.NumCPUs), 1+spare/batches)
+	return p, nil
 }
 
 // NewGenomeComparator opens only the genome data needed by genome compare.
 // Seed masks, seed indexes, and seed-search pools are deliberately omitted.
 func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, error) {
-	if opt.MaxOpenFiles <= searchReservedFiles {
-		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d (including %d reserved descriptors)", opt.MaxOpenFiles, searchReservedFiles+1, searchReservedFiles)
+	if opt.MaxOpenFiles <= reservedOpenFiles {
+		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d (including %d reserved descriptors)", opt.MaxOpenFiles, reservedOpenFiles+1, reservedOpenFiles)
 	}
 	if opt.NoIndex {
-		idx := &Index{path: outDir, opt: opt, openFileTokens: make(chan int, opt.MaxOpenFiles-searchReservedFiles)}
+		idx := &Index{path: outDir, opt: opt, openFileTokens: make(chan int, opt.MaxOpenFiles-reservedOpenFiles)}
 		idx.initChainingResources()
 		return idx, nil
 	}
@@ -931,6 +938,9 @@ func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, err
 	if info.GenomeBatches < 1 {
 		return nil, fmt.Errorf("invalid number of genome batches: %d", info.GenomeBatches)
 	}
+	if minimum := reservedOpenFiles + info.GenomeBatches; opt.MaxOpenFiles < minimum {
+		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d for %d genome batches; increase --max-open-files", opt.MaxOpenFiles, minimum, info.GenomeBatches)
+	}
 
 	idx := &Index{
 		path:           outDir,
@@ -939,20 +949,12 @@ func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, err
 		totalBases:     info.InputBases,
 		contigInterval: info.ContigInterval,
 		softMasking:    info.SoftMaksing,
-		openFileTokens: make(chan int, opt.MaxOpenFiles-searchReservedFiles),
+		openFileTokens: make(chan int, opt.MaxOpenFiles-reservedOpenFiles),
 	}
 	idx.initChainingResources()
 
-	// Use the same process allowance as search. If every genome batch cannot
-	// have a reader, acquireGenomeReader opens readers on demand under the
-	// remaining budget instead.
-	nReaders := cap(idx.openFileTokens) / info.GenomeBatches
-	if nReaders > opt.NumCPUs {
-		nReaders = opt.NumCPUs
-	}
-	if nReaders < 1 {
-		return idx, nil
-	}
+	// Every batch retains at least one reader, as in search.
+	nReaders := min(max(1, opt.NumCPUs), cap(idx.openFileTokens)/info.GenomeBatches)
 
 	idx.poolGenomeRdrs = make([]chan *genome.Reader, info.GenomeBatches)
 	for i := range idx.poolGenomeRdrs {

@@ -704,7 +704,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	mapCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`File budget for index readers and spill files, including 8 reserved descriptors. Base minimum: seed chunks + 9 (9 with -w); add 3 for seed spilling and 1 for alignment-result spilling. Concurrency is reduced to fit. Raise "ulimit -n" when needed.`))
+		formatFlagUsage(`File budget for index readers and spill files, including 9 reserved descriptors. Base minimum: 9 + seed chunks + genome batches (9 + genome batches with -w); add 3 for seed spilling and 1 for alignment-result spilling. Every seed chunk and genome batch retains at least one reader; insufficient budgets are rejected. Concurrency is reduced to fit. Set "ulimit -n" at least this high.`))
 
 	mapCmd.Flags().BoolP("all", "a", false,
 		formatFlagUsage(`Output more columns, e.g., matched sequences. Use this if you want to output blast-style format with "lexicmap utils 2blast".`))

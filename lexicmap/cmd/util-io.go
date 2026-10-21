@@ -34,6 +34,11 @@ import (
 // IOBufferSize is size of buffer for buffered I/O operations.
 var IOBufferSize = 65536 // os.Getpagesize()
 
+// reservedOpenFiles covers three standard streams, three runtime descriptors
+// (including Go's cgroup CPU file), a log, and two serial command files.
+// Concurrent readers and writers need separate allowances.
+const reservedOpenFiles = 9
+
 func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteCloser, *os.File, error) {
 	var w *os.File
 	if file == "-" {

@@ -54,10 +54,10 @@ Flags:
                                from multiple indexes.
   -d, --index string           ► Index directory created by "lexicmap index".
   -w, --line-width int         ► Line width of sequence (0 for no wrap). (default 60)
-      --max-open-files int     ► Maximum opened files. It mainly affects candidate subsequence
-                               extraction. Increase this value if you have hundreds of genome batches or
-                               have multiple queries, and do not forgot to set a bigger "ulimit -n" in
-                               shell if the value is > 1024. (default 1024)
+      --max-open-files int     ► File budget for subsequence extraction, including 9 reserved
+                               descriptors (minimum: 10). Limits reader concurrency; readers open on
+                               demand if batch pools do not fit. Set "ulimit -n" at least this high.
+                               (default 1024)
   -H, --no-header-row          ► The search result file has no header row, this happens when using
                                tools like awk to filter the file.
   -o, --out-file string        ► Out file, supports the ".gz" suffix ("-" for stdout). (default "-")

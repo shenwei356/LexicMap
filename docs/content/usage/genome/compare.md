@@ -38,9 +38,10 @@ Attention:
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
   5. Empty genomes and genomes with no contig long enough for an alignment seed
      produce no matches; other pairs are still compared.
-  6. Both input modes reserve 8 of --max-open-files for standard streams and other
-     command files (minimum: 9). Raw FASTA reads are bounded independently of pair
-     concurrency. Index readers open on demand when batch pools do not fit.
+  6. Both input modes reserve 9 of --max-open-files for standard streams and other
+     command files. Raw FASTA reads require at least 10 and are bounded independently
+     of pair concurrency. Index mode requires at least 9 + genome batches, keeping
+     at least one reader per batch; insufficient budgets are rejected.
      Set "ulimit -n" at least as high as --max-open-files.
 
 Output format:
@@ -96,9 +97,10 @@ Flags:
                                          additional. (default "4G")
       --max-genome-size int              ► Maximum size of genomes to be considered (in MB) when
                                          reading genome from an index. (default 20)
-      --max-open-files int               ► File budget for raw FASTA or index readers, including 8
-                                         reserved descriptors (minimum: 9). Raise "ulimit -n" when
-                                         needed. (default 1024)
+      --max-open-files int               ► File budget for raw FASTA or index readers, including 9
+                                         reserved descriptors. Minimum: 10 for raw FASTA, or 9 + genome
+                                         batches for index mode. Set "ulimit -n" at least this high.
+                                         (default 1024)
   -F, --min-af float                     ► Minimum aligned fraction for both genomes (percentage,
                                          inclusive).
   -I, --min-ani float                    ► Minimum ANI in at least one direction (percentage,

@@ -98,6 +98,9 @@ Attention:
 
 		fileSearchResult := getFlagString(cmd, "search-result")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+		if maxOpenFiles <= reservedOpenFiles {
+			checkError(fmt.Errorf("--max-open-files (%d) should be >= %d; increase --max-open-files", maxOpenFiles, reservedOpenFiles+1))
+		}
 
 		if fileSearchResult != "" {
 			noHeader := getFlagBool(cmd, "no-header-row")
@@ -127,6 +130,7 @@ Attention:
 
 			fh, err := xopen.Ropen(fileSearchResult)
 			checkError(err)
+			defer fh.Close()
 
 			// --------------------------------------------------
 			if outputLog {
@@ -157,7 +161,7 @@ Attention:
 				if readers.pooled() {
 					log.Infof("  created reader pools for %d genome batches, each with %d readers", info.GenomeBatches, readers.readersPerBatch)
 				} else {
-					log.Infof("  reader pools disabled for %d genome batches; opening at most %d genome files on demand", info.GenomeBatches, maxOpenFiles)
+					log.Infof("  reader pools disabled for %d genome batches; opening at most %d genome files on demand", info.GenomeBatches, maxOpenFiles-reservedOpenFiles)
 				}
 			}
 			var wg sync.WaitGroup
@@ -667,8 +671,8 @@ func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads i
 	if genomeBatches < 1 {
 		return nil, fmt.Errorf("invalid number of genome batches: %d", genomeBatches)
 	}
-	if maxOpenFiles < 1 {
-		return nil, fmt.Errorf("invalid maximum number of open files: %d", maxOpenFiles)
+	if maxOpenFiles <= reservedOpenFiles {
+		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d; increase --max-open-files", maxOpenFiles, reservedOpenFiles+1)
 	}
 	if threads < 1 {
 		return nil, fmt.Errorf("invalid number of threads: %d", threads)
@@ -678,9 +682,12 @@ func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads i
 		dbDir:         dbDir,
 		genomeBatches: genomeBatches,
 	}
-	r.readersPerBatch = maxOpenFiles / genomeBatches
+	// The input, output and log coexist with these readers. Only the remaining
+	// budget may be retained by pools or used for bounded on-demand reads.
+	available := maxOpenFiles - reservedOpenFiles
+	r.readersPerBatch = available / genomeBatches
 	if r.readersPerBatch < 1 {
-		r.openFileTokens = make(chan struct{}, maxOpenFiles)
+		r.openFileTokens = make(chan struct{}, available)
 		return r, nil
 	}
 	if r.readersPerBatch > threads {
@@ -810,7 +817,7 @@ func init() {
 		formatFlagUsage(`Size of buffer, supported unit: K, M, G. You need increase the value when "bufio.Scanner: token too long" error reported`))
 
 	subseqCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum opened files. It mainly affects candidate subsequence extraction. Increase this value if you have hundreds of genome batches or have multiple queries, and do not forgot to set a bigger "ulimit -n" in shell if the value is > 1024.`))
+		formatFlagUsage(`File budget for subsequence extraction, including 9 reserved descriptors (minimum: 10). Limits reader concurrency; readers open on demand if batch pools do not fit. Set "ulimit -n" at least this high.`))
 
 	subseqCmd.Flags().StringP("search-result", "f", "",
 		formatFlagUsage(`Use search result file from "lexicmap search" as input. It can be "-" to accept filtered result from stdin`))

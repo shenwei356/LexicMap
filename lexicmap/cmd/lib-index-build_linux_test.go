@@ -2,13 +2,63 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
+	"strings"
 	"syscall"
 	"testing"
 )
+
+// Parsing can hold an eligibility reader beside the FASTA reader; seed writing
+// holds two files per chunk, or three with idx15. Both phases share the cap.
+func TestIndexConstructionFileBudget(t *testing.T) {
+	dir := t.TempDir()
+	dna := indexTestDNA(6000)
+	fasta := ">s0\n" + dna[:2000] + "\n>s1\n" + dna[2000:4000] + "\n>s2\n" + dna[4000:] + "\n"
+	files := make([]string, 24)
+	for i := range files {
+		files[i] = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("g%02d.fa", i)), fasta)
+	}
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+dna[:800]+"\n")
+	build := []string{"index", "--quiet", "-j", "24", "-m", "64", "-c", "16", "-k", "16", "--partitions", "4",
+		"--max-genome", "4000", "--log", filepath.Join(dir, "index.log"), "--big-genomes", filepath.Join(dir, "skipped.txt")}
+	baseline := filepath.Join(dir, "baseline")
+	runSeedIndexCommand(t, append(append(slices.Clone(build), "-O", baseline), files...)...)
+	search := func(db string) []string {
+		out := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "12", "-P", "12", "-n", "0", "-N", "0", "-a", query)
+		rows := strings.Split(strings.TrimRight(string(out), "\r\n"), "\n")
+		if len(rows) != len(files)+1 {
+			t.Fatalf("expected one match per genome, got %d rows", len(rows))
+		}
+		slices.Sort(rows[1:]) // batch record IDs and equal-score genome order may differ
+		return rows
+	}
+	want := search(baseline)
+	for _, adaptive := range []bool{false, true} {
+		for _, budget := range []int{13, 14, 24} {
+			db := filepath.Join(dir, fmt.Sprintf("budget%d-adaptive%v", budget, adaptive))
+			args := append(slices.Clone(build), "-O", db, "--max-open-files", fmt.Sprint(budget))
+			if budget >= 14 {
+				args = append(args, "--save-seed-pos")
+			}
+			if adaptive {
+				args = append(args, "-2")
+			}
+			_, stderr, err := runResourceLimitedCommand(t, "open-files="+fmt.Sprint(budget), append(args, files...)...)
+			if err != nil {
+				log, _ := os.ReadFile(filepath.Join(dir, "index.log"))
+				t.Fatalf("budget=%d adaptive=%v: %v, %s\n%s", budget, adaptive, err, stderr, log)
+			}
+			if !slices.Equal(search(db), want) {
+				t.Fatalf("budget=%d adaptive=%v: search output changed", budget, adaptive)
+			}
+		}
+	}
+}
 
 func TestReplayableGenomeInputPipe(t *testing.T) {
 	dir := t.TempDir()

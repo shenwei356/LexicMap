@@ -36,9 +36,6 @@ import (
 	"github.com/shenwei356/lexichash"
 )
 
-// Leave room for standard streams, logging, and Go's runtime descriptors.
-const indexMergeReservedFiles = 8
-
 // planIndexMerge bounds input groups and workers by the file budget. Each worker
 // opens one seed file per input and two output files. Groups must shrink on every
 // round, even when the configured file budget is small.
@@ -55,11 +52,11 @@ func planIndexMergeWithOutputs(nIndexes, maxOpenFiles, mergeThreads, outputFiles
 		return 0, 0, fmt.Errorf("invalid number of merge threads: %d, should be >= 1", mergeThreads)
 	}
 	// Multiple inputs need a fan-in of at least two to make progress.
-	minFiles := indexMergeReservedFiles + outputFiles + min(nIndexes, 2)
+	minFiles := reservedOpenFiles + outputFiles + min(nIndexes, 2)
 	if maxOpenFiles < minFiles {
-		return 0, 0, fmt.Errorf("invalid max open files for merging: %d, should be >= %d (including %d reserved files)", maxOpenFiles, minFiles, indexMergeReservedFiles)
+		return 0, 0, fmt.Errorf("invalid max open files for merging: %d, should be >= %d (including %d reserved files)", maxOpenFiles, minFiles, reservedOpenFiles)
 	}
-	budget := maxOpenFiles - indexMergeReservedFiles // descriptors available to seed-merging workers
+	budget := maxOpenFiles - reservedOpenFiles // descriptors available to seed-merging workers
 	batchSize = min(nIndexes, budget-outputFiles)
 	workers = min(mergeThreads, budget/(batchSize+outputFiles))
 	return batchSize, workers, nil

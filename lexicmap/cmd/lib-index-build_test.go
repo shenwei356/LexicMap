@@ -418,3 +418,31 @@ func TestBuildIndexRejectsCurrentDirectory(t *testing.T) {
 		t.Fatalf("current temporary directory accepted: %v", err)
 	}
 }
+
+// Invalid construction budgets must fail before replacing the output directory.
+func TestIndexRejectsInsufficientFileBudget(t *testing.T) {
+	for _, positions := range []bool{false, true} {
+		dir := t.TempDir()
+		ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">s\n"+indexTestDNA(1000)+"\n")
+		db := filepath.Join(dir, "db")
+		if err := os.MkdirAll(db, 0700); err != nil {
+			t.Fatal(err)
+		}
+		sentinel := writeTestInput(t, filepath.Join(db, "keep"), "original\n")
+		minimum := reservedOpenFiles + 4
+		args := []string{"index", "--quiet", "--force", "-O", db, ref}
+		if positions {
+			minimum++
+			args = append(args, "--save-seed-pos")
+		}
+		args = append(args, "--max-open-files", fmt.Sprint(minimum-1))
+		_, stderr, err := runAuditCommand(t, "", args...)
+		if err == nil || !strings.Contains(string(stderr), fmt.Sprintf("should be >= %d", minimum)) {
+			t.Fatalf("invalid budget accepted: %v, %s", err, stderr)
+		}
+		got, err := os.ReadFile(sentinel)
+		if err != nil || string(got) != "original\n" {
+			t.Fatalf("invalid budget changed output directory: %q, %v", got, err)
+		}
+	}
+}

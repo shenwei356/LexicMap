@@ -95,7 +95,7 @@ func TestRemergeSeedIndex2(t *testing.T) {
 		threshold string // empty disables adaptive indexes
 		budget    int    // descriptor budget for the resumed merge
 		inputs    int    // completed batches to resume
-	}{{"", 12, 3}, {"4K", 1024, 3}, {"8K", 13, 3}, {"8K", 12, 1}} {
+	}{{"", 13, 3}, {"4K", 1024, 3}, {"8K", 14, 3}, {"8K", 13, 1}} {
 		t.Run(fmt.Sprintf("threshold=%s/budget=%d/inputs=%d", tc.threshold, tc.budget, tc.inputs), func(t *testing.T) {
 			root := t.TempDir()
 			want, got := filepath.Join(root, "want.lmi"), filepath.Join(root, "got.lmi")
@@ -176,11 +176,11 @@ func TestRemergeSeedIndex2(t *testing.T) {
 func TestRemergeRejectsAdaptiveBudget(t *testing.T) {
 	db := filepath.Join(t.TempDir(), "index.lmi")
 	paths := makeRemergeBatches(t, db, 3)
-	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-d", db, "-2", "--max-open-files", "12"}
+	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-d", db, "-2", "--max-open-files", "13"}
 	command := exec.Command(os.Args[0], append([]string{"-test.run=^TestSeedIndexCommand$", "--"}, args...)...)
 	command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1")
 	output, err := command.CombinedOutput()
-	if err == nil || !bytes.Contains(output, []byte("should be >= 13")) {
+	if err == nil || !bytes.Contains(output, []byte("should be >= 14")) {
 		t.Fatalf("unexpected result for insufficient adaptive budget: %v\n%s", err, output)
 	}
 	entries, err := os.ReadDir(db + ExtTmpDir)
@@ -208,7 +208,7 @@ func TestRemergeRetriesAfterCompletedGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeTestInput(t, broken, "")
-	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-J", "1", "--max-open-files", "12", "-d", got}
+	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-J", "1", "--max-open-files", "13", "-d", got}
 	_, stderr, err := runAuditCommand(t, "", args...)
 	if err == nil {
 		t.Fatal("failure injection did not fail")

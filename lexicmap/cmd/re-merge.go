@@ -51,7 +51,7 @@ When to use this command?
   22:54:24.455 [INFO]     batch 1/1, merging 297 indexes to xxx.lmi.tmp/r1_b1 with 1 threads...
 
   ► Then you can run this command with a bigger --max-open-files (e.g., 4096) and 
-  -J/--seed-data-threads (e.g., 12. 12 needs to be <= (4096-8)/(297+2)=13.7).
+  -J/--seed-data-threads (e.g., 12. 12 needs to be <= (4096-9)/(297+2)=13.7).
   And you need to set a bigger 'ulimit -n' if the value of --max-open-files is bigger than 1024.
 
 - The Slurm/PBS job time limit is almost reached and the merging step won't be finished before that.
@@ -59,7 +59,7 @@ When to use this command?
 - Disk quota is reached in the merging step.
 
 Large batch counts are merged in multiple rounds within --max-open-files,
-including 8 files reserved for standard streams, logging, and runtime use.
+including 9 files reserved for standard streams, logging, and runtime use.
 Original batches are retained until the final index is published, so failed
 merges can be retried. Genome data use hard links where supported; otherwise,
 retaining the batches requires extra disk space for copies.
@@ -217,7 +217,7 @@ func init() {
 		formatFlagUsage(`Number of threads for writing seed data and merging seed chunks from all batches, in range [1, -c/--chunks]. Merging threads are limited by --max-open-files.`))
 
 	remergeCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches, or 13 with --seed-index2). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
+		formatFlagUsage(`Maximum open files for merging indexes, including 9 reserved descriptors (minimum: 13 for multiple batches, or 14 with --seed-index2). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
 	remergeCmd.Flags().BoolP("seed-index2", "2", false,
 		formatFlagUsage(`Write adaptive two-level seed indexes (.idx and .idx15) alongside the final seeds, as in "lexicmap index --seed-index2". Prefix lengths are read from the existing batch indexes.`))
 	remergeCmd.Flags().String("seed-index2-threshold", "8K",

@@ -23,6 +23,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data. Keep logs outside directories that the command may replace.
     - Reject output or temporary merge directories that alias the current directory or would overwrite an input index, before opening logs and even with `--force`.
     - Add `--force-gzip-output` to gzip-compress result output regardless of the filename, including stdout.
+    - Enforce `--max-open-files` across commands that provide it, including concurrent query reads, index construction, and old-index base recounts. Reserve one reader per seed chunk and genome batch for search and indexed genome comparison; reject insufficient budgets.
 - **New commands**:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
     - **`lexicmap genome pair`: Find similar genome pairs in the index**.
@@ -36,7 +37,7 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
-      *To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4*.
+      To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
     - **Add `-2/--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
       with `--seed-index2-threshold` (default `8K`, minimum `4K`) controlling the minimum block size.
       These indexes speed up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks.

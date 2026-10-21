@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -43,9 +45,16 @@ func TestSeedPosFileBudget(t *testing.T) {
 		}
 		baseline := normalize(runSeedIndexCommand(t, append(slices.Clone(args), "-j", "1")...))
 		for _, threads := range []string{"1", "16"} {
-			output, stderr, err := runResourceLimitedCommand(t, "open-files", append(slices.Clone(args), "-j", threads, "--max-open-files", "8")...)
+			dir := t.TempDir()
+			out, logFile := filepath.Join(dir, "positions.tsv"), filepath.Join(dir, "seed-pos.log")
+			_, stderr, err := runResourceLimitedCommand(t, "open-files=11", append(slices.Clone(args), "-j", threads, "--max-open-files", "11", "-o", out, "--log", logFile)...)
 			if err != nil {
-				t.Fatalf("bounded seed-pos failed: %v %s", err, stderr)
+				log, _ := os.ReadFile(logFile)
+				t.Fatalf("bounded seed-pos failed: %v %s\n%s", err, stderr, log)
+			}
+			output, err := os.ReadFile(out)
+			if err != nil {
+				t.Fatal(err)
 			}
 			if normalize(output) != baseline {
 				t.Fatalf("file budget changed seed positions")

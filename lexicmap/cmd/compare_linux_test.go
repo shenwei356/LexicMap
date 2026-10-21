@@ -25,6 +25,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -36,10 +37,16 @@ func TestCompareResourceFileBudget(t *testing.T) {
 	db := writeDetailsFixture(t, 22)
 	args := []string{"genome", "compare", "--quiet", "-j", "4", "-d", db, "g0", "g1"}
 	want := runSeedIndexCommand(t, args...)
-	for _, budget := range []string{"24", "9"} {
-		got, stderr, err := runResourceLimitedCommand(t, "open-files=24", append(args, "--max-open-files", budget)...)
+	for _, budget := range []string{"31", "32"} {
+		got, stderr, err := runResourceLimitedCommand(t, "open-files="+budget, append(args, "--max-open-files", budget)...)
 		if err != nil || !bytes.Equal(got, want) {
 			t.Fatalf("budget %s: error=%v stdout=%s stderr=%s", budget, err, got, stderr)
+		}
+	}
+	for _, budget := range []string{"30", "24", "10"} {
+		got, stderr, err := runResourceLimitedCommand(t, "open-files=32", append(args, "--max-open-files", budget)...)
+		if err == nil || len(got) != 0 || !strings.Contains(string(stderr), "should be >= 31") {
+			t.Fatalf("budget %s: missing pool was accepted: %v stdout=%s stderr=%s", budget, err, got, stderr)
 		}
 	}
 }
@@ -54,8 +61,13 @@ func TestCompareRawInputFileBudget(t *testing.T) {
 	want := strings.Split(string(runSeedIndexCommand(t, baseline...)), "\n")
 	slices.Sort(want)
 	for _, cache := range []string{"0", "64M"} {
-		args := append([]string{"genome", "compare", "--quiet", "-j", "64", "--max-open-files", "9", "--max-genome-cache-memory", cache}, files...)
-		out, stderr, err := runResourceLimitedCommand(t, "open-files=24", args...)
+		outfile := filepath.Join(dir, "compare-"+cache+".tsv")
+		args := append([]string{"genome", "compare", "--quiet", "-j", "64", "--max-open-files", "10", "--max-genome-cache-memory", cache, "--log", outfile + ".log", "-o", outfile}, files...)
+		_, stderr, err := runResourceLimitedCommand(t, "open-files=10", args...)
+		if err != nil {
+			t.Fatalf("cache=%s: error=%v stderr=%s", cache, err, stderr)
+		}
+		out, err := os.ReadFile(outfile)
 		got := strings.Split(string(out), "\n")
 		slices.Sort(got)
 		if err != nil || !slices.Equal(got, want) {

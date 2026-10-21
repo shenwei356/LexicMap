@@ -110,7 +110,7 @@ func TestIndexSeedIndex2(t *testing.T) {
 	if err := os.WriteFile(query, append([]byte(">query\n"), sequence[:600]...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, settings := range [][2]int{{1, 1024}, {3, 1024}, {1, 13}} {
+	for _, settings := range [][2]int{{1, 1024}, {3, 1024}, {1, 14}} {
 		batchSize, maxOpenFiles := settings[0], settings[1]
 		t.Run(fmt.Sprintf("batch-size=%d/max-open-files=%d", batchSize, maxOpenFiles), func(t *testing.T) {
 			dir := t.TempDir()
@@ -224,7 +224,7 @@ func TestBuildIndexRejectsInvalidSeedIndex2(t *testing.T) {
 	for _, partitions := range []int{1, 8, 4096} {
 		outdir := filepath.Join(t.TempDir(), "index")
 		opt := &IndexBuildingOptions{K: 32, Masks: 64, Chunks: 2, Partitions: partitions,
-			RandSeed: 1, GenomeBatchSize: 3, SeedIndex2Threshold: kv.MinIndex15Threshold}
+			RandSeed: 1, GenomeBatchSize: 3, MaxOpenFiles: 1024, SeedIndex2Threshold: kv.MinIndex15Threshold}
 		if err := BuildIndex(outdir, []string{"missing.fa"}, opt); err == nil || !strings.Contains(err.Error(), "prefix") && !strings.Contains(err.Error(), "partitions") && !strings.Contains(err.Error(), "suffix") {
 			t.Fatalf("unexpected validation result for %d partitions: %v", partitions, err)
 		}

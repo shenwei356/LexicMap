@@ -29,6 +29,89 @@ import (
 	"testing"
 )
 
+// Spare seed/spill/query capacity must never displace the last reader of a batch.
+func TestSearchFilePlan(t *testing.T) {
+	for _, memory := range []bool{false, true} {
+		for _, seedSpill := range []bool{false, true} {
+			for _, payload := range []bool{false, true} {
+				opt := DefaultIndexSearchingOptions
+				opt.NumCPUs, opt.MaxSeedSearchingConcurrency = 16, 16
+				opt.MaxQueryFileConcurrency, opt.MaxQueryConcurrency = 16, 16
+				opt.InMemorySearch, opt.OutputSeq = memory, payload
+				opt.MaxSeedMemory, opt.MaxAlignResultMemory = 0, 0
+				minimum := reservedOpenFiles + 4 // four genome batches
+				if !memory {
+					minimum += 2 // two seed chunks
+				}
+				if seedSpill {
+					opt.MaxSeedMemory = 96
+					minimum += 3
+				}
+				if payload {
+					opt.MaxAlignResultMemory = 1
+					minimum++
+				}
+				for budget := minimum - 1; budget <= minimum+128; budget++ {
+					opt.MaxOpenFiles = budget
+					p, err := planSearchFiles(&opt, 2, 4)
+					if budget < minimum {
+						if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("should be >= %d", minimum)) {
+							t.Fatalf("accepted budget %d below minimum %d: %+v, %v", budget, minimum, p, err)
+						}
+						continue
+					}
+					if err != nil || p.genomeReaders < 1 || p.seedReaders < 1 || p.queryReaders < 1 {
+						t.Fatalf("missing reader pool: budget=%d plan=%+v err=%v", budget, p, err)
+					}
+					used := reservedOpenFiles + 4*p.genomeReaders + p.queryReaders - 1 + p.seedSpillFiles + p.alignmentFiles
+					if !memory {
+						used += 2 * p.seedReaders
+					}
+					if used > budget || (seedSpill && p.seedSpillFiles < 3) || (payload && p.alignmentFiles < 1) {
+						t.Fatalf("invalid reservation: budget=%d used=%d plan=%+v", budget, used, p)
+					}
+					if budget == minimum && (p.genomeReaders != 1 || p.queryReaders != 1 || (!memory && p.seedReaders != 1)) {
+						t.Fatalf("minimum budget did not preserve one reader per pool: %+v", p)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestSearchRejectsInsufficientPoolsBeforeRecount(t *testing.T) {
+	db, query := buildMultiBatchSearchFixture(t)
+	file := filepath.Join(db, FileInfo)
+	info, err := readIndexInfo(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info.InputBases = 0 // old indexes recount this field during initialization
+	if err := writeIndexInfo(file, info); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range [][]string{{"search"}, {"genome", "search", "-m", "0"}} {
+		for _, memory := range []bool{false, true} {
+			minimum := reservedOpenFiles + info.GenomeBatches
+			if !memory {
+				minimum += info.Chunks
+			}
+			args := append(append([]string{}, command...), "--quiet", "-d", db, "--max-open-files", strconv.Itoa(minimum-1), query)
+			if memory {
+				args = append(args, "-w")
+			}
+			out, stderr, err := runAuditCommand(t, "", args...)
+			if err == nil || len(out) != 0 || !strings.Contains(string(stderr), fmt.Sprintf("should be >= %d", minimum)) {
+				t.Fatalf("invalid budget accepted: %v, %s, %s", err, out, stderr)
+			}
+			got, err := readIndexInfo(file)
+			if err != nil || got.InputBases != 0 {
+				t.Fatalf("invalid budget recounted the index: %+v, %v", got, err)
+			}
+		}
+	}
+}
+
 // writeSearchContigFixture gives each contig different random bases and length.
 func writeSearchContigFixture(t *testing.T) (string, string, []string) {
 	t.Helper()

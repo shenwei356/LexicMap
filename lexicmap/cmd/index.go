@@ -139,9 +139,9 @@ Important parameters:
                             ► Make sure the value of '-j/--threads' in 'lexicmap search' is >= this value.
  *3. -J/--seed-data-threads ► Number of threads for writing seed data and merging seed chunks from all batches
                             (maximum: -c/--chunks, default: 8).
-                            ■ Merging reserves 8 open files. Each worker uses one file per input batch and two outputs,
+                            ■ Merging reserves 9 open files. Each worker uses one file per input batch and two outputs,
                             or three outputs in the final merge with --seed-index2.
-                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 8)/($inputs + $outputs)),
+                            The actual merging threads are min(--seed-data-threads, (--max-open-files - 9)/($inputs + $outputs)),
                             where $inputs is the current group size and $outputs is 2, or 3 for a final adaptive merge.
                             ■ Bigger values increase indexing speed at the cost of slightly higher memory occupation.
   4. --partitions,          ► Number of partitions for indexing each seed file (default: 4096).
@@ -156,8 +156,8 @@ Important parameters:
                             --seed-index2-threshold controls the minimum block size (default: 8K, minimum: 4K).
                             Higher thresholds reduce .idx15 size but limit the speedup; the default is recommended.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► It's only used in merging indexes of multiple genome batches (minimum: 12, or 13 with --seed-index2).
-                            Large batch counts are merged in multiple rounds within this budget, including 8 reserved files.
+                            ► Limits file parsing, seed writing, and batch merging (minimum: 13; 14 with --save-seed-pos or multi-batch --seed-index2).
+                            Large batch counts are merged in multiple rounds within this budget, including 9 reserved files.
                             Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
 `,
@@ -604,7 +604,7 @@ func init() {
 	indexCmd.Flags().String("seed-index2-threshold", "8K",
 		formatFlagUsage(`Minimum seed block size for creating a secondary index with --seed-index2. Higher values reduce .idx15 size but limit the speedup. Minimum: 4K. The default 8K is recommended.`))
 	indexCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Maximum open files for merging indexes, including 8 reserved files (minimum: 12 for multiple batches, or 13 with --seed-index2). Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
+		formatFlagUsage(`Maximum open files for parsing, seed writing, and batch merging, including 9 reserved descriptors. Minimum: 13; 14 with --save-seed-pos or multi-batch --seed-index2. Large batch counts are merged in multiple rounds. Set "ulimit -n" at least this high.`))
 
 	indexCmd.Flags().BoolP("save-seed-pos", "", false,
 		formatFlagUsage(`Save seed positions, which can be inspected with "lexicmap utils seed-pos".`))

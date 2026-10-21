@@ -21,8 +21,45 @@
 package cmd
 
 import (
+	"bytes"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 )
+
+func TestSubseqFileBudget(t *testing.T) {
+	db, query := buildMultiBatchSearchFixture(t)
+	dir := t.TempDir()
+	results := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "12", "-P", "12", "-n", "0", "-N", "0", query)
+	input := writeTestInput(t, filepath.Join(dir, "hits.tsv"), string(results))
+	args := []string{"utils", "subseq", "--quiet", "-j", "32", "-d", db, "-f", input, "-w", "0"}
+	want := runSeedIndexCommand(t, args...)
+	if got, records := bytes.Count(want, []byte("\n"))/2, bytes.Count(results, []byte("\n"))-1; got != records || got < 2 {
+		t.Fatalf("expected one extracted sequence per input alignment: got %d, want %d", got, records)
+	}
+	for _, budget := range []int{10, 11, 24} {
+		out, logFile := filepath.Join(dir, "out.fa"), filepath.Join(dir, "subseq.log")
+		limited := append(slices.Clone(args), "--max-open-files", fmt.Sprint(budget), "-o", out, "--log", logFile)
+		_, stderr, err := runResourceLimitedCommand(t, "open-files="+fmt.Sprint(budget), limited...)
+		if err != nil {
+			log, _ := os.ReadFile(logFile)
+			t.Fatalf("budget=%d: %v, %s\n%s", budget, err, stderr, log)
+		}
+		got, err := os.ReadFile(out)
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("budget=%d: extraction changed: %v", budget, err)
+		}
+	}
+	// Direct region extraction also validates the process allowance.
+	out, stderr, err := runResourceLimitedCommand(t, "open-files=16", "utils", "subseq", "--quiet", "-d", db,
+		"-n", "ref", "-r", "1:10", "--max-open-files", "9")
+	if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "should be >= 10") {
+		t.Fatalf("direct extraction accepted invalid budget: %v, %s, %s", err, out, stderr)
+	}
+}
 
 func TestSubseqClosesUnmatchedChunkReaders(t *testing.T) {
 	db, sequence := writeChunkExtractionFixture(t)

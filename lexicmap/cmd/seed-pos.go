@@ -61,7 +61,7 @@ Attention:
   2. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
   3. Readers are opened only for requested genomes. --max-open-files limits reader
-     concurrency; it must be at least the number of seed chunks plus 2.
+     concurrency after reserving 9 descriptors for other files (minimum: 11).
 
 Extra columns:
   Using -v/--verbose will output more columns:
@@ -102,6 +102,12 @@ Figures:
 		moreColumns := getFlagBool(cmd, "verbose")
 		minDist := getFlagNonNegativeInt(cmd, "min-dist")
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
+		// Two descriptors per producer. The reserve includes the serial genome
+		// reader or plot writer, result output, log, and process descriptors.
+		if minimum := reservedOpenFiles + 2; maxOpenFiles < minimum {
+			checkError(fmt.Errorf("--max-open-files (%d) should be >= %d; increase --max-open-files", maxOpenFiles, minimum))
+		}
+		readerWorkers := min(opt.NumCPUs, (maxOpenFiles-reservedOpenFiles)/2)
 		step := uint32(getFlagPositiveInt(cmd, "slid-step"))
 		window := uint32(getFlagPositiveInt(cmd, "slid-window"))
 
@@ -163,15 +169,6 @@ Figures:
 				refnames = append(refnames, ref)
 			}
 		}
-
-		// A seed-position reader holds two files. One serial output reader (or
-		// plot writer) may coexist with producers. Readers close before a task
-		// releases its token, so this bounds retained handles, not just opens.
-		minimumFiles := max(3, info.Chunks+2)
-		if maxOpenFiles < minimumFiles {
-			checkError(fmt.Errorf("invalid max open files: %d, should be >= %d", maxOpenFiles, minimumFiles))
-		}
-		readerWorkers := min(opt.NumCPUs, (maxOpenFiles-1)/2)
 
 		// ---------------------------------------------------------------
 
@@ -688,7 +685,7 @@ func init() {
 		formatFlagUsage(`Only output records with seed distance >= this value.`))
 
 	seedPosCmd.Flags().IntP("max-open-files", "", 512,
-		formatFlagUsage(`Maximum open files for seed-position and genome readers. Limits reader concurrency; minimum: seed chunks + 2.`))
+		formatFlagUsage(`File budget for seed-position and genome readers, including 9 reserved descriptors. Limits reader concurrency; minimum: 11. Set "ulimit -n" at least this high.`))
 
 	seedPosCmd.Flags().StringP("plot-dir", "O", "",
 		formatFlagUsage(`Output directory for 1) histograms of seed distances, 2) histograms of numbers of seeds in sliding windows.`))

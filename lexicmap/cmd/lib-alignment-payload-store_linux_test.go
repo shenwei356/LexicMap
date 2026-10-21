@@ -59,8 +59,8 @@ func TestAlignmentPayloadResourceFileBudget(t *testing.T) {
 		inMemory               bool
 	}{
 		{"0", "24", false}, {"1M", "24", false},
-		{"0", "11", false}, {"1M", "14", false},
-		{"0", "10", true}, {"1M", "13", true},
+		{"0", "12", false}, {"1M", "15", false},
+		{"0", "11", true}, {"1M", "14", true},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		limited := append(append([]string{}, args...), "--max-open-files", tc.fileBudget, "--max-align-result-memory", "1", "--max-seed-memory", tc.seedMemory)
@@ -69,7 +69,7 @@ func TestAlignmentPayloadResourceFileBudget(t *testing.T) {
 		}
 		command := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestResourceLimitedCommand$", "--"}, limited...)...)
 		temp := t.TempDir()
-		command.Env = append(os.Environ(), "LEXICMAP_RESOURCE_LIMIT=open-files=24", "TMPDIR="+temp)
+		command.Env = append(os.Environ(), "LEXICMAP_RESOURCE_LIMIT=open-files="+tc.fileBudget, "TMPDIR="+temp)
 		var stderr bytes.Buffer
 		command.Stderr = &stderr
 		output, err := command.StdoutPipe()

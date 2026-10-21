@@ -63,13 +63,13 @@ func TestSeedSpillSearchResourceFileBudget(t *testing.T) {
 		budget string
 		memory bool
 	}{
-		{"24", false}, {"16", false}, {"12", true},
+		{"24", false}, {"18", false}, {"14", true},
 	} {
 		limited := append(slices.Clone(args), "--max-open-files", tc.budget, "--max-seed-memory", "96")
 		if tc.memory {
 			limited = append(limited, "-w")
 		}
-		got, stderr, err := runResourceLimitedCommand(t, "open-files=24", limited...)
+		got, stderr, err := runResourceLimitedCommand(t, "open-files="+tc.budget, limited...)
 		if err != nil {
 			t.Fatalf("%+v: %v, %s", tc, err, stderr)
 		}
@@ -78,8 +78,8 @@ func TestSeedSpillSearchResourceFileBudget(t *testing.T) {
 		}
 	}
 	// Reject an impossible reservation before starting collection or producing TSV.
-	out, stderr, err := runResourceLimitedCommand(t, "open-files=24", append(slices.Clone(args), "--max-open-files", "15", "--max-seed-memory", "96")...)
-	if err == nil || !strings.Contains(string(stderr), "should be >= 16") || len(out) != 0 {
+	out, stderr, err := runResourceLimitedCommand(t, "open-files=24", append(slices.Clone(args), "--max-open-files", "17", "--max-seed-memory", "96")...)
+	if err == nil || !strings.Contains(string(stderr), "should be >= 18") || len(out) != 0 {
 		t.Fatalf("invalid spill budget: error=%v stdout=%s stderr=%s", err, out, stderr)
 	}
 }

@@ -382,6 +382,7 @@ Output format:
 			MaxOpenFiles: maxOpenFiles,
 
 			MaxSeedSearchingConcurrency: maxSeedSearchingConcurrency,
+			MaxQueryFileConcurrency:     maxQueryConcurrency,
 
 			MinPrefix:       uint8(minPrefix),
 			MinSinglePrefix: uint8(minSinglePrefix),
@@ -704,11 +705,15 @@ Output format:
 				// 1. read all sequences of the query genome
 				var query *GQuery
 				var readErr error
+				// Query files have their own reservation so they cannot exhaust
+				// the index-reader pools while other queries are aligning.
+				idx.queryFileTokens <- struct{}{}
 				if adjustANIByQuality {
 					query, readErr = gr.ReadWithQual(file, true, idx.softMasking)
 				} else {
 					query, readErr = gr.Read(file, true, idx.softMasking)
 				}
+				<-idx.queryFileTokens
 				checkError(readErr)
 				if query == nil { // no valid sequence
 					log.Warningf("no valid sequences in %s, skipped", file)
@@ -797,7 +802,7 @@ func init() {
 		formatFlagUsage(`Out file, supports a ".gz" suffix ("-" for stdout).`))
 
 	gsearchCmd.Flags().IntP("max-open-files", "", 1024,
-		formatFlagUsage(`Index reader file budget, including 8 descriptors reserved for other files. Seed concurrency is reduced to fit. Minimum: seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.`))
+		formatFlagUsage(`File budget for index and query readers, including 9 reserved descriptors. Minimum: 9 + seed chunks + genome batches (9 + genome batches with -w). Every seed chunk and genome batch retains at least one reader; insufficient budgets are rejected. Query-file and index-reader concurrency are reduced to fit. Set "ulimit -n" at least this high.`))
 
 	gsearchCmd.Flags().IntP("max-query-conc", "J", 8,
 		formatFlagUsage(`Maximum number of concurrent queries.`))

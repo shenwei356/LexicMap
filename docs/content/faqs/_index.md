@@ -69,7 +69,7 @@ a small batch size with `-b/--batch-size`. E.g.,
 
 Only one thread was used for seed data merging, so it would take a long time.
 So we can set a larger `--max-open-files`, e.g., `4096`,
-and it would allow `4096 / (297+2) = 13.7` threads for merging. Let's set `--seed-data-threads 12`.
+and it would allow `(4096-9) / (297+2) = 13.7` threads for merging. Let's set `--seed-data-threads 12`.
 
     # specify the maximum open files per process
     ulimit -n 4096

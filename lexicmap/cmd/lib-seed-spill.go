@@ -733,7 +733,11 @@ func (s *seedSpillStore) close() error {
 	s.runs = nil
 	var err error
 	if s.dir != "" {
+		// RemoveAll may open both the parent and spill directory. Competing
+		// queries can still be merging, so cleanup needs a reservation too.
+		s.budget.acquireFiles(2)
 		err = os.RemoveAll(s.dir)
+		s.budget.releaseFiles(2)
 	}
 	<-s.budget.slots
 	return err

@@ -106,7 +106,7 @@ type IndexBuildingOptions struct {
 	Verbose      bool // show log
 	Log2File     bool // log file
 	Force        bool // force overwrite existed index
-	MaxOpenFiles int  // maximum opened files, used in merging indexes
+	MaxOpenFiles int  // file budget for input parsing, seed writing, and merging
 	MergeThreads int  // Maximum Concurrent Merge Jobs
 
 	MinSeqLen int // minimum sequence length; values below the loaded k use k
@@ -199,12 +199,23 @@ func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
 	if opt.MergeThreads < 1 {
 		return fmt.Errorf("invalid number of merge threads: %d, should be >= 1", opt.MergeThreads)
 	}
-	openFiles := opt.Chunks + 2
-	if opt.MaxOpenFiles < openFiles {
-		return fmt.Errorf("invalid max open files: %d, should be >= %d", opt.MaxOpenFiles, openFiles)
-	}
+	_, err := indexBuildParserWorkers(opt)
+	return err
+}
 
-	return nil
+// indexBuildParserWorkers keeps two handles per parser: either stream staging
+// (input + temporary file) or a split-genome eligibility pass beside the parser.
+// Genome data and ID mapping writers stay open, plus optional seed positions.
+// The shared reserve also covers the big-genome list and summary writer.
+func indexBuildParserWorkers(opt *IndexBuildingOptions) (int, error) {
+	fixed := reservedOpenFiles + 2
+	if opt.SaveSeedPositions {
+		fixed++
+	}
+	if opt.MaxOpenFiles < fixed+2 {
+		return 0, fmt.Errorf("--max-open-files (%d) should be >= %d for index construction (including %d reserved descriptors); increase --max-open-files", opt.MaxOpenFiles, fixed+2, reservedOpenFiles)
+	}
+	return min(opt.NumCPUs, (opt.MaxOpenFiles-fixed)/2), nil
 }
 
 func loadIndexMasks(opt *IndexBuildingOptions) (*lexichash.LexicHash, error) {
@@ -298,6 +309,9 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 		if _, _, err := planIndexMergeWithOutputs(nBatches, opt.MaxOpenFiles, opt.MergeThreads, outputFiles); err != nil {
 			return err
 		}
+	}
+	if _, err := indexBuildParserWorkers(opt); err != nil {
+		return err
 	}
 
 	if opt.Verbose || opt.Log2File {
@@ -1026,8 +1040,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	extractRefName := reRefName != nil
 	filterNames := len(opt.ReSeqExclude) > 0
 
-	var wg sync.WaitGroup                 // ensure all jobs done
-	tokens := make(chan int, opt.NumCPUs) // control the max concurrency number
+	var wg sync.WaitGroup // ensure all jobs done
+	parserWorkers, err := indexBuildParserWorkers(opt)
+	checkError(err)
+	tokens := make(chan int, parserWorkers) // input handles, independent of masking concurrency
 
 	// 1.2) mask & pack sequences
 
@@ -1910,7 +1926,14 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 	chunkSize := (nMasks + chunks - 1) / opt.Chunks
 	var j, begin, end int
 	k8 := uint8(lh.K)
-	tokens = make(chan int, opt.NumCPUs)
+	// Each chunk writes seeds and its index; a final adaptive chunk also
+	// writes idx15. Parsing and genome writers have finished by this phase.
+	writerFiles := 2
+	if nbatches == 1 && opt.SeedIndex2Threshold > 0 {
+		writerFiles++
+	}
+	writerWorkers := min(opt.NumCPUs, (opt.MaxOpenFiles-reservedOpenFiles)/writerFiles)
+	tokens = make(chan int, writerWorkers)
 	chunkStats := make([]kv.Index15Stats, chunks) // independent chunk counters, read after all writers finish
 
 	for j = 0; j < chunks; j++ { // each chunk

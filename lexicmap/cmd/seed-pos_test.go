@@ -86,7 +86,7 @@ func TestSeedPosReadsRequestedBatches(t *testing.T) {
 	if err := os.Remove(filepath.Join(db, DirGenomes, batchDir(2), FileGenomes)); err != nil {
 		t.Fatal(err)
 	}
-	output := runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-d", db, "-n", "g0", "--max-open-files", "4")
+	output := runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-d", db, "-n", "g0", "--max-open-files", "11")
 	if strings.Count(string(output), "\n") != 4 {
 		t.Fatalf("lost seed positions: %s", output)
 	}
@@ -108,7 +108,7 @@ func TestSeedPosZeroDistance(t *testing.T) {
 	}
 	sequence := indexTestDNA(128)
 	wantSeqs := []string{"", "", sequence[:10], "", sequence[10:30]}
-	args := []string{"utils", "seed-pos", "--quiet", "-j", "1", "-d", db, "-n", "g0", "--max-open-files", "4"}
+	args := []string{"utils", "seed-pos", "--quiet", "-j", "1", "-d", db, "-n", "g0", "--max-open-files", "11"}
 	plain := strings.Split(strings.TrimSuffix(string(runSeedIndexCommand(t, args...)), "\n"), "\n")
 	verbose := strings.Split(strings.TrimSuffix(string(runSeedIndexCommand(t, append(args, "-v")...)), "\n"), "\n")
 	if len(plain) != len(wantSeqs)+1 || len(verbose) != len(plain) {
@@ -131,12 +131,30 @@ func TestSeedPosZeroDistance(t *testing.T) {
 func TestSeedPosPlotsWithBoundedReaders(t *testing.T) {
 	db := writeSeedPosFixture(t, 2)
 	plots := filepath.Join(t.TempDir(), "plots")
-	runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-v", "-j", "8", "-d", db, "-a", "--max-open-files", "4", "--plot-dir", plots, "--plot-ext", ".svg", "--slid-window", "40", "--slid-step", "20")
+	runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-v", "-j", "8", "-d", db, "-a", "--max-open-files", "11", "--plot-dir", plots, "--plot-ext", ".svg", "--slid-window", "40", "--slid-step", "20")
 	files, err := filepath.Glob(filepath.Join(plots, "*.svg"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(files) != 4 {
 		t.Fatalf("expected two plots per genome, got %v", files)
+	}
+}
+
+// Budget validation must precede replacement of a requested plot directory.
+func TestSeedPosRejectsInsufficientFileBudget(t *testing.T) {
+	db := writeSeedPosFixture(t, 1)
+	plots := filepath.Join(t.TempDir(), "plots")
+	if err := os.MkdirAll(plots, 0700); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := writeTestInput(t, filepath.Join(plots, "keep"), "original\n")
+	_, stderr, err := runAuditCommand(t, "", "utils", "seed-pos", "--quiet", "-d", db, "-a", "--max-open-files", "10", "--plot-dir", plots, "--force")
+	if err == nil || !strings.Contains(string(stderr), "should be >= 11") {
+		t.Fatalf("invalid budget accepted: %v, %s", err, stderr)
+	}
+	got, err := os.ReadFile(sentinel)
+	if err != nil || string(got) != "original\n" {
+		t.Fatalf("invalid budget changed plot directory: %q, %v", got, err)
 	}
 }

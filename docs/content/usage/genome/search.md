@@ -164,10 +164,12 @@ Flags:
                                          candidate genomes, shared by concurrent queries (supports
                                          K/M/G; 0 disables reuse). Other search memory is additional.
                                          (default "4G")
-      --max-open-files int               ► Index reader file budget, including 8 descriptors reserved
-                                         for other files. Seed concurrency is reduced to fit. Minimum:
-                                         seed chunks + 9 (9 with -w). Raise "ulimit -n" when needed.
-                                         (default 1024)
+      --max-open-files int               ► File budget for index and query readers, including 9
+                                         reserved descriptors. Minimum: 9 + seed chunks + genome batches
+                                         (9 + genome batches with -w). Every seed chunk and genome batch
+                                         retains at least one reader; insufficient budgets are rejected.
+                                         Query-file and index-reader concurrency are reduced to fit. Set
+                                         "ulimit -n" at least this high. (default 1024)
   -J, --max-query-conc int               ► Maximum number of concurrent queries. (default 8)
       --max-subject-genome-size int      ► Maximum size of subject genomes to be considered (in MB).
                                          (default 20)
