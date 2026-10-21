@@ -138,6 +138,12 @@ func TestResourceLimitedCommand(t *testing.T) {
 	if kind == "file-size" {
 		resource, limit = syscall.RLIMIT_FSIZE, 8
 		signal.Ignore(syscall.SIGXFSZ)
+	} else if value, ok := strings.CutPrefix(kind, "open-files="); ok {
+		var err error
+		limit, err = strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	var old syscall.Rlimit
 	if err := syscall.Getrlimit(resource, &old); err != nil {

@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -34,7 +33,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/shenwei356/bio/seq"
 	"github.com/spf13/cobra"
 )
@@ -184,20 +182,8 @@ Output format:
 		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
-		var reRefName *regexp.Regexp
-		if reRefNameStr != "" {
-			if !regexp.MustCompile(`\(.+\)`).MatchString(reRefNameStr) {
-				checkError(fmt.Errorf(`value of --ref-name-regexp must contains "(" and ")" to capture the ref name from file name`))
-			}
-			if !reIgnoreCase.MatchString(reRefNameStr) {
-				reRefNameStr = reIgnoreCaseStr + reRefNameStr
-			}
-
-			reRefName, err = regexp.Compile(reRefNameStr)
-			if err != nil {
-				checkError(errors.Wrapf(err, "failed to parse regular expression for matching sequence header: %s", reRefName))
-			}
-		}
+		reRefName, err := compileRefNameRegexp(reRefNameStr)
+		checkError(err)
 
 		windows := getFlagPositiveInt(cmd, "windows")
 		fragSize := getFlagPositiveInt(cmd, "frag-size")
@@ -825,7 +811,7 @@ func init() {
 	// genome filtering/screening
 
 	gsearchCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
+		formatFlagUsage(`Regular expression with at least one capturing group (the first is used) for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 21,
 		formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))

@@ -32,7 +32,7 @@ Overall gains are most noticeable for batch queries with "lexicmap search" when
 share of runtime. Without this limit, sequence alignment often dominates runtime.
 
 Usage:
-  lexicmap utils reindex-seeds2 [flags] 
+  lexicmap utils reindex-seeds2 [flags]
 
 Flags:
   -h, --help               help for reindex-seeds2
@@ -48,6 +48,7 @@ Flags:
                            (default "8K")
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

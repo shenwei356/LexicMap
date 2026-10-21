@@ -33,6 +33,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Include every identifier byte, sparse byte ranges, repeated IDs, and partial
@@ -293,6 +294,8 @@ func TestSeedSpillStoreErrorsReleaseSlot(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			b := newSeedMemoryBudget(24, 1)
 			b.tempDir = t.TempDir()
+			b.fileTokens = make(chan int, 3)
+			b.mergeFanIn = 2
 			s := newSeedSpillStore(b)
 			if kind == "create" {
 				b.tempDir = filepath.Join(b.tempDir, "missing")
@@ -341,6 +344,63 @@ func TestSeedSpillStoreErrorsReleaseSlot(t *testing.T) {
 			}
 			if len(b.slots) != 0 {
 				t.Fatal("failed query retained a slot")
+			}
+			if len(b.fileTokens) != 0 {
+				t.Fatal("failed query retained file reservations")
+			}
+		})
+	}
+}
+
+// Concurrent tiny shares force repeated merges while the shared file budget
+// fits only one complete merge. Every field and duplicate must survive in order.
+func TestSeedSpillFileBudgetConcurrentMerges(t *testing.T) {
+	for _, fanIn := range []int{2, 3, 16} {
+		t.Run(strconv.Itoa(fanIn), func(t *testing.T) {
+			b := newSeedMemoryBudget(4*seedAnchorBytes, 4)
+			b.tempDir = t.TempDir()
+			b.mergeFanIn = fanIn
+			b.fileTokens = make(chan int, fanIn+2)
+			b.fileTokens <- 1 // a persistent index reader shares the budget
+			var wg sync.WaitGroup
+			for range 4 {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					s := newSeedSpillStore(b)
+					defer func() {
+						if err := s.close(); err != nil {
+							t.Error(err)
+						}
+					}()
+					var want, got []seedAnchor
+					for i := range 65 {
+						a := seedAnchor{batchGenomeIndex: uint64(i % 3), qBegin: int32(i), tBegin: int32(100 - i), length: 31, qrc: i%2 == 0, trc: i%3 == 0}
+						want = append(want, a)
+						if err := s.add(a); err != nil {
+							t.Error(err)
+							return
+						}
+					}
+					if err := s.consume(func(a seedAnchor) error { got = append(got, a); return nil }); err != nil {
+						t.Error(err)
+						return
+					}
+					slices.SortStableFunc(want, compareSeedAnchorGenome)
+					if !reflect.DeepEqual(got, want) {
+						t.Error("file-budgeted merges changed anchor fields, multiplicity, or tie order")
+					}
+				}()
+			}
+			done := make(chan struct{})
+			go func() { wg.Wait(); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(10 * time.Second):
+				t.Fatal("concurrent merges deadlocked on file reservations")
+			}
+			if len(b.fileTokens) != 1 || len(b.slots) != 0 {
+				t.Fatal("file or query reservation leaked")
 			}
 		})
 	}

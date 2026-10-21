@@ -7,6 +7,7 @@ weight: 22
 ## Usage
 
 ```plain
+$ lexicmap utils genome-seqs -h
 Extract all sequences of a given genome
 
 Attention:
@@ -17,7 +18,7 @@ Attention:
      may have their sequence order rearranged relative to the original input files.
 
 Usage:
-  lexicmap utils genome-seqs [flags] 
+  lexicmap utils genome-seqs [flags]
 
 Flags:
   -h, --help              help for genome-seqs
@@ -27,6 +28,7 @@ Flags:
   -n, --ref-name string   ► Reference name.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
@@ -34,7 +36,6 @@ Global Flags:
                              with --log.
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
-
 ```
 
 ## Examples

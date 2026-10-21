@@ -17,6 +17,9 @@ Input:
       please switch on the flag -H/--no-header-row.
     - Results with --show-sseq-idx are supported. Exact sequence IDs take precedence;
       chunk/sequence prefixes are removed only when no exact ID is found.
+    - Results with --show-genome-name or --show-species-name are supported. Exact genome
+      IDs take precedence; otherwise, the name prefix is removed only if one indexed
+      genome ID matches. Ambiguous prefixes are errors (skipped with --ignore-err).
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
@@ -39,7 +42,7 @@ Attention:
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
 
 Usage:
-  lexicmap utils subseq [flags] 
+  lexicmap utils subseq [flags]
 
 Flags:
   -b, --buffer-size string     ► Size of buffer, supported unit: K, M, G. You need increase the value
@@ -68,6 +71,7 @@ Flags:
   -U, --upstream int           ► Extract extra N bp on the upstream of the aligned/specified region.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

@@ -57,15 +57,16 @@ Flags:
       --plot-ext string      ► Histogram plot file extention. (default ".png")
   -n, --ref-name strings     ► Reference name(s).
   -s, --slid-step int        ► The step size of sliding windows for counting the number of seeds
-                             (default 200)
+                             (default 100)
   -w, --slid-window int      ► The window size of sliding windows for counting the number of seeds
-                             (default 500)
+                             (default 250)
   -v, --verbose              ► Show more columns including position of the previous seed and sequence
                              between the two seeds. Warning: it's slow to extract the sequences,
                              recommend set -D 1000 or higher values to filter results
       --width float          ► Histogram width (unit: inch). (default 6)
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

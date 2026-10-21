@@ -14,6 +14,7 @@ weight: 10
 
 ```plain
 $ lexicmap index -h
+
 Generate an index from FASTA/Q sequences
 
 Input:
@@ -48,7 +49,8 @@ Input:
   9. Input files, file lists, and mask files must be outside the output directory and
      its temporary merge directory (<out-dir>.tmp).
      Single-batch builds leave that temporary directory unchanged.
-  10. The current directory and its aliases cannot be used as the output directory, even with --force.
+  10. The current directory and its aliases cannot be used as the output directory
+      or its temporary merge directory, even with --force.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -186,10 +188,10 @@ Flags:
       --partitions int                 ► Number of partitions for indexing seeds (k-mer-value data)
                                        files. The value needs to be the power of 4. (default 4096)
   -s, --rand-seed int                  ► Rand seed for generating random masks. (default 1)
-  -N, --ref-name-regexp string         ► Regular expression (must contains "(" and ")") for extracting
-                                       the reference name from the filename. Attention: use double
-                                       quotation marks for patterns containing commas, e.g., -p
-                                       '"A{2,}"'. (default
+  -N, --ref-name-regexp string         ► Regular expression with at least one capturing group (the
+                                       first is used) for extracting the reference name from the
+                                       filename. Attention: use double quotation marks for patterns
+                                       containing commas, e.g., -p '"A{2,}"'. (default
                                        "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
       --save-seed-pos                  ► Save seed positions, which can be inspected with "lexicmap
                                        utils seed-pos".
@@ -222,6 +224,7 @@ Flags:
                                        low-complexity regions will be treated as A's, and won't be seeded.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

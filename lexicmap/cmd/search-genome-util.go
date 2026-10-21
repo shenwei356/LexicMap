@@ -158,6 +158,9 @@ func (gr *GenomeReader) ReadWithQual(file string, convertNtoA bool, softMasking 
 }
 
 func (gr *GenomeReader) read(file string, convertNtoA bool, softMasking bool, readQual bool) (*GQuery, error) {
+	if err := checkRefNameRegexp(gr.reRefName); err != nil {
+		return nil, err
+	}
 	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err

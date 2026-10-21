@@ -64,6 +64,11 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	}
 	var outputs []outputPath
 	addOutput := func(path string, directory bool) error {
+		if directory {
+			if err := checkOutputDirectory(path, path); err != nil {
+				return err
+			}
+		}
 		absolute, err := filepath.Abs(path)
 		if err != nil {
 			return err
@@ -92,6 +97,15 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	if dir := flag("out-dir"); cmd.Name() == "index" && dir != "" {
 		if err := addOutput(filepath.Clean(dir)+ExtTmpDir, true); err != nil {
 			return err
+		}
+	}
+	// Remerge replaces --index and removes its temporary batches after publishing.
+	// Those batches are also inputs, so validate these directories separately.
+	if dir := flag("index"); cmd.Name() == "remerge" && dir != "" {
+		for _, path := range []string{dir, filepath.Clean(dir) + ExtTmpDir} {
+			if err := checkOutputDirectory(path, path); err != nil {
+				return err
+			}
 		}
 	}
 	if len(outputs) == 0 {

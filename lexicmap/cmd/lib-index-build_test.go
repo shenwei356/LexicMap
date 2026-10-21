@@ -393,3 +393,28 @@ func TestWriteIndexInfoAtomic(t *testing.T) {
 		t.Fatalf("temporary files remain: %v, %v", entries, err)
 	}
 }
+
+func TestBuildIndexRejectsCurrentDirectory(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	alias := filepath.Join(root, "cwd")
+	if err := os.Symlink(cwd, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".", cwd, alias} {
+		if err := BuildIndex(path, nil, &IndexBuildingOptions{}); err == nil || !strings.Contains(err.Error(), "should not be current directory") {
+			t.Fatalf("current output directory %q accepted: %v", path, err)
+		}
+	}
+	db := filepath.Join(root, "db")
+	if err := os.Symlink(cwd, db+ExtTmpDir); err != nil {
+		t.Fatal(err)
+	}
+	opt := &IndexBuildingOptions{GenomeBatchSize: 1}
+	if err := BuildIndex(db, []string{"a.fa", "b.fa"}, opt); err == nil || !strings.Contains(err.Error(), "should not be current directory") {
+		t.Fatalf("current temporary directory accepted: %v", err)
+	}
+}

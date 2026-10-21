@@ -25,12 +25,62 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 )
+
+func TestResolveSearchGenomeID(t *testing.T) {
+	a, b, literal := []uint64{1, 2}, []uint64{3}, []uint64{4}
+	refs := map[string]*[]uint64{"a:b": &a, "b": &b, "species:a:b": &literal}
+	for _, tc := range []struct {
+		name string
+		want *[]uint64
+	}{
+		{"a:b", &a}, {"species:a:b", &literal}, {"species:b", &b},
+		{"name:with:colons:b", &b},
+	} {
+		got, err := resolveSearchGenomeID(tc.name, refs)
+		if err != nil || !reflect.DeepEqual(got, tc.want) {
+			t.Fatalf("%q: got %v, %v; want %v", tc.name, got, err, tc.want)
+		}
+	}
+	for _, tc := range []struct{ name, message string }{
+		{"other:a:b", "ambiguous"}, {"absent", "not found"},
+	} {
+		if _, err := resolveSearchGenomeID(tc.name, refs); err == nil || !strings.Contains(err.Error(), tc.message) {
+			t.Fatalf("%q: expected %s, got %v", tc.name, tc.message, err)
+		}
+	}
+}
+
+func TestSubseqTaxonomicGenomeNames(t *testing.T) {
+	dir := t.TempDir()
+	dna := indexTestDNA(1000)
+	ref := writeTestInput(t, filepath.Join(dir, "a:b.fa"), ">seq\n"+dna+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "1", "--partitions", "4", "-O", db, ref)
+	tax := filepath.Join(dir, "taxdump")
+	if err := os.Mkdir(tax, 0700); err != nil {
+		t.Fatal(err)
+	}
+	writeTestInput(t, filepath.Join(tax, "nodes.dmp"), "1\t|\t1\t|\tno rank\t|\n2\t|\t1\t|\tspecies\t|\n")
+	writeTestInput(t, filepath.Join(tax, "names.dmp"), "1\t|\troot\t|\t\t|\tscientific name\t|\n2\t|\tSynthetic:species\t|\t\t|\tscientific name\t|\n")
+	writeTestInput(t, filepath.Join(tax, "taxid.map"), "a:b\t2\n")
+	for _, flag := range []string{"--show-genome-name", "--show-species-name"} {
+		result := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-n", "0", "-N", "0", "-d", db, "-T", tax, flag, ref)
+		if !strings.Contains(string(result), "\tSynthetic:species:a:b\t") {
+			t.Fatalf("missing taxonomic prefix: %s", result)
+		}
+		output, stderr, err := runAuditCommand(t, string(result), "utils", "subseq", "--quiet", "-j", "1", "-d", db, "-f", "-", "-w", "0")
+		if err != nil || !strings.HasSuffix(string(output), "\n"+dna+"\n") || strings.Count(string(output), "\n") != 2 {
+			t.Fatalf("%s: error=%v stdout=%s stderr=%s", flag, err, output, stderr)
+		}
+	}
+}
 
 func TestSubseqGenomeReadersWithoutPool(t *testing.T) {
 	dbDir := t.TempDir()

@@ -68,6 +68,12 @@ func planIndexMergeWithOutputs(nIndexes, maxOpenFiles, mergeThreads, outputFiles
 // mergeIndexes merge multiple indexes to a big one
 func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8, opt *IndexBuildingOptions, kvChunks int,
 	outdir string, paths []string, tmpDir string, round int) error {
+	// Both directories are replaced or removed by the merge lifecycle.
+	for _, dir := range []string{outdir, tmpDir} {
+		if err := checkOutputDirectory(dir, dir); err != nil {
+			return err
+		}
+	}
 	timeStart := time.Now()
 	if opt.Verbose || opt.Log2File {
 		log.Infof("  [round %d]", round)
@@ -129,6 +135,9 @@ func mergeIndexes(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 		// --------------------------------------------------------------------
 		// data structure
 
+		if err := checkOutputDirectory(outdir1, "temporary merge directory"); err != nil {
+			return err
+		}
 		// A retry may use different fan-in or adaptive-index settings. Discard
 		// this group's old outputs; all source batches remain available.
 		if err := os.RemoveAll(outdir1); err != nil {

@@ -18,7 +18,7 @@ $ lexicmap genome
 Commands for genome searching, prefilter, and comparison
 
 Usage:
-  lexicmap genome [command] 
+  lexicmap genome [command]
 
 Available Commands:
   compare     Compare genome pairs and compute ANI and AF
@@ -29,6 +29,7 @@ Flags:
   -h, --help   help for genome
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

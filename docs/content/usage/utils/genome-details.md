@@ -7,6 +7,7 @@ weight: 21
 ## Usage
 
 ```plain
+$ lexicmap utils genome-details -h
 Extract or view genome details in the index
 
 On the first run, this command will extract genome details and save them to 'genomes.details.bin'.
@@ -35,7 +36,7 @@ Output format:
   "-g/--max-genome" parameter in "lexicmap index". If a genome is not chunked, it will be treated as one chunk.
 
 Usage:
-  lexicmap utils genome-details [flags] 
+  lexicmap utils genome-details [flags] -d <index path> [-o out.tsv.gz]
 
 Flags:
   -e, --extra             ► Show extra columns, including seqsizes and seqids.
@@ -45,6 +46,7 @@ Flags:
   -i, --save-seqids       ► Extract and save sequence ids. This will increase the file size
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

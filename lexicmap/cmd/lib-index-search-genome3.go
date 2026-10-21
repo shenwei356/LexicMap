@@ -1727,6 +1727,9 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 
 // ReadGenome reads a genome from a sequence file
 func ReadGenomeFromFile(file string, reRefName *regexp.Regexp, fullPathAsRefName bool) (*GQuery, error) {
+	if err := checkRefNameRegexp(reRefName); err != nil {
+		return nil, err
+	}
 	fastxReader, err := fastx.NewDefaultReader(file)
 	if err != nil {
 		return nil, err

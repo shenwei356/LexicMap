@@ -26,7 +26,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -74,6 +73,9 @@ Attention:
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
   5. Empty genomes and genomes with no contig long enough for an alignment seed
      produce no matches; other pairs are still compared.
+  6. Index mode reserves 8 of --max-open-files for standard streams and other command
+     files (minimum: 9). Readers are opened on demand when batch pools do not fit.
+     Set "ulimit -n" at least as high as --max-open-files.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -126,20 +128,8 @@ Output format:
 		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
-		var reRefName *regexp.Regexp
-		if reRefNameStr != "" {
-			if !regexp.MustCompile(`\(.+\)`).MatchString(reRefNameStr) {
-				checkError(fmt.Errorf(`value of --ref-name-regexp must contains "(" and ")" to capture the ref name from file name`))
-			}
-			if !reIgnoreCase.MatchString(reRefNameStr) {
-				reRefNameStr = reIgnoreCaseStr + reRefNameStr
-			}
-
-			reRefName, err = regexp.Compile(reRefNameStr)
-			if err != nil {
-				checkError(errors.Wrapf(err, "failed to parse regular expression for matching sequence header: %s", reRefName))
-			}
-		}
+		reRefName, err := compileRefNameRegexp(reRefNameStr)
+		checkError(err)
 
 		orthoANI := getFlagBool(cmd, "OrthoANI")
 		cacheBudgetStr := getFlagString(cmd, "max-genome-cache-memory")
@@ -827,7 +817,7 @@ func init() {
 	// genome filtering/screening
 
 	compareCmd.Flags().StringP("ref-name-regexp", "", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
+		formatFlagUsage(`Regular expression with at least one capturing group (the first is used) for extracting the reference name from the input filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	// compareCmd.Flags().IntP("seed-min-prefix", "p", 21,
 	// 	formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))

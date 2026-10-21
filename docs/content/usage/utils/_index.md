@@ -25,11 +25,11 @@ Subcommands:
 Usage
 
 ```plain
-$ lexicmap utils
+$ lexicmap utils -h
 Some utilities
 
 Usage:
-  lexicmap utils [command] 
+  lexicmap utils [command]
 
 Available Commands:
   2blast               Convert the default search output to blast-style format
@@ -51,6 +51,7 @@ Flags:
   -h, --help   help for utils
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
@@ -58,4 +59,6 @@ Global Flags:
                              with --log.
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
                              (default 16)
+
+Use "lexicmap utils [command] --help" for more information about a command.
 ```

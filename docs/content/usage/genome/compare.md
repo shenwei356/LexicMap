@@ -38,6 +38,9 @@ Attention:
      ANI and AF can therefore differ between file and index modes in ambiguous regions.
   5. Empty genomes and genomes with no contig long enough for an alignment seed
      produce no matches; other pairs are still compared.
+  6. Index mode reserves 8 of --max-open-files for standard streams and other command
+     files (minimum: 9). Readers are opened on demand when batch pools do not fit.
+     Set "ulimit -n" at least as high as --max-open-files.
 
 Output format:
   Tab-delimited format with 11 columns. ANI values are printed with four decimal places
@@ -61,7 +64,7 @@ Output format:
     11. size2,    Size of the genome 1.
 
 Usage:
-  lexicmap genome compare [flags] 
+  lexicmap genome compare [flags]
 
 Flags:
   -O, --OrthoANI                         ► Compute OrthoANI using reciprocal best hit of fragment pairs.
@@ -105,14 +108,15 @@ Flags:
                                          (default "-")
   -P, --pair-file strings                ► Tab-delimited file(s) containing genome-ID pairs in the
                                          first two columns. Requires -d/--index; can be repeated.
-      --ref-name-regexp string           ► Regular expression (must contains "(" and ")") for
-                                         extracting the reference name from the input filename.
-                                         Attention: use double quotation marks for patterns containing
-                                         commas, e.g., -p '"A{2,}"'. (default
+      --ref-name-regexp string           ► Regular expression with at least one capturing group (the
+                                         first is used) for extracting the reference name from the input
+                                         filename. Attention: use double quotation marks for patterns
+                                         containing commas, e.g., -p '"A{2,}"'. (default
                                          "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
   -H, --skip-header-line                 ► Skip the header line in every --pair-file.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

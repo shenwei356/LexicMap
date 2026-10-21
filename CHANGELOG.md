@@ -6,8 +6,9 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 
 - **`lexicmap`**:
     - All commands log the working directory, command and arguments at startup.
-    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
     - Preserve explicit stdin input (`-`) when appending files from `--infile-list`.
+    - Reject output/log paths that alias input files, including file lists, auxiliary inputs, and index data.
+    - Reject output or temporary merge directories that alias the current directory or would overwrite an input index, before opening logs and even with `--force`.
     - Add `--force-gzip-output` to gzip-compress result output regardless of the filename, including stdout.
 - **New commands**:
     - **`lexicmap genome search`: Search genomes against an index, with ANI and AF computed**.
@@ -22,13 +23,13 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
       This caused more k-mers to be captured on the positive strand, but had a negligible effect
       on alignment sensitivity after seed deserts were filled. Only a small fraction of seeds change
       when rebuilding an index.
-      To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4.
+      *To preserve compatibility, the old algorithm is used for index formats v3.0 to v3.4*.
     - **Add `-2/--seed-index2` to write adaptive two-level seed indexes alongside the final seed files**,
       with `--seed-index2-threshold` (default `8K`, minimum `4K`) controlling the minimum block size.
       These indexes speed up prefix matching in large indexes by using longer prefixes to locate seeds within large data blocks.
       Overall gains are most noticeable for batch queries with `lexicmap search` when `-n/--top-n-genomes` limits downstream alignments,
       making seed matching a larger share of runtime. Without this limit, sequence alignment often dominates runtime.
-    - Changed the default value of `-g/--max-genome` from 15Mb to 20Mb,
+    - **Changed the default value of `-g/--max-genome` from 15Mb to 20Mb**,
       as a few genomes in RefSeq are larger than 15Mb (e.g., GCA_051525975.1).
     - Fixed data races in parallel seed computation, progress reporting, and parser shutdown.
     - Preserve batch numbering when a batch contains no valid genomes.
@@ -38,7 +39,6 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Fixed a panic when a custom mask file contained a different number of masks from `-m/--masks`.
       The mask file now determines the number of masks.
     - Keep batch merging within `--max-open-files`, including output files and reserved descriptors, by limiting input groups and merge threads. Applies to `utils remerge` as well.
-    - Reject the current directory and its aliases as the output directory, even with `--force`.
 - **`lexicmap search`**:
     - **Faster searches, especially for single queries with few matches and batch queries using `-n/--top-n-genomes`**.
         - **Parallelize anchor generation and collection from seed-matching results to reduce collector bottlenecks for high-hit queries**.
@@ -70,7 +70,6 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
 - `lexicmap utils merge-search-results`:
     - **Add `-n/--top-n-genomes` to retain genomes by their highest alignment `bitscore * pident`, including all ties at the cutoff score**. Unlike `search -n`, this filters alignment results rather than chaining scores.
     - Apply `-q/--query` when only one input file is given.
-    - Reject mixed query IDs before grouping merged rows by subject.
 - `lexicmap utils 2sam`:
     - Fix reverse-strand SEQ and CIGAR orientation, including soft clipping.
     - Fix MAPQ calculation when a later secondary alignment has a higher score.
@@ -84,28 +83,21 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Truncate genome/sequence IDs longer than 65,535 characters.
 - `lexicmap utils subseq`:
     - Fixed a hang with `-f/--search-result` when `--max-open-files` was smaller than the number of genome batches.
-    - Fix end coordinates for concatenated regions and accept search results with `--show-sseq-idx`.
     - Reject starts beyond the sequence length before decoding, while clipping oversized ends for valid starts.
 - `lexicmap utils seed-pos`:
     - Output an empty sequence for zero-distance seeds with `-v/--verbose`.
-    - Reject the current directory and its aliases as the plot directory, even with `--force`.
-    - Skip empty seed results and finish reading result fields before recycling them.
-    - Fixed data races in seed-position reader creation and error handling.
-    - Open readers on demand within `--max-open-files` and reset offsets when reusing readers.
-    - Reject plot directories that would overwrite the input index, including with `--force`.
 - `lexicmap util kmers`:
-    - Faster speed for printing all seed data (`--mask 0`).
+    - Much faster speed for printing all seed data (`--mask 0`).
 - `lexicmap utils masks`:
     - Reject out-of-range mask numbers before opening the output file.
 - `lexicmap utils reindex-seeds`:
     - Preserve each chunk's existing primary index if rebuilding it fails.
-    - Reject invalid partition counts before replacing existing seed indexes.
     - Remove obsolete `.idx15` files after successfully rebuilding their single-level seed indexes.
-    - Added progress bars to all seed chunks.
+    - Add progress bars to all seed chunks.
 - `lexicmap utils remerge`:
+    - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
     - Retain original batches until merging succeeds, allowing retries after a later merge group fails.
     - Reject log paths that alias files in temporary input batches.
-    - Add `-2/--seed-index2` and `--seed-index2-threshold` to generate adaptive seed indexes during the final merge, as in `lexicmap index`.
 
 ### v0.9.0 - 2026-03-13
 

@@ -7,6 +7,7 @@ weight: 70
 ## Usage
 
 ```plain
+$ lexicmap utils edit-genome-ids -h
 Edit genome IDs in the index via a regular expression
 
 Use cases:
@@ -29,7 +30,7 @@ Tips:
     use -i/--save-seqids again if sequence IDs are needed.
 
 Usage:
-  lexicmap utils edit-genome-ids [flags] 
+  lexicmap utils edit-genome-ids [flags]
 
 Flags:
   -h, --help                 help for edit-genome-ids
@@ -40,6 +41,7 @@ Flags:
                              quotes or use the \ escape character.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

@@ -50,6 +50,9 @@ Input:
       please switch on the flag -H/--no-header-row.
     - Results with --show-sseq-idx are supported. Exact sequence IDs take precedence;
       chunk/sequence prefixes are removed only when no exact ID is found.
+    - Results with --show-genome-name or --show-species-name are supported. Exact genome
+      IDs take precedence; otherwise, the name prefix is removed only if one indexed
+      genome ID matches. Ambiguous prefixes are errors (skipped with --ignore-err).
 
 Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
@@ -340,13 +343,13 @@ Attention:
 					}
 
 					var batchIDAndRefIDs *[]uint64
-					var ok bool
+					var lookupErr error
 					// var fileGenome string
 					var tSeq *genome.Genome
 					var genomeBatch, genomeIdx int
 					var rdr *genome.Reader
 
-					if batchIDAndRefIDs, ok = refname2idx[sgenome]; !ok {
+					if batchIDAndRefIDs, lookupErr = resolveSearchGenomeID(sgenome, refname2idx); lookupErr != nil {
 						if ignoreErr {
 							subseq := poolSubseq.Get().(*Subseq)
 							subseq.ID = n
@@ -356,7 +359,7 @@ Attention:
 							ch <- subseq
 							return
 						} else {
-							checkError(fmt.Errorf("reference name not found: %s. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sgenome))
+							checkError(lookupErr)
 						}
 					}
 
@@ -625,6 +628,31 @@ func undecorateSearchSequenceID(id string) string {
 		return id[prefix[1]:]
 	}
 	return ""
+}
+
+// resolveSearchGenomeID prefers a literal ID, including any colons. Displayed
+// taxonomic names and real IDs can both contain colons, so fallback accepts only
+// one matching suffix rather than guessing where the display prefix ends.
+func resolveSearchGenomeID(id string, refs map[string]*[]uint64) (*[]uint64, error) {
+	if ids, ok := refs[id]; ok {
+		return ids, nil
+	}
+	var match *[]uint64
+	for i := range id {
+		if id[i] != ':' {
+			continue
+		}
+		if ids, ok := refs[id[i+1:]]; ok {
+			if match != nil {
+				return nil, fmt.Errorf("ambiguous reference name: %s; multiple genome IDs match after removing a taxonomic name prefix", id)
+			}
+			match = ids
+		}
+	}
+	if match == nil {
+		return nil, fmt.Errorf("reference name not found: %s. Please switch on -e/--ignore-err if search results are merged from multiple indexes", id)
+	}
+	return match, nil
 }
 
 type subseqGenomeReaders struct {

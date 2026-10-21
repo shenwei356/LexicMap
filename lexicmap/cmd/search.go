@@ -55,32 +55,19 @@ Tips:
      including -q/--min-qcov-per-hsp, -Q/--min-qcov-per-genome, and -i/--align-min-match-pident,
      do not significantly accelerate the search speed. Hence, you can search with default
      parameters and then filter the result with tools like awk or csvtk.
-  3. For searches with -a/--all, LexicMap retains up to 1 GiB of CIGAR strings, aligned
+  3. For queries with massive seed matches in large indexes, reduce -J/--max-query-conc
+     or enable --max-seed-memory (default 0, disabled) to spill anchors to disk.
+     The budget is divided among up to -J concurrent queries and covers collection,
+     sorting, and normal chaining buffers, not total process memory.
+     Spill files use TMPDIR and are removed after chaining; queries that fit create none.
+     Top-N selection still uses chaining scores and retains cutoff ties.
+  4. For searches with -a/--all, LexicMap retains up to 1 GiB of CIGAR strings, aligned
      query/subject sequences, and alignment text in memory by default. When the global budget
      is exceeded, each affected query stores these fields in one file in the system temporary
      directory and removes it after output. Concurrent queries use separate files. On Unix,
      set TMPDIR to choose a temporary directory on a fast disk with sufficient free space.
      Use --max-align-result-memory to change the budget or set it to 0 to disable spilling.
      This limit applies only to these output fields and is not a total process memory limit.
-  4. Queries with very many seed matches in large indexes can run out of memory
-     during seed collection. Reduce -J/--max-query-conc to lower the memory used
-     by concurrent queries. --max-seed-memory enables seed spilling
-     (disabled by default) to limit anchor collection buffers.
-     The budget is divided among up to -J concurrent collection slots. Decoded seed data
-     are delivered in small batches; anchors spill as sorted runs before a buffer growth
-     would exceed its query share. Each spill writes the entire current anchor buffer,
-     then reuses it for further collection. If any spill occurred, the final in-memory
-     batch is also written to disk after collection, and the collection arrays are released.
-     All anchors are then read from disk and merged into complete-genome batches for parallel chaining.
-     Queries that never spill use in-memory anchors and create no temporary seed files.
-     Tiny shares and single-thread searches chain one genome at a time.
-     Final Top-N selection, including cutoff ties, still uses chaining scores.
-     Files use the system temporary directory (TMPDIR) and are removed after chaining.
-     The budget covers producer/collection buffers, radix workspace, and normal chaining
-     batches. It excludes a single oversized genome or the serial fallback's complete
-     anchor array, worker chaining scratch, fixed I/O buffers, candidate metadata,
-     loaded index data, and alignment memory.
-     It is not a total RSS limit.
 
 Taxonomic operations:
   1. Taxonomy data, including NCBI-format taxdump files (-T/--taxdump) and a genome-ID-to-TaxId

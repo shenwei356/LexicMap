@@ -23,8 +23,61 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 )
+
+func TestRefNameRegexpCaptureValidation(t *testing.T) {
+	for _, pattern := range []string{`(?:.*)`, `(?i:.*)`, `\(.+\)`, `[(].*[)]`, `(`} {
+		if _, err := compileRefNameRegexp(pattern); err == nil {
+			t.Errorf("accepted a regexp without a usable capture: %q", pattern)
+		}
+	}
+	for _, pattern := range []string{`(ref)`, `(?i)(ref)`, `(?P<id>ref)`, `(?:prefix)?(ref)`} {
+		re, err := compileRefNameRegexp(pattern)
+		if err != nil || !re.MatchString("REF") {
+			t.Fatalf("valid case-insensitive capture %q: %v", pattern, err)
+		}
+	}
+	if re, err := compileRefNameRegexp(""); re != nil || err != nil {
+		t.Fatalf("disabled extraction: %v, %v", re, err)
+	}
+	// Library entry points must reject the same regexp before opening inputs.
+	re := regexp.MustCompile(`(?:.*)`)
+	if _, err := ReadGenomeFromFile("missing.fa", re, false); err == nil || !strings.Contains(err.Error(), "capturing group") {
+		t.Fatalf("file reader validation: %v", err)
+	}
+	if _, err := NewGenomeReader(31, re).Read("missing.fa", false, false); err == nil || !strings.Contains(err.Error(), "capturing group") {
+		t.Fatalf("genome reader validation: %v", err)
+	}
+	if err := CheckIndexBuildingOptions(&IndexBuildingOptions{ReRefName: re}); err == nil || !strings.Contains(err.Error(), "capturing group") {
+		t.Fatalf("index option validation: %v", err)
+	}
+	if err := BuildIndex(filepath.Join(t.TempDir(), "db"), nil, &IndexBuildingOptions{ReRefName: re}); err == nil || !strings.Contains(err.Error(), "capturing group") {
+		t.Fatalf("index builder validation: %v", err)
+	}
+}
+
+func TestCommandsRejectRefNameRegexpWithoutCapture(t *testing.T) {
+	dir := t.TempDir()
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">seq\n"+indexTestDNA(1000)+"\n")
+	db := filepath.Join(dir, "db")
+	for _, args := range [][]string{
+		{"index", "-O", db, ref},
+		{"genome", "search", "-d", db, ref},
+		{"genome", "compare", ref, ref},
+	} {
+		args = append(args, "--quiet", "--ref-name-regexp", "(?:.*)")
+		out, stderr, err := runAuditCommand(t, "", args...)
+		if err == nil || !strings.Contains(string(stderr), "capturing group") || strings.Contains(string(stderr), "panic:") || len(out) != 0 {
+			t.Fatalf("%v: error=%v stdout=%s stderr=%s", args, err, out, stderr)
+		}
+	}
+	if _, err := os.Stat(db); !os.IsNotExist(err) {
+		t.Fatalf("invalid regexp created an index directory: %v", err)
+	}
+}
 
 func TestMakeOutDirRejectsCurrentDirectory(t *testing.T) {
 	cwd := t.TempDir()

@@ -21,13 +21,14 @@ Flags:
   -o, --out-file string   ► Out file, supports the ".gz" suffix ("-" for stdout). (default "-")
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
       --quiet                ► Do not print any verbose information. But you can write them to a file
                              with --log.
   -j, --threads int          ► Number of CPU cores to use. By default, it uses all available cores.
-                             (default 8)
+                             (default 16)
 ```
 
 ## Examples

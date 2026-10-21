@@ -45,6 +45,33 @@ var mapInitSize = 1 << 20 // 1M
 // the minimum k value
 var minK = 10
 
+// compileRefNameRegexp preserves case-insensitive filename matching and requires
+// the capture group used as the genome ID. Empty disables name extraction.
+func compileRefNameRegexp(pattern string) (*regexp.Regexp, error) {
+	if pattern == "" {
+		return nil, nil
+	}
+	if !reIgnoreCase.MatchString(pattern) {
+		pattern = reIgnoreCaseStr + pattern
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse --ref-name-regexp %q: %w", pattern, err)
+	}
+	if err := checkRefNameRegexp(re); err != nil {
+		return nil, err
+	}
+	return re, nil
+}
+
+// checkRefNameRegexp also guards library callers that supply a compiled regexp.
+func checkRefNameRegexp(re *regexp.Regexp) error {
+	if re != nil && re.NumSubexp() == 0 {
+		return fmt.Errorf("--ref-name-regexp must contain a capturing group for the genome ID")
+	}
+	return nil
+}
+
 // Options contains the global flags
 type Options struct {
 	NumCPUs int
@@ -93,7 +120,8 @@ func checkFileSuffix(suffix string, files ...string) {
 	}
 }
 
-func makeOutDir(outDir string, force bool, logname string, verbose bool) error {
+// checkOutputDirectory rejects cwd and its aliases before any output is opened.
+func checkOutputDirectory(outDir, logname string) error {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -123,6 +151,14 @@ func makeOutDir(outDir string, force bool, logname string, verbose bool) error {
 		return fmt.Errorf("%s should not be current directory", logname)
 	}
 
+	return nil
+}
+
+// makeOutDir prepares an output directory after validating its identity.
+func makeOutDir(outDir string, force bool, logname string, verbose bool) error {
+	if err := checkOutputDirectory(outDir, logname); err != nil {
+		return err
+	}
 	existed, err := pathutil.DirExists(outDir)
 	if err != nil {
 		return errors.Wrap(err, outDir)

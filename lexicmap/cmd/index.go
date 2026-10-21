@@ -70,7 +70,8 @@ Input:
   9. Input files, file lists, and mask files must be outside the output directory and
      its temporary merge directory (<out-dir>.tmp).
      Single-batch builds leave that temporary directory unchanged.
-  10. The current directory and its aliases cannot be used as the output directory, even with --force.
+  10. The current directory and its aliases cannot be used as the output directory
+      or its temporary merge directory, even with --force.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -268,20 +269,8 @@ Important parameters:
 		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
-		var reRefName *regexp.Regexp
-		if reRefNameStr != "" {
-			if !regexp.MustCompile(`\(.+\)`).MatchString(reRefNameStr) {
-				checkError(fmt.Errorf(`value of --ref-name-regexp must contains "(" and ")" to capture the ref name from file name`))
-			}
-			if !reIgnoreCase.MatchString(reRefNameStr) {
-				reRefNameStr = reIgnoreCaseStr + reRefNameStr
-			}
-
-			reRefName, err = regexp.Compile(reRefNameStr)
-			if err != nil {
-				checkError(errors.Wrapf(err, "failed to parse regular expression for matching sequence header: %s", reRefName))
-			}
-		}
+		reRefName, err := compileRefNameRegexp(reRefNameStr)
+		checkError(err)
 
 		reSeqNameStrs := getFlagStringSlice(cmd, "seq-name-filter")
 		reSeqNames := make([]*regexp.Regexp, 0, len(reSeqNameStrs))
@@ -532,7 +521,7 @@ func init() {
 		formatFlagUsage(`Regular expression for matching sequence files in -I/--in-dir, case ignored. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	indexCmd.Flags().StringP("ref-name-regexp", "N", `(?i)(.+)\.(f[aq](st[aq])?|fna)(\.gz|\.xz|\.zst|\.bz2)?$`,
-		formatFlagUsage(`Regular expression (must contains "(" and ")") for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
+		formatFlagUsage(`Regular expression with at least one capturing group (the first is used) for extracting the reference name from the filename. Attention: use double quotation marks for patterns containing commas, e.g., -p '"A{2,}"'.`))
 
 	indexCmd.Flags().StringSliceP("seq-name-filter", "B", []string{},
 		formatFlagUsage(`List of regular expressions for filtering out sequences by contents in FASTA/Q header/name, case ignored.`))

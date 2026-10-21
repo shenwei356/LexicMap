@@ -29,7 +29,7 @@ Attention:
      -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
 
 Usage:
-  lexicmap utils merge-search-results [flags] 
+  lexicmap utils merge-search-results [flags]
 
 Flags:
   -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
@@ -42,6 +42,7 @@ Flags:
                              all). This filters alignment results, not chaining scores.
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

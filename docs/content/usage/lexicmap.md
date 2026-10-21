@@ -15,7 +15,7 @@ Source code: https://github.com/shenwei356/LexicMap
 Please cite: https://doi.org/10.1038/s41587-025-02812-8
 
 Usage:
-  lexicmap [command] 
+  lexicmap [command]
 
 Available Commands:
   autocompletion Generate shell autocompletion scripts

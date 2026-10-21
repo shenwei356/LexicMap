@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
@@ -194,5 +195,34 @@ func TestAdaptiveIndexMergeFileBudget(t *testing.T) {
 	}
 	if _, err := os.Stat(outdir + ExtTmpDir); !os.IsNotExist(err) {
 		t.Fatalf("created batches before validating the budget: %v", err)
+	}
+}
+
+func TestMergeIndexesRejectsCurrentDirectory(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	alias := filepath.Join(root, "cwd")
+	if err := os.Symlink(cwd, alias); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".", cwd, alias} {
+		for _, dirs := range [][2]string{{path, root}, {root, path}} {
+			err := mergeIndexes(nil, 0, 0, &IndexBuildingOptions{}, 0, dirs[0], nil, dirs[1], 1)
+			if err == nil || !strings.Contains(err.Error(), "should not be current directory") {
+				t.Fatalf("current directory accepted for output=%q, temporary=%q: %v", dirs[0], dirs[1], err)
+			}
+		}
+	}
+	// A leftover merge group can itself be a symlink to cwd.
+	if err := os.Symlink(cwd, filepath.Join(root, "r1_b1")); err != nil {
+		t.Fatal(err)
+	}
+	opt := &IndexBuildingOptions{MaxOpenFiles: 32, MergeThreads: 1}
+	err = mergeIndexes(nil, 0, 0, opt, 0, filepath.Join(root, "db"), []string{"a", "b"}, root, 1)
+	if err == nil || !strings.Contains(err.Error(), "should not be current directory") {
+		t.Fatalf("current merge group directory accepted: %v", err)
 	}
 }

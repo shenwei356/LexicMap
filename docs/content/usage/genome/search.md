@@ -179,10 +179,10 @@ Flags:
   -S, --only-genome-screening            ► Only perform genome screening, no ANI computation.
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
                                          (default "-")
-      --ref-name-regexp string           ► Regular expression (must contains "(" and ")") for
-                                         extracting the reference name from the input filename.
-                                         Attention: use double quotation marks for patterns containing
-                                         commas, e.g., -p '"A{2,}"'. (default
+      --ref-name-regexp string           ► Regular expression with at least one capturing group (the
+                                         first is used) for extracting the reference name from the input
+                                         filename. Attention: use double quotation marks for patterns
+                                         containing commas, e.g., -p '"A{2,}"'. (default
                                          "(?i)(.+)\\.(f[aq](st[aq])?|fna)(\\.gz|\\.xz|\\.zst|\\.bz2)?$")
   -p, --seed-min-prefix int              ► Minimum prefix length of matched seeds in the genome
                                          filtering phase. (default 21)
@@ -212,6 +212,7 @@ Flags:
                                          screening (1 is sufficient). (default 1)
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

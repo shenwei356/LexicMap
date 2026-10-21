@@ -64,6 +64,8 @@ Original batches are retained until the final index is published, so failed
 merges can be retried. Genome data use hard links where supported; otherwise,
 retaining the batches requires extra disk space for copies.
 Log paths must not alias files in the original temporary batches.
+Neither the output index directory nor its temporary directory (<index>.tmp)
+may be the current directory or an alias of it.
 
 Use -2/--seed-index2 to write adaptive two-level seed indexes during the final
 merge, as in "lexicmap index". Set --seed-index2-threshold to the threshold used

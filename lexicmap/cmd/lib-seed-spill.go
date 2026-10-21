@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"unsafe"
 )
 
@@ -116,6 +117,9 @@ During collection, each group of 16 chronological runs at the same merge level
 is merged into one run at the next level. Inputs are deleted only after the
 new output succeeds. This keeps at most 15 runs per level and avoids retaining
 metadata for every flush. Each merge opens at most 16 readers and one writer.
+A smaller --max-open-files budget reduces this fan-in (minimum two inputs).
+All input/output files are reserved together in the index reader budget before
+a spill operation starts; competing queries wait without holding partial files.
 
 ## Readback, chaining, and global Top-N
 
@@ -188,7 +192,7 @@ const seedAnchorBytes = int64(unsafe.Sizeof(seedAnchor{}))
 // single oversized genome or the serial fallback's complete anchor array, worker
 // chaining scratch, decoding/I/O buffers, and candidate metadata. Unreachable
 // arrays may await GC, so this is not a total heap/RSS limit. The channel is shared
-// across queries; the other fields are fixed before use.
+// across queries; configuration fields are fixed before use.
 type seedMemoryBudget struct {
 	// slots is a counting semaphore: send to acquire a query share, receive to
 	// release it. Capacity is the effective number of simultaneously active stores.
@@ -199,6 +203,14 @@ type seedMemoryBudget struct {
 	// tempDir is the parent of per-query directories. Empty uses os.MkdirTemp's
 	// system default, including TMPDIR. Tests override it before creating stores.
 	tempDir string
+	// fileTokens shares the index's descriptor budget. Nil is for standalone
+	// stores without index readers. mergeFanIn is fixed before stores start.
+	fileTokens chan int
+	mergeFanIn int
+	// fileMu serializes multi-file reservations, not I/O. A merge reserves all
+	// inputs and its output together, so competing merges cannot each hold a
+	// partial reservation and wait forever for the other's descriptors.
+	fileMu sync.Mutex
 }
 
 // newSeedMemoryBudget returns nil for limit <= 0 (spilling disabled). Callers
@@ -211,7 +223,29 @@ func newSeedMemoryBudget(limit int64, queries int) *seedMemoryBudget {
 		return nil
 	}
 	queries = int(min(int64(max(queries, 1)), max(int64(1), limit/seedAnchorBytes)))
-	return &seedMemoryBudget{slots: make(chan struct{}, queries), anchorsPerQuery: int(min(limit/int64(queries)/seedAnchorBytes, int64(^uint(0)>>1)))}
+	return &seedMemoryBudget{slots: make(chan struct{}, queries), anchorsPerQuery: int(min(limit/int64(queries)/seedAnchorBytes, int64(^uint(0)>>1))), mergeFanIn: seedSpillMergeFanIn}
+}
+
+// acquireFiles reserves a whole I/O operation before it opens any files.
+// Releasing tokens never takes fileMu, so an active operation can always finish.
+func (b *seedMemoryBudget) acquireFiles(n int) {
+	if b.fileTokens == nil {
+		return
+	}
+	b.fileMu.Lock()
+	defer b.fileMu.Unlock()
+	for range n {
+		b.fileTokens <- 1
+	}
+}
+
+// releaseFiles returns a reservation only after its files have been closed.
+func (b *seedMemoryBudget) releaseFiles(n int) {
+	if b.fileTokens != nil {
+		for range n {
+			<-b.fileTokens
+		}
+	}
 }
 
 // seedSpillRun describes a temporary file sorted by packed genome identifier.
@@ -543,7 +577,7 @@ func (s *seedSpillStore) writeRun(level int, order uint64, write func(*bufio.Wri
 
 // flush stably groups the current anchors by genome, writes a level-zero run,
 // and resets the collection slice for reuse. An empty slice is a no-op.
-// It then repeatedly replaces the newest 16 equal-level runs with one higher-
+// It then repeatedly replaces a full group of equal-level runs with one higher-
 // level run. This bounds metadata to O(log(number of flushed runs)) and limits
 // each merge's open input files without reading complete runs into memory.
 func (s *seedSpillStore) flush() error {
@@ -557,6 +591,7 @@ func (s *seedSpillStore) flush() error {
 	// Stable grouping and chronological run tie breaks preserve the incoming
 	// anchor order within each genome before the existing deduplication step.
 	s.sortAnchors()
+	s.budget.acquireFiles(1)
 	run, err := s.writeRun(0, s.nextRun, func(w *bufio.Writer) error {
 		for _, a := range s.anchors {
 			if err := writeSeedSpillAnchor(w, a); err != nil {
@@ -565,6 +600,7 @@ func (s *seedSpillStore) flush() error {
 		}
 		return nil
 	})
+	s.budget.releaseFiles(1)
 	if err != nil {
 		return err
 	}
@@ -574,9 +610,9 @@ func (s *seedSpillStore) flush() error {
 	// Compact equal-level chronological runs, bounding open files and run
 	// metadata even when a very small budget creates millions of runs.
 	// A merge can complete another group at the next level, so repeat until
-	// the newest group has fewer than 16 runs or contains mixed levels.
-	for len(s.runs) >= seedSpillMergeFanIn {
-		start := len(s.runs) - seedSpillMergeFanIn
+	// the newest group is below the configured fan-in or contains mixed levels.
+	for len(s.runs) >= s.budget.mergeFanIn {
+		start := len(s.runs) - s.budget.mergeFanIn
 		group := s.runs[start:]
 		same := true
 		for _, r := range group {
@@ -604,6 +640,8 @@ func (s *seedSpillStore) flush() error {
 // replace their metadata only on success; close removes all remaining files
 // after either a merge failure or a failure to remove an input.
 func (s *seedSpillStore) combine(runs []seedSpillRun) (seedSpillRun, error) {
+	s.budget.acquireFiles(len(runs) + 1)
+	defer s.budget.releaseFiles(len(runs) + 1)
 	level := 0
 	for _, r := range runs {
 		level = max(level, r.level+1)
@@ -660,17 +698,19 @@ func (s *seedSpillStore) consume(emit func(seedAnchor) error) (err error) {
 	s.anchors = nil
 	s.sortScratch = nil
 	// Collection can leave mixed levels. Combine chronological prefixes until
-	// the final merge can open every remaining input within the 16-reader limit.
-	for len(s.runs) > seedSpillMergeFanIn {
-		run, err := s.combine(s.runs[:seedSpillMergeFanIn])
+	// the final merge fits the configured reader limit (at most 16).
+	for len(s.runs) > s.budget.mergeFanIn {
+		run, err := s.combine(s.runs[:s.budget.mergeFanIn])
 		if err != nil {
 			return err
 		}
-		tail := slices.Clone(s.runs[seedSpillMergeFanIn:])
+		tail := slices.Clone(s.runs[s.budget.mergeFanIn:])
 		clear(s.runs)
 		s.runs = append(s.runs[:0], run)
 		s.runs = append(s.runs, tail...)
 	}
+	s.budget.acquireFiles(len(s.runs))
+	defer s.budget.releaseFiles(len(s.runs))
 	return s.mergeRuns(s.runs, emit)
 }
 

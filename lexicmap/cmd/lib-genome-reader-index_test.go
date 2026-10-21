@@ -156,6 +156,40 @@ func TestSearchSeedFileBudget(t *testing.T) {
 	}
 }
 
+func TestGenomeComparatorFileBudget(t *testing.T) {
+	db := writeDetailsFixture(t, 2)
+	for _, budget := range []int{8, 9, 10, 16} {
+		opt := DefaultIndexSearchingOptions
+		opt.MaxOpenFiles, opt.NumCPUs = budget, 4
+		idx, err := NewGenomeComparator(db, &opt)
+		if budget == 8 {
+			if err == nil {
+				idx.Close()
+				t.Fatal("accepted a budget without room for a genome reader")
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cap(idx.openFileTokens) != budget-searchReservedFiles || idx.hasGenomeRdrs != (budget >= 10) {
+			t.Fatalf("budget %d: incorrect process allowance or reader pool", budget)
+		}
+		ids := []uint64{0, 1 << BITS_GENOME_IDX}
+		q, err := idx.ReadGenome(&ids, "fixture")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q == nil || q.genomeSize == 0 {
+			t.Fatal("bounded readers lost sequences")
+		}
+		RecycleGQuery(q)
+		if err := idx.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // buildMultiBatchSearchFixture builds four chunks from deterministic temporary data.
 func buildMultiBatchSearchFixture(t *testing.T) (string, string) {
 	t.Helper()

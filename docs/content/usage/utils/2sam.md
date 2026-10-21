@@ -31,7 +31,7 @@ Output:
    - Records are unpaired, with RNEXT=*, PNEXT=0, and TLEN=0.
 
 Usage:
-  lexicmap utils 2sam [flags] 
+  lexicmap utils 2sam [flags]
 
 Flags:
   -b, --buffer-size string      ► Size of buffer, supported unit: K, M, G. You need increase the value
@@ -44,6 +44,7 @@ Flags:
   -s, --separater string        ► Separater between sgenome and sseqid (default "~")
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.

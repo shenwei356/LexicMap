@@ -127,9 +127,12 @@ func TestCommandOutputCurrentDirectory(t *testing.T) {
 	writeTestInput(t, filepath.Join(inputs, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")
 	db := writeSeedPosFixture(t, 1)
 
-	for _, commandKind := range []string{"index", "plot"} {
+	for _, commandKind := range []string{"index", "plot", "remerge"} {
 		for _, pathKind := range []string{"dot", "dot-slash", "absolute", "normalized-relative", "symlink"} {
 			for _, force := range []bool{false, true} {
+				if commandKind == "remerge" && force {
+					continue // remerge has no --force flag.
+				}
 				forceName := "without-force"
 				if force {
 					forceName = "with-force"
@@ -162,9 +165,13 @@ func TestCommandOutputCurrentDirectory(t *testing.T) {
 					var args []string
 					if commandKind == "index" {
 						args = []string{"index", "--quiet", "-j", "1", "-m", "64", "-k", "16", "--partitions", "4", "-I", inputs, "-O", outDir}
+					} else if commandKind == "remerge" {
+						args = []string{"utils", "remerge", "--quiet", "-d", outDir}
 					} else {
 						args = []string{"utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", outDir, "--plot-ext", ".svg"}
 					}
+					// Directory validation must run before an existing log can be truncated.
+					args = append(args, "--log", sentinel)
 					if force {
 						args = append(args, "--force")
 					}
@@ -457,5 +464,49 @@ func TestSeedPosPlotDirectoryPreservesIndex(t *testing.T) {
 				t.Fatalf("input index changed: %v %q", err, got)
 			}
 		})
+	}
+}
+
+// Temporary directories are output targets too, including remerge's input batches.
+func TestCommandTemporaryDirectoryCurrentDirectory(t *testing.T) {
+	for _, kind := range []string{"index", "remerge"} {
+		for _, alias := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/symlink=%t", kind, alias), func(t *testing.T) {
+				root := t.TempDir()
+				db := filepath.Join(root, "db")
+				cwd := db + ExtTmpDir
+				if alias {
+					cwd = filepath.Join(root, "work")
+				}
+				if err := os.Mkdir(cwd, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if alias {
+					if err := os.Symlink(cwd, db+ExtTmpDir); err != nil {
+						t.Fatal(err)
+					}
+				}
+				sentinel := writeTestInput(t, filepath.Join(cwd, "sentinel"), "preserve")
+				args := []string{"utils", "remerge", "-d", db}
+				if kind == "index" {
+					ref := writeTestInput(t, filepath.Join(root, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")
+					args = []string{"index", "-O", db, "--force", "-b", "1", ref, ref}
+				}
+				args = append(args, "--quiet", "--log", sentinel)
+				command := exec.Command(os.Args[0], append([]string{"-test.run=^TestSeedIndexCommand$", "--"}, args...)...)
+				command.Dir = cwd
+				command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1")
+				output, err := command.CombinedOutput()
+				if err == nil || !bytes.Contains(output, []byte("should not be current directory")) {
+					t.Fatalf("current temporary directory accepted: %v\n%s", err, output)
+				}
+				if got, err := os.ReadFile(sentinel); err != nil || string(got) != "preserve" {
+					t.Fatalf("sentinel changed: %q, %v", got, err)
+				}
+				if _, err := os.Stat(db); !os.IsNotExist(err) {
+					t.Fatalf("output index created before validation: %v", err)
+				}
+			})
+		}
 	}
 }

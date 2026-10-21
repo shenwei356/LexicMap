@@ -162,6 +162,9 @@ type IndexBuildingOptions struct {
 
 // CheckIndexBuildingOptions checks some important options
 func CheckIndexBuildingOptions(opt *IndexBuildingOptions) error {
+	if err := checkRefNameRegexp(opt.ReRefName); err != nil {
+		return err
+	}
 	if opt.K < minK || opt.K > 32 {
 		return fmt.Errorf("invalid k value: %d, valid range: [%d, 32]", opt.K, minK)
 	}
@@ -262,6 +265,14 @@ func packGenomeIndex(batch int, record uint64) (uint64, error) {
 
 // BuildIndex builds index from a list of input files
 func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) error {
+	// Library callers must receive the same directory protection as CLI users.
+	if err := checkOutputDirectory(outdir, "output directory"); err != nil {
+		return err
+	}
+	// Direct callers may bypass CLI validation; extraction requires capture 1.
+	if err := checkRefNameRegexp(opt.ReRefName); err != nil {
+		return err
+	}
 	// they are already checked.
 	//
 	// check options
@@ -277,6 +288,9 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	}
 	// Reject insufficient merge budgets before allocating masks or building batches.
 	if nBatches > 1 {
+		if err := checkOutputDirectory(filepath.Clean(outdir)+ExtTmpDir, "temporary directory"); err != nil {
+			return err
+		}
 		outputFiles := 2 // final chunks have a seeds file and a primary index
 		if opt.SeedIndex2Threshold > 0 {
 			outputFiles++ // the final merge also writes the secondary index

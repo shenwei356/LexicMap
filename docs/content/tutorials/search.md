@@ -210,6 +210,9 @@ How to:
         Notes:
         - No temporary seed files are created when the query fits in its collection buffer.
         So you can set a large value for `--max-seed-memory`, such as 1/2 to 3/4 of the available free RAM, just in case.
+        - Spill files share `--max-open-files` with index readers. Smaller file budgets reduce
+          merge width and concurrent spill I/O. The minimum is 12 plus the number of seed chunks,
+          or 12 with `-w/--load-whole-seeds`; set `ulimit -n` at least as high as `--max-open-files`.
         - Choose a disk-backed `TMPDIR`; a tmpfs directory still stores temporary files in RAM. Temporary files are removed after chaining and on returned errors.
         - The budget is divided among up to `-J/--max-query-conc` concurrent collection slots. With multiple queries, a query can spill even when other query slots are idle; use `-J 1` to give a single query the whole budget.
         - Global Top-N selection remains based on chaining scores and retains cutoff ties; alignment, genome-chunk merging, filtering, and final sorting follow the existing path.

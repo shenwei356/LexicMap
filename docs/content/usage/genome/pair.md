@@ -24,7 +24,7 @@ Output format:
 
 Limitations:
   1. Not suitable for very large genome sets (e.g., > 1 million genomes) due to memory constraints.
-  2. Genome sets with many highly similar genomes may result in a large number of genome pairs, 
+  2. Genome sets with many highly similar genomes may result in a large number of genome pairs,
      which can require substantial time and memory.
   3. Genomes stored in multiple chunks are not evaluated as a whole.
 
@@ -91,6 +91,7 @@ Flags:
                                   0 disables pruning and computes exact pair statistics). (default 0.001)
 
 Global Flags:
+      --force-gzip-output    ► Gzip-compress result output regardless of the filename, including stdout.
   -X, --infile-list string   ► File of input file list (one file per line). If given, they are
                              appended to files from CLI arguments.
       --log string           ► Log file.
