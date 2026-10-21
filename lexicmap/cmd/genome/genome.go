@@ -665,7 +665,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	}
 	// Reject starts outside the sequence before clipping the end or decoding padding.
 	if start >= nBases {
-		return nil, fmt.Errorf("start (%d) out of range: [0, %d]", start, nBases-1)
+		return nil, fmt.Errorf("start (%d) out of range: [0, %d] (0-based)", start, nBases-1)
 	}
 	if end >= nBases-1 {
 		end = nBases - 1
@@ -887,7 +887,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 	// Extraction errors also release a caller-transferred genome.
 	if start >= nBases {
 		RecycleGenome(g)
-		return nil, fmt.Errorf("start (%d) out of range: [0, %d]", start, nBases-1)
+		return nil, fmt.Errorf("start (%d) out of range: [0, %d] (0-based)", start, nBases-1)
 	}
 	if end >= nBases-1 {
 		end = nBases - 1
@@ -1194,7 +1194,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	// Validate against the target contig, not the concatenated genome length.
 	if max(start0, 0) >= seqLen {
 		RecycleGenome(g)
-		return nil, -1, fmt.Errorf("start (%d) out of range: [0, %d]", start0, seqLen-1)
+		return nil, -1, fmt.Errorf("start (%d) out of range: [0, %d] (0-based)", start0, seqLen-1)
 	}
 
 	// start of byte, 8 is #bytes+#bases
