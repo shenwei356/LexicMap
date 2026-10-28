@@ -835,11 +835,11 @@ func init() {
 		formatFlagUsage(`Maximum size of genomes to be considered (in MB) when reading genome from an index.`))
 
 	// alignment
-	compareCmd.Flags().IntP("align-max-gap", "", 100,
+	compareCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	compareCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
-	compareCmd.Flags().IntP("align-min-match-len", "l", 30,
+	compareCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
 	// general filtering thresholds

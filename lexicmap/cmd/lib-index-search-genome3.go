@@ -649,7 +649,8 @@ func alignVotedWindow(
 	if err != nil {
 		return 0, 0, 0, 0, 0, false
 	}
-	cigar, err := algn.Align(qseq, tseq)
+	// cigar, err := algn.Align(qseq, tseq)
+	cigar, err := alignWithRepeatRefinement(algn, qseq, tseq, int(idx.seqCompareOption.K), qLen, 0, *fScoreAndEvalue)
 	if err != nil {
 		return 0, 0, 0, 0, 0, false
 	}
@@ -784,7 +785,8 @@ func alignChain(
 			continue
 		}
 
-		cigar, alignErr := algn.Align(_qseq, _tseq)
+		// cigar, alignErr := algn.Align(_qseq, _tseq)
+		cigar, alignErr := alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), qLen, 0, *fScoreAndEvalue)
 		if alignErr != nil {
 			continue
 		}
@@ -1608,7 +1610,8 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 			return fmt.Errorf("fail to extend aligned region: %s", err)
 		}
 
-		cigar, err := algn.Align(_qseq, _tseq)
+		// cigar, err := algn.Align(_qseq, _tseq)
+		cigar, err := alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, minQcovHSP, fScoreAndEvalue)
 		if err != nil {
 			RecycleSeqComparatorResult(cr)
 			return fmt.Errorf("fail to align sequences: %s", err)

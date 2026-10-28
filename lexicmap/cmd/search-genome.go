@@ -857,11 +857,11 @@ func init() {
 	// gsearchCmd.Flags().IntP("seed-in-desert-dist", "", 25,
 	// 	formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
-	gsearchCmd.Flags().IntP("align-max-gap", "", 100,
+	gsearchCmd.Flags().IntP("align-max-gap", "", 20,
 		formatFlagUsage(`Maximum gap in a HSP segment.`))
 	gsearchCmd.Flags().IntP("align-band", "", 100,
 		formatFlagUsage(`Band size in backtracking the score matrix (pseudo alignment phase).`))
-	gsearchCmd.Flags().IntP("align-min-match-len", "l", 30,
+	gsearchCmd.Flags().IntP("align-min-match-len", "l", 50,
 		formatFlagUsage(`Minimum aligned length in a HSP segment.`))
 
 	// general filtering thresholds

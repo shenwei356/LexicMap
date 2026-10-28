@@ -2,8 +2,11 @@
 
 ### v0.10.1 - 2026-xx-xx
 
-- **lexicmap genome search/compare**:
-    - fix alignment hangs for a pair of sequence with highly repeatedly fragments.
+- **`lexicmap search, genome search/compare`**:
+    - Correct repeat-shifted alignment windows without changing chaining scores or gap penalties.
+- **`lexicmap genome search/compare`**:
+    - Fix alignment hangs for a pair of sequence with highly repeatedly fragments.
+    - Use the same default values of --align-max-gap and --align-min-match-len as those in `lexicmap search`.
 
 ### v0.10.0 - 2026-10-21
 

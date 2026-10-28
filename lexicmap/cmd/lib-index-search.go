@@ -2467,7 +2467,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 								}
 
 								// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-								cigar, err = algn.Align(_qseq, _tseq)
+								// cigar, err = algn.Align(_qseq, _tseq)
+								cigar, err = alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), fScoreAndEvalue)
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
@@ -2717,7 +2718,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						}
 
 						// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
-						cigar, err = algn.Align(_qseq, _tseq)
+						// cigar, err = algn.Align(_qseq, _tseq)
+						cigar, err = alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), fScoreAndEvalue)
 						if err != nil {
 							checkError(fmt.Errorf("fail to align sequence"))
 						}

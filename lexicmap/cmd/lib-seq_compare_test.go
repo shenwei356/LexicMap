@@ -21,7 +21,9 @@
 package cmd
 
 import (
+	"fmt"
 	"math/rand"
+	"reflect"
 
 	"github.com/shenwei356/wfa"
 	"sync"
@@ -183,5 +185,133 @@ func TestAlignChainUsesBestPseudoChain(t *testing.T) {
 		&subjectSketch{seqLen: len(s)}, algn, cpr, 0, 50, 70, 30, idx, &score)
 	if !ok || matched < 750 || aligned < 750 || identity < 99 {
 		t.Fatalf("best chain was not aligned: matched=%d aligned=%d identity=%g ok=%v", matched, aligned, identity, ok)
+	}
+}
+
+// TestAlignChainRepeatWindow exercises the production pseudo-alignment and
+// global-WFA path, including aligner/result reuse on a second invocation.
+func TestAlignChainRepeatWindow(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, maxGap := range []int{20, 100} {
+			t.Run(fmt.Sprintf("reverse=%t/maxGap=%d", reverse, maxGap), func(t *testing.T) {
+				idx := compareTestIndex(t)
+				opt := *idx.seqCompareOption
+				opt.Chaining2Options.MaxGap = maxGap
+				cpr := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} { return NewChainer2(&opt.Chaining2Options) }})
+				defer cpr.RecycleIndex()
+				q, target := []byte(repeatWindowQuery), []byte(repeatWindowTarget)
+				qb, qe := 45, 399
+				if reverse {
+					RC(q)
+					RC(target)
+					qb, qe = len(q)-qe, len(q)-qb
+				}
+				// Poor-quality clipped ends must not enter the region's correction.
+				qual := make([]byte, len(q))
+				for i := range qual {
+					qual[i] = 33
+					if i >= qb && i < qe {
+						qual[i] = 73
+					}
+				}
+				if err := cpr.Index(q); err != nil {
+					t.Fatal(err)
+				}
+				algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+				algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+				defer wfa.RecycleAligner(algn)
+				score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+				for trial := 0; trial < 2; trial++ {
+					matched, aligned, gaps, identity, adjusted, ok := alignChain(q, qual, target,
+						&Chain2Result{QBegin: 0, QEnd: len(q) - 1, TBegin: 0, TEnd: len(target) - 1},
+						&subjectSketch{seqLen: len(target)}, algn, cpr, 0, 100, 70, 30, idx, &score)
+					if adjusted != adjustPIdentByQual(identity, qual[qb:qe]) {
+						t.Fatal("quality correction used the clipped query flanks")
+					}
+					if !ok || matched != 344 || aligned != 354 || gaps != 0 {
+						t.Fatalf("trial %d: matched=%d aligned=%d gaps=%d ok=%t; want 344/354 without gaps", trial, matched, aligned, gaps, ok)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestSeqCompareDefaultGapBoundary compares refinement with ordinary WFA on
+// windows produced by the real pseudo-alignment path at MaxGap=20. Gaps above
+// that anchor-transition limit may split chains; do not require a single HSP.
+func TestSeqCompareDefaultGapBoundary(t *testing.T) {
+	seenTwenty := make(map[string]bool)
+	for _, repeated := range []bool{false, true} {
+		base := []byte(indexTestDNA(1200))
+		if repeated {
+			for i := 400; i < 800; i++ {
+				base[i] = "ACGT"[i%4]
+			}
+		}
+		for _, size := range []int{1, 10, 11, 19, 20, 21, 25, 30, 50, 100} {
+			insertion := []byte(indexTestDNA(size))
+			query := append([]byte(nil), base[:600]...)
+			query = append(query, insertion...)
+			query = append(query, base[600:]...)
+			for _, swap := range []bool{false, true} {
+				for _, reverse := range []bool{false, true} {
+					name := fmt.Sprintf("repeat=%t/gap=%d/swap=%t/reverse=%t", repeated, size, swap, reverse)
+					t.Run(name, func(t *testing.T) {
+						q, target := append([]byte(nil), query...), append([]byte(nil), base...)
+						if swap {
+							q, target = target, q
+						}
+						if reverse {
+							RC(q)
+							RC(target)
+						}
+						opt := SeqComparatorOptions{K: 31, MinPrefix: 11, Chaining2Options: Chaining2Options{
+							MaxGap: 20, MinScore: 35, MinAlignLen: 50, MinIdentity: 70, BandBase: 100, BandCount: 50, HeuristicKmerPidentThreshold: 15}, MinIdentity: 70}
+						cpr := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} { return NewChainer2(&opt.Chaining2Options) }})
+						if e := cpr.Index(q); e != nil {
+							t.Fatal(e)
+						}
+						defer cpr.RecycleIndex()
+						cr, e := cpr.Compare(0, uint32(len(q)-1), target, len(q))
+						if e != nil || cr == nil {
+							t.Fatalf("missing pseudoalignment: %v", e)
+						}
+						defer RecycleSeqComparatorResult(cr)
+						algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+						algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+						defer wfa.RecycleAligner(algn)
+						score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+						for _, chain := range *cr.Chains {
+							a, b, _, _, _, _, e := extendMatch(q, target, chain.QBegin, chain.QEnd+1, chain.TBegin, chain.TEnd+1, 50, chain.TBegin, len(target)-1-chain.TEnd, false)
+							if e != nil {
+								t.Fatal(e)
+							}
+							before, e := algn.Align(a, b)
+							if e != nil {
+								t.Fatal(e)
+							}
+							after, e := alignWithRepeatRefinement(algn, a, b, 31, len(q), 0, score)
+							if e != nil {
+								wfa.RecycleAlignmentResult(before)
+								t.Fatal(e)
+							}
+							same := reflect.DeepEqual(before, after)
+							if !repeated && size == 20 && before.Gaps == 20 {
+								seenTwenty[fmt.Sprintf("swap=%t/reverse=%t", swap, reverse)] = true
+							}
+							wfa.RecycleAlignmentResult(before)
+							wfa.RecycleAlignmentResult(after)
+							if !same {
+								t.Fatal("refinement changed an alignment at the default chaining gap limit")
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+	if len(seenTwenty) != 4 {
+		t.Fatalf("20-base internal gaps were not exercised in all orientations: %v", seenTwenty)
 	}
 }

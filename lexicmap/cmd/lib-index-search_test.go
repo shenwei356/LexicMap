@@ -198,3 +198,80 @@ func TestSearchCrossContigCoordinates(t *testing.T) {
 		}
 	}
 }
+
+// TestSearchRepeatRefinement checks forward/reverse contig coordinates, CIGAR
+// text, and coverage fallback through the ordinary search command.
+func TestSearchRepeatRefinement(t *testing.T) {
+	dir := t.TempDir()
+	rc := []byte(repeatWindowTarget)
+	RC(rc)
+	ref := writeTestInput(t, filepath.Join(dir, "repeat.fa"), ">forward\n"+repeatWindowTarget+"\n>reverse\n"+string(rc)+"\n")
+	rcq := []byte(repeatWindowQuery)
+	RC(rcq)
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">query\n"+repeatWindowQuery+"\n>rc-query\n"+string(rcq)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, coverage := range []struct{ hsp, genome, gap string }{{"0", "0", "20"}, {"0", "0", "100"}, {"90", "0", "100"}, {"0", "90", "100"}} {
+		output := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", "-Q", coverage.genome, "-q", coverage.hsp, "-a", "--align-max-gap", coverage.gap, query)
+		reader := csv.NewReader(strings.NewReader(string(output)))
+		reader.Comma = '\t'
+		rows, err := reader.ReadAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := map[string]bool{}
+		for _, row := range rows[1:] {
+			number := func(i int) int {
+				n, e := strconv.Atoi(row[i])
+				if e != nil {
+					t.Fatal(e)
+				}
+				return n
+			}
+			qs, qe, ss, se := number(12), number(13), number(14), number(15)
+			querySeq := repeatWindowQuery
+			wantBegin, wantEnd, wantCIGAR := 46, 399, "5M3X17M2X7M2X2M3X313M"
+			if row[0] == "rc-query" {
+				querySeq = string(rcq)
+				wantBegin, wantEnd, wantCIGAR = 19, 372, "313M3X2M2X7M2X17M3X5M"
+			}
+			target := repeatWindowTarget
+			if row[4] == "reverse" {
+				target = string(rc)
+			}
+			subject := []byte(target[ss-1 : se])
+			if row[16] == "-" {
+				RC(subject)
+			}
+			if strings.ReplaceAll(row[21], "-", "") != querySeq[qs-1:qe] || strings.ReplaceAll(row[22], "-", "") != string(subject) {
+				t.Fatalf("inconsistent sequence/coordinates: %v", row)
+			}
+			if ss != 1 || se != 354 {
+				continue
+			}
+			if coverage.hsp == "0" && coverage.genome == "0" && qs == wantBegin && qe == wantEnd && number(9) == 354 && number(11) == 0 {
+				if row[20] != wantCIGAR {
+					t.Fatalf("wrong refined CIGAR: %s", row[20])
+				}
+				seen[row[0]+"/"+row[4]] = true
+			}
+			if coverage.hsp == "90" || coverage.genome == "90" {
+				// The existing pseudo-alignment already clips the reversed query
+				// below 90% coverage; the new refinement must not change filtering.
+				if row[0] == "rc-query" {
+					t.Fatal("reverse query unexpectedly passed the existing coverage filter")
+				}
+				if qs == 1 && qe == 399 && number(9) == 408 && number(11) == 63 {
+					seen[row[0]+"/"+row[4]] = true
+				}
+			}
+		}
+		wantHits := 4
+		if coverage.hsp == "90" || coverage.genome == "90" {
+			wantHits = 2
+		}
+		if len(seen) != wantHits {
+			t.Fatalf("coverage=%+v: missing expected results: %s", coverage, output)
+		}
+	}
+}

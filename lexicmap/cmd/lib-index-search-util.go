@@ -243,6 +243,117 @@ func trimOps(ops []uint64) []uint64 {
 	return ops[start : end+1]
 }
 
+// alignWithRepeatRefinement retains global WFA unless one ungapped window on
+// the longest exact-match diagonal improves alignment reward.
+// The window must cover the entire shorter input, with flanks on both ends of
+// the longer input, without losing aligned pairs or identity. This is a narrow
+// repeat-copy correction, not a new gap penalty.
+// minQcov protects query-span filters; callers using aligned pairs for coverage
+// pass zero because that count cannot decrease. All callers score matches and
+// mismatches as +2/-3, including the inexpensive ungapped prefilter below.
+func alignWithRepeatRefinement(algn *wfa.Aligner, q, t []byte, minExact, queryLen int, minQcov float64,
+	score func(int, *wfa.AlignmentResult) (int, int, float64),
+) (*wfa.AlignmentResult, error) {
+	original, err := algn.Align(q, t)
+	if err != nil || original == nil || original.Gaps == 0 || len(q) == len(t) {
+		return original, err
+	}
+
+	// Keep the first longest run on ties. WFA D/H consume query bases; I
+	// consumes target bases. Positions include terminal operations.
+	var qi, ti, longest, diagonal int
+	for _, packed := range original.Ops {
+		op, count := wfa.Op(packed)
+		n := int(count)
+		switch op {
+		case 'M':
+			if n > longest {
+				longest, diagonal = n, qi-ti
+			}
+			qi, ti = qi+n, ti+n
+		case 'X':
+			qi, ti = qi+n, ti+n
+		case 'D', 'H':
+			qi += n
+		case 'I':
+			ti += n
+		}
+	}
+	if longest < minExact || diagonal == 0 {
+		return original, nil
+	}
+
+	// Example: a run at Q[203:399]/T[158:354] gives Q-T=45.
+	// Q: [45 bases][       354-base candidate       ][18 bases]
+	// T:           [       entire 354-base input    ]
+	qb, tb := max(diagonal, 0), max(-diagonal, 0)
+	if qb >= len(q) || tb >= len(t) {
+		return original, nil
+	}
+	n := min(len(q)-qb, len(t)-tb)
+	// Reject a one-sided crop: reversing both inputs maps it to the excluded
+	// zero diagonal. This also avoids trading a short terminal indel for a
+	// mismatch simply by clipping a few bases from the longer input.
+	if n != min(len(q), len(t)) || (qb+n == len(q) && tb+n == len(t)) ||
+		q[qb] != t[tb] || q[qb+n-1] != t[tb+n-1] ||
+		float64(n)/float64(queryLen)*100 < minQcov {
+		return original, nil
+	}
+	matches := 0
+	for i, base := range q[qb : qb+n] {
+		if base == t[tb+i] { // Match WFA's raw-byte comparison, including ambiguous bases.
+			matches++
+		}
+	}
+	// Compare paired bases and identity rather than requiring more matches:
+	// a repeat-shifted path can gain matches by traversing extra gap columns,
+	// and adaptive WFA may choose that path in only one sequence orientation.
+	if n < int(original.AlignLen-original.Gaps) ||
+		uint64(matches)*uint64(original.AlignLen) < uint64(original.Matches)*uint64(n) {
+		return original, nil
+	}
+	oldScore, _, _ := score(len(q), original)
+	if 2*matches-3*(n-matches) <= oldScore {
+		return original, nil
+	}
+
+	// At most one extra WFA call, with the same penalties and adaptive setting.
+	// Retain the old result on failure or if WFA chooses a gapped/clipped path.
+	candidate, err := algn.Align(q[qb:qb+n], t[tb:tb+n])
+	if err != nil {
+		wfa.RecycleAlignmentResult(candidate)
+		return original, nil
+	}
+	newScore, _, _ := score(len(q), candidate) // Keep the original E-value query length.
+	if candidate.Gaps != 0 || candidate.Matches != uint32(matches) || candidate.AlignLen != uint32(n) ||
+		candidate.QBegin != 1 || candidate.QEnd != n || candidate.TBegin != 1 || candidate.TEnd != n ||
+		newScore <= oldScore {
+		wfa.RecycleAlignmentResult(candidate)
+		return original, nil
+	}
+
+	// Restore input-relative coordinates and represent discarded ends with
+	// WFA's free-end convention: H consumes query, I consumes target. Stats and
+	// WFA cost still describe the verified window, excluding this free clipping.
+	// This keeps both trimmed and full AlignmentText consistent with q and t.
+	leading, trailing, clip := qb, len(q)-qb-n, wfa.OpH
+	if len(t) > len(q) {
+		leading, trailing, clip = tb, len(t)-tb-n, wfa.OpI
+	}
+	if leading > 0 {
+		candidate.Ops = append(candidate.Ops, 0)
+		copy(candidate.Ops[1:], candidate.Ops[:len(candidate.Ops)-1])
+		candidate.Ops[0] = clip<<32 | uint64(leading)
+	}
+	if trailing > 0 {
+		candidate.Ops = append(candidate.Ops, clip<<32|uint64(trailing))
+	}
+	candidate.QBegin, candidate.QEnd = candidate.QBegin+qb, candidate.QEnd+qb
+	candidate.TBegin, candidate.TEnd = candidate.TBegin+tb, candidate.TEnd+tb
+	wfa.RecycleAlignmentResult(original)
+	return candidate, nil
+}
+
 func scoreAndEvalue(match, mismatch, gapOpen, gapExt int, totalBase int, lambda, k float64) func(qlen int, cigar *wfa.AlignmentResult) (int, int, float64) {
 	// var Kn float64 = float64(k) * float64(totalBase)
 	lnK := math.Log(k)
