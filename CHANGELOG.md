@@ -1,5 +1,10 @@
 # Changelog
 
+### v0.10.1 - 2026-xx-xx
+
+- **lexicmap genome search/compare**:
+    - fix alignment hangs for a pair of sequence with highly repeatedly fragments.
+
 ### v0.10.0 - 2026-10-21
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
