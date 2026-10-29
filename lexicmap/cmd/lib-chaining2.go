@@ -29,7 +29,7 @@ import (
 // Chaining2Options contains all options in chaining.
 type Chaining2Options struct {
 	MaxGap      int
-	MinScore    int // minimum score of a chain
+	MinScore    int // default for Chain; SeqComparator supplies a per-call score
 	MinAlignLen int
 	MinIdentity float64
 	MaxDistance int
@@ -39,10 +39,10 @@ type Chaining2Options struct {
 	HeuristicKmerPidentThreshold float64 // for filtering less similar chaining results
 }
 
-// DefaultChaining2Options is the defalt vaule of Chaining2Option.
+// DefaultChaining2Options contains the default options for Chainer2.
 var DefaultChaining2Options = Chaining2Options{
 	MaxGap:      50,
-	MinScore:    50,
+	MinScore:    2 * int(defaultSeqComparatorMinPrefix),
 	MinAlignLen: 50,
 
 	MaxDistance: 100,
@@ -184,34 +184,37 @@ func (r *Chain2Result) Reset() {
 //  6. TBegin.
 //  7. TEnd.
 func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
+	return ce.chainWithMinScore(subs, ce.options.MinScore)
+}
+
+// chainWithMinScore uses a per-call threshold without changing shared options
+// or leaving a score override in the pooled chainer.
+func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 
-	if n == 1 { // for one seed, just check the seed weight
-
+	if n == 1 {
+		// A lone anchor can extend into a longer alignment. Leave its final
+		// length and identity checks to the base-level alignment caller.
 		sub := (*subs)[0]
 		slen := int(sub.Len)
-		if slen >= ce.options.MinScore && slen >= ce.options.MinAlignLen { // the length of anchor (max 32)
-			paths := poolChains2.Get().(*[]*Chain2Result)
+		paths := poolChains2.Get().(*[]*Chain2Result)
 
-			path := poolChain2.Get().(*Chain2Result)
-			path.Reset()
+		path := poolChain2.Get().(*Chain2Result)
+		path.Reset()
 
-			qe := int(sub.QBegin) + slen - 1           // end
-			te := int(sub.TBegin) + slen - 1           // end
-			qb, tb := int(sub.QBegin), int(sub.TBegin) // in case there's only one anchor
-			path.QBegin, path.QEnd = qb, qe
-			path.TBegin, path.TEnd = tb, te
-			path.MatchedBases = slen
-			path.PIdent = 100
-			path.AlignedBasesQ = slen
-			path.AlignedBasesT = slen
-			path.NAnchors++
-			*paths = append(*paths, path)
+		qe := int(sub.QBegin) + slen - 1           // end
+		te := int(sub.TBegin) + slen - 1           // end
+		qb, tb := int(sub.QBegin), int(sub.TBegin) // in case there's only one anchor
+		path.QBegin, path.QEnd = qb, qe
+		path.TBegin, path.TEnd = tb, te
+		path.MatchedBases = slen
+		path.PIdent = 100
+		path.AlignedBasesQ = slen
+		path.AlignedBasesT = slen
+		path.NAnchors++
+		*paths = append(*paths, path)
 
-			return paths, slen, slen, slen, qb, qe, tb, te
-		}
-
-		return nil, 0, 0, 0, 0, 0, 0, 0
+		return paths, slen, slen, slen, qb, qe, tb, te
 	}
 
 	var i, j int
@@ -555,7 +558,7 @@ func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, 
 
 	// backtrack
 
-	minScore := int64(ce.options.MinScore)
+	minScore := int64(minimumScore)
 	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,

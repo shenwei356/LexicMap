@@ -231,7 +231,7 @@ Result ordering:
 		// }
 		minQcovChain := getFlagNonNegativeFloat64(cmd, "min-qcov-per-hsp")
 		if minQcovChain > 100 {
-			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minIdent))
+			checkError(fmt.Errorf("the value of flag -q/--min-qcov-per-hsp (%f) should be in range of [0, 100]", minQcovChain))
 		}
 
 		maxOpenFiles := getFlagPositiveInt(cmd, "max-open-files")
@@ -382,13 +382,11 @@ Result ordering:
 
 		idx.SetSeqCompareOptions(&SeqComparatorOptions{
 			K:         uint8(31),
-			MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
+			MinPrefix: defaultSeqComparatorMinPrefix,
 
 			Chaining2Options: Chaining2Options{
 				// should be relative small
-				MaxGap: maxAlignMaxGap,
-				// better be larger than MinPrefix
-				MinScore:    int(float64(minAlignLen) * minIdent / 100),
+				MaxGap:      maxAlignMaxGap,
 				MinAlignLen: minAlignLen,
 				MinIdentity: minIdent,
 				// can not be < k

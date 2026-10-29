@@ -279,8 +279,12 @@ type Index struct {
 // SetSeqCompareOptions sets the sequence comparing options
 func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 	idx.seqCompareOption = sco
+	// Sampled-anchor chaining bypasses Compare and uses the base prefix score.
+	// Copy its options once so deriving the score never mutates the caller.
+	chainingOptions := sco.Chaining2Options
+	chainingOptions.MinScore = 2 * int(sco.MinPrefix)
 	idx.poolChainers2 = &sync.Pool{New: func() interface{} {
-		return NewChainer2(&sco.Chaining2Options)
+		return NewChainer2(&chainingOptions)
 	}}
 	idx.poolSeqComparator = &sync.Pool{New: func() interface{} {
 		return NewSeqComparator(sco, idx.poolChainers2)
@@ -2216,6 +2220,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		minQcovGnm := idx.opt.MinQueryAlignedFractionInAGenome
 		minQcovHSP := idx.seqCompareOption.MinAlignedFraction
 		minPIdent := idx.seqCompareOption.MinIdentity
+		minAlignLen := idx.seqCompareOption.MinAlignLen
 		maxEvalue := idx.opt.MaxEvalue
 		extLen := idx.opt.ExtendLength
 		extLen2 := idx.opt.ExtendLength2
@@ -2473,6 +2478,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
 
+								// Check the final HSP, not its seed span or extended input length.
+								if int(cigar.AlignLen) < minAlignLen {
+									wfa.RecycleAlignmentResult(cigar)
+									recycleChain2(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+
 								// score and e-value
 								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
 								if c.Evalue > maxEvalue {
@@ -2722,6 +2735,14 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						cigar, err = alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), fScoreAndEvalue)
 						if err != nil {
 							checkError(fmt.Errorf("fail to align sequence"))
+						}
+
+						// Check the final HSP, not its seed span or extended input length.
+						if int(cigar.AlignLen) < minAlignLen {
+							wfa.RecycleAlignmentResult(cigar)
+							recycleChain2(c)
+							(*r2.Chains)[i] = nil
+							continue
 						}
 
 						// score and e-value

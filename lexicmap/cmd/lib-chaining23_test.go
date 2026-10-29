@@ -35,7 +35,7 @@ type denseChainSummary struct {
 	identity                             float64
 }
 
-func denseChain2Summary(chains *[]*Chain2Result, nInputs int) []denseChainSummary {
+func denseChain2Summary(chains *[]*Chain2Result) []denseChainSummary {
 	if chains == nil {
 		return nil
 	}
@@ -43,13 +43,69 @@ func denseChain2Summary(chains *[]*Chain2Result, nInputs int) []denseChainSummar
 	for i, c := range *chains {
 		out[i] = denseChainSummary{c.NAnchors, c.MatchedBases, c.AlignedBasesQ, c.AlignedBasesT,
 			c.QBegin, c.QEnd, c.TBegin, c.TEnd, c.PIdent}
-		if nInputs == 1 {
-			// The unchanged single-anchor branch does not write this field.
-			// Compare computed outputs, not stale values from different pools.
-			out[i].alignedT = 0
-		}
 	}
 	return out
+}
+
+// TestChainer2SingleAnchorRetainsExtensionCandidate checks the singleton
+// contract independently of the reference kernel and exercises pooled reuse.
+func TestChainer2SingleAnchorRetainsExtensionCandidate(t *testing.T) {
+	opt := DefaultChaining2Options
+	opt.MinScore, opt.MinAlignLen = 35, 50
+	chainer := NewChainer2(&opt)
+	for _, length := range []int{11, 17, 31, 17} {
+		subs := []SubstrPair{{QBegin: 20, TBegin: 40, Len: uint8(length)}}
+		chains, matches, aq, at, qb, qe, tb, te := chainer.Chain(&subs)
+		if chains == nil {
+			t.Fatalf("discarded %d-base extension candidate", length)
+		}
+		want := []denseChainSummary{{anchors: 1, matched: length, alignedQ: length, alignedT: length,
+			qb: 20, qe: 19 + length, tb: 40, te: 39 + length, identity: 100}}
+		got := denseChain2Summary(chains)
+		RecycleChaining2Result(chains)
+		if !reflect.DeepEqual(got, want) ||
+			[7]int{matches, aq, at, qb, qe, tb, te} != [7]int{length, length, length, 20, 19 + length, 40, 39 + length} {
+			t.Fatalf("length %d: got %+v, want %+v", length, got, want)
+		}
+	}
+}
+
+// TestChainer2MinimumScore checks the inclusive score boundary independently
+// of the reference kernel, including reversed coordinates and gap penalties.
+func TestChainer2MinimumScore(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		length     uint8
+		gap        int32
+		wantChains int
+	}{
+		{"two-11bp-no-gap", 11, 0, 1},
+		{"two-11bp-insertion", 11, 1, 0},
+		{"two-11bp-deletion", 11, -1, 0},
+		{"two-12bp-gap-two", 12, 2, 1},
+	} {
+		for _, reverse := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
+				opt := DefaultChaining2Options
+				subs := []SubstrPair{{Len: tc.length}, {QBegin: 56, TBegin: 56 + tc.gap, Len: tc.length}}
+				if reverse {
+					for i := range subs {
+						subs[i].QBegin = 200 - subs[i].QBegin - int32(subs[i].Len)
+						subs[i].TBegin = 200 - subs[i].TBegin - int32(subs[i].Len)
+					}
+					slices.Reverse(subs)
+				}
+				chains, _, _, _, _, _, _, _ := NewChainer2(&opt).Chain(&subs)
+				got := denseChain2Summary(chains)
+				if chains != nil {
+					RecycleChaining2Result(chains)
+				}
+				if len(got) != tc.wantChains || (len(got) > 0 && got[0].anchors != 2) {
+					t.Fatalf("chains = %+v, want %d two-anchor chains", got, tc.wantChains)
+				}
+			})
+		}
+	}
 }
 
 func denseChain3Summary(c *Chain3Result) *denseChainSummary {
@@ -164,6 +220,7 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 		gap, distance, score, band int
 	}{
 		{"normal", 50, 100, 50, 50},
+		{"score-22", 20, 100, 22, 50},
 		{"strict", 0, 0, 1, 0},
 		{"permissive", 5000, 5000, -1, 20},
 		{"wide", math.MaxInt, math.MaxInt, 1, 50},
@@ -183,11 +240,11 @@ func TestChaining23MatchesFloatReference(t *testing.T) {
 				r2, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref2, &subs)
 				if !slices.Equal(got2.maxscoresIdxs, ref2.maxscoresIdxs) ||
 					[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
-					!reflect.DeepEqual(denseChain2Summary(g2, len(subs)), denseChain2Summary(r2, len(subs))) {
+					!reflect.DeepEqual(denseChain2Summary(g2), denseChain2Summary(r2)) {
 					t.Fatalf("Chainer2 trial %d (n=%d): matrices equal=%v, got stats=%v want=%v, got paths=%+v want=%+v", trial, len(subs),
 						slices.Equal(got2.maxscoresIdxs, ref2.maxscoresIdxs),
 						[7]int{gm, gq, gt, gqb, gqe, gtb, gte}, [7]int{rm, rq, rt, rqb, rqe, rtb, rte},
-						denseChain2Summary(g2, len(subs)), denseChain2Summary(r2, len(subs)))
+						denseChain2Summary(g2), denseChain2Summary(r2))
 				}
 				if g2 != nil {
 					RecycleChaining2Result(g2)
@@ -243,7 +300,7 @@ func TestChainer2TargetIndexMatchesReference(t *testing.T) {
 		}
 		if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
 			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
-			!reflect.DeepEqual(denseChain2Summary(g, len(subs)), denseChain2Summary(r, len(subs))) {
+			!reflect.DeepEqual(denseChain2Summary(g), denseChain2Summary(r)) {
 			t.Fatalf("order=%s: chaining differs from reference", order)
 		}
 		if g != nil {

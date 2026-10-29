@@ -3,10 +3,11 @@
 ### v0.10.1 - 2026-xx-xx
 
 - **`lexicmap search, genome search/compare`**:
+    - Pseudoaligment: Fix retaining single-anchor chains as candidates for alignment extension.
+    - Enforce `--align-min-match-len` on the final HSP after extension and base-level alignment.
     - Correct repeat-shifted alignment windows without changing chaining scores or gap penalties.
 - **`lexicmap genome search/compare`**:
     - Fix alignment hangs for a pair of sequence with highly repeatedly fragments.
-    - Use the same default values of --align-max-gap and --align-min-match-len as those in `lexicmap search`.
 
 ### v0.10.0 - 2026-10-21
 

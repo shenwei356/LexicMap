@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -29,6 +30,108 @@ import (
 	"sync"
 	"testing"
 )
+
+// sparsePrefixSequences creates exactly two matching anchors separated by a
+// mismatch-rich interval. Homopolymer padding changes only the target length.
+func sparsePrefixSequences(anchorLen, gap, targetLen int) ([]byte, []byte) {
+	query := []byte(indexTestDNA(200))
+	target := bytes.Repeat([]byte{'A'}, targetLen)
+	for i, pos := range []int{20, 100} {
+		query[pos-1], query[pos+anchorLen] = 'C', 'C'
+		copy(target[pos+i*gap:], query[pos:pos+anchorLen])
+	}
+	return query, target
+}
+
+// TestSeqCompareAdaptiveMinScore covers both sides of every prefix heuristic
+// boundary. A one-base gap puts two minimal anchors just below 2*MinPrefix.
+func TestSeqCompareAdaptiveMinScore(t *testing.T) {
+	for _, base := range []uint8{11, 13} {
+		for _, boundary := range []struct{ length, extra int }{
+			{9999, 0}, {10000, 2}, {49999, 2}, {50000, 4},
+			{249999, 4}, {250000, 6}, {999999, 6}, {1000000, 8},
+		} {
+			for _, reverse := range []bool{false, true} {
+				t.Run(fmt.Sprintf("prefix=%d/length=%d/reverse=%t", base, boundary.length, reverse), func(t *testing.T) {
+					opt := DefaultSeqComparatorOptions
+					opt.K, opt.MinPrefix = 31, base
+					opt.Chaining2Options = DefaultChaining2Options
+					before := opt
+					pool := &sync.Pool{New: func() interface{} { return NewChainer2(&opt.Chaining2Options) }}
+					for _, gap := range []int{0, 1} {
+						q, target := sparsePrefixSequences(int(base)+boundary.extra, gap, boundary.length)
+						if reverse {
+							RC(q)
+							RC(target)
+						}
+						cpr := NewSeqComparator(&opt, pool)
+						if err := cpr.Index(q); err != nil {
+							t.Fatal(err)
+						}
+						result, err := cpr.Compare(0, uint32(len(q)), target, len(q))
+						cpr.RecycleIndex()
+						if err != nil {
+							t.Fatal(err)
+						}
+						got := result != nil
+						if result != nil {
+							if result.BestChain.NAnchors != 2 {
+								t.Errorf("gap %d: got %d anchors, want 2", gap, result.BestChain.NAnchors)
+							}
+							RecycleSeqComparatorResult(result)
+						}
+						if got != (gap == 0) {
+							t.Errorf("gap %d: retained=%t, want %t", gap, got, gap == 0)
+						}
+					}
+					if opt != before {
+						t.Fatal("comparison mutated shared options")
+					}
+				})
+			}
+		}
+	}
+}
+
+// TestSeqCompareConcurrentMinScore alternates thresholds on the same read-only
+// query index and shared chainer pool, including short calls after long calls.
+func TestSeqCompareConcurrentMinScore(t *testing.T) {
+	opt := DefaultSeqComparatorOptions
+	opt.K = 31
+	opt.Chaining2Options = DefaultChaining2Options
+	before := opt
+	q, short := sparsePrefixSequences(13, 1, 200)
+	_, long := sparsePrefixSequences(13, 1, 10000)
+	cpr := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} { return NewChainer2(&opt.Chaining2Options) }})
+	if err := cpr.Index(q); err != nil {
+		t.Fatal(err)
+	}
+	defer cpr.RecycleIndex()
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 4 {
+				for _, target := range [][]byte{short, long, short} {
+					result, err := cpr.Compare(0, uint32(len(q)), target, len(q))
+					got := result != nil
+					if result != nil {
+						RecycleSeqComparatorResult(result)
+					}
+					if err != nil || got != (len(target) == len(short)) {
+						t.Errorf("target length %d: retained=%t, error=%v", len(target), got, err)
+						return
+					}
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	if opt != before {
+		t.Fatal("comparison mutated shared options")
+	}
+}
 
 func TestSeqCompare(t *testing.T) {
 	// Identities: 271/288(94%)
@@ -267,7 +370,7 @@ func TestSeqCompareDefaultGapBoundary(t *testing.T) {
 							RC(target)
 						}
 						opt := SeqComparatorOptions{K: 31, MinPrefix: 11, Chaining2Options: Chaining2Options{
-							MaxGap: 20, MinScore: 35, MinAlignLen: 50, MinIdentity: 70, BandBase: 100, BandCount: 50, HeuristicKmerPidentThreshold: 15}, MinIdentity: 70}
+							MaxGap: 20, MinAlignLen: 50, MinIdentity: 70, BandBase: 100, BandCount: 50, HeuristicKmerPidentThreshold: 15}, MinIdentity: 70}
 						cpr := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} { return NewChainer2(&opt.Chaining2Options) }})
 						if e := cpr.Index(q); e != nil {
 							t.Fatal(e)

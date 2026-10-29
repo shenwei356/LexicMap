@@ -23,11 +23,218 @@ package cmd
 import (
 	"encoding/csv"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 )
+
+// TestSearchMinAlignmentLength checks the final HSP length after extending a
+// single exact anchor, including the inclusive boundary and both strands.
+func TestSearchMinAlignmentLength(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(193))
+	var refs, queries strings.Builder
+	wantLengths := make(map[string]int)
+	for _, length := range []int{31, 49, 50, 51} {
+		q := make([]byte, length)
+		for i := range q {
+			q[i] = "ACGT"[rng.Intn(4)]
+		}
+		subject := append([]byte(nil), q...)
+		if length > 31 {
+			// Only bases 18..34 form a seed of at least 11 bp. Extension
+			// must recover the surrounding matches before applying -l.
+			for _, pos := range []int{7, 16, 34, 43} {
+				subject[pos] = "ACGT"[(strings.IndexByte("ACGT", subject[pos])+1)%4]
+			}
+		}
+		fmt.Fprintf(&refs, ">s%d\n%s\n", length, subject)
+		for _, reverse := range []bool{false, true} {
+			id := fmt.Sprintf("q%d_rc%t", length, reverse)
+			sequence := append([]byte(nil), q...)
+			if reverse {
+				RC(sequence)
+			}
+			fmt.Fprintf(&queries, ">%s\n%s\n", id, sequence)
+			wantLengths[id] = length
+		}
+	}
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), refs.String())
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), queries.String())
+	db := filepath.Join(dir, "db")
+	// A 17-mer index makes the short common seed available to coarse search.
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "17", "-m", "1024", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, minimum := range []int{30, 50, 51} {
+		for _, all := range []bool{false, true} {
+			t.Run(fmt.Sprintf("minimum=%d/all=%t", minimum, all), func(t *testing.T) {
+				args := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0"}
+				if minimum != 50 { // exercise the default as well as explicit -l
+					args = append(args, "-l", strconv.Itoa(minimum))
+				}
+				if all {
+					args = append(args, "-a")
+				}
+				output := runSeedIndexCommand(t, append(args, query)...)
+				reader := csv.NewReader(strings.NewReader(string(output)))
+				reader.Comma = '\t'
+				rows, err := reader.ReadAll()
+				if err != nil {
+					t.Fatal(err)
+				}
+				seen := make(map[string]int)
+				for _, row := range rows[1:] {
+					length, ok := wantLengths[row[0]]
+					if !ok || row[4] != fmt.Sprintf("s%d", length) || row[9] != strconv.Itoa(length) {
+						t.Fatalf("unexpected alignment: %v", row[:20])
+					}
+					if length < minimum {
+						t.Errorf("HSP shorter than -l %d: %v", minimum, row[:20])
+					}
+					strand := "+"
+					if strings.HasSuffix(row[0], "rctrue") {
+						strand = "-"
+					}
+					if row[16] != strand || row[12] != "1" || row[13] != strconv.Itoa(length) || row[14] != "1" || row[15] != strconv.Itoa(length) {
+						t.Fatalf("wrong coordinates or strand: %v", row[:20])
+					}
+					seen[row[0]]++
+				}
+				for id, length := range wantLengths {
+					want := 0
+					if length >= minimum {
+						want = 1
+					}
+					if seen[id] != want {
+						t.Errorf("%s: got %d hits, want %d", id, seen[id], want)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestSearchMinAlignmentLengthAcrossContigs exercises the separate completion
+// path for the preceding contig, including an HSP shortened by refinement.
+func TestSearchMinAlignmentLengthAcrossContigs(t *testing.T) {
+	dir := t.TempDir()
+	long := indexTestDNA(1000)
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">repeat\n"+repeatWindowTarget+"\n>long\n"+long+"\n")
+	q := repeatWindowQuery + strings.Repeat("N", 100) + long
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+q+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, minimum := range []int{350, 360} {
+		for _, all := range []bool{false, true} {
+			t.Run(fmt.Sprintf("minimum=%d/all=%t", minimum, all), func(t *testing.T) {
+				args := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0",
+					"--align-ext-len", "10000", "--align-max-gap", "100", "-l", strconv.Itoa(minimum)}
+				if all {
+					args = append(args, "-a")
+				}
+				output := runSeedIndexCommand(t, append(args, query)...)
+				reader := csv.NewReader(strings.NewReader(string(output)))
+				reader.Comma = '\t'
+				rows, err := reader.ReadAll()
+				if err != nil {
+					t.Fatal(err)
+				}
+				seen := make(map[string]bool)
+				for _, row := range rows[1:] {
+					length, err := strconv.Atoi(row[9])
+					if err != nil || length < minimum {
+						t.Fatalf("HSP shorter than -l %d: %v", minimum, row[:20])
+					}
+					seen[row[4]] = true
+				}
+				if !seen["long"] {
+					t.Error("lost the long alignment")
+				}
+				if minimum == 350 && !seen["repeat"] {
+					t.Error("missing refinement control")
+				}
+			})
+		}
+	}
+}
+
+// TestSearchSparseAnchors retains a 34-point chain of two 17-bp anchors even
+// when -l and -i would previously have raised its score threshold above 34.
+func TestSearchSparseAnchors(t *testing.T) {
+	dir := t.TempDir()
+	q := []byte(indexTestDNA(100))
+	target := append([]byte(nil), q...)
+	for _, pos := range []int{10, 28, 39, 50, 61, 79, 90} {
+		target[pos] = "ACGT"[(strings.IndexByte("ACGT", target[pos])+1)%4]
+	}
+	rc := append([]byte(nil), q...)
+	RC(rc)
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">target\n"+string(target)+"\n")
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+string(q)+"\n>reverse\n"+string(rc)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "17", "-m", "1024", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, limits := range [][2]int{{50, 70}, {60, 90}} {
+		t.Run(fmt.Sprintf("length=%d/identity=%d", limits[0], limits[1]), func(t *testing.T) {
+			output := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0",
+				"-l", strconv.Itoa(limits[0]), "-i", strconv.Itoa(limits[1]), query)
+			reader := csv.NewReader(strings.NewReader(string(output)))
+			reader.Comma = '\t'
+			rows, err := reader.ReadAll()
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen := make(map[string]int)
+			for _, row := range rows[1:] {
+				strand := "+"
+				if row[0] == "reverse" {
+					strand = "-"
+				}
+				if row[4] != "target" || row[9] != "100" || row[10] != "93.000" || row[12] != "1" || row[13] != "100" ||
+					row[14] != "1" || row[15] != "100" || row[16] != strand {
+					t.Fatalf("unexpected alignment: %v", row[:20])
+				}
+				seen[row[0]]++
+			}
+			if len(rows) != 3 || seen["forward"] != 1 || seen["reverse"] != 1 {
+				t.Fatalf("lost sparse-anchor alignments: %v", rows)
+			}
+		})
+	}
+}
+
+// TestSetSeqCompareOptionsChainingScore covers sampled-anchor callers that
+// bypass Compare, and proves per-call overrides do not leak into Chain.
+func TestSetSeqCompareOptionsChainingScore(t *testing.T) {
+	opt := DefaultSeqComparatorOptions
+	opt.MinPrefix = 13
+	opt.Chaining2Options = DefaultChaining2Options
+	before := opt
+	idx := &Index{}
+	idx.SetSeqCompareOptions(&opt)
+	chainer := idx.poolChainers2.Get().(*Chainer2)
+	defer idx.poolChainers2.Put(chainer)
+	// Two 13-bp anchors with a one-base gap score 25: pass 22, fail 26.
+	subs := []SubstrPair{{Len: 13}, {QBegin: 56, TBegin: 57, Len: 13}}
+	for _, override := range []bool{false, true, false} {
+		var chains *[]*Chain2Result
+		if override {
+			chains, _, _, _, _, _, _, _ = chainer.chainWithMinScore(&subs, 22)
+		} else {
+			chains, _, _, _, _, _, _, _ = chainer.Chain(&subs)
+		}
+		got := chains != nil
+		if chains != nil {
+			RecycleChaining2Result(chains)
+		}
+		if got != override {
+			t.Errorf("override=%t: retained=%t, want %t", override, got, override)
+		}
+	}
+	if opt != before {
+		t.Fatal("score derivation mutated caller options")
+	}
+}
 
 // Spare seed/spill/query capacity must never displace the last reader of a batch.
 func TestSearchFilePlan(t *testing.T) {

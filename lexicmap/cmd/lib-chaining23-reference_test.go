@@ -24,26 +24,24 @@ package cmd
 
 func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
-	if n == 1 { // for one seed, just check the seed weight
+	if n == 1 { // a lone anchor is retained as an extension candidate
 		sub := (*subs)[0]
 		slen := int(sub.Len)
-		if slen >= ce.options.MinScore && slen >= ce.options.MinAlignLen { // the length of anchor (max 32)
-			paths := poolChains2.Get().(*[]*Chain2Result)
-			path := poolChain2.Get().(*Chain2Result)
-			path.Reset()
-			qe := int(sub.QBegin) + slen - 1           // end
-			te := int(sub.TBegin) + slen - 1           // end
-			qb, tb := int(sub.QBegin), int(sub.TBegin) // in case there's only one anchor
-			path.QBegin, path.QEnd = qb, qe
-			path.TBegin, path.TEnd = tb, te
-			path.MatchedBases = slen
-			path.PIdent = 100
-			path.AlignedBasesQ = slen
-			path.NAnchors++
-			*paths = append(*paths, path)
-			return paths, slen, slen, slen, qb, qe, tb, te
-		}
-		return nil, 0, 0, 0, 0, 0, 0, 0
+		paths := poolChains2.Get().(*[]*Chain2Result)
+		path := poolChain2.Get().(*Chain2Result)
+		path.Reset()
+		qe := int(sub.QBegin) + slen - 1           // end
+		te := int(sub.TBegin) + slen - 1           // end
+		qb, tb := int(sub.QBegin), int(sub.TBegin) // in case there's only one anchor
+		path.QBegin, path.QEnd = qb, qe
+		path.TBegin, path.TEnd = tb, te
+		path.MatchedBases = slen
+		path.PIdent = 100
+		path.AlignedBasesQ = slen
+		path.AlignedBasesT = slen
+		path.NAnchors++
+		*paths = append(*paths, path)
+		return paths, slen, slen, slen, qb, qe, tb, te
 	}
 	var i, j int
 	bandBase := int32(ce.options.BandBase) // band size of banded-DP

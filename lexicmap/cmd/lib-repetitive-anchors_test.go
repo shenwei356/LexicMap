@@ -75,7 +75,7 @@ func TestChainer2DiagonalSkipsMatchReference(t *testing.T) {
 		r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
 		if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
 			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
-			!reflect.DeepEqual(denseChain2Summary(g, len(subs)), denseChain2Summary(r, len(subs))) {
+			!reflect.DeepEqual(denseChain2Summary(g), denseChain2Summary(r)) {
 			t.Fatalf("trial %d options %+v: diagonal filtering changed chaining", trial, opt)
 		}
 		if g != nil {
@@ -128,7 +128,7 @@ func TestChainer2GapGroupSkipsMatchReference(t *testing.T) {
 		r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
 		if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
 			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
-			!reflect.DeepEqual(denseChain2Summary(g, len(subs)), denseChain2Summary(r, len(subs))) {
+			!reflect.DeepEqual(denseChain2Summary(g), denseChain2Summary(r)) {
 			t.Fatalf("trial %d options %+v: chaining differs from reference", trial, opt)
 		}
 		if g != nil {

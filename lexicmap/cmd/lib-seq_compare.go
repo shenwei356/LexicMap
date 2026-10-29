@@ -30,13 +30,16 @@ import (
 	"github.com/shenwei356/lexichash/iterator"
 )
 
+// defaultSeqComparatorMinPrefix is the base minimum exact-match length.
+const defaultSeqComparatorMinPrefix uint8 = 11
+
 // SeqComparatorOptions contains options for comparing two sequences.
 type SeqComparatorOptions struct {
 	// indexing
 	K         uint8
 	MinPrefix uint8
 
-	// chaining
+	// Chaining uses twice the effective MinPrefix as its per-call MinScore.
 	Chaining2Options
 
 	// seq similarity
@@ -48,13 +51,12 @@ type SeqComparatorOptions struct {
 // DefaultSeqComparatorOptions contains the default options for SeqComparatorOptions.
 var DefaultSeqComparatorOptions = SeqComparatorOptions{
 	K:         32,
-	MinPrefix: 11, // can not be too small, or there will be a large number of anchors.
+	MinPrefix: defaultSeqComparatorMinPrefix,
 
 	Chaining2Options: Chaining2Options{
 		// should be relative small
-		MaxGap: 50,
-		// better be larger than MinPrefix
-		MinScore: 50,
+		MaxGap:   50,
+		MinScore: 2 * int(defaultSeqComparatorMinPrefix),
 		// can not be < k
 		MaxDistance: 50,
 		// can not be two small
@@ -93,10 +95,7 @@ type SeqComparator struct {
 // No options checking now.
 func NewSeqComparator(options *SeqComparatorOptions, poolChainers *sync.Pool) *SeqComparator {
 	cpr := &SeqComparator{
-		options: options,
-		// poolChainers: &sync.Pool{New: func() interface{} {
-		// 	return NewChainer2(&options.Chaining2Options)
-		// }},
+		options:      options,
 		poolChainers: poolChainers,
 
 		entries: make([]rtree.BatchEntry, 0, 4096),
@@ -476,7 +475,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	// chaining paired substrings
 
 	chainer := cpr.poolChainers.Get().(*Chainer2)
-	chains, _, nAlignedBasesQ, _, _, _, _, _ := chainer.Chain(subs)
+	// Match the score threshold to this call's heuristic-adjusted prefix.
+	// The pooled chainers share read-only options; never write an override there.
+	chains, _, nAlignedBasesQ, _, _, _, _, _ := chainer.chainWithMinScore(subs, 2*int(m))
 	defer func() {
 		cpr.poolChainers.Put(chainer)
 	}()
