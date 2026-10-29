@@ -23,6 +23,7 @@ package cmd
 import (
 	"bufio"
 	"container/heap"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -56,6 +57,10 @@ Attention:
      Selected genome results are buffered in memory to count retained genome hits.
   6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
      -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
+  7. Empty inputs are skipped with a warning naming each file (unless --quiet).
+     If all inputs are empty, the command succeeds without writing results.
+     A completed search writes a header even when no matches are found.
+     Header-only inputs are accepted.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -112,7 +117,11 @@ Attention:
 			if outputLog {
 				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
 			}
-			fh, err := xopen.Ropen(files[0])
+			fh, err := openSearchResultFile(files[0])
+			if errors.Is(err, xopen.ErrNoContent) {
+				log.Warningf("skipping %s", err)
+				return
+			}
 			checkError(err)
 			defer fh.Close()
 
@@ -130,6 +139,11 @@ Attention:
 		readers := make(map[int]*SearchResultReader, len(files))
 		for i, file := range files {
 			reader, err := NewSearchResultReader(file, query, bufferSize)
+			// Only clean empty streams can be skipped; read errors remain fatal.
+			if errors.Is(err, xopen.ErrNoContent) {
+				log.Warningf("skipping %s", err)
+				continue
+			}
 			checkError(err)
 			readers[i] = reader
 		}
@@ -390,8 +404,20 @@ type SearchResultReader struct {
 	ch chan *SearchResultOfAGenome
 }
 
-func NewSearchResultReader(file string, query string, bufferSize int64) (*SearchResultReader, error) {
+// openSearchResultFile reports empty input consistently for copying and merging.
+func openSearchResultFile(file string) (*xopen.Reader, error) {
 	fh, err := xopen.Ropen(file)
+	if errors.Is(err, xopen.ErrNoContent) {
+		return nil, fmt.Errorf("empty search result file %q: %w", file, err)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to open search result file %q: %w", file, err)
+	}
+	return fh, nil
+}
+
+func NewSearchResultReader(file string, query string, bufferSize int64) (*SearchResultReader, error) {
+	fh, err := openSearchResultFile(file)
 	if err != nil {
 		return nil, err
 	}

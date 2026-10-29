@@ -169,6 +169,77 @@ func TestMergeSearchResultsTopN(t *testing.T) {
 	}
 }
 
+// TestMergeSearchResultsEmptyInputs covers both copying and parsed merging.
+func TestMergeSearchResultsEmptyInputs(t *testing.T) {
+	dir := t.TempDir()
+	header := writeTestInput(t, filepath.Join(dir, "header.tsv"), auditSearchHeader+"\n")
+	empty := writeTestInput(t, filepath.Join(dir, "empty.tsv"), "")
+	var compressed bytes.Buffer
+	gz := gzip.NewWriter(&compressed)
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	emptyGzip := writeTestInput(t, filepath.Join(dir, "empty.tsv.gz"), compressed.String())
+	for _, file := range []string{empty, emptyGzip, "-"} {
+		for _, mode := range []struct {
+			name string
+			args []string
+		}{
+			{name: "copy", args: []string{file}},
+			{name: "merge", args: []string{header, file}},
+			{name: "query", args: []string{"-q", "q", file}},
+			{name: "top-n", args: []string{"-n", "1", file}},
+		} {
+			t.Run(filepath.Base(file)+"/"+mode.name, func(t *testing.T) {
+				args := append([]string{"utils", "merge-search-results"}, mode.args...)
+				_, stderr, err := runAuditCommand(t, "", args...)
+				want := fmt.Sprintf("empty search result file %q", file)
+				if err != nil || !strings.Contains(string(stderr), want) || !strings.Contains(string(stderr), "[WARN]") {
+					t.Fatalf("expected warning naming skipped empty input: %v\n%s", err, stderr)
+				}
+			})
+		}
+	}
+	// Report every empty input while preserving valid hits and file indexing.
+	row := "q\t100\t1\tg\ts\t100\t1\t1\t100\t100\t100\t0\t1\t100\t1\t100\t+\t100\t0\t100\n"
+	valid := writeTestInput(t, filepath.Join(dir, "valid.tsv"), auditSearchHeader+"\n"+row)
+	for _, flags := range [][]string{nil, {"-q", "q"}, {"-n", "1"}} {
+		args := append([]string{"utils", "merge-search-results"}, flags...)
+		args = append(args, empty, valid, emptyGzip, "-")
+		out, stderr, err := runAuditCommand(t, "", args...)
+		if err != nil || string(out) != auditSearchHeader+"\n"+row {
+			t.Fatalf("merge with empty inputs changed valid results: %v\n%s\n%s", err, out, stderr)
+		}
+		for _, file := range []string{empty, emptyGzip, "-"} {
+			if strings.Count(string(stderr), fmt.Sprintf("empty search result file %q", file)) != 1 {
+				t.Fatalf("expected one warning for %q:\n%s", file, stderr)
+			}
+		}
+	}
+	out, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", empty, emptyGzip)
+	if err != nil || len(out) != 0 || strings.Count(string(stderr), "[WARN]") != 2 {
+		t.Fatalf("all-empty inputs did not produce two warnings and no results: %v\n%s\n%s", err, out, stderr)
+	}
+	_, stderr, err = runAuditCommand(t, "", "utils", "merge-search-results", "--quiet", empty, emptyGzip)
+	if err != nil || len(stderr) != 0 {
+		t.Fatalf("quiet mode did not suppress warnings: %v\n%s", err, stderr)
+	}
+	// A completed search without matches still has a header and remains valid.
+	for _, files := range [][]string{{header}, {header, header}} {
+		_, stderr, err := runAuditCommand(t, "", append([]string{"utils", "merge-search-results", "--quiet"}, files...)...)
+		if err != nil {
+			t.Fatalf("header-only input rejected: %v\n%s", err, stderr)
+		}
+	}
+	// A truncated compressed stream is a read error, not a clean empty input.
+	broken := writeTestInput(t, filepath.Join(dir, "broken.tsv.gz"), compressed.String()[:5])
+	_, stderr, err = runAuditCommand(t, "", "utils", "merge-search-results", "--quiet", broken)
+	if err == nil || !strings.Contains(string(stderr), broken) ||
+		!strings.Contains(string(stderr), "unexpected EOF") || strings.Contains(string(stderr), "empty search result") {
+		t.Fatalf("compressed input error lost or misclassified: %v\n%s", err, stderr)
+	}
+}
+
 func TestMergeSearchResultsLongAlignmentRows(t *testing.T) {
 	dir := t.TempDir()
 	header := auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n"

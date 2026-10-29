@@ -8,6 +8,8 @@
     - Correct repeat-shifted alignment windows without changing chaining scores or gap penalties.
 - **`lexicmap genome search/compare`**:
     - Fix alignment hangs for a pair of sequence with highly repeatedly fragments.
+- **`lexicmap utils merge-search-results`**:
+    - Skip empty search results with a warning naming each file. [#41](https://github.com/shenwei356/LexicMap/issues/41)
 
 ### v0.10.0 - 2026-10-21
 

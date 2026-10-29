@@ -27,6 +27,10 @@ Attention:
      Selected genome results are buffered in memory to count retained genome hits.
   6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
      -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
+  7. Empty inputs are skipped with a warning naming each file (unless --quiet).
+     If all inputs are empty, the command succeeds without writing results.
+     A completed search writes a header even when no matches are found.
+     Header-only inputs are accepted.
 
 Usage:
   lexicmap utils merge-search-results [flags]
