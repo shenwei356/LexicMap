@@ -379,3 +379,56 @@ func TestRepeatRefinement16S(t *testing.T) {
 		t.Fatalf("16S coverage changed: q=%d..%d result=%+v", qb, qe, got)
 	}
 }
+
+// TestRepeatRefinementWavefrontScoreBoundary reproduces the score-2048 panic
+// from SAMN44061834/SAMEA7330623, including swapped and reverse-complement inputs.
+func TestRepeatRefinementWavefrontScoreBoundary(t *testing.T) {
+	data, err := os.ReadFile("testdata/wfa-score-boundary.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct{ Query, Target string }
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	for _, reverse := range []bool{false, true} {
+		for _, swap := range []bool{false, true} {
+			t.Run(fmt.Sprintf("reverse=%t/swap=%t", reverse, swap), func(t *testing.T) {
+				q, target := []byte(fixture.Query), []byte(fixture.Target)
+				if reverse {
+					RC(q)
+					RC(target)
+				}
+				if swap {
+					q, target = target, q
+				}
+				algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+				defer wfa.RecycleAligner(algn)
+				if err := algn.AdaptiveReduction(wfa.DefaultAdaptiveOption); err != nil {
+					t.Fatal(err)
+				}
+				score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+				// Reuse the aligner to exercise independently retained component capacities.
+				for repeat := 0; repeat < 2; repeat++ {
+					got, err := alignWithRepeatRefinement(algn, q, target, 31, len(q), 0, score)
+					if err != nil {
+						t.Fatal(err)
+					}
+					// Adaptive pruning can take a cheaper path on reverse-complement
+					// inputs; the original orientation must cross the score boundary.
+					if (!reverse && got.Score < 2048) || got.Matches == 0 || got.AlignLen < got.Matches {
+						t.Fatalf("invalid high-score alignment: %+v", got)
+					}
+					Q, A, T := got.AlignmentText(&q, &target, false)
+					valid := bytes.Equal(bytes.ReplaceAll(*Q, []byte("-"), nil), q) &&
+						bytes.Equal(bytes.ReplaceAll(*T, []byte("-"), nil), target) && len(*Q) == len(*T)
+					wfa.RecycleAlignmentText(Q, A, T)
+					wfa.RecycleAlignmentResult(got)
+					if !valid {
+						t.Fatal("CIGAR does not reconstruct the full input sequences")
+					}
+				}
+			})
+		}
+	}
+}
