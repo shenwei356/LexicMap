@@ -3,9 +3,10 @@
 ### v0.10.1 - 2026-xx-xx
 
 - **`lexicmap search`**:
-    - **Fill seed deserts on both query orientations to improve alignment continuity for long queries** (>= --fill-desert-threshold, default 50kb).
+    - **Improve alignment continuity for long queries by filling seed deserts on both query orientations** (>`--fill-desert-threshold`, default 50kb).
 - **`lexicmap search, genome search/compare`**:
     - Pseudoaligment:
+        - Reduce unnecessary predecessor scanning in large pseudoalignment anchor sets (>102,400 anchors), preserving scores and tie-breaking.
         - Fix retaining single-anchor chains as candidates for alignment extension.
     - Alignment:
         - Fix alignment hangs for a pair of sequence with highly repeatedly fragments.

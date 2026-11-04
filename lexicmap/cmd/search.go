@@ -48,9 +48,10 @@ Attention:
   3. For multiple queries, the order of queries in output might be different from the input.
   4. For older indexes without a stored base count, the first search counts bases and updates info.toml.
   5. Queries longer than --fill-desert-threshold (default 50000 bp) have seed
-     deserts filled using the index defaults: a maximum seed distance of 100 bp and
-     a target spacing of 50 bp. Set the threshold to 0 to disable filling. Seeds from
-     both query orientations are combined to preserve reverse-complement sensitivity.
+     deserts filled with two settings: a 100 bp gap threshold and 50 bp target
+     spacing, plus a 60 bp gap threshold and 30 bp target spacing. Seeds from both
+     settings and both query orientations are combined and deduplicated. Set the
+     threshold to 0 to disable filling. Existing indexes do not need to be rebuilt.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format
@@ -729,7 +730,7 @@ func init() {
 	// seed searching
 
 	mapCmd.Flags().Int("fill-desert-threshold", defaultQueryDesertThreshold,
-		formatFlagUsage(`Fill seed deserts only in queries longer than this many bases (0 disables filling). Uses index defaults: 100 bp maximum seed distance and 50 bp target spacing.`))
+		formatFlagUsage(`Fill seed deserts only in queries longer than this many bases (0 disables filling). Combines 100 bp and 60 bp gap thresholds with 50 bp and 30 bp target spacing, respectively.`))
 
 	mapCmd.Flags().IntP("seed-min-prefix", "p", 15,
 		formatFlagUsage(`Minimum (prefix/suffix) length of matched seeds (anchors).`))

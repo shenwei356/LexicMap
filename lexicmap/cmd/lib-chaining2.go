@@ -63,7 +63,7 @@ type Chainer2 struct {
 	// maxscores     []int
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
-	maxPotential  []int64  // largest zero-gap predecessor score in each prefix
+	maxPotential  []int64  // zero-gap score bounds in global or diagonal-bin prefixes
 	diagonalSeen  []uint64 // reusable approximate set of earlier anchor diagonals
 	qGroupStarts  []int32  // first anchor of each equal-query-position group
 
@@ -341,6 +341,36 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 		diagonalSeen[bin>>6] |= uint64(1) << (bin & 63)
 	}
 
+	// Large repetitive inputs can have a high-scoring chain on an unrelated
+	// diagonal. Its global prefix bound prevents early exits for other chains.
+	// Instead, keep prefix maxima along linked lists of folded diagonal bins:
+	//
+	// bin A:  2 -> 8 -> 13    score+length maxima for A only
+	// bin B:  4 -> 9 -> 15    score+length maxima for B only
+	//
+	// A predecessor can link only if its T-Q diagonal is within MaxGap of the
+	// current diagonal. At most three bins overlap that interval. Collisions
+	// only add impossible candidates, so the bound remains conservative.
+	// Lists use original indices, preserving scan order, band counts and ties.
+	// Extra storage is 4 bytes/anchor plus 256 KiB, local to this call so large
+	// arrays are not retained in pooled chainers. Small/unsorted inputs keep
+	// the existing bound; int32 indices and gap arithmetic must not overflow.
+	const diagonalPotentialBins = 1 << 16
+	useDiagonalPotential := n > thresholdNSubsLong && n <= math.MaxInt32 && querySorted && usePotential && maxGap >= 0 && maxGap <= math.MaxInt32
+	var potentialHeads []int32 // latest scored anchor in each folded diagonal bin
+	var potentialPrev []int32  // previous anchor in the same bin, or -1
+	var potentialShift uint
+	if useDiagonalPotential {
+		potentialHeads = make([]int32, diagonalPotentialBins)
+		for i := range potentialHeads {
+			potentialHeads[i] = -1
+		}
+		potentialPrev = make([]int32, n)
+		potentialShift = uint(bits.Len64(uint64(maxGap)))
+		bin := uint64((int64((*subs)[0].TBegin)-int64((*subs)[0].QBegin))>>potentialShift) & (diagonalPotentialBins - 1)
+		potentialHeads[bin] = 0
+		potentialPrev[0] = -1
+	}
 	for i = 1; i < n; i++ {
 		a = &(*subs)[i] // current seed/anchor
 		// k = band * i   // index of current seed in the score matrix
@@ -380,6 +410,21 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 			bin := uint64(diagonal>>diagonalShift) & (diagonalBits - 1)
 			diagonalSeen[bin>>6] |= uint64(1) << (bin & 63)
 		}
+
+		var potentialCursors [3]int32
+		nPotentialCursors := 0
+		// The bound changes only after the scan passes a list head. Reuse it
+		// between heads, but compare every updated score with the cached bound.
+		potentialLimit := i
+		var potentialBound int64
+		if useDiagonalPotential {
+			diagonal := int64(aTBegin) - int64(aQBegin)
+			lower, upper := (diagonal-maxGap)>>potentialShift, (diagonal+maxGap)>>potentialShift
+			for bin := lower; bin <= upper; bin++ {
+				potentialCursors[nPotentialCursors] = potentialHeads[uint64(bin)&(diagonalPotentialBins-1)]
+				nPotentialCursors++
+			}
+		}
 		_bCount = 0
 		// fmt.Printf("i: %d, %s\n", i, a.String())
 		for {
@@ -399,7 +444,27 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 			// Linking current to anchor 2 gives m=39+13=52. Before checking
 			// anchor 1, maxPotential[1]=39, so neither 1 nor 0 can match m.
 			// Use strict > to preserve the existing preference for earlier ties.
-			if usePotential && m > maxPotential[j] {
+			if useDiagonalPotential {
+				if j < potentialLimit {
+					potentialBound = 0
+					potentialLimit = -1
+					for z := 0; z < nPotentialCursors; z++ {
+						head := potentialCursors[z]
+						for head > int32(j) {
+							head = potentialPrev[head]
+						}
+						potentialCursors[z] = head
+						if head >= 0 {
+							potentialBound = max(potentialBound, maxPotential[head])
+							potentialLimit = max(potentialLimit, int(head))
+						}
+					}
+				}
+				// Strict inequality retains earlier predecessors on equal scores.
+				if m > potentialBound {
+					break
+				}
+			} else if usePotential && m > maxPotential[j] {
 				break
 			}
 
@@ -536,7 +601,18 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 		*maxscoresIdxs = append(*maxscoresIdxs, uint64(m)<<32|uint64(mj))
 		if usePotential {
 			potential := int64(uint32(m)) + int64(a.Len)
-			maxPotential = append(maxPotential, max(potential, maxPotential[i-1]))
+			if useDiagonalPotential {
+				bin := uint64((int64(aTBegin)-int64(aQBegin))>>potentialShift) & (diagonalPotentialBins - 1)
+				head := potentialHeads[bin]
+				potentialPrev[i] = head
+				if head >= 0 {
+					potential = max(potential, maxPotential[head])
+				}
+				maxPotential = append(maxPotential, potential)
+				potentialHeads[bin] = int32(i)
+			} else {
+				maxPotential = append(maxPotential, max(potential, maxPotential[i-1]))
+			}
 		}
 
 		if m > M { // the biggest score in the whole score matrix

@@ -312,6 +312,82 @@ func TestChainer2TargetIndexMatchesReference(t *testing.T) {
 	}
 }
 
+// Large mixed-length groups exercise diagonal score bounds beyond the small
+// target-group index, including hash collisions and reverse-complement order.
+func TestChainer2LargeDiagonalBoundsMatchReference(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, order := range []string{"sorted", "target-unsorted", "query-unsorted"} {
+			t.Run(fmt.Sprintf("reverse=%t/%s", reverse, order), func(t *testing.T) {
+				subs := make([]SubstrPair, 0, thresholdNSubsLong+8)
+				// MaxGap=20 gives 32-base bins; offsets separated by 2^21
+				// collide in the folded table and must remain conservative.
+				offsets := []int32{0, 0, 19, 20, 21, 100000, 1 << 21, 1<<21 + 20}
+				for group := 0; len(subs) <= thresholdNSubsLong; group++ {
+					for copy, offset := range offsets {
+						q := int32(group * 3)
+						// Forward diagonals are negative; mirroring makes them
+						// positive, exercising signed binning in both directions.
+						a := SubstrPair{QBegin: q + 3000000, TBegin: q + offset + int32(group%7), Len: uint8(19 + copy%3*6)}
+						if reverse {
+							a.QBegin = 3100000 - a.QBegin - int32(a.Len)
+							a.TBegin = 3000000 - a.TBegin - int32(a.Len)
+						}
+						subs = append(subs, a)
+					}
+				}
+				slices.SortFunc(subs, func(a, b SubstrPair) int {
+					if a.QBegin != b.QBegin {
+						return int(a.QBegin - b.QBegin)
+					}
+					if a.Len != b.Len {
+						return int(b.Len) - int(a.Len)
+					}
+					return int(a.TBegin - b.TBegin)
+				})
+				if order == "target-unsorted" {
+					for i := 0; i+1 < len(subs); i++ {
+						if subs[i].QBegin == subs[i+1].QBegin {
+							subs[i], subs[i+1] = subs[i+1], subs[i]
+						}
+					}
+				} else if order == "query-unsorted" {
+					subs[0], subs[len(subs)-1] = subs[len(subs)-1], subs[0]
+				}
+				opt := DefaultChaining2Options
+				opt.MaxGap, opt.MinScore, opt.MinAlignLen = 20, 1, 1
+				got, ref := NewChainer2(&opt), NewChainer2(&opt)
+				g, gm, gq, gt, gqb, gqe, gtb, gte := got.Chain(&subs)
+				r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
+				if g != nil {
+					defer RecycleChaining2Result(g)
+				}
+				if r != nil {
+					defer RecycleChaining2Result(r)
+				}
+				if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) ||
+					[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} ||
+					!reflect.DeepEqual(denseChain2Summary(g), denseChain2Summary(r)) {
+					t.Fatal("large-input scores, predecessors, or chains differ from reference")
+				}
+				// Reuse the chainer after its diagonal-bin prefix bounds. The
+				// following small call must restore ordinary global bounds.
+				small := []SubstrPair{{Len: 31}, {QBegin: 20, TBegin: 20, Len: 19}, {QBegin: 40, TBegin: 42, Len: 25}}
+				gc, _, _, _, _, _, _, _ := got.Chain(&small)
+				rc, _, _, _, _, _, _, _ := referenceChaining2(ref, &small)
+				if gc != nil {
+					defer RecycleChaining2Result(gc)
+				}
+				if rc != nil {
+					defer RecycleChaining2Result(rc)
+				}
+				if !slices.Equal(got.maxscoresIdxs, ref.maxscoresIdxs) || !reflect.DeepEqual(denseChain2Summary(gc), denseChain2Summary(rc)) {
+					t.Fatal("small-call reuse differs from reference")
+				}
+			})
+		}
+	}
+}
+
 func BenchmarkDenseChaining(b *testing.B) {
 	for _, n := range []int{32, 256, 2048} {
 		subs := make([]SubstrPair, n)

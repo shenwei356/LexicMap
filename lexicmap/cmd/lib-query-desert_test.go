@@ -118,36 +118,40 @@ func TestQueryDesertsMatchIndex(t *testing.T) {
 					add(mask, code, locs[extra.locIndexes[mask][i]])
 				}
 			}
-			// The query must contain the union of index choices on both
-			// sequence orientations, mapped back to the original coordinates.
+			// Independently build both grids on both orientations. The query
+			// must contain their exact union, with no duplicate seed occurrences.
 			wantSet := make(map[string]bool)
-			for _, rc := range []bool{false, true} {
-				indexDir := db
-				if rc {
-					reversed := bytes.Clone(sequence)
-					RC(reversed)
-					rcRef := writeTestInput(t, filepath.Join(dir, "rc.fa"), ">rc\n"+string(reversed)+"\n")
-					indexDir = filepath.Join(dir, "rcdb")
-					runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", indexDir, rcRef)
-				}
-				output := runSeedIndexCommand(t, "utils", "kmers", "--quiet", "-d", indexDir, "-m", "0", "--only-forward")
-				for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n")[1:] {
-					fields := strings.Split(line, "\t")
+			for _, cfg := range [][2]string{{"100", "50"}, {"60", "30"}} {
+				for _, rc := range []bool{false, true} {
+					indexRef := ref
 					if rc {
-						position, err := strconv.Atoi(fields[5])
-						if err != nil {
-							t.Fatal(err)
-						}
-						fields[5] = strconv.Itoa(len(sequence) - lh.K - position + 2)
-						if fields[6] == "+" {
-							fields[6] = "-"
-						} else {
-							fields[6] = "+"
-						}
+						reversed := bytes.Clone(sequence)
+						RC(reversed)
+						indexRef = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("rc-%s.fa", cfg[0])), ">rc\n"+string(reversed)+"\n")
 					}
-					wantSet[strings.Join([]string{fields[0], fields[1], fields[5], fields[6]}, "\t")] = true
+					indexDir := filepath.Join(dir, fmt.Sprintf("expected-%s-%s-%v", cfg[0], cfg[1], rc))
+					runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-D", cfg[0], "-d", cfg[1], "-O", indexDir, indexRef)
+
+					output := runSeedIndexCommand(t, "utils", "kmers", "--quiet", "-d", indexDir, "-m", "0", "--only-forward")
+					for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n")[1:] {
+						fields := strings.Split(line, "\t")
+						if rc {
+							position, err := strconv.Atoi(fields[5])
+							if err != nil {
+								t.Fatal(err)
+							}
+							fields[5] = strconv.Itoa(len(sequence) - lh.K - position + 2)
+							if fields[6] == "+" {
+								fields[6] = "-"
+							} else {
+								fields[6] = "+"
+							}
+						}
+						wantSet[strings.Join([]string{fields[0], fields[1], fields[5], fields[6]}, "\t")] = true
+					}
 				}
 			}
+
 			want := make([]string, 0, len(wantSet))
 			for seed := range wantSet {
 				want = append(want, seed)

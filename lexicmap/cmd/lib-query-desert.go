@@ -32,10 +32,14 @@ import (
 )
 
 const (
-	// Query filling uses the index command's defaults, regardless of index settings.
+	// Index defaults are retained as one query-filling grid.
 	defaultSeedMaxDesert        = 100
 	defaultSeedInDesertDist     = 50
 	defaultQueryDesertThreshold = 50000 // default query length threshold in bases
+
+	// The additional query-only grid leaves index construction unchanged.
+	querySeedMaxDesert    = 60 // fill gaps at least this many bases long
+	querySeedInDesertDist = 30 // target spacing for the additional seeds
 )
 
 // queryDesertSeeds groups additional k-mers by mask. locIndexes maps each
@@ -66,8 +70,8 @@ func queryMaskSkipRegions(sequence []byte) []int {
 	return regions
 }
 
-// fillQueryDeserts mirrors index desert selection: mask each gap with 1 kb
-// flanks, then prefer upstream winners within half the expected seed distance.
+// fillQueryDeserts combines index-default and denser query sampling. Mask each
+// gap with 1 kb flanks, then prefer upstream winners within half each grid's spacing.
 // Scratch belongs to this call; concurrent queries never share a window masker.
 func fillQueryDeserts(lh *lexichash.LexicHash, sequence []byte, seeds []uint64, locations [][]int, threshold int) (*queryDesertSeeds, [][]int, error) {
 	if !fillQueryDesertsEnabled(len(sequence), threshold) {
@@ -167,7 +171,7 @@ func fillQueryDeserts(lh *lexichash.LexicHash, sequence []byte, seeds []uint64, 
 		previous := 0
 		firstGap := 0 // windows advance monotonically; never rescan earlier N gaps
 		for _, position := range scanPositions {
-			if position-previous < defaultSeedMaxDesert {
+			if position-previous < min(defaultSeedMaxDesert, querySeedMaxDesert) {
 				previous = position
 				continue
 			}
@@ -211,29 +215,39 @@ func fillQueryDeserts(lh *lexichash.LexicHash, sequence []byte, seeds []uint64, 
 				}
 				return false
 			}
-			const radius = defaultSeedInDesertDist / 2
-			for p := previous + defaultSeedInDesertDist; p < position; {
-				downstream := p + 1
-				limit := p - radius
-				found := false
-				for ; p > limit; p-- {
-					if choose(p) {
-						found = true
-						break
-					}
+			// Reuse window masks, but sample both grids from the same global seeds.
+			// The shared add function deduplicates mask/code/location tuples.
+			for _, cfg := range [...]struct{ threshold, spacing int }{
+				{defaultSeedMaxDesert, defaultSeedInDesertDist},
+				{querySeedMaxDesert, querySeedInDesertDist},
+			} {
+				if position-previous < cfg.threshold {
+					continue
 				}
-				if !found {
-					if downstream >= position {
-						break
-					}
-					limit = min(downstream+radius, position-1)
-					for p = downstream; p < limit; p++ {
+				radius := cfg.spacing / 2
+				for p := previous + cfg.spacing; p < position; {
+					downstream := p + 1
+					limit := p - radius
+					found := false
+					for ; p > limit; p-- {
 						if choose(p) {
+							found = true
 							break
 						}
 					}
+					if !found {
+						if downstream >= position {
+							break
+						}
+						limit = min(downstream+radius, position-1)
+						for p = downstream; p < limit; p++ {
+							if choose(p) {
+								break
+							}
+						}
+					}
+					p += cfg.spacing
 				}
-				p += defaultSeedInDesertDist
 			}
 			previous = position
 		}
