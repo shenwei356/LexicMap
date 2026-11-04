@@ -71,6 +71,9 @@ type IndexSearchingOptions struct {
 	InMemorySearch bool  // load the seed/kv data into memory
 	LazyGenomeMeta bool  // defer contig metadata until pseudoalignment succeeds; ordinary search only
 	MinPrefix      uint8 // minimum prefix length, e.g., 15
+	// QueryDesertThreshold enables filling only above this query length in bases.
+	// Zero disables filling, including its gap-aware and reverse-query masking.
+	QueryDesertThreshold int
 	// MaxMismatch     int   // maximum mismatch, e.g., 3
 	MinSinglePrefix uint8 // minimum prefix length of the single seed, e.g., 20
 	// MinMatchedBases uint8 // the total matched bases
@@ -136,6 +139,9 @@ type IndexSearchingOptions struct {
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
+	if opt.QueryDesertThreshold < 0 {
+		return fmt.Errorf("QueryDesertThreshold must be nonnegative")
+	}
 	if opt.MaxGenomeCacheMemory < 0 {
 		return fmt.Errorf("MaxGenomeCacheMemory must be nonnegative")
 	}
@@ -158,6 +164,7 @@ func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
 }
 
 var DefaultIndexSearchingOptions = IndexSearchingOptions{
+	QueryDesertThreshold: defaultQueryDesertThreshold,
 	MaxGenomeCacheMemory: defaultGenomeSearchFragmentIndexMemory,
 	NumCPUs:              runtime.NumCPU(),
 	MaxOpenFiles:         512,
@@ -317,6 +324,9 @@ func (idx *Index) initChainingResources() {
 // NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
 	outputLog := opt.Verbose || opt.Log2File
+	if opt.QueryDesertThreshold < 0 {
+		return nil, fmt.Errorf("QueryDesertThreshold must be nonnegative")
+	}
 	if opt.MaxGenomeCacheMemory < 0 {
 		return nil, fmt.Errorf("MaxGenomeCacheMemory must be nonnegative")
 	}
@@ -1671,12 +1681,12 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 	if debug {
 		startTime0 := time.Now()
-		startTime = time.Now()
 		log.Debugf("%s (%s bp): start to search", query.seqID, humanize.Comma(int64(len(query.seq))))
 		defer func() {
 			log.Debugf("%s (%s bp): finished searching in %.3f seconds",
 				query.seqID, humanize.Comma(int64(len(query.seq))), time.Since(startTime0).Seconds())
 		}()
+		startTime = time.Now()
 	}
 
 	s := query.seq
@@ -1690,7 +1700,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	if idx.info.MainVersion == 3 && idx.info.MinorVersion < 5 { // for backward compatibility
 		funcMask = idx.lh.MaskKnownDistinctPrefixesWithStrandBias
 	}
-	_kmers, _locses, err := funcMask(s, nil, true)
+	var skipRegions []int
+	if fillQueryDesertsEnabled(len(s), idx.opt.QueryDesertThreshold) {
+		skipRegions = queryMaskSkipRegions(s)
+	}
+	_kmers, _locses, err := funcMask(s, skipRegions, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1712,6 +1726,29 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			(*_kmers)[i] = 0
 			// (*_locses)[i] = (*_locses)[i][:0]
 		}
+	}
+
+	var maskingDuration time.Duration
+	if debug {
+		maskingDuration = time.Since(startTime)
+	}
+	extra, queryLocs, err := fillQueryDeserts(idx.lh, s, *_kmers, *_locses, idx.opt.QueryDesertThreshold)
+	if err != nil {
+		return nil, err
+	}
+	// Keep the original borrowed slice for recycling; extras have separate storage.
+	_locses = &queryLocs
+	if debug {
+		totalMaskingDuration := time.Since(startTime)
+		if extra != nil {
+			log.Debugf("%s (%s bp): finished query masking with desert filling in %s (masking: %s, desert filling: %s)",
+				query.seqID, humanize.Comma(int64(len(s))), totalMaskingDuration, maskingDuration, totalMaskingDuration-maskingDuration)
+		} else {
+			log.Debugf("%s (%s bp): finished query masking without desert filling in %s",
+				query.seqID, humanize.Comma(int64(len(s))), totalMaskingDuration)
+		}
+		// Seed-matching timing starts after query masking and desert filling.
+		startTime = time.Now()
 	}
 
 	// ----------------------------------------------------------------
@@ -1834,6 +1871,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	wg.Wait()
 	close(chR)
 	<-doneR
+	extra.addReverseSeeds(idx.lh, _kmersR, _locsesR)
 	// -----------------------
 
 	var rs *[]*seedSearchResult
@@ -1843,7 +1881,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		// The arena must outlive Top-N and alignment because candidates refer to it.
 		var spillArena seedSearchResultArena
 		defer spillArena.recycle()
-		rs, err = idx.collectAndChainSpilledSeeds(query, _kmers, _kmersR, _locses, _locsesR, genomeIds, &spillArena, debug)
+		rs, err = idx.collectAndChainSpilledSeeds(query, _kmers, _kmersR, _locses, _locsesR, genomeIds, &spillArena, debug, extra)
 		// Streaming callbacks are now finished, including on error, so reversed
 		// query k-mers and their original-mask mapping can return to their pools.
 		for i := range *_kmersR {
@@ -1909,6 +1947,9 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						defer func() { <-idx.searcherTokens[iS] }()
 						streamer = searchers[iS]
 					}
+					if extra != nil {
+						streamer = queryDesertStreamer{streamer, extra, beginM, endM}
+					}
 					var started time.Time
 					if debug {
 						started = time.Now()
@@ -1951,6 +1992,16 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						checkError(err)
 					}
 
+					if extra != nil {
+						err = extra.stream(searchersIM[iS], beginM, endM, minPrefix, func(r kv.SearchResult) error {
+							// Streaming decoder owns Values; keep a copy until collection.
+							r.Values = slices.Clone(r.Values)
+							*srs = append(*srs, r)
+							return nil
+						})
+						checkError(err)
+					}
+
 					// suffix search
 					srs2, err = searchersIM[iS].Search2((*_kmersR)[beginM:endM], minPrefix, true, true)
 					if err != nil {
@@ -1970,6 +2021,16 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					// srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, maxMismatch)
 					srs, err = searchers[iS].Search((*_kmers)[beginM:endM], minPrefix, true, false)
 					if err != nil {
+						checkError(err)
+					}
+
+					if extra != nil {
+						err = extra.stream(searchers[iS], beginM, endM, minPrefix, func(r kv.SearchResult) error {
+							// Streaming decoder owns Values; keep a copy until collection.
+							r.Values = slices.Clone(r.Values)
+							*srs = append(*srs, r)
+							return nil
+						})
 						checkError(err)
 					}
 

@@ -14,6 +14,10 @@ Attention:
      and/or a file list via the flag -X/--infile-list.
   3. For multiple queries, the order of queries in output might be different from the input.
   4. For older indexes without a stored base count, the first search counts bases and updates info.toml.
+  5. Queries longer than --fill-desert-threshold (default 50000 bp) have seed
+     deserts filled using the index defaults: a maximum seed distance of 100 bp and
+     a target spacing of 50 bp. Set the threshold to 0 to disable filling. Seeds from
+     both query orientations are combined to preserve reverse-complement sensitivity.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format
@@ -120,6 +124,9 @@ Flags:
                                          you want to output blast-style format with "lexicmap utils 2blast".
       --debug                            ► Print debug information, including a progress bar.
                                          (recommended when searching with one query).
+      --fill-desert-threshold int        ► Fill seed deserts only in queries longer than this many
+                                         bases (0 disables filling). Uses index defaults: 100 bp maximum
+                                         seed distance and 50 bp target spacing. (default 50000)
       --gc-interval int                  ► Force garbage collection every N queries (0 for disable).
                                          The value can't be too small. (default 64)
   -G, --genome2taxid string              ► Two-column tabular file for mapping genome ID to TaxId,

@@ -576,9 +576,9 @@ func init() {
 		formatFlagUsage(`Disable sketching desert filling (only for debug).`))
 	// indexCmd.Flags().IntP("seed-min-prefix", "p", 15,
 	// 	formatFlagUsage(`Minimum length of shared substrings (anchors) in searching. Here, this value is used to remove low-complexity masks and choose k-mers to fill sketching deserts.`))
-	indexCmd.Flags().IntP("seed-max-desert", "D", 100,
+	indexCmd.Flags().IntP("seed-max-desert", "D", defaultSeedMaxDesert,
 		formatFlagUsage(`Maximum length of sketching deserts, or maximum seed distance. Deserts with seed distance larger than this value will be filled by choosing k-mers roughly every --seed-in-desert-dist bases.`))
-	indexCmd.Flags().IntP("seed-in-desert-dist", "d", 50,
+	indexCmd.Flags().IntP("seed-in-desert-dist", "d", defaultSeedInDesertDist,
 		formatFlagUsage(`Distance of k-mers to fill deserts.`))
 
 	// ------  generate mask from the top N biggest genomes

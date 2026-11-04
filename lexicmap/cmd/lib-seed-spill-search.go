@@ -65,7 +65,7 @@ type seedDataStreamer interface {
 //
 // No Top-N selection occurs here; Index.Search applies it after all genome
 // scores are known. Files and the budget slot are released before returning.
-func (idx *Index) collectAndChainSpilledSeeds(query *Query, kmers *[]uint64, reverseKmers *[][]uint64, locses, reverseLocses *[][]int, genomeIDs *map[uint64]*[]uint64, arena *seedSearchResultArena, debug bool) (results *[]*seedSearchResult, err error) {
+func (idx *Index) collectAndChainSpilledSeeds(query *Query, kmers *[]uint64, reverseKmers *[][]uint64, locses, reverseLocses *[][]int, genomeIDs *map[uint64]*[]uint64, arena *seedSearchResultArena, debug bool, desertSeeds *queryDesertSeeds) (results *[]*seedSearchResult, err error) {
 	// Step 1: wait for a budget share before taking any disk-searcher tokens.
 	store := newSeedSpillStore(idx.seedMemoryBudget)
 	if idx.opt.Verbose || idx.opt.Log2File {
@@ -203,6 +203,9 @@ func (idx *Index) collectAndChainSpilledSeeds(query *Query, kmers *[]uint64, rev
 			var searchStarted time.Time
 			if debug {
 				searchStarted = time.Now()
+			}
+			if desertSeeds != nil {
+				searcher = queryDesertStreamer{searcher, desertSeeds, begin, end}
 			}
 			e := searcher.SearchStream((*kmers)[begin:end], idx.opt.MinPrefix, true, false, consume)
 			if e == nil {
