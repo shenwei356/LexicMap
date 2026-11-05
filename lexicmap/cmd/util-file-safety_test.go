@@ -122,6 +122,53 @@ func TestCommandInputOutputCollisions(t *testing.T) {
 	}
 }
 
+// A symlink can be removed with its directory even when its target is outside.
+func TestIndexPreservesInputSymlinkInOutput(t *testing.T) {
+	for _, suffix := range []string{"", ExtTmpDir} {
+		for _, parentAlias := range []bool{false, true} {
+			t.Run(fmt.Sprintf("suffix=%s/alias=%t", suffix, parentAlias), func(t *testing.T) {
+				root := t.TempDir()
+				db := filepath.Join(root, "db")
+				replaced := db + suffix
+				if err := os.Mkdir(replaced, 0700); err != nil {
+					t.Fatal(err)
+				}
+				input := writeTestInput(t, filepath.Join(root, "ref.fa"), ">s\n"+indexTestDNA(100)+"\n")
+				link := filepath.Join(replaced, "input.fa")
+				if err := os.Symlink(input, link); err != nil {
+					t.Fatal(err)
+				}
+				passed := link
+				if parentAlias {
+					alias := filepath.Join(root, "alias")
+					if err := os.Symlink(replaced, alias); err != nil {
+						t.Fatal(err)
+					}
+					passed = filepath.Join(alias, "input.fa")
+				}
+				sentinel := writeTestInput(t, filepath.Join(replaced, "keep"), "original\n")
+				logFile := writeTestInput(t, filepath.Join(root, "run.log"), "original\n")
+				_, stderr, err := runAuditCommand(t, "", "index", "--quiet", "--force", "-j", "1", "-m", "64",
+					"-c", "2", "--partitions", "4", "-b", "1", "-O", db, "--log", logFile, passed, input)
+				if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+					t.Errorf("input symlink conflict accepted: %v, %s", err, stderr)
+				}
+				if target, err := os.Readlink(link); err != nil || target != input {
+					t.Errorf("input symlink changed: %q, %v", target, err)
+				}
+				for _, file := range []string{sentinel, logFile} {
+					if got, err := os.ReadFile(file); err != nil || string(got) != "original\n" {
+						t.Errorf("file changed: %s: %q, %v", file, got, err)
+					}
+				}
+				if got, err := os.ReadFile(input); err != nil || string(got) != ">s\n"+indexTestDNA(100)+"\n" {
+					t.Errorf("source changed: %v", err)
+				}
+			})
+		}
+	}
+}
+
 func TestCommandOutputCurrentDirectory(t *testing.T) {
 	inputs := t.TempDir()
 	writeTestInput(t, filepath.Join(inputs, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")

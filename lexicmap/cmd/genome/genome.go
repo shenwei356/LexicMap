@@ -263,7 +263,7 @@ func (w *Writer) Write(s *Genome) error {
 		// seq ids
 		seqid = *s.SeqIDs[i]
 		if len(seqid) > 65535 { // clip super-long sequence ID
-			seqid = s.ID[:65535]
+			seqid = seqid[:65535]
 		}
 		be.PutUint16(buf[:2], uint16(len(seqid))) // length of id
 		buf0.Write(buf[:2])

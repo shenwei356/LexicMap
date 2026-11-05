@@ -25,11 +25,42 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/wfa"
 )
+
+// A chain's inclusive end must include its last base in the comparator window.
+func TestAlignChainQueryWindowEnd(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		t.Run(fmt.Sprintf("reverse=%t", reverse), func(t *testing.T) {
+			idx := compareTestIndex(t)
+			idx.opt.MaxEvalue = 10
+			q := []byte(indexTestDNA(31))
+			if reverse {
+				RC(q)
+			}
+			cpr := NewSeqComparator(idx.seqCompareOption, &sync.Pool{New: func() interface{} {
+				return NewChainer2(&idx.seqCompareOption.Chaining2Options)
+			}})
+			if err := cpr.Index(q); err != nil {
+				t.Fatal(err)
+			}
+			defer cpr.RecycleIndex()
+			algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+			defer wfa.RecycleAligner(algn)
+			chain := &Chain2Result{QBegin: 0, QEnd: 30, TBegin: 0, TEnd: 30}
+			score := scoreAndEvalue(2, -3, 5, 2, len(q), 0.625, 0.41)
+			matched, aligned, gaps, _, _, ok := alignChain(q, nil, q, chain, &subjectSketch{seqLen: len(q)},
+				algn, cpr, 0, 0, 100, 100, idx, &score)
+			if !ok || matched != len(q) || aligned != len(q) || gaps != 0 {
+				t.Fatalf("terminal match lost: ok=%t matched/aligned/gaps=%d/%d/%d", ok, matched, aligned, gaps)
+			}
+		})
+	}
+}
 
 // TestAlignVotedWindowMinLength checks the repetitive-window fallback,
 // including the inclusive boundary, reverse complements, and pooled reuse.

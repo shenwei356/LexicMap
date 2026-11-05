@@ -25,11 +25,87 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"slices"
+	"strings"
+
+	rtree "github.com/shenwei356/LexicMap/lexicmap/cmd/tree"
 
 	"github.com/shenwei356/wfa"
 	"sync"
 	"testing"
 )
+
+// TestSeqCompareQueryWindow checks containment on both anchor orientations and
+// both index forms, including matches that only touch a window boundary.
+func TestSeqCompareQueryWindow(t *testing.T) {
+	for _, compact := range []bool{false, true} {
+		for _, reverse := range []bool{false, true} {
+			for _, matchLen := range []int{24, 32} {
+				t.Run(fmt.Sprintf("compact=%t/reverse=%t/length=%d", compact, reverse, matchLen), func(t *testing.T) {
+					opt := DefaultSeqComparatorOptions
+					opt.Chaining2Options = DefaultChaining2Options
+					opt.MinAlignLen = 20
+					query := []byte(indexTestDNA(300))
+					indexed := slices.Clone(query)
+					if reverse {
+						RC(indexed)
+					}
+					cpr := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} {
+						return NewChainer2(&opt.Chaining2Options)
+					}})
+					if compact {
+						entries, err := cpr.collectIndexEntries(indexed)
+						if err != nil {
+							t.Fatal(err)
+						}
+						slices.SortFunc(entries, func(a, b rtree.BatchEntry) int {
+							if a.Key < b.Key {
+								return -1
+							}
+							if a.Key > b.Key {
+								return 1
+							}
+							return 0
+						})
+						cpr.compact = rtree.NewCompactTree(opt.K, entries)
+					} else if err := cpr.Index(indexed); err != nil {
+						t.Fatal(err)
+					}
+					defer cpr.RecycleIndex()
+					for _, start := range []int{100 - matchLen - 1, 100 - matchLen, 99, 100, 200 - matchLen, 201 - matchLen, 200, 201} {
+						// The shorter match is a k-mer suffix with mismatched padding.
+						padding := 32 - matchLen
+						target := slices.Clone(query[start-padding : start+matchLen])
+						for i := 0; i < padding; i++ {
+							target[i] = "TGCA"[strings.IndexByte("ACGT", target[i])]
+						}
+						wantStart := start
+						if reverse {
+							RC(target)
+							wantStart = len(query) - start - matchLen
+						}
+						for _, bounds := range [][2]uint32{{100, 200}, {100, 100}, {200, 100}, {0, 300}} {
+							r, err := cpr.Compare(bounds[0], bounds[1], target, len(query))
+							if err != nil {
+								t.Fatal(err)
+							}
+							want := wantStart >= int(bounds[0]) && wantStart+matchLen <= int(bounds[1])
+							if (r != nil) != want {
+								t.Errorf("start=%d bounds=%v: retained=%t, want %t", wantStart, bounds, r != nil, want)
+							}
+							if r != nil {
+								if want && (len(*r.Chains) != 1 || r.BestChain.QBegin != wantStart || r.BestChain.QEnd != wantStart+matchLen-1 || r.BestChain.MatchedBases != matchLen) {
+									t.Errorf("start=%d bounds=%v: wrong match: %+v", wantStart, bounds, r.BestChain)
+								}
+								RecycleSeqComparatorResult(r)
+							}
+						}
+					}
+				})
+			}
+		}
+	}
+}
 
 // sparsePrefixSequences creates exactly two matching anchors separated by a
 // mismatch-rich interval. Homopolymer padding changes only the target length.
@@ -187,7 +263,7 @@ func TestSeqCompare(t *testing.T) {
 		return
 	}
 
-	cr, err := cpr.Compare(0, uint32(len(s2)-1), s2, len(s2))
+	cr, err := cpr.Compare(0, uint32(len(s2)), s2, len(s2))
 	if err != nil {
 		t.Logf("%s", err)
 		return
@@ -376,7 +452,7 @@ func TestSeqCompareDefaultGapBoundary(t *testing.T) {
 							t.Fatal(e)
 						}
 						defer cpr.RecycleIndex()
-						cr, e := cpr.Compare(0, uint32(len(q)-1), target, len(q))
+						cr, e := cpr.Compare(0, uint32(len(q)), target, len(q))
 						if e != nil || cr == nil {
 							t.Fatalf("missing pseudoalignment: %v", e)
 						}

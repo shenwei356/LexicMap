@@ -356,10 +356,13 @@ func RecycleSeqComparatorResult(r *SeqComparatorResult) {
 	poolSeqComparatorResult.Put(r)
 }
 
-// Compare matchs k-mers for the query sequence (begin: end), chains them up,
-// and computes the similarity.
+// Compare matches k-mers wholly within the query interval [begin, end), chains
+// them up, and computes the similarity. Empty or reversed intervals have no hits.
 // Please remember to call RecycleSeqComparatorResult() to recycle the result.
 func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*SeqComparatorResult, error) {
+	if begin >= end {
+		return nil, nil
+	}
 	k8 := cpr.options.K
 	k := int(k8)
 
@@ -411,7 +414,9 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	appendNegative := func(_ uint64, lenPrefix uint8, values []uint32) {
 		for _, v := range values {
 			p := v>>1 + uint32(k) - uint32(lenPrefix)
-			if v&1 == 0 || p+uint32(lenPrefix) < begin || p > end {
+			// A reverse-complement prefix is a suffix on the original strand;
+			// its translated interval must obey the same bounds as a forward hit.
+			if v&1 == 0 || p < begin || p+uint32(lenPrefix) > end {
 				continue
 			}
 			*subs = append(*subs, SubstrPair{

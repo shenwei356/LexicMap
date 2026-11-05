@@ -2386,7 +2386,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 			// comparing the two sequences with pseudo-alignment
 
 			// fmt.Printf("qBegin: %d, qEnd: %d, len(tseq): %d\n", qBegin, qEnd, len(tSeq.Seq))
-			cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd), tSeq.Seq, qlen)
+			cr, err := cpr.Compare(uint32(qBegin), uint32(qEnd+1), tSeq.Seq, qlen)
 			if err != nil {
 				checkError(err)
 			}

@@ -113,25 +113,6 @@ Attention:
 			checkError(closeOutStream(outfh, gw, w))
 		}()
 
-		if len(files) == 1 && topN == 0 && query == "" {
-			if outputLog {
-				log.Infof("only one input file '%s' is given, just copy data to '%s'", files[0], outFile)
-			}
-			fh, err := openSearchResultFile(files[0])
-			if errors.Is(err, xopen.ErrNoContent) {
-				log.Warningf("skipping %s", err)
-				return
-			}
-			checkError(err)
-			defer fh.Close()
-
-			_, err = io.Copy(outfh, fh)
-			if err != nil {
-				checkError(fmt.Errorf("failed to copy data from %s to %s: %s", files[0], outFile, err))
-			}
-			return
-		}
-
 		var retained []*SearchResultOfAGenome
 
 		// readers
@@ -146,6 +127,12 @@ Attention:
 			}
 			checkError(err)
 			readers[i] = reader
+		}
+		// Preserve a header-only single input after it passes through the reader.
+		// Next synchronizes access to its header by draining the result channel.
+		var singleInput *SearchResultReader
+		if len(files) == 1 && topN == 0 && query == "" {
+			singleInput = readers[0]
 		}
 
 		entries := make([]*SearchResultOfAGenome, 0, len(files))
@@ -264,6 +251,9 @@ Attention:
 			}
 		}
 
+		if checkColumns && singleInput != nil && singleInput.header != "" {
+			fmt.Fprintln(outfh, singleInput.header)
+		}
 		for i, r := range retained {
 			writeMergedGenomeResult(outfh, r, query, qlen, n, moreColumns)
 			RecycleSearchResultOfAGenome(r)
@@ -397,14 +387,15 @@ func (h SearchResultsHeap) Pop() interface{} {
 }
 
 type SearchResultReader struct {
-	query string
+	query  string
+	header string // published before the first result or the channel close
 
 	fh *xopen.Reader
 
 	ch chan *SearchResultOfAGenome
 }
 
-// openSearchResultFile reports empty input consistently for copying and merging.
+// openSearchResultFile reports empty input with its source path.
 func openSearchResultFile(file string) (*xopen.Reader, error) {
 	fh, err := xopen.Ropen(file)
 	if errors.Is(err, xopen.ErrNoContent) {
@@ -463,6 +454,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 			}
 			if headerLine {
 				headerLine = false
+				r.header = line
 				continue
 			}
 			stringSplitNByByte(line, '\t', ncols, &items)

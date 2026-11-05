@@ -347,7 +347,7 @@ func TestRepeatRefinement16S(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cpr.RecycleIndex()
-	cr, err := cpr.Compare(0, uint32(len(q)-1), target, len(q))
+	cr, err := cpr.Compare(0, uint32(len(q)), target, len(q))
 	if err != nil || cr == nil {
 		t.Fatalf("comparison: result=%v err=%v", cr, err)
 	}

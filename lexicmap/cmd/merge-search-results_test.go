@@ -276,9 +276,11 @@ func TestMergeSearchResultsRejectsMixedQueries(t *testing.T) {
 			return fmt.Sprintf("%s\t100\t1\t%s\ts\t100\t1\t1\t100\t100\t100\t0\t1\t100\t1\t100\t+\t100\t0\t100\n", query, subject)
 		}
 		file := writeTestInput(t, filepath.Join(dir, "mixed.tsv"), auditSearchHeader+"\n"+row("query1", "subject")+row("query2", subject2))
-		_, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", "--quiet", "-n", "1", file)
-		if err == nil || !strings.Contains(string(stderr), "queries") {
-			t.Fatalf("mixed queries accepted: %v %s", err, stderr)
+		for _, topN := range []string{"0", "1"} {
+			_, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", "--quiet", "-n", topN, file)
+			if err == nil || !strings.Contains(string(stderr), "queries") {
+				t.Errorf("mixed queries accepted with -n %s: %v %s", topN, err, stderr)
+			}
 		}
 		for _, query := range []string{"query1", "query2"} {
 			output := runSeedIndexCommand(t, "utils", "merge-search-results", "--quiet", "-n", "1", "-q", query, file)
@@ -286,6 +288,38 @@ func TestMergeSearchResultsRejectsMixedQueries(t *testing.T) {
 			if len(lines) != 2 || !strings.HasPrefix(lines[1], query+"\t") {
 				t.Fatalf("query filter changed: %s", output)
 			}
+		}
+	}
+}
+
+// Valid single inputs retain their fields, ordering, and empty-result header.
+func TestMergeSearchResultsSingleInput(t *testing.T) {
+	for _, extra := range []bool{false, true} {
+		for _, empty := range []bool{false, true} {
+			t.Run(fmt.Sprintf("extra=%t/empty=%t", extra, empty), func(t *testing.T) {
+				header, fields := auditSearchHeader, ""
+				if extra {
+					header += "\tcigar\tqseq\tsseq\talign"
+					fields = "\t4M\tACGT\tACGT\t||||"
+				}
+				data := header + "\n"
+				if !empty {
+					for _, subject := range []string{"a", "b"} {
+						data += "q\t100\t2\t" + subject + "\ts\t4\t1\t1\t4\t4\t100\t0\t1\t4\t1\t4\t+\t100\t1e-10\t100" + fields + "\n"
+					}
+				}
+				file := writeTestInput(t, filepath.Join(t.TempDir(), "input.tsv"), data)
+				for _, stdin := range []bool{false, true} {
+					input, stream := file, ""
+					if stdin {
+						input, stream = "-", data
+					}
+					out, stderr, err := runAuditCommand(t, stream, "utils", "merge-search-results", "--quiet", input)
+					if err != nil || string(out) != data {
+						t.Fatalf("single input changed (stdin=%t): %v\n%s\n%s", stdin, err, out, stderr)
+					}
+				}
+			})
 		}
 	}
 }

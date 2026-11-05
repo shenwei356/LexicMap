@@ -141,6 +141,41 @@ func TestGenomeWritingAndSeqExtraction(t *testing.T) {
 	}
 }
 
+// Long contig IDs must be clipped independently of the genome ID.
+func TestWriterLongSequenceID(t *testing.T) {
+	for _, genomeIDLen := range []int{1, 65535} {
+		t.Run(fmt.Sprintf("genome-id-length=%d", genomeIDLen), func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "genomes.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			id := bytes.Repeat([]byte{'s'}, 65536)
+			g := &Genome{ID: bytes.Repeat([]byte{'g'}, genomeIDLen), Seq: []byte("ACGT"),
+				Len: 4, GenomeSize: 4, NumSeqs: 1, SeqSizes: []int{4}, SeqIDs: []*[]byte{&id}}
+			if err := w.Write(g); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			read, err := r.GenomeInfo(0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer RecycleGenome(read)
+			if !bytes.Equal(read.ID, g.ID) || !bytes.Equal(*read.SeqIDs[0], id[:65535]) {
+				t.Fatal("genome or sequence ID changed during truncation")
+			}
+		})
+	}
+}
+
 func TestReadAndWrite(t *testing.T) {
 	file := "t.2bit"
 

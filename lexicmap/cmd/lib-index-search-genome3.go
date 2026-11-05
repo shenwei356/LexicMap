@@ -742,7 +742,7 @@ func alignChain(
 	qExpEnd := min(chain.QEnd+extLen, qLen-1)
 
 	// Pseudo-alignment with SeqComparator (already indexed).
-	cr, err := cpr.Compare(uint32(qExpBegin), uint32(qExpEnd), tSubseq, qLen)
+	cr, err := cpr.Compare(uint32(qExpBegin), uint32(qExpEnd+1), tSubseq, qLen)
 	if err != nil {
 		return 0, 0, 0, 0, 0, false
 	}

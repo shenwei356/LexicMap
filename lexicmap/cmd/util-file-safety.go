@@ -62,26 +62,35 @@ func resolveOutputPath(path string) (string, error) {
 	}
 }
 
-// checkFileOutsideDirectories protects auxiliary files from directory cleanup.
-// Check both the named path (a symlink can itself be removed) and its target.
-func checkFileOutsideDirectories(path, label string, dirs ...string) error {
-	if path == "" {
-		return nil
-	}
+// filePathVariants preserves a symlink's name as well as its resolved target.
+// Directory cleanup can remove the name even when the target is outside.
+func filePathVariants(path string) ([3]string, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return err
+		return [3]string{}, err
 	}
 	real, err := resolveOutputPath(path)
 	if err != nil {
-		return err
+		return [3]string{}, err
 	}
 	// Resolve directory aliases while retaining the final symlink's name.
 	parent, err := resolveOutputPath(filepath.Dir(absolute))
 	if err != nil {
-		return err
+		return [3]string{}, err
 	}
 	named := filepath.Join(parent, filepath.Base(absolute))
+	return [3]string{absolute, named, real}, nil
+}
+
+// checkFileOutsideDirectories protects auxiliary files from directory cleanup.
+func checkFileOutsideDirectories(path, label string, dirs ...string) error {
+	if path == "" {
+		return nil
+	}
+	paths, err := filePathVariants(path)
+	if err != nil {
+		return err
+	}
 	for _, dir := range dirs {
 		absoluteDir, err := filepath.Abs(dir)
 		if err != nil {
@@ -91,7 +100,7 @@ func checkFileOutsideDirectories(path, label string, dirs ...string) error {
 		if err != nil {
 			return err
 		}
-		for _, pair := range [][2]string{{absoluteDir, absolute}, {realDir, named}, {realDir, real}} {
+		for _, pair := range [][2]string{{absoluteDir, paths[0]}, {realDir, paths[1]}, {realDir, paths[2]}} {
 			rel, err := filepath.Rel(pair[0], pair[1])
 			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 				return fmt.Errorf("%s path %s must be outside output directory %s", label, path, dir)
@@ -205,21 +214,22 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			}
 			return nil
 		}
-		absolute, err := filepath.Abs(input)
+		paths, err := filePathVariants(input)
 		if err != nil {
 			return err
 		}
 		var info os.FileInfo
 		statDone := false
 		for _, output := range outputs {
-			same := absolute == output.absolute
+			same := paths[0] == output.absolute
 			if !same && output.directory {
-				real := absolute
-				if resolved, err := filepath.EvalSymlinks(real); err == nil {
-					real = resolved
+				for _, path := range paths {
+					rel, err := filepath.Rel(output.absolute, path)
+					if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+						same = true
+						break
+					}
 				}
-				rel, err := filepath.Rel(output.absolute, real)
-				same = err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 			}
 			if !same && output.info != nil {
 				if !statDone {

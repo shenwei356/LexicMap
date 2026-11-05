@@ -94,6 +94,9 @@ If you save *a few* **small** (viral) **complete** genomes (one sequence per gen
 - A **directory** containing input files via the flag `-I/--in-dir`.
     - **Multiple-level directories are supported**. So you don't need to save hundreds of thousands of files in one directory.
     - **Directory and file symlinks are followed**.
+      Keep input files and the symlinks used to access them outside the output
+      directory and its temporary merge directory (`<out-dir>.tmp`). These paths
+      are checked before either directory can be replaced, even with `--force`.
 
 ## Hardware requirements
 

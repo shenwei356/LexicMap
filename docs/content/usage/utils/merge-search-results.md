@@ -58,6 +58,10 @@ Global Flags:
 
 ## Examples
 
+Without `-q`, all records must have the same query ID, even when only one file
+is supplied and `-n` is left at its default of `0`. Use `-q` to select one query
+from a file containing results for multiple queries.
+
 Building 3 indexes with demo data.
 
 ```text
