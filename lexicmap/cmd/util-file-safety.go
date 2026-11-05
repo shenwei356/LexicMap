@@ -62,24 +62,76 @@ func resolveOutputPath(path string) (string, error) {
 	}
 }
 
-// filePathVariants preserves a symlink's name as well as its resolved target.
-// Directory cleanup can remove the name even when the target is outside.
-func filePathVariants(path string) ([3]string, error) {
+// filePathVariants preserves every symlink entry traversed on the way to a file.
+// Directory cleanup can remove an intermediate entry even if the target is outside.
+func filePathVariants(path string) ([]string, error) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return [3]string{}, err
+		return nil, err
 	}
-	real, err := resolveOutputPath(path)
-	if err != nil {
-		return [3]string{}, err
+	paths := []string{absolute}
+	// Keep .. components until preceding links have been followed.
+	if filepath.IsAbs(path) {
+		absolute = path
+	} else if filepath.VolumeName(path) == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		absolute = cwd + string(filepath.Separator) + path
 	}
-	// Resolve directory aliases while retaining the final symlink's name.
-	parent, err := resolveOutputPath(filepath.Dir(absolute))
-	if err != nil {
-		return [3]string{}, err
+	volume := filepath.VolumeName(absolute)
+	parent := volume + string(filepath.Separator)
+	components := func(p string) []string {
+		return strings.FieldsFunc(p, func(c rune) bool { return c < 128 && os.IsPathSeparator(uint8(c)) })
 	}
-	named := filepath.Join(parent, filepath.Base(absolute))
-	return [3]string{absolute, named, real}, nil
+	pending := components(absolute[len(volume):])
+	links := 0
+	for len(pending) > 0 {
+		part := pending[0]
+		pending = pending[1:]
+		if part == "." {
+			continue
+		}
+		if part == ".." {
+			parent = filepath.Dir(parent)
+			continue
+		}
+		named := filepath.Join(parent, part)
+		info, err := os.Lstat(named)
+		if os.IsNotExist(err) {
+			// Auxiliary outputs may not exist yet; their existing parents matter.
+			paths = append(paths, filepath.Join(append([]string{named}, pending...)...))
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			parent = named
+			continue
+		}
+		paths = append(paths, named)
+		links++
+		if links > 255 {
+			return nil, fmt.Errorf("too many symbolic links in %s", path)
+		}
+		target, err := os.Readlink(named)
+		if err != nil {
+			return nil, err
+		}
+		// Resolve one link at a time; EvalSymlinks on the parent would hide
+		// entries in chains such as alias/db/inputs -> outside -> elsewhere.
+		v := filepath.VolumeName(target)
+		if filepath.IsAbs(target) {
+			parent = v + string(filepath.Separator)
+		} else if len(target) > len(v) && os.IsPathSeparator(target[len(v)]) {
+			parent = filepath.VolumeName(parent) + string(filepath.Separator)
+		}
+		pending = append(components(target[len(v):]), pending...)
+	}
+	paths = append(paths, parent)
+	return paths, nil
 }
 
 // checkFileOutsideDirectories protects auxiliary files from directory cleanup.
@@ -100,10 +152,12 @@ func checkFileOutsideDirectories(path, label string, dirs ...string) error {
 		if err != nil {
 			return err
 		}
-		for _, pair := range [][2]string{{absoluteDir, paths[0]}, {realDir, paths[1]}, {realDir, paths[2]}} {
-			rel, err := filepath.Rel(pair[0], pair[1])
-			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-				return fmt.Errorf("%s path %s must be outside output directory %s", label, path, dir)
+		for _, variant := range paths {
+			for _, directory := range []string{absoluteDir, realDir} {
+				rel, err := filepath.Rel(directory, variant)
+				if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return fmt.Errorf("%s path %s must be outside output directory %s", label, path, dir)
+				}
 			}
 		}
 	}

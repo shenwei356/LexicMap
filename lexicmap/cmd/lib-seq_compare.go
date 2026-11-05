@@ -40,6 +40,7 @@ type SeqComparatorOptions struct {
 	MinPrefix uint8
 
 	// Chaining uses twice the effective MinPrefix as its per-call MinScore.
+	// MinAlignLen is checked on the extended HSP by base-level alignment callers.
 	Chaining2Options
 
 	// seq similarity

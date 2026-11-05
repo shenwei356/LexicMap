@@ -23,6 +23,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -90,5 +91,77 @@ func TestSAMQualityDecoratedLength(t *testing.T) {
 		if err == nil || !strings.Contains(string(stderr), "invalid alenHSP") {
 			t.Fatalf("accepted invalid length %q: %v %s", invalid, err, stderr)
 		}
+	}
+}
+
+// Raw scores cannot be recovered from the rounded bitscore in search output.
+func TestSAMRawAlignmentScore(t *testing.T) {
+	for _, tc := range []struct {
+		cigar                                       string
+		qlen, tlen, aligned, score, edits, bitscore int
+	}{
+		{"1000M", 1000, 1000, 1000, 2000, 0, 1804},
+		{"500M1X499M", 1000, 1000, 1000, 1995, 1, 1799},
+		{"500M1I499M", 1000, 999, 1000, 1991, 1, 1795},
+		{"500M2D500M", 1000, 1002, 1002, 1991, 2, 1795},
+		{"500M1I1D499M", 1000, 1000, 1001, 1984, 2, 1790},
+	} {
+		for _, strand := range []string{"+", "-"} {
+			t.Run(tc.cigar+strand, func(t *testing.T) {
+				file := filepath.Join(t.TempDir(), "input.tsv")
+				row := fmt.Sprintf("q\t%d\t1\tg\ts\t100\t1\t1\t100\t%d\t100\t0\t2\t%d\t1\t%d\t%s\t%d\t0\t%d\t%s\t%s\t*\t*\n",
+					tc.qlen+2, tc.aligned, tc.qlen+1, tc.tlen, strand, tc.tlen, tc.bitscore, tc.cigar, strings.Repeat("A", tc.qlen))
+				writeTestInput(t, file, auditSearchHeader+"\tcigar\tqseq\tsseq\talign\n"+row)
+				out := runSeedIndexCommand(t, "utils", "2sam", "--quiet", file)
+				want := fmt.Sprintf("\tNM:i:%d\tAS:i:%d\t", tc.edits, tc.score)
+				if !strings.Contains(string(out), want) {
+					t.Fatalf("missing %s in SAM output", want)
+				}
+			})
+		}
+	}
+}
+
+func TestSAMMappingQualityAtQueryBoundaryAndEOF(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "input.tsv")
+	var input strings.Builder
+	input.WriteString(auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n")
+	for _, query := range []string{"first", "last"} {
+		for i, matches := range []int{100, 62, 96} {
+			// Two HSPs from the best genome, then the second-best genome.
+			genome := "g1"
+			if i == 2 {
+				genome = "g2"
+			}
+			// Raw scores are 200, 10, and 180, so the strongest competitor gives MAPQ 4.
+			cigar := fmt.Sprintf("%dM", matches)
+			if matches < 100 {
+				cigar += fmt.Sprintf("%dX", 100-matches)
+			}
+			bitscore := []int{181, 10, 163}[i]
+			fmt.Fprintf(&input, "%s\t100\t2\t%s\ts\t100\t1\t%d\t100\t100\t%d\t0\t1\t100\t1\t100\t+\t100\t0\t%d\t%s\t%s\t%s\t%s\n", query, genome, i+1, matches, bitscore, cigar, strings.Repeat("A", 100), strings.Repeat("A", matches)+strings.Repeat("T", 100-matches), strings.Repeat("|", matches)+strings.Repeat(" ", 100-matches))
+		}
+	}
+	if err := os.WriteFile(file, []byte(input.String()), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out := runSeedIndexCommand(t, "utils", "2sam", "--quiet", file)
+	primary := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if strings.HasPrefix(line, "@") {
+			continue
+		}
+		r := strings.Split(line, "\t")
+		if r[1] == "0" {
+			primary++
+			if r[4] != "4" {
+				t.Fatalf("wrong MAPQ: %s", line)
+			}
+		} else if r[1] != "256" {
+			t.Fatalf("wrong secondary flag: %s", line)
+		}
+	}
+	if primary != 2 {
+		t.Fatalf("primary alignments: %d", primary)
 	}
 }

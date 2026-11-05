@@ -169,6 +169,73 @@ func TestIndexPreservesInputSymlinkInOutput(t *testing.T) {
 	}
 }
 
+// Nested aliases must not hide an input or auxiliary output entry from cleanup.
+func TestIndexPreservesNestedSymlinks(t *testing.T) {
+	for _, suffix := range []string{"", ExtTmpDir} {
+		for _, mode := range []string{"input", "link-chain", "relative-link-chain", "log", "big-genomes"} {
+			t.Run(suffix+"/"+mode, func(t *testing.T) {
+				root := t.TempDir()
+				real, outside := filepath.Join(root, "real"), filepath.Join(root, "outside")
+				replaced := filepath.Join(real, "db") + suffix
+				for _, dir := range []string{replaced, outside} {
+					if err := os.MkdirAll(dir, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				alias := filepath.Join(root, "alias")
+				link := filepath.Join(replaced, "inputs")
+				for name, target := range map[string]string{alias: real, link: outside} {
+					if err := os.Symlink(target, name); err != nil {
+						t.Fatal(err)
+					}
+				}
+				data := ">s\n" + indexTestDNA(100) + "\n"
+				input := writeTestInput(t, filepath.Join(outside, "q.fa"), data)
+				sentinel := writeTestInput(t, filepath.Join(replaced, "keep"), "original\n")
+				logFile := writeTestInput(t, filepath.Join(root, "run.log"), "original\n")
+				passed := filepath.Join(alias, "db"+suffix, "inputs", "q.fa")
+				if mode == "link-chain" || mode == "relative-link-chain" {
+					entry := filepath.Join(root, "entry")
+					target := filepath.Join(alias, "db"+suffix, "inputs")
+					if mode == "relative-link-chain" {
+						target = filepath.Join("alias", "db"+suffix, "inputs")
+					}
+					if err := os.Symlink(target, entry); err != nil {
+						t.Fatal(err)
+					}
+					passed = filepath.Join(entry, "q.fa")
+				}
+				args := []string{"index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", filepath.Join(alias, "db")}
+				wantError := "conflicts with input"
+				if mode == "log" || mode == "big-genomes" {
+					// Use a different output spelling so lexical containment is insufficient.
+					args[len(args)-1] = filepath.Join(real, "db")
+					// An absent auxiliary file must also retain every parent link entry.
+					args = append(args, "--"+mode, filepath.Join(filepath.Dir(passed), "new.log"), input)
+					wantError = "must be outside output directory"
+				} else {
+					args = append(args, "--log", logFile, passed)
+				}
+				_, stderr, err := runAuditCommand(t, "", args...)
+				if err == nil || !bytes.Contains(stderr, []byte(wantError)) {
+					t.Errorf("conflict accepted: %v, %s", err, stderr)
+				}
+				for file, want := range map[string]string{sentinel: "original\n", logFile: "original\n", input: data} {
+					if got, err := os.ReadFile(file); err != nil || string(got) != want {
+						t.Errorf("file changed: %s: %v", file, err)
+					}
+				}
+				if target, err := os.Readlink(link); err != nil || target != outside {
+					t.Errorf("input entry changed: %q, %v", target, err)
+				}
+				if _, err := os.Stat(filepath.Join(outside, "new.log")); !os.IsNotExist(err) {
+					t.Errorf("auxiliary file created before validation: %v", err)
+				}
+			})
+		}
+	}
+}
+
 func TestCommandOutputCurrentDirectory(t *testing.T) {
 	inputs := t.TempDir()
 	writeTestInput(t, filepath.Join(inputs, "ref.fa"), ">ref\n"+strings.Repeat("ACGT", 300)+"\n")

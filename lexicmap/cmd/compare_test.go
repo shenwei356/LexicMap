@@ -34,6 +34,37 @@ import (
 	"testing"
 )
 
+// Extended HSPs must survive -l in both comparison modes and both orientations.
+func TestCompareExtendedAlignmentLength(t *testing.T) {
+	dir := t.TempDir()
+	for _, reverse := range []bool{false, true} {
+		q, s := terminalMismatchSequences()
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, ortho := range []bool{false, true} {
+			for _, minimum := range []int{50, 980, 1000, 1001} {
+				args := []string{"genome", "compare", "--quiet", "-j", "2", "-l", strconv.Itoa(minimum), qfile, sfile}
+				if ortho {
+					args = append(args, "--OrthoANI", "--frag-size", "1000")
+				}
+				out := runSeedIndexCommand(t, args...)
+				lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+				want := 2
+				if minimum > 1000 {
+					want = 1
+				}
+				if len(lines) != want {
+					t.Fatalf("reverse=%t/ortho=%t/minimum=%d: got %d lines, want %d", reverse, ortho, minimum, len(lines), want)
+				}
+			}
+		}
+	}
+}
+
 func TestCombinationCount(t *testing.T) {
 	if got, err := combinationCount(3, "genome IDs"); err != nil || got != 3 {
 		t.Fatalf("count: got %d, err=%v, want 3", got, err)

@@ -25,12 +25,46 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/wfa"
 )
+
+// Genome search must apply -l after extending its sampled and dense chains.
+func TestGenomeSearchExtendedAlignmentLength(t *testing.T) {
+	dir := t.TempDir()
+	q, s := terminalMismatchSequences()
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">s\n"+string(s)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, reverse := range []bool{false, true} {
+		if reverse {
+			RC(q)
+		}
+		query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+string(q)+"\n")
+		for _, ortho := range []bool{false, true} {
+			for _, minimum := range []int{50, 980, 1000, 1001} {
+				args := []string{"genome", "search", "--quiet", "-j", "2", "-d", db, "-m", "0", "--frag-size", "1000", "-l", strconv.Itoa(minimum), query}
+				if ortho {
+					args = append(args, "--OrthoANI")
+				}
+				out := runSeedIndexCommand(t, args...)
+				lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+				want := 2
+				if minimum > 1000 {
+					want = 1
+				}
+				if len(lines) != want {
+					t.Fatalf("reverse=%t/ortho=%t/minimum=%d: got %d lines, want %d", reverse, ortho, minimum, len(lines), want)
+				}
+			}
+		}
+	}
+}
 
 // A chain's inclusive end must include its last base in the comparator window.
 func TestAlignChainQueryWindowEnd(t *testing.T) {

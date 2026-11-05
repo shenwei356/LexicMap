@@ -11,12 +11,14 @@
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:
         - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
-        - Ensure final alignments meet the minimum matching length set by `--align-min-match-len`.
+        - Retain search and comparison matches that reach `--align-min-match-len` only after extension, and enforce the final length limit in `genome search --OrthoANI`.
         - Fix hangs in `genome search` and `genome compare` when aligning sequences with highly repetitive regions.
         - Fix crashes and invalid CIGAR strings in adaptive alignment.
 - **`lexicmap utils merge-search-results`**:
     - Reject mixed query IDs in a single input file when no query is selected, including with the default `-n 0`.
     - Skip empty search results with a warning naming each file. [#41](https://github.com/shenwei356/LexicMap/issues/41)
+- **`lexicmap utils 2sam`**:
+    - Compute exact alignment scores from CIGAR for the `AS` tag and MAPQ, instead of approximating them from rounded bitscores.
 
 ### v0.10.0 - 2026-10-21
 

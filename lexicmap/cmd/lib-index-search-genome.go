@@ -923,7 +923,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 				}
 
 				_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
-				if evalue > maxEvalue {
+				if evalue > maxEvalue || int(cigar.AlignLen) < idx.seqCompareOption.MinAlignLen {
 					wfa.RecycleAlignmentResult(cigar)
 					RecycleSeqComparatorResult(cr)
 					continue

@@ -119,6 +119,34 @@ func TestChainer2SingleAnchorRetainsExtensionCandidate(t *testing.T) {
 	}
 }
 
+// Per-call extension mode must not leave a length override in a pooled chainer.
+func TestChainer2ExtensionLengthOverride(t *testing.T) {
+	opt := DefaultChaining2Options
+	opt.MinAlignLen = 50
+	chainer := NewChainer2(&opt)
+	subs := []SubstrPair{{QBegin: 10, TBegin: 10, Len: 31}, {QBegin: 20, TBegin: 20, Len: 31}}
+	for _, extension := range []bool{false, true, false} {
+		var chains *[]*Chain2Result
+		if extension {
+			chains, _, _, _, _, _, _, _ = chainer.chainWithMinScore(&subs, opt.MinScore)
+		} else {
+			chains, _, _, _, _, _, _, _ = chainer.Chain(&subs)
+		}
+		if (chains != nil) != extension {
+			t.Errorf("extension=%t: retained=%t", extension, chains != nil)
+		}
+		if chains != nil {
+			if len(*chains) != 1 || (*chains)[0].QBegin != 10 || (*chains)[0].QEnd != 50 {
+				t.Errorf("unexpected extension candidate: %+v", denseChain2Summary(chains))
+			}
+			RecycleChaining2Result(chains)
+		}
+		if opt.MinAlignLen != 50 {
+			t.Fatal("mutated shared length threshold")
+		}
+	}
+}
+
 // TestChainer2MinimumScore checks the inclusive score boundary independently
 // of the reference kernel, including reversed coordinates and gap penalties.
 func TestChainer2MinimumScore(t *testing.T) {

@@ -290,44 +290,6 @@ func TestSAMReferenceOrientation(t *testing.T) {
 	}
 }
 
-func TestSAMMappingQualityAtQueryBoundaryAndEOF(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "input.tsv")
-	var input strings.Builder
-	input.WriteString(auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n")
-	for _, query := range []string{"first", "last"} {
-		for i, score := range []int{100, 10, 90} {
-			// Two HSPs from the best genome, then the second-best genome.
-			genome := "g1"
-			if i == 2 {
-				genome = "g2"
-			}
-			fmt.Fprintf(&input, "%s\t100\t2\t%s\ts\t100\t1\t%d\t100\t100\t100\t0\t1\t100\t1\t100\t+\t100\t0\t%d\t100M\t%s\t%s\t%s\n", query, genome, i+1, score, strings.Repeat("A", 100), strings.Repeat("A", 100), strings.Repeat("|", 100))
-		}
-	}
-	if err := os.WriteFile(file, []byte(input.String()), 0600); err != nil {
-		t.Fatal(err)
-	}
-	out := runSeedIndexCommand(t, "utils", "2sam", "--quiet", file)
-	primary := 0
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		if strings.HasPrefix(line, "@") {
-			continue
-		}
-		r := strings.Split(line, "\t")
-		if r[1] == "0" {
-			primary++
-			if r[4] != "4" {
-				t.Fatalf("wrong MAPQ: %s", line)
-			}
-		} else if r[1] != "256" {
-			t.Fatalf("wrong secondary flag: %s", line)
-		}
-	}
-	if primary != 2 {
-		t.Fatalf("primary alignments: %d", primary)
-	}
-}
-
 // Check delayed errors without relying on device files on non-Linux platforms.
 var _ io.WriteCloser = (*failingOutput)(nil)
 

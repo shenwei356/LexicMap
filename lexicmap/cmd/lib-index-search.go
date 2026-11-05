@@ -290,6 +290,8 @@ func (idx *Index) SetSeqCompareOptions(sco *SeqComparatorOptions) {
 	// Copy its options once so deriving the score never mutates the caller.
 	chainingOptions := sco.Chaining2Options
 	chainingOptions.MinScore = 2 * int(sco.MinPrefix)
+	// Sampled chains also undergo extension before the final HSP length check.
+	chainingOptions.MinAlignLen = 0
 	idx.poolChainers2 = &sync.Pool{New: func() interface{} {
 		return NewChainer2(&chainingOptions)
 	}}

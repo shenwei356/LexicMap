@@ -115,6 +115,55 @@ func TestSearchMinAlignmentLength(t *testing.T) {
 	}
 }
 
+// terminalMismatchSequences leaves a 979-base exact core in a 1000-base HSP.
+func terminalMismatchSequences() ([]byte, []byte) {
+	q := []byte(indexTestDNA(1000))
+	s := append([]byte(nil), q...)
+	for _, pos := range []int{10, 990} {
+		s[pos] = "ACGT"[(strings.IndexByte("ACGT", s[pos])+1)%4]
+	}
+	return q, s
+}
+
+// TestSearchExtendedAlignmentLength applies -l after extension on both strands.
+func TestSearchExtendedAlignmentLength(t *testing.T) {
+	dir := t.TempDir()
+	q, s := terminalMismatchSequences()
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">s\n"+string(s)+"\n")
+	forward := string(q)
+	RC(q)
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+forward+"\n>reverse\n"+string(q)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, minimum := range []int{50, 980, 1000, 1001} {
+		for _, all := range []bool{false, true} {
+			args := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", "-l", strconv.Itoa(minimum), query}
+			if all {
+				args = append(args, "-a")
+			}
+			output := runSeedIndexCommand(t, args...)
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+			want := 3
+			if minimum > 1000 {
+				want = 1
+			}
+			if len(lines) != want {
+				t.Fatalf("minimum=%d/all=%t: got %d lines, want %d", minimum, all, len(lines), want)
+			}
+			for _, line := range lines[1:] {
+				row := strings.Split(line, "\t")
+				strand := "+"
+				if row[0] == "reverse" {
+					strand = "-"
+				}
+				if strings.Join(row[9:17], ",") != "1000,99.800,0,1,1000,1,1000,"+strand {
+					t.Fatalf("unexpected HSP: %v", row[:20])
+				}
+			}
+		}
+	}
+}
+
 // TestSearchMinAlignmentLengthAcrossContigs exercises the separate completion
 // path for the preceding contig, including an HSP shortened by refinement.
 func TestSearchMinAlignmentLengthAcrossContigs(t *testing.T) {
@@ -453,6 +502,12 @@ func TestSearchRepeatRefinement(t *testing.T) {
 			if strings.ReplaceAll(row[21], "-", "") != querySeq[qs-1:qe] || strings.ReplaceAll(row[22], "-", "") != string(subject) {
 				t.Fatalf("inconsistent sequence/coordinates: %v", row)
 			}
+			for field, minimum := range map[int]string{5: coverage.genome, 8: coverage.hsp} {
+				value, err := strconv.ParseFloat(row[field], 64)
+				if err != nil || (minimum == "90" && value < 90) {
+					t.Fatalf("coverage filter violated: %v", row[:20])
+				}
+			}
 			if ss != 1 || se != 354 {
 				continue
 			}
@@ -463,10 +518,15 @@ func TestSearchRepeatRefinement(t *testing.T) {
 				seen[row[0]+"/"+row[4]] = true
 			}
 			if coverage.hsp == "90" || coverage.genome == "90" {
-				// The existing pseudo-alignment already clips the reversed query
-				// below 90% coverage; the new refinement must not change filtering.
+				// Short chains can extend into additional HSPs, allowing the
+				// reverse query to pass genome coverage while its main HSP is <90%.
 				if row[0] == "rc-query" {
-					t.Fatal("reverse query unexpectedly passed the existing coverage filter")
+					if coverage.hsp == "90" {
+						t.Fatal("reverse query passed HSP coverage")
+					}
+					if qs == wantBegin && qe == wantEnd && number(9) == 354 && number(11) == 0 && row[20] == wantCIGAR {
+						seen[row[0]+"/"+row[4]] = true
+					}
 				}
 				if qs == 1 && qe == 399 && number(9) == 408 && number(11) == 63 {
 					seen[row[0]+"/"+row[4]] = true
@@ -474,7 +534,7 @@ func TestSearchRepeatRefinement(t *testing.T) {
 			}
 		}
 		wantHits := 4
-		if coverage.hsp == "90" || coverage.genome == "90" {
+		if coverage.hsp == "90" {
 			wantHits = 2
 		}
 		if len(seen) != wantHits {

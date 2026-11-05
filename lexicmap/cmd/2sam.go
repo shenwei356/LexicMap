@@ -24,7 +24,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -51,6 +50,8 @@ Output:
    - Different from SAM files produced by Minimap2,
      'X' (mismatch) in CIGAR is not converted to 'M' (match).
    - NM (edit distance) and AS (alignment score) fields are produced.
+     AS uses match +2, mismatch -3, and gap -(5 + 2 * length), excluding clipping.
+     MAPQ uses the same raw alignment scores.
    - Custom integer length tags are emitted in this order:
      ZA:i: alignment length (alenHSP, without the optional quality suffix).
      ZQ:i: query alignment span (qend - qstart + 1).
@@ -104,7 +105,7 @@ Output:
 		ncols := 24
 		items := make([]string, ncols)
 
-		var query, sgenome, sseqid, qcovHSP, alenHSP, pident, gaps, sstart, send, sstr, slen, bitscore string
+		var query, sgenome, sseqid, qcovHSP, alenHSP, pident, gaps, sstart, send, sstr, slen string
 		var cigar, qseq string
 		var qlen, qstart, qend string
 
@@ -188,12 +189,7 @@ Output:
 			log.Info("round 2/2: converting to SAM format ...")
 		}
 
-		// from blastn_values_2_3 in ncbi-blast-2.15.0+-src/c++/src/algo/blast/core/blast_stat.c
-		lambda := 0.625
-		lnK := math.Log(0.41)
-		// bitScore := (lambda*float64(_score) - lnK) / math.Ln2
-
-		var _bitscore, _alenHSP, algnScore, _gaps int
+		var _alenHSP, algnScore, editDistance, _gaps int
 		var _qcovHSP, _pident float64
 		var flag uint32
 		aligns := make([]*SearchResultOfASequence2, 0, 1024)
@@ -240,7 +236,6 @@ Output:
 				send = items[15]
 				sstr = items[16]
 				slen = items[17]
-				bitscore = items[19]
 				cigar = items[20]
 
 				_qcovHSP, _ = strconv.ParseFloat(qcovHSP, 64)
@@ -252,8 +247,7 @@ Output:
 				}
 				_pident, _ = strconv.ParseFloat(pident, 64)
 				_gaps, _ = strconv.Atoi(gaps)
-				_bitscore, _ = strconv.Atoi(bitscore)
-				algnScore = int((float64(_bitscore)*math.Ln2 + lnK) / lambda)
+				editDistance, algnScore = alignmentStatsFromCIGAR(cigar)
 				_qlen, _ = strconv.Atoi(qlen)
 				_qstart, qstartErr := strconv.Atoi(qstart)
 				_qend, qendErr := strconv.Atoi(qend)
@@ -321,8 +315,7 @@ Output:
 					}
 				}
 				r.QUAL = "*"
-				// r.NM = int(float64(_alenHSP) * (1 - _pident/100)) // can't calculate it like this
-				r.NM = editDistanceFromCIGAR(cigar)
+				r.NM = editDistance
 				r.AS = algnScore
 
 				if preQuery != query && len(aligns) > 0 {
@@ -449,16 +442,25 @@ func init() {
 	toSamCmd.SetUsageTemplate(usageTemplate(""))
 }
 
-func editDistanceFromCIGAR(cigar string) (d int) {
+// alignmentStatsFromCIGAR uses search's +2/-3 and gap-open 5 + extension 2*k
+// scoring. Search emits exact matches as M and mismatches as X; clipping is free.
+// Rounded bitscores cannot recover the raw score, especially odd scores.
+func alignmentStatsFromCIGAR(cigar string) (distance, score int) {
 	var n int
 	for _, found := range reCIGAR.FindAllStringSubmatch(cigar, -1) {
+		n, _ = strconv.Atoi(found[1])
 		switch found[2] {
-		case "X", "I", "D":
-			n, _ = strconv.Atoi(found[1])
-			d += n
+		case "M", "=":
+			score += 2 * n
+		case "X":
+			distance += n
+			score -= 3 * n
+		case "I", "D":
+			distance += n
+			score -= 5 + 2*n
 		}
 	}
-	return d
+	return distance, score
 }
 
 var reCIGAR = regexp.MustCompile(`(\d+)([M=XIDNSHP])`)

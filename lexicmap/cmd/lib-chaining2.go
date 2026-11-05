@@ -184,12 +184,18 @@ func (r *Chain2Result) Reset() {
 //  6. TBegin.
 //  7. TEnd.
 func (ce *Chainer2) Chain(subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
-	return ce.chainWithMinScore(subs, ce.options.MinScore)
+	return ce.chainWithLimits(subs, ce.options.MinScore, ce.options.MinAlignLen)
 }
 
-// chainWithMinScore uses a per-call threshold without changing shared options
-// or leaving a score override in the pooled chainer.
+// chainWithMinScore retains extension candidates with a per-call score threshold.
+// A chain can be shorter than the final HSP; apply its length limit after alignment.
+// Neither override changes shared options or survives reuse of this chainer.
 func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]*Chain2Result, int, int, int, int, int, int, int) {
+	return ce.chainWithLimits(subs, minimumScore, 0)
+}
+
+// chainWithLimits applies thresholds to the unextended anchor chain.
+func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLen int) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 
 	if n == 1 {
@@ -638,7 +644,6 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 	// backtrack
 
 	minScore := int64(minimumScore)
-	minAlignLen := ce.options.MinAlignLen
 
 	// check the highest score, for early quit,
 	if M < minScore {
