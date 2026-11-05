@@ -21,6 +21,7 @@
 package cmd
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -33,6 +34,26 @@ import (
 	"github.com/shenwei356/go-logging"
 	"github.com/spf13/cobra"
 )
+
+func TestParseByteSizeBounds(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want int64
+	}{
+		{"0", 0}, {" 1.5K ", 1536}, {"2m", 2 << 20}, {"1e3", 1000},
+		{"9223372036854775807", math.MaxInt64}, {"9007199254740993B", 9007199254740993},
+	} {
+		got, err := ParseByteSize(tc.text)
+		if err != nil || got != tc.want {
+			t.Errorf("ParseByteSize(%q) = %d, %v; want %d", tc.text, got, err, tc.want)
+		}
+	}
+	for _, value := range []string{"", "K", "-1", "-1K", "NaN", "NaNG", "Inf", "+Inf", "-Inf", "1e309", "8E18K", "9223372036854775808", "8388608T"} {
+		if got, err := ParseByteSize(value); err == nil {
+			t.Errorf("ParseByteSize(%q) accepted as %d", value, got)
+		}
+	}
+}
 
 func TestInputListPreservesExplicitStdin(t *testing.T) {
 	dir := t.TempDir()

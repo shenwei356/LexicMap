@@ -242,7 +242,7 @@ func TestCommandOutputCurrentDirectory(t *testing.T) {
 	db := writeSeedPosFixture(t, 1)
 
 	for _, commandKind := range []string{"index", "plot", "remerge"} {
-		for _, pathKind := range []string{"dot", "dot-slash", "absolute", "normalized-relative", "symlink"} {
+		for _, pathKind := range []string{"dot", "dot-slash", "absolute", "normalized-relative", "symlink", "ancestor"} {
 			for _, force := range []bool{false, true} {
 				if commandKind == "remerge" && force {
 					continue // remerge has no --force flag.
@@ -268,6 +268,8 @@ func TestCommandOutputCurrentDirectory(t *testing.T) {
 						outDir = cwd
 					case "normalized-relative":
 						outDir = "nested" + string(filepath.Separator) + ".."
+					case "ancestor":
+						outDir = root
 					case "symlink":
 						outDir = filepath.Join(root, "cwd-alias")
 						if err := os.Symlink(cwd, outDir); err != nil {
@@ -785,5 +787,317 @@ func TestResolveOutputPathSymlinkParent(t *testing.T) {
 		if err != nil || got != want {
 			t.Fatalf("got %q, %v; want %q", got, err, want)
 		}
+	}
+}
+
+// Preflight, cleanup, and index writes must agree after a symlink followed by .. .
+func TestIndexOutputSymlinkParent(t *testing.T) {
+	for _, suffix := range []string{"", ExtTmpDir} {
+		for _, conflict := range []bool{false, true} {
+			t.Run(fmt.Sprintf("suffix=%s/conflict=%t", suffix, conflict), func(t *testing.T) {
+				dir := t.TempDir()
+				real := filepath.Join(dir, "real")
+				if err := os.MkdirAll(filepath.Join(real, "child"), 0700); err != nil {
+					t.Fatal(err)
+				}
+				alias := filepath.Join(dir, "alias")
+				if err := os.Symlink(filepath.Join(real, "child"), alias); err != nil {
+					t.Fatal(err)
+				}
+				inputDir := filepath.Join(dir, "db") + suffix
+				if conflict {
+					inputDir = filepath.Join(real, "db") + suffix
+				}
+				if err := os.MkdirAll(inputDir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				data := ">s\n" + indexTestDNA(100) + "\n"
+				input := writeTestInput(t, filepath.Join(inputDir, "input.fa"), data)
+				logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+				_, stderr, err := runAuditCommand(t, "", "index", "--quiet", "--force", "-j", "1",
+					"-m", "64", "-c", "2", "--partitions", "4", "-b", "1", "--log", logFile,
+					"-O", alias+"/../db", input, input)
+				if conflict {
+					if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+						t.Errorf("conflict accepted: %v, %s", err, stderr)
+					}
+					if got, err := os.ReadFile(logFile); err != nil || string(got) != "original\n" {
+						t.Errorf("log changed before validation: %q, %v", got, err)
+					}
+				} else {
+					if err != nil {
+						t.Errorf("safe output failed: %v, %s", err, stderr)
+					}
+					if _, err := os.Stat(filepath.Join(real, "db", FileInfo)); err != nil {
+						t.Errorf("index not written to requested directory: %v", err)
+					}
+				}
+				if got, err := os.ReadFile(input); err != nil || string(got) != data {
+					t.Errorf("input changed: %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestIndexOutputSymlinkParentPreservesLeafTarget(t *testing.T) {
+	dir := t.TempDir()
+	real, outside := filepath.Join(dir, "real"), filepath.Join(dir, "outside")
+	for _, path := range []string{filepath.Join(real, "child"), outside} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	alias, output := filepath.Join(dir, "alias"), filepath.Join(real, "db")
+	for name, target := range map[string]string{alias: filepath.Join(real, "child"), output: outside} {
+		if err := os.Symlink(target, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sentinel := writeTestInput(t, filepath.Join(outside, "keep"), "preserve\n")
+	input := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">s\n"+indexTestDNA(100)+"\n")
+	runSeedIndexCommand(t, "index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2",
+		"--partitions", "4", "-O", alias+"/../db", input)
+	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "preserve\n" {
+		t.Fatalf("leaf symlink target changed: %q, %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(output, FileInfo)); err != nil {
+		t.Fatalf("index not created: %v", err)
+	}
+	if info, err := os.Lstat(output); err != nil || !info.IsDir() {
+		t.Fatalf("output symlink not replaced with a directory: %v", err)
+	}
+}
+
+func TestCommandDanglingOutputAliases(t *testing.T) {
+	for _, completion := range []bool{false, true} {
+		t.Run(fmt.Sprint(completion), func(t *testing.T) {
+			dir := t.TempDir()
+			target, link := filepath.Join(dir, "new-output"), filepath.Join(dir, "log-link")
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+			args := []string{"utils", "merge-search-results", "--quiet", "-o", target, "--log", link}
+			if completion {
+				args = []string{"autocompletion", "--quiet", "--file", target, "--log", link}
+			}
+			_, stderr, err := runAuditCommand(t, "", args...)
+			if err == nil || !bytes.Contains(stderr, []byte("output paths should not be the same")) {
+				t.Fatalf("dangling output alias accepted: %v, %s", err, stderr)
+			}
+			if _, err := os.Stat(target); !os.IsNotExist(err) {
+				t.Fatalf("target created before validation: %v", err)
+			}
+		})
+	}
+}
+
+func TestInputDirectoryPreflight(t *testing.T) {
+	for _, kind := range []string{"same-missing", "traversed-link", "new-log"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			inputDir, output := filepath.Join(dir, "inputs"), filepath.Join(dir, "db")
+			logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+			var input string
+			if kind == "same-missing" {
+				inputDir = output
+			} else {
+				if err := os.MkdirAll(filepath.Join(inputDir, "child"), 0700); err != nil {
+					t.Fatal(err)
+				}
+				input = writeTestInput(t, filepath.Join(inputDir, "ref.fa"), ">s\n"+indexTestDNA(100)+"\n")
+				if kind == "traversed-link" {
+					if err := os.Mkdir(output, 0700); err != nil {
+						t.Fatal(err)
+					}
+					link := filepath.Join(output, "alias")
+					if err := os.Symlink(filepath.Join(inputDir, "child"), link); err != nil {
+						t.Fatal(err)
+					}
+					inputDir = link + "/.."
+				} else {
+					logFile = filepath.Join(inputDir, "new-log.fa")
+				}
+			}
+			_, stderr, err := runAuditCommand(t, "", "index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2",
+				"--partitions", "4", "-I", inputDir, "-O", output, "--log", logFile)
+			if kind == "new-log" {
+				if err != nil {
+					t.Fatalf("new log was scanned as input: %v, %s", err, stderr)
+				}
+				info, err := readIndexInfo(filepath.Join(output, FileInfo))
+				if err != nil || info.InputGenomes != 1 {
+					t.Fatalf("expected one input genome: %+v, %v", info, err)
+				}
+			} else {
+				if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+					t.Fatalf("input directory conflict accepted: %v, %s", err, stderr)
+				}
+				if got, err := os.ReadFile(logFile); err != nil || string(got) != "original\n" {
+					t.Fatalf("log changed before validation: %q, %v", got, err)
+				}
+			}
+			if input != "" {
+				if _, err := os.Stat(input); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func TestRemergeOverlappingDirectories(t *testing.T) {
+	for _, kind := range []string{"temp-target-parent", "final-target-batch", "batch-data-in-round"} {
+		t.Run(kind, func(t *testing.T) {
+			dir := t.TempDir()
+			db := filepath.Join(dir, "db")
+			tmp := db + ExtTmpDir
+			batch := filepath.Join(tmp, "batch_0000")
+			if kind == "temp-target-parent" {
+				if err := os.Mkdir(db, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(db, tmp); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.MkdirAll(batch, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if kind == "final-target-batch" {
+				if err := os.Symlink(batch, db); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if kind == "batch-data-in-round" {
+				roundSeeds := filepath.Join(tmp, "r1_b1", DirSeeds)
+				if err := os.MkdirAll(roundSeeds, 0700); err != nil {
+					t.Fatal(err)
+				}
+				writeTestInput(t, filepath.Join(roundSeeds, "chunk_000.bin"), "input\n")
+				if err := os.Symlink(roundSeeds, filepath.Join(batch, DirSeeds)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+			_, stderr, err := runAuditCommand(t, "", "utils", "remerge", "--quiet", "-d", db, "--log", logFile)
+			if err == nil || !bytes.Contains(stderr, []byte("outside output directory")) {
+				t.Fatalf("overlapping merge paths accepted: %v, %s", err, stderr)
+			}
+			if got, err := os.ReadFile(logFile); err != nil || string(got) != "original\n" {
+				t.Fatalf("log changed before validation: %q, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestIndexPreservesInputThroughOutputLeafLink(t *testing.T) {
+	dir := t.TempDir()
+	parent, outside := filepath.Join(dir, "parent"), filepath.Join(dir, "outside")
+	for _, path := range []string{parent, filepath.Join(outside, "child")} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	parentAlias, output := filepath.Join(dir, "alias"), filepath.Join(parent, "db")
+	inputAlias := filepath.Join(dir, "input.fa")
+	for name, target := range map[string]string{
+		parentAlias: parent, output: filepath.Join(outside, "child"), inputAlias: output + "/../ref.fa",
+	} {
+		if err := os.Symlink(target, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	input := writeTestInput(t, filepath.Join(outside, "ref.fa"), ">s\n"+indexTestDNA(100)+"\n")
+	logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+	_, stderr, err := runAuditCommand(t, "", "index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2",
+		"--partitions", "4", "-O", filepath.Join(parentAlias, "db"), "--log", logFile, inputAlias)
+	if err == nil || !bytes.Contains(stderr, []byte("conflicts with input")) {
+		t.Fatalf("input link traversal lost: %v, %s", err, stderr)
+	}
+	if _, err := os.Readlink(output); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(input); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(logFile); err != nil || string(got) != "original\n" {
+		t.Fatalf("log changed before validation: %q, %v", got, err)
+	}
+}
+
+func TestCommandOutputFileSymlinkParent(t *testing.T) {
+	for _, completion := range []bool{false, true} {
+		t.Run(fmt.Sprint(completion), func(t *testing.T) {
+			dir := t.TempDir()
+			real := filepath.Join(dir, "real")
+			if err := os.MkdirAll(filepath.Join(real, "child"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Join(dir, "alias")
+			if err := os.Symlink(filepath.Join(real, "child"), alias); err != nil {
+				t.Fatal(err)
+			}
+			output := alias + "/../new/output"
+			args := []string{"utils", "genomes", "--quiet", "-d", writeSeedPosFixture(t, 1), "-o", output}
+			if completion {
+				args = []string{"autocompletion", "--quiet", "--file", output}
+			}
+			runSeedIndexCommand(t, args...)
+			if info, err := os.Stat(filepath.Join(real, "new", "output")); err != nil || info.Size() == 0 {
+				t.Fatalf("output not written to requested parent: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(dir, "new")); !os.IsNotExist(err) {
+				t.Fatalf("lexically cleaned parent created: %v", err)
+			}
+		})
+	}
+}
+
+func TestDirectoryPathRejectsFileParent(t *testing.T) {
+	dir := t.TempDir()
+	file := writeTestInput(t, filepath.Join(dir, "file"), "original\n")
+	if _, err := cleanDirectoryPath(file + "/../output"); err == nil {
+		t.Fatal("a regular file was accepted as a parent directory")
+	}
+}
+
+func TestIndexPreservesRedirectedInputInOutputDirectory(t *testing.T) {
+	for _, temporary := range []bool{false, true} {
+		t.Run(fmt.Sprint(temporary), func(t *testing.T) {
+			dir := t.TempDir()
+			output := filepath.Join(dir, "db")
+			inputDir := output
+			if temporary {
+				inputDir += ExtTmpDir
+			}
+			if err := os.MkdirAll(inputDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			data := ">s\n" + indexTestDNA(100) + "\n"
+			input := writeTestInput(t, filepath.Join(inputDir, "ref.fa"), data)
+			fh, err := os.Open(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fh.Close()
+			logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+			args := []string{"-test.run=^TestSeedIndexCommand$", "--", "index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-b", "1", "-O", output, "--log", logFile, "-"}
+			if temporary {
+				args = append(args, writeTestInput(t, filepath.Join(dir, "other.fa"), ">other\n"+indexTestDNA(100)+"\n"))
+			}
+			command := exec.Command(os.Args[0], args...)
+			command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1")
+			command.Stdin = fh
+			message, err := command.CombinedOutput()
+			if err == nil || !bytes.Contains(message, []byte("conflicts with stdin")) {
+				t.Fatalf("redirected input was not protected: %v, %s", err, message)
+			}
+			for path, want := range map[string]string{input: data, logFile: "original\n"} {
+				if got, err := os.ReadFile(path); err != nil || string(got) != want {
+					t.Fatalf("file changed before validation: %s: %v", path, err)
+				}
+			}
+		})
 	}
 }

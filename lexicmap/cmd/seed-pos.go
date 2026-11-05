@@ -73,8 +73,10 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
-  The current directory and its aliases cannot be used as the plot directory, even with --force.
+  The plot directory cannot be the current directory, its ancestors, or their aliases,
+  even with --force.
   The plot directory must not contain the input index, even with --force.
+  Plot filenames must be unique, stay inside the plot directory, and differ from the result file.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -82,7 +84,6 @@ Figures:
 		seq.ValidateSeq = false
 
 		outFile := getFlagString(cmd, "out-file")
-		defer setupCommandLog(opt, outFile)()
 		outputLog := opt.Verbose || opt.Log2File
 
 		// ------------------------------
@@ -117,9 +118,6 @@ Figures:
 		force := getFlagBool(cmd, "force")
 
 		outputPlotDir := plotDir != ""
-		if outputPlotDir {
-			checkError(makeOutDir(plotDir, force, "plot-dir", outputLog))
-		}
 
 		bins := getFlagPositiveInt(cmd, "bins")
 
@@ -168,6 +166,14 @@ Figures:
 			for ref := range m {
 				refnames = append(refnames, ref)
 			}
+		}
+
+		if outputPlotDir {
+			checkError(checkSeedPlotPaths(plotDir, plotExt, outFile, refnames, m))
+		}
+		defer setupCommandLog(opt, outFile)()
+		if outputPlotDir {
+			checkError(makeOutDir(plotDir, force, "plot-dir", outputLog))
 		}
 
 		// ---------------------------------------------------------------
@@ -455,11 +461,7 @@ Figures:
 				p.Y.Tick.Label.Font.Size = 12
 
 				// Save image
-				if count > 0 {
-					filePlot = filepath.Join(plotDir, fmt.Sprintf("%s_%d%s", refname, count+1, plotExt))
-				} else {
-					filePlot = filepath.Join(plotDir, refname+plotExt)
-				}
+				filePlot = filepath.Join(plotDir, seedPlotBaseName(refname, count)+plotExt)
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// -------------------------------------------------------------
@@ -558,11 +560,7 @@ Figures:
 				p.Y.Tick.Label.Font.Size = 12
 
 				// Save image
-				if count > 0 {
-					filePlot = filepath.Join(plotDir, fmt.Sprintf("%s_%d.seed_number%s", refname, count+1, plotExt))
-				} else {
-					filePlot = filepath.Join(plotDir, refname+".seed_number"+plotExt)
-				}
+				filePlot = filepath.Join(plotDir, seedPlotBaseName(refname, count)+".seed_number"+plotExt)
 				checkError(p.Save(width*vg.Inch, height*vg.Inch, filePlot))
 
 				// ---------------------------------------------------------
@@ -660,6 +658,69 @@ Figures:
 			}
 		}
 	},
+}
+
+// seedPlotBaseName preserves the existing chunk suffixes (ref, ref_2, ...).
+func seedPlotBaseName(ref string, count int) string {
+	if count == 0 {
+		return ref
+	}
+	return fmt.Sprintf("%s_%d", ref, count+1)
+}
+
+// checkSeedPlotPaths validates all possible names before directory replacement.
+// Empty chunks may produce fewer plots, but cannot introduce another filename.
+func checkSeedPlotPaths(dir, ext, output string, refs []string, mapping map[string]*[]uint64) error {
+	if strings.ContainsAny(ext, "/\\\x00") {
+		return fmt.Errorf("plot extension must not contain path separators")
+	}
+	var outputPaths []string
+	if output != "" && output != "-" {
+		var err error
+		outputPaths, err = filePathVariants(output)
+		if err != nil {
+			return err
+		}
+	}
+	names := make(map[string]bool)
+	counts := make(map[string]int)
+	for _, ref := range refs {
+		chunks := mapping[ref]
+		if chunks == nil {
+			continue
+		}
+		if strings.ContainsAny(ref, "/\\\x00") || filepath.VolumeName(ref) != "" {
+			return fmt.Errorf("genome ID %q cannot be used as a plot filename", ref)
+		}
+		for range *chunks {
+			base := seedPlotBaseName(ref, counts[ref])
+			counts[ref]++
+			for _, suffix := range []string{"", ".seed_number"} {
+				name := base + suffix + ext
+				if names[name] {
+					return fmt.Errorf("plot filenames overlap: %s", name)
+				}
+				names[name] = true
+				paths, err := filePathVariants(filepath.Join(dir, name))
+				if err != nil {
+					return err
+				}
+				// Shared parent links are harmless for two distinct files. Compare
+				// only the complete named paths and their final targets.
+				if len(outputPaths) == 0 {
+					continue
+				}
+				for _, path := range []string{paths[0], paths[len(paths)-1]} {
+					for _, out := range []string{outputPaths[0], outputPaths[len(outputPaths)-1]} {
+						if path == out {
+							return fmt.Errorf("plot path %s conflicts with result output %s", name, output)
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func init() {

@@ -158,3 +158,65 @@ func TestSeedPosRejectsInsufficientFileBudget(t *testing.T) {
 		t.Fatalf("invalid budget changed plot directory: %q, %v", got, err)
 	}
 }
+
+func TestSeedPosPlotPathPreflight(t *testing.T) {
+	for _, kind := range []string{"escaping-id", "escaping-extension", "result-collision", "plot-collision"} {
+		t.Run(kind, func(t *testing.T) {
+			db := writeSeedPosFixture(t, 2)
+			dir := t.TempDir()
+			plots := filepath.Join(dir, "plots")
+			if err := os.Mkdir(plots, 0700); err != nil {
+				t.Fatal(err)
+			}
+			sentinel := writeTestInput(t, filepath.Join(plots, "keep"), "original\n")
+			logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "original\n")
+			output, ext := filepath.Join(dir, "result.tsv"), ".svg"
+			switch kind {
+			case "escaping-id":
+				runSeedIndexCommand(t, "utils", "edit-genome-ids", "--quiet", "-d", db, "-p", "^g0$", "-r", "../outside")
+			case "escaping-extension":
+				ext = "/../../outside.svg"
+			case "result-collision":
+				output = filepath.Join(plots, "g0.svg")
+			case "plot-collision":
+				runSeedIndexCommand(t, "utils", "edit-genome-ids", "--quiet", "-d", db, "-p", "^g1$", "-r", "g0.seed_number")
+			}
+			_, stderr, err := runAuditCommand(t, "", "utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", plots,
+				"--plot-ext", ext, "--force", "-o", output, "--log", logFile)
+			if err == nil || !strings.Contains(string(stderr), "plot") {
+				t.Fatalf("plot path conflict accepted: %v, %s", err, stderr)
+			}
+			for _, path := range []string{sentinel, logFile} {
+				if got, err := os.ReadFile(path); err != nil || string(got) != "original\n" {
+					t.Fatalf("file changed before validation: %s: %q, %v", path, got, err)
+				}
+			}
+			if _, err := os.Stat(filepath.Join(dir, "outside.svg")); !os.IsNotExist(err) {
+				t.Fatalf("plot escaped directory: %v", err)
+			}
+		})
+	}
+}
+
+func TestSeedPosResultBesidePlots(t *testing.T) {
+	db := writeSeedPosFixture(t, 1)
+	dir := t.TempDir()
+	plots, target := filepath.Join(dir, "plots"), filepath.Join(dir, "old-plots")
+	if err := os.Mkdir(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, plots); err != nil {
+		t.Fatal(err)
+	}
+	result := filepath.Join(plots, "seeds.tsv")
+	runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", plots, "--plot-ext", ".svg", "--slid-window", "40", "--slid-step", "20", "-o", result)
+	data, err := os.ReadFile(result)
+	if err != nil || bytes.Count(data, []byte("\n")) != 4 {
+		t.Fatalf("result lost beside plots: %q, %v", data, err)
+	}
+	for _, name := range []string{"g0.svg", "g0.seed_number.svg"} {
+		if _, err := os.Stat(filepath.Join(plots, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}

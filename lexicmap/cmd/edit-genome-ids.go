@@ -85,12 +85,13 @@ Tips:
 
 		// ---------------------------------------------------------------
 
-		// new genomes.map file
-		fileGenomeIndex := filepath.Join(dbDir, FileGenomeIndex+".new")
-		fhGI, err := os.Create(fileGenomeIndex)
+		// Exclusive creation cannot follow an existing temporary-file alias.
+		fhGI, err := os.CreateTemp(dbDir, "."+FileGenomeIndex+"-*")
 		if err != nil {
 			checkError(fmt.Errorf("%s", err))
 		}
+		fileGenomeIndex := fhGI.Name()
+		defer os.Remove(fileGenomeIndex)
 		bw := bufio.NewWriterSize(fhGI, IOBufferSize)
 
 		// ----------------------------------
@@ -102,6 +103,10 @@ Tips:
 			checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
 		}
 		defer fh.Close()
+		// Keep the published mapping accessible to the same readers.
+		mappingInfo, err := fh.Stat()
+		checkError(err)
+		checkError(fhGI.Chmod(mappingInfo.Mode().Perm()))
 
 		r := bufio.NewReaderSize(fh, IOBufferSize)
 

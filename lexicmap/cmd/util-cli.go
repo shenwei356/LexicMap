@@ -23,6 +23,7 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -122,8 +123,7 @@ func getFlagPositiveInt(cmd *cobra.Command, flag string) int {
 }
 
 func getFlagPositiveFloat64(cmd *cobra.Command, flag string) float64 {
-	value, err := cmd.Flags().GetFloat64(flag)
-	checkError(err)
+	value := getFlagFloat64(cmd, flag)
 	if value <= 0 {
 		checkError(fmt.Errorf("value of flag --%s should be greater than 0", flag))
 	}
@@ -140,10 +140,9 @@ func getFlagNonNegativeInt(cmd *cobra.Command, flag string) int {
 }
 
 func getFlagNonNegativeFloat64(cmd *cobra.Command, flag string) float64 {
-	value, err := cmd.Flags().GetFloat64(flag)
-	checkError(err)
+	value := getFlagFloat64(cmd, flag)
 	if value < 0 {
-		checkError(fmt.Errorf("value of flag --%s should be greater than or equal to ", flag))
+		checkError(fmt.Errorf("value of flag --%s should be greater than or equal to 0", flag))
 	}
 	return value
 }
@@ -211,6 +210,9 @@ func getFlagRune(cmd *cobra.Command, flag string) rune {
 func getFlagFloat64(cmd *cobra.Command, flag string) float64 {
 	value, err := cmd.Flags().GetFloat64(flag)
 	checkError(err)
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		checkError(fmt.Errorf("value of flag --%s must be finite", flag))
+	}
 	return value
 }
 
@@ -326,17 +328,17 @@ func getFileListFromArgsAndFile(cmd *cobra.Command, args []string, checkFileFrom
 	return files
 }
 
-// ParseByteSize parses byte size from string
+// ParseByteSize parses a nonnegative byte count, rejecting nonfinite values and overflow.
 func ParseByteSize(val string) (int64, error) {
-	val = strings.Trim(val, " \t\r\n")
+	val = strings.TrimSpace(val)
 	if val == "" {
-		return 0, nil
+		return 0, fmt.Errorf("empty byte size")
 	}
-	var u int64
-	var noUnit bool
+	u := int64(1)
+	number := val
 	switch val[len(val)-1] {
 	case 'B', 'b':
-		u = 1
+		number = val[:len(val)-1]
 	case 'K', 'k':
 		u = 1 << 10
 	case 'M', 'm':
@@ -345,35 +347,28 @@ func ParseByteSize(val string) (int64, error) {
 		u = 1 << 30
 	case 'T', 't':
 		u = 1 << 40
-	default:
-		noUnit = true
-		u = 1
 	}
-	var size float64
-	var err error
-	if noUnit {
-		size, err = strconv.ParseFloat(val, 10)
-		if err != nil {
-			return 0, fmt.Errorf("invalid byte size: %s", val)
+	if u != 1 {
+		number = val[:len(val)-1]
+	}
+	number = strings.TrimSpace(number)
+	// Preserve exact integer budgets above float64's 53-bit precision limit.
+	if size, err := strconv.ParseUint(number, 10, 63); err == nil {
+		if size > uint64(math.MaxInt64/u) {
+			return 0, fmt.Errorf("byte size out of range: %s", val)
 		}
-		if size < 0 {
-			size = 0
-		}
-		return int64(size), nil
+		return int64(size) * u, nil
 	}
-
-	if len(val) == 1 { // no value
-		return 0, nil
-	}
-
-	size, err = strconv.ParseFloat(strings.Trim(val[0:len(val)-1], " \t\r\n"), 10)
-	if err != nil {
+	size, err := strconv.ParseFloat(number, 64)
+	if err != nil || math.IsNaN(size) || math.IsInf(size, 0) || size < 0 {
 		return 0, fmt.Errorf("invalid byte size: %s", val)
 	}
-	if size < 0 {
-		size = 0
+	size *= float64(u)
+	// float64(MaxInt64) rounds up to 2^63, which cannot convert to int64.
+	if size >= 0x1p63 {
+		return 0, fmt.Errorf("byte size out of range: %s", val)
 	}
-	return int64(size * float64(u)), nil
+	return int64(size), nil
 }
 
 func roundup32(x uint32) uint32 {

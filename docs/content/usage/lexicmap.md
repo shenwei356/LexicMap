@@ -43,6 +43,9 @@ Output and log files must differ from input files, including symbolic links and
 hard links. This also applies to file lists, auxiliary inputs, and index data.
 Log files must be outside output directories and temporary merge directories
 that the command may replace, including when `--force` is used.
+Directory paths containing symbolic links followed by `..` are resolved before
+validation, so checks and writes use the same directory. Output and temporary
+merge directories cannot be the current directory, its ancestors, or their aliases.
 Commands exit with an error if writing, flushing, or closing their result output
 fails.
 

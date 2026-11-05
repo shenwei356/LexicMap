@@ -2,6 +2,8 @@
 
 ### v0.10.1 - 2026-xx-xx
 
+- **`lexicmap`**:
+    - Protect input files and indexes from output paths involving symbolic links, `..`, or overlapping directories, including temporary merge directories.
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.

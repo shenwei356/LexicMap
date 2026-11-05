@@ -150,6 +150,11 @@ func checkOutputDirectory(outDir, logname string) error {
 	if isCwd {
 		return fmt.Errorf("%s should not be current directory", logname)
 	}
+	// Removing an ancestor also destroys the working directory. Check both the
+	// named entry and its target, including parent symlinks followed by .. .
+	if err := checkFileOutsideDirectories(pwd, "current directory", outDir); err != nil {
+		return fmt.Errorf("%s should not be current directory or its ancestor: %w", logname, err)
+	}
 
 	return nil
 }

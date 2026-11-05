@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,6 +35,10 @@ import (
 // commandFileListKey scopes a preflight-read file list to one CLI invocation.
 // In particular, -X - must consume stdin only once.
 type commandFileListKey struct{}
+
+// commandDirectoryListKey freezes directory discovery before outputs are created.
+// Otherwise a new log matching --file-regexp would become an input genome.
+type commandDirectoryListKey struct{}
 
 // commandFileList retains the parsed paths until the command consumes them.
 type commandFileList struct {
@@ -44,41 +49,49 @@ type commandFileList struct {
 // resolveOutputPath resolves existing parent symlinks even before a log or its
 // containing output directory exists.
 func resolveOutputPath(path string) (string, error) {
-	absolute, err := filepath.Abs(path)
+	paths, err := filePathVariants(path)
 	if err != nil {
 		return "", err
 	}
-	// Abs/Dir clean .. lexically, before symlinks can change its parent.
-	// Keep the original components until EvalSymlinks has followed them.
-	if filepath.IsAbs(path) {
-		absolute = path
-	} else if filepath.VolumeName(path) == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		absolute = cwd + string(filepath.Separator) + path
+	return paths[len(paths)-1], nil
+}
+
+// cleanDirectoryPath resolves .. after following parent symlinks. Retain the
+// final entry so --force still removes a leaf symlink rather than its target.
+func cleanDirectoryPath(path string) (string, error) {
+	separator := func(c rune) bool { return c < 128 && os.IsPathSeparator(uint8(c)) }
+	hasParent := false
+	for _, part := range strings.FieldsFunc(path, separator) {
+		hasParent = hasParent || part == ".."
 	}
-	parent, tail := absolute, ""
-	for {
-		real, err := filepath.EvalSymlinks(parent)
-		if err == nil {
-			return filepath.Join(real, tail), nil
-		}
-		if !os.IsNotExist(err) || filepath.Dir(parent) == parent {
-			return "", err
-		}
-		// Peel off only the missing suffix; filepath.Dir would clean ..
-		// in existing parents such as alias/../data/missing/output.
-		parent = strings.TrimRightFunc(parent, func(c rune) bool {
-			return c < 128 && os.IsPathSeparator(uint8(c))
-		})
-		last := strings.LastIndexFunc(parent, func(c rune) bool {
-			return c < 128 && os.IsPathSeparator(uint8(c))
-		})
-		tail = filepath.Join(parent[last+1:], tail)
-		parent = parent[:last+1]
+	if !hasParent {
+		return filepath.Clean(path), nil
 	}
+	path = strings.TrimRightFunc(path, separator)
+	last := strings.LastIndexFunc(path, separator)
+	leaf := path[last+1:]
+	if leaf == "." || leaf == ".." {
+		return resolveOutputPath(path)
+	}
+	parent, err := resolveOutputPath(path[:last+1])
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, leaf), nil
+}
+
+// directoryEntryPath resolves the parent but preserves the entry that RemoveAll
+// removes. A final symlink and its target need separate containment checks.
+func directoryEntryPath(path string) (string, error) {
+	clean, err := cleanDirectoryPath(path)
+	if err != nil {
+		return "", err
+	}
+	parent, err := resolveOutputPath(filepath.Dir(clean))
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, filepath.Base(clean)), nil
 }
 
 // filePathVariants preserves every symlink entry traversed on the way to a file.
@@ -120,13 +133,17 @@ func filePathVariants(path string) ([]string, error) {
 		info, err := os.Lstat(named)
 		if os.IsNotExist(err) {
 			// Auxiliary outputs may not exist yet; their existing parents matter.
-			paths = append(paths, filepath.Join(append([]string{named}, pending...)...))
-			break
+			// Continue through .. and later symlinks after a missing component.
+			parent = named
+			continue
 		}
 		if err != nil {
 			return nil, err
 		}
 		if info.Mode()&os.ModeSymlink == 0 {
+			if len(pending) > 0 && !info.IsDir() {
+				return nil, fmt.Errorf("path component %s is not a directory", named)
+			}
 			parent = named
 			continue
 		}
@@ -163,7 +180,7 @@ func checkFileOutsideDirectories(path, label string, dirs ...string) error {
 		return err
 	}
 	for _, dir := range dirs {
-		absoluteDir, err := filepath.Abs(dir)
+		absoluteDir, err := directoryEntryPath(dir)
 		if err != nil {
 			return err
 		}
@@ -186,12 +203,32 @@ func checkFileOutsideDirectories(path, label string, dirs ...string) error {
 // checkCommandFiles runs before logging or output creation. Paths named as
 // genome IDs are not files; explicit auxiliary inputs and file lists are.
 func checkCommandFiles(cmd *cobra.Command, args []string) error {
+	// All later Clean/Join calls must use the same directory as preflight. Do
+	// not change Flag.Changed: commands use it to distinguish defaults from input.
+	var originalInputDirs []string
+	for _, name := range []string{"out-dir", "plot-dir", "index", "in-dir", "taxdump"} {
+		f := cmd.Flags().Lookup(name)
+		if f == nil || f.Value.String() == "" {
+			continue
+		}
+		if name == "index" || name == "in-dir" || name == "taxdump" {
+			originalInputDirs = append(originalInputDirs, f.Value.String())
+		}
+		path, err := cleanDirectoryPath(f.Value.String())
+		if err != nil {
+			return err
+		}
+		if err := f.Value.Set(path); err != nil {
+			return err
+		}
+	}
 	ctx := cmd.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	// Commands may be executed repeatedly in-process; do not reuse an old list.
-	cmd.SetContext(context.WithValue(ctx, commandFileListKey{}, commandFileList{}))
+	ctx = context.WithValue(ctx, commandFileListKey{}, commandFileList{})
+	cmd.SetContext(context.WithValue(ctx, commandDirectoryListKey{}, commandFileList{}))
 	flag := func(name string) string {
 		if cmd.Flags().Lookup(name) == nil {
 			return ""
@@ -200,9 +237,9 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		return value
 	}
 	type outputPath struct {
-		path, absolute string
-		info           os.FileInfo
-		directory      bool
+		path, absolute, entry string
+		info                  os.FileInfo
+		directory             bool
 	}
 	var outputs []outputPath
 	var replacedDirs []string
@@ -221,10 +258,17 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		outputs = append(outputs, outputPath{path, absolute, info, directory})
+		entry := absolute
+		if directory {
+			entry, err = directoryEntryPath(path)
+			if err != nil {
+				return err
+			}
+		}
+		outputs = append(outputs, outputPath{path, absolute, entry, info, directory})
 		return nil
 	}
-	for _, name := range []string{"out-file", "log", "big-genomes", "out-dir", "plot-dir"} {
+	for _, name := range []string{"out-file", "file", "log", "big-genomes", "out-dir", "plot-dir"} {
 		path := flag(name)
 		if path == "" || (path == "-" && name == "out-file") {
 			continue
@@ -248,6 +292,18 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			replacedDirs = append(replacedDirs, path)
+		}
+	}
+	// Output and temporary directories must remain independent throughout
+	// cleanup and publication, even when either is reached through a symlink.
+	for i, dir := range replacedDirs {
+		for _, other := range replacedDirs[:i] {
+			if err := checkFileOutsideDirectories(dir, "output directory", other); err != nil {
+				return err
+			}
+			if err := checkFileOutsideDirectories(other, "output directory", dir); err != nil {
+				return err
+			}
 		}
 	}
 	// Logs and skipped-genome reports open before directory cleanup. Reject
@@ -284,6 +340,23 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 				if output.info != nil && os.SameFile(output.info, info) {
 					return fmt.Errorf("output path %s conflicts with stdin", output.path)
 				}
+				if output.directory && output.info != nil && info.Mode().IsRegular() {
+					// A redirected file remains readable after unlink, so comparing
+					// only the output directory's inode would silently lose the input.
+					// Walk does not follow links: cleanup removes those entries only.
+					err := filepath.Walk(output.path, func(path string, entry os.FileInfo, err error) error {
+						if err != nil {
+							return err
+						}
+						if entry.Mode().IsRegular() && os.SameFile(info, entry) {
+							return fmt.Errorf("output directory %s conflicts with stdin file %s", output.path, path)
+						}
+						return nil
+					})
+					if err != nil {
+						return err
+					}
+				}
 			}
 			return nil
 		}
@@ -294,12 +367,23 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		var info os.FileInfo
 		statDone := false
 		for _, output := range outputs {
-			same := paths[0] == output.absolute
+			same := false
+			for _, path := range paths {
+				if path == output.absolute {
+					same = true
+					break
+				}
+			}
 			if !same && output.directory {
 				for _, path := range paths {
-					rel, err := filepath.Rel(output.absolute, path)
-					if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-						same = true
+					for _, dir := range []string{output.entry, output.absolute} {
+						rel, err := filepath.Rel(dir, path)
+						if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+							same = true
+							break
+						}
+					}
+					if same {
 						break
 					}
 				}
@@ -319,6 +403,13 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			}
 		}
 		return nil
+	}
+
+	// Normalization must not hide an input symlink removed during cleanup.
+	for _, dir := range originalInputDirs {
+		if err := check(dir); err != nil {
+			return err
+		}
 	}
 
 	// Count actual stdin consumers, not genome IDs named "-". Run even when
@@ -392,6 +483,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	// Protect index metadata, including files created lazily by utilities.
 	index := flag("index")
 	var inputIndexes []string
+	var remergeOutputs []string // directories replaced before recovery inputs are consumed
 	if index != "" {
 		inputIndexes = append(inputIndexes, index)
 	}
@@ -403,20 +495,33 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
+		remergeOutputs = append(remergeOutputs, index)
 		batchPattern := regexp.MustCompile(`^batch_\d+$`)
+		roundPattern := regexp.MustCompile(`^r\d+_b\d+$`)
 		for _, entry := range entries {
+			if roundPattern.MatchString(entry.Name()) {
+				remergeOutputs = append(remergeOutputs, filepath.Join(tmpDir, entry.Name()))
+			}
 			if entry.IsDir() && batchPattern.MatchString(entry.Name()) {
 				inputIndexes = append(inputIndexes, filepath.Join(tmpDir, entry.Name()))
 			}
 		}
 	}
+	checkIndexInput := func(path, sourceDir string) error {
+		if sourceDir != index {
+			if err := checkFileOutsideDirectories(path, "input index", remergeOutputs...); err != nil {
+				return err
+			}
+		}
+		return check(path)
+	}
 	for _, dir := range inputIndexes {
 		// Directory outputs such as --plot-dir must not remove an input index.
-		if err := check(dir); err != nil {
+		if err := checkIndexInput(dir, dir); err != nil {
 			return err
 		}
 		for _, name := range []string{FileInfo, FileMasks, FileGenomeIndex, FileGenomeChunks, FileGenomeDetails, FileGenomeIndex + ".bak", FileGenomeIndex + ".new"} {
-			if err := check(filepath.Join(dir, name)); err != nil {
+			if err := checkIndexInput(filepath.Join(dir, name), dir); err != nil {
 				return err
 			}
 		}
@@ -439,6 +544,28 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+	// Scan genome inputs before logging or directory cleanup and reuse this exact
+	// list in index. New logs/reports must never be discovered as input genomes.
+	if dir := flag("in-dir"); cmd.Name() == "index" && dir != "" {
+		pattern, err := regexp.Compile("(?i)" + flag("file-regexp"))
+		if err != nil {
+			return err
+		}
+		threads, _ := cmd.Flags().GetInt("threads")
+		if threads == 0 {
+			threads = runtime.NumCPU()
+		}
+		files, err := getFileListFromDir(dir, pattern, threads)
+		if err != nil {
+			return err
+		}
+		for _, path := range files {
+			if err := check(path); err != nil {
+				return err
+			}
+		}
+		cmd.SetContext(context.WithValue(cmd.Context(), commandDirectoryListKey{}, commandFileList{dir, files}))
+	}
 	// Missing outputs cannot alias existing directory inputs. Avoid traversing
 	// large indexes on the usual first write; existing outputs need identity checks
 	// to catch hard links whose names lie outside the input directory.
@@ -446,12 +573,15 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	for _, output := range outputs {
 		existingOutput = existingOutput || output.info != nil
 	}
-	if !existingOutput {
+	if !existingOutput && len(remergeOutputs) == 0 {
 		return outputDirectoryErr
 	}
-	walk := func(dir string, pattern *regexp.Regexp) error {
+	walk := func(dir string, pattern *regexp.Regexp, sourceDir string) error {
 		if dir == "" {
 			return nil
+		}
+		if err := checkIndexInput(dir, sourceDir); err != nil {
+			return err
 		}
 		root, err := filepath.EvalSymlinks(dir)
 		if os.IsNotExist(err) {
@@ -466,7 +596,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		for _, file := range files {
-			if err := check(file); err != nil {
+			if err := checkIndexInput(file, sourceDir); err != nil {
 				return err
 			}
 		}
@@ -475,19 +605,11 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	for _, dir := range inputIndexes {
 		allFiles := regexp.MustCompile(".*")
 		for _, name := range []string{DirSeeds, DirGenomes} {
-			if err := walk(filepath.Join(dir, name), allFiles); err != nil {
+			if err := walk(filepath.Join(dir, name), allFiles, dir); err != nil {
 				return err
 			}
 		}
 	}
-	if dir := flag("in-dir"); cmd.Name() == "index" && dir != "" {
-		pattern, err := regexp.Compile("(?i)" + flag("file-regexp"))
-		if err != nil {
-			return err
-		}
-		if err = walk(dir, pattern); err != nil {
-			return err
-		}
-	}
+
 	return outputDirectoryErr
 }

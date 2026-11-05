@@ -65,7 +65,8 @@ fish:
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
 
-		outfile := getFlagString(cmd, "file")
+		outfile, err := cleanDirectoryPath(getFlagString(cmd, "file"))
+		checkError(err)
 		defer setupCommandLog(opt, outfile)()
 		outputLog := opt.Verbose || opt.Log2File
 		shell := getFlagString(cmd, "shell")
@@ -74,7 +75,7 @@ fish:
 		ok, err := pathutil.DirExists(dir)
 		checkError(err)
 		if !ok {
-			os.MkdirAll(dir, 0744)
+			checkError(os.MkdirAll(dir, 0744))
 		}
 
 		switch shell {

@@ -120,7 +120,8 @@ Attention:
 				checkError(fmt.Errorf("invalid value of buffer size. supported unit: K, M, G"))
 			}
 
-			buf := make([]byte, bufferSize)
+			// Grow for long records instead of eagerly allocating an unusually large limit.
+			buf := make([]byte, min(bufferSize, 20<<20))
 			ncols := 20
 			// items := make([]string, ncols)
 			var poolItems = &sync.Pool{New: func() interface{} {

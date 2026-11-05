@@ -70,8 +70,8 @@ Input:
   9. Input files, file lists, and mask files must be outside the output directory and
      its temporary merge directory (<out-dir>.tmp).
      Single-batch builds leave that temporary directory unchanged.
-  10. The current directory and its aliases cannot be used as the output directory
-      or its temporary merge directory, even with --force.
+  10. The current directory, its ancestors, and their aliases cannot be used as
+      the output directory or its temporary merge directory, even with --force.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome
@@ -381,7 +381,13 @@ Important parameters:
 			if outputLog {
 				log.Infof("  scanning files from directory: %s", inDir)
 			}
-			files, err = getFileListFromDir(inDir, reFile, opt.NumCPUs)
+			// Reuse discovery from preflight so newly opened logs are not inputs.
+			cached, ok := cmd.Context().Value(commandDirectoryListKey{}).(commandFileList)
+			if ok && cached.path == inDir {
+				files = cached.files
+			} else {
+				files, err = getFileListFromDir(inDir, reFile, opt.NumCPUs)
+			}
 			if err != nil {
 				checkError(errors.Wrapf(err, "walking dir: %s", inDir))
 			}

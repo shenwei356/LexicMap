@@ -408,6 +408,9 @@ func openSearchResultFile(file string) (*xopen.Reader, error) {
 }
 
 func NewSearchResultReader(file string, query string, bufferSize int64) (*SearchResultReader, error) {
+	if bufferSize < 1 || bufferSize > maxScannerBufferSize {
+		return nil, fmt.Errorf("buffer size must be in [1, %d] bytes", maxScannerBufferSize)
+	}
 	fh, err := openSearchResultFile(file)
 	if err != nil {
 		return nil, err

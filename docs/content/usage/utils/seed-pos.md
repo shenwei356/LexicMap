@@ -32,8 +32,10 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
-  The current directory and its aliases cannot be used as the plot directory, even with --force.
+  The plot directory cannot be the current directory, its ancestors, or their aliases,
+  even with --force.
   The plot directory must not contain the input index, even with --force.
+  Plot filenames must be unique, stay inside the plot directory, and differ from the result file.
 
 Usage:
   lexicmap utils seed-pos [flags]

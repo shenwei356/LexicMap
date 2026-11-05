@@ -44,6 +44,12 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 	if file == "-" {
 		w = os.Stdout
 	} else {
+		// Resolve parent traversal before Dir/MkdirAll can clean it lexically.
+		var err error
+		file, err = cleanDirectoryPath(file)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		dir := filepath.Dir(file)
 		fi, err := os.Stat(dir)
 		if err == nil && !fi.IsDir() {

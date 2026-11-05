@@ -48,8 +48,8 @@ Input:
   9. Input files, file lists, and mask files must be outside the output directory and
      its temporary merge directory (<out-dir>.tmp).
      Single-batch builds leave that temporary directory unchanged.
-  10. The current directory and its aliases cannot be used as the output directory
-      or its temporary merge directory, even with --force.
+  10. The current directory, its ancestors, and their aliases cannot be used as
+      the output directory or its temporary merge directory, even with --force.
 
   Attention:
    *1) ► You can rename the sequence files for convenience, e.g., GCF_000017205.1.fa.gz, because the genome

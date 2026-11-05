@@ -97,7 +97,8 @@ Input:
 
 		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
 
-		buf := make([]byte, bufferSize)
+		// Grow for long records instead of eagerly allocating an unusually large limit.
+		buf := make([]byte, min(bufferSize, 20<<20))
 		var fh *xopen.Reader
 		var line string
 		var scanner *bufio.Scanner
