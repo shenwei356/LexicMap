@@ -4,10 +4,11 @@
 
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
+    - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
 - **`lexicmap search, genome search/compare`**:
     - Pseudoalignment:
         - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
-        - Speed up pseudoalignment when there are more than 102,400 anchors, without changing results.
+        - Speed up pseudoalignment, without changing results.
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:
         - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.

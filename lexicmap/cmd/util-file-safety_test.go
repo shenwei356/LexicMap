@@ -545,10 +545,13 @@ func TestRemergeProtectsTemporaryBatches(t *testing.T) {
 }
 
 func TestSeedPosPlotDirectoryPreservesIndex(t *testing.T) {
-	for _, location := range []string{"same", "parent", "symlink", "parent-symlink"} {
+	for _, location := range []string{"same", "parent", "symlink", "parent-symlink", "symlink-dotdot"} {
 		t.Run(location, func(t *testing.T) {
 			dir := t.TempDir()
 			parent := filepath.Join(dir, "parent")
+			if location == "symlink-dotdot" {
+				parent = filepath.Join(parent, "data")
+			}
 			db := filepath.Join(parent, "db")
 			if err := os.MkdirAll(db, 0700); err != nil {
 				t.Fatal(err)
@@ -565,8 +568,17 @@ func TestSeedPosPlotDirectoryPreservesIndex(t *testing.T) {
 				if location == "parent-symlink" {
 					target = parent
 				}
+				if location == "symlink-dotdot" {
+					target = filepath.Join(filepath.Dir(parent), "child")
+					if err := os.Mkdir(target, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
 				if err := os.Symlink(target, output); err != nil {
 					t.Fatal(err)
+				}
+				if location == "symlink-dotdot" {
+					output += string(filepath.Separator) + ".." + string(filepath.Separator) + "data"
 				}
 			}
 			_, stderr, err := runAuditCommand(t, "", "utils", "seed-pos", "--quiet", "-d", db, "-a", "--plot-dir", output, "--force")
@@ -751,6 +763,27 @@ func TestBigGenomesOutsideReplacedDirectories(t *testing.T) {
 					t.Fatalf("report created: %v", err)
 				}
 			})
+		}
+	}
+}
+
+// Missing suffixes must not erase filesystem semantics in existing parents.
+func TestResolveOutputPathSymlinkParent(t *testing.T) {
+	dir := t.TempDir()
+	parent := filepath.Join(dir, "real")
+	child := filepath.Join(parent, "child")
+	if err := os.MkdirAll(child, 0700); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "alias")
+	if err := os.Symlink(child, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, suffix := range []string{"", "/missing/output"} {
+		got, err := resolveOutputPath(link + "/.." + suffix)
+		want := filepath.Join(parent, suffix)
+		if err != nil || got != want {
+			t.Fatalf("got %q, %v; want %q", got, err, want)
 		}
 	}
 }

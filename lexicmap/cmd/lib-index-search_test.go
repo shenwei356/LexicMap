@@ -22,12 +22,16 @@ package cmd
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/shenwei356/wfa"
 )
 
 // TestSearchMinAlignmentLength checks the final HSP length after extending a
@@ -540,5 +544,153 @@ func TestSearchRepeatRefinement(t *testing.T) {
 		if len(seen) != wantHits {
 			t.Fatalf("coverage=%+v: missing expected results: %s", coverage, output)
 		}
+	}
+}
+
+// Short queries and targets in a small-k index must not abort other queries.
+func TestSearchShortSequences(t *testing.T) {
+	for _, targetLen := range []int{30, 100} {
+		t.Run(strconv.Itoa(targetLen), func(t *testing.T) {
+			dir := t.TempDir()
+			sequence := indexTestDNA(100)
+			ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">target\n"+sequence[:targetLen]+"\n")
+			var queries strings.Builder
+			for _, length := range []int{17, 30, 31, 100} {
+				fmt.Fprintf(&queries, ">q%d\n%s\n", length, sequence[:length])
+			}
+			query := writeTestInput(t, filepath.Join(dir, "query.fa"), queries.String())
+			db := filepath.Join(dir, "db")
+			runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "17", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+			out := runSeedIndexCommand(t, "search", "--quiet", "-j", "2", "-d", db, "-n", "0", "-N", "0", "-l", "17", query)
+			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+			want := 1
+			if targetLen == 100 {
+				want = 3 // 31 and 100 bp queries remain searchable.
+			}
+			if len(lines) != want || strings.Contains(string(out), "\nq17\t") || strings.Contains(string(out), "\nq30\t") {
+				t.Fatalf("unexpected results: %s", out)
+			}
+		})
+	}
+}
+
+// Distinct seed chains can converge after extension; retain each final HSP once.
+func TestSearchFinalAlignmentDeduplication(t *testing.T) {
+	dir := t.TempDir()
+	data, err := os.ReadFile("testdata/final-alignment-duplicates.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct{ Unit, Other, Left, Right string }
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	target := strings.Repeat(fixture.Unit, 3)
+	forward := fixture.Left + target + fixture.Right
+	reverse := []byte(forward)
+	RC(reverse)
+	// A second synthetic contig competes for masks, leaving sparse seed chains.
+	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">target\n"+target+"\n>other\n"+fixture.Other+"\n")
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+forward+"\n>reverse\n"+string(reverse)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "1024", "-c", "2", "--partitions", "4", "-O", db, ref)
+	for _, all := range []bool{false, true} {
+		args := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", query}
+		if all {
+			args = append(args, "-a")
+		}
+		out := runSeedIndexCommand(t, args...)
+		seen := make(map[string]bool)
+		full := make(map[string]int)
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n")[1:] {
+			row := strings.Split(line, "\t")
+			key := strings.Join(append(append([]string{}, row[:6]...), row[8:]...), "\t")
+			if seen[key] {
+				t.Fatalf("duplicate final HSP (-a=%t): %v", all, row[:20])
+			}
+			seen[key] = true
+			if row[9] == "1500" && row[14] == "1" && row[15] == "1500" {
+				full[row[0]]++
+			}
+		}
+		if full["forward"] != 1 || full["reverse"] != 1 {
+			t.Fatalf("missing full-length controls (-a=%t): %v", all, full)
+		}
+	}
+}
+
+// Exact CIGAR comparison keeps alternatives and distinct loci, and owns its keys
+// after the caller reuses both the scratch buffer and the WFA operation slice.
+func TestDuplicateFinalAlignmentIdentity(t *testing.T) {
+	seen := make(map[finalAlignmentKey]struct{})
+	var scratch []byte
+	c := &Chain2Result{QEnd: 99, TEnd: 99, AlignedLength: 100, MatchedBases: 98, Gaps: 2, Score: 180, BitScore: 100}
+	cigar := &wfa.AlignmentResult{Ops: []uint64{OpM<<32 | 50, OpI<<32 | 1, OpD<<32 | 1, OpM<<32 | 49}}
+	if duplicateFinalAlignment(seen, &scratch, c, cigar, 0, false) || !duplicateFinalAlignment(seen, &scratch, c, cigar, 0, false) {
+		t.Fatal("exact duplicate was not removed")
+	}
+	if duplicateFinalAlignment(seen, &scratch, c, cigar, 1, false) || duplicateFinalAlignment(seen, &scratch, c, cigar, 0, true) {
+		t.Fatal("distinct contig or strand was removed")
+	}
+	c.TBegin++
+	c.TEnd++
+	if duplicateFinalAlignment(seen, &scratch, c, cigar, 0, false) {
+		t.Fatal("distinct locus was removed")
+	}
+	c.TBegin--
+	c.TEnd--
+	cigar.Ops[0] = OpM<<32 | 49
+	cigar.Ops[3] = OpM<<32 | 50
+	if duplicateFinalAlignment(seen, &scratch, c, cigar, 0, false) {
+		t.Fatal("different CIGAR was removed")
+	}
+	cigar.Ops[0] = OpM<<32 | 50
+	cigar.Ops[3] = OpM<<32 | 49
+	if !duplicateFinalAlignment(seen, &scratch, c, cigar, 0, false) {
+		t.Fatal("operation buffer reuse changed a retained key")
+	}
+}
+
+// Reusing deduplication scratch must not hide a later reference's identical HSP.
+func TestFinalAlignmentScratchReset(t *testing.T) {
+	s := poolFinalAlignmentScratch.Get().(*finalAlignmentScratch)
+	defer func() { s.reset(); poolFinalAlignmentScratch.Put(s) }()
+	if len(s.keys) != 0 || len(s.ops) != 0 {
+		t.Fatal("borrowed dirty scratch")
+	}
+	c := &Chain2Result{QEnd: 99, TEnd: 99, AlignedLength: 100, MatchedBases: 100}
+	cigar := &wfa.AlignmentResult{Ops: []uint64{OpM<<32 | 100}}
+	if duplicateFinalAlignment(s.keys, &s.ops, c, cigar, 0, false) || !duplicateFinalAlignment(s.keys, &s.ops, c, cigar, 0, false) {
+		t.Fatal("deduplication failed before reset")
+	}
+	capacity := cap(s.ops)
+	s.reset()
+	if len(s.keys) != 0 || len(s.ops) != 0 || cap(s.ops) != capacity {
+		t.Fatal("reset did not clear keys and retain scratch capacity")
+	}
+	if duplicateFinalAlignment(s.keys, &s.ops, c, cigar, 0, false) {
+		t.Fatal("reset retained an HSP from the preceding reference")
+	}
+}
+
+// Workers must exclusively own their scratch until it is cleared and returned.
+func TestFinalAlignmentScratchParallel(t *testing.T) {
+	for worker := 0; worker < 8; worker++ {
+		t.Run(strconv.Itoa(worker), func(t *testing.T) {
+			t.Parallel()
+			c := &Chain2Result{QEnd: 99, TEnd: 99, AlignedLength: 100, MatchedBases: 100}
+			cigar := &wfa.AlignmentResult{Ops: []uint64{OpM<<32 | 100}}
+			for i := 0; i < 100; i++ {
+				s := poolFinalAlignmentScratch.Get().(*finalAlignmentScratch)
+				dirty := len(s.keys) != 0 || len(s.ops) != 0
+				first := duplicateFinalAlignment(s.keys, &s.ops, c, cigar, 0, false)
+				second := duplicateFinalAlignment(s.keys, &s.ops, c, cigar, 0, false)
+				s.reset()
+				poolFinalAlignmentScratch.Put(s)
+				if dirty || first || !second {
+					t.Fatal("deduplication state crossed worker lifetimes")
+				}
+			}
+		})
 	}
 }

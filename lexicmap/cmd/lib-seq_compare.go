@@ -366,6 +366,10 @@ func (cpr *SeqComparator) Compare(begin, end uint32, s []byte, queryLen int) (*S
 	}
 	k8 := cpr.options.K
 	k := int(k8)
+	// A clipped target shorter than K has no k-mers to compare.
+	if len(s) < k {
+		return nil, nil
+	}
 
 	m := cpr.options.MinPrefix // 11
 	if len(s) >= 1000000 {

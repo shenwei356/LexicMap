@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"bytes"
 	"cmp"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"io/fs"
@@ -1692,6 +1693,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 	}
 
 	s := query.seq
+	// Small-k indexes can accept queries too short for the fine-alignment tree.
+	if len(s) < int(idx.seqCompareOption.K) {
+		return nil, nil
+	}
 
 	// ----------------------------------------------------------------
 	// 1) mask the query sequence
@@ -2341,6 +2346,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		var duplicated bool
 		alignmentKeys := poolAlignmentKeyMap.Get().(*map[alignmentKey]struct{})
 		var key alignmentKey
+		// Separate seed and final keys: different seed spans can extend to one HSP.
+		finalScratch := poolFinalAlignmentScratch.Get().(*finalAlignmentScratch)
 
 		var tSeq *genome.Genome
 		var contigs contigLookup // reused across all chains in this reference
@@ -2552,6 +2559,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 								// score and e-value
 								c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
 								if c.Evalue > maxEvalue {
+									wfa.RecycleAlignmentResult(cigar)
 									recycleChain2(c)
 									(*r2.Chains)[i] = nil
 									continue
@@ -2587,14 +2595,21 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 								}
 								c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
-								if !outSeq {
-									wfa.RecycleAlignmentResult(cigar)
-								}
-
 								if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
+									wfa.RecycleAlignmentResult(cigar)
 									recycleChain2(c)
 									(*r2.Chains)[i] = nil
 									continue
+								}
+
+								if duplicateFinalAlignment(finalScratch.keys, &finalScratch.ops, c, cigar, iSeq, rc) {
+									wfa.RecycleAlignmentResult(cigar)
+									recycleChain2(c)
+									(*r2.Chains)[i] = nil
+									continue
+								}
+								if !outSeq {
+									wfa.RecycleAlignmentResult(cigar)
 								}
 
 								if outSeq {
@@ -2811,6 +2826,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						// score and e-value
 						c.Score, c.BitScore, c.Evalue = fScoreAndEvalue(len(_qseq), cigar)
 						if c.Evalue > maxEvalue {
+							wfa.RecycleAlignmentResult(cigar)
 							recycleChain2(c)
 							(*r2.Chains)[i] = nil
 							continue
@@ -2848,14 +2864,21 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						}
 						c.PIdent = float64(c.MatchedBases) / float64(cigar.AlignLen) * 100
 
-						if !outSeq {
-							wfa.RecycleAlignmentResult(cigar)
-						}
-
 						if c.AlignedFraction < minQcovHSP || c.PIdent < minPIdent {
+							wfa.RecycleAlignmentResult(cigar)
 							recycleChain2(c)
 							(*r2.Chains)[i] = nil
 							continue
+						}
+
+						if duplicateFinalAlignment(finalScratch.keys, &finalScratch.ops, c, cigar, iSeq, rc) {
+							wfa.RecycleAlignmentResult(cigar)
+							recycleChain2(c)
+							(*r2.Chains)[i] = nil
+							continue
+						}
+						if !outSeq {
+							wfa.RecycleAlignmentResult(cigar)
 						}
 
 						if outSeq {
@@ -2946,6 +2969,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 		clear(*alignmentKeys)
 		poolAlignmentKeyMap.Put(alignmentKeys)
+		finalScratch.reset()
+		poolFinalAlignmentScratch.Put(finalScratch)
 		wfa.RecycleAligner(algn)
 
 		if len(*sds) == 0 { // no valid alignments
@@ -3248,6 +3273,51 @@ var poolBounds = &sync.Pool{New: func() interface{} {
 	tmp := make([]int, 128)
 	return &tmp
 }}
+
+// finalAlignmentKey identifies an HSP within one reference genome. Include the
+// exact operations and statistics so different alignments at the same locus survive.
+type finalAlignmentKey struct {
+	alignmentKey
+	length, matches, gaps, score, bitScore int
+	evalue                                 float64
+	ops                                    string
+}
+
+// finalAlignmentScratch owns per-reference deduplication state. Keep the map
+// buckets and operation buffer together so both can be reused by later workers.
+type finalAlignmentScratch struct {
+	keys map[finalAlignmentKey]struct{} // final HSP identities, including owned CIGAR strings
+	ops  []byte                         // temporary exact-operation encoding
+}
+
+// reset releases CIGAR key references while retaining reusable storage.
+func (s *finalAlignmentScratch) reset() {
+	clear(s.keys)
+	s.ops = s.ops[:0]
+}
+
+var poolFinalAlignmentScratch = sync.Pool{New: func() any {
+	return &finalAlignmentScratch{keys: make(map[finalAlignmentKey]struct{})}
+}}
+
+// duplicateFinalAlignment retains the first occurrence, independent of -a.
+// The map owns copied operation bytes; no pooled WFA buffers escape this call.
+func duplicateFinalAlignment(seen map[finalAlignmentKey]struct{}, scratch *[]byte, c *Chain2Result, cigar *wfa.AlignmentResult, seq int, rc bool) bool {
+	*scratch = (*scratch)[:0]
+	for _, op := range trimOps(cigar.Ops) {
+		*scratch = binary.LittleEndian.AppendUint64(*scratch, op)
+	}
+	key := finalAlignmentKey{
+		alignmentKey: alignmentKey{c.QBegin, c.QEnd, c.TBegin, c.TEnd, seq, rc},
+		length:       c.AlignedLength, matches: c.MatchedBases, gaps: c.Gaps,
+		score: c.Score, bitScore: c.BitScore, evalue: c.Evalue, ops: string(*scratch),
+	}
+	if _, exists := seen[key]; exists {
+		return true
+	}
+	seen[key] = struct{}{}
+	return false
+}
 
 type alignmentKey struct {
 	qBegin, qEnd int

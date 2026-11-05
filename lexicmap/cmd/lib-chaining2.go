@@ -66,8 +66,56 @@ type Chainer2 struct {
 	maxPotential  []int64  // zero-gap score bounds in global or diagonal-bin prefixes
 	diagonalSeen  []uint64 // reusable approximate set of earlier anchor diagonals
 	qGroupStarts  []int32  // first anchor of each equal-query-position group
+	qGroupCursors []int32  // previous target upper bounds, indexed by group start
 
 	// bounds []int32 // 4 * chains, can't limit this or it will miss some cases.
+}
+
+// targetUpperBound searches [start, end), reusing the preceding search boundary.
+// For sorted T = [10, 20, 100, 200], nearby limits 25 and 30 both return 2.
+// Checking the two neighbors avoids another binary search in this common case.
+// Otherwise bracket the movement exponentially, then binary-search that interval.
+// Both directions are needed across Q groups; the cursor is only a search hint.
+func targetUpperBound(subs []SubstrPair, start, end int, limit int32, cursor *int32) int {
+	low, high := start, end
+	at := min(max(int(*cursor), start), end)
+	if at > start && subs[at-1].TBegin > limit {
+		high = at - 1
+		for step := 1; ; step *= 2 {
+			probe := max(start, at-1-step)
+			if subs[probe].TBegin <= limit {
+				low = probe + 1
+				break
+			}
+			high = probe
+			if probe == start {
+				low = start
+				break
+			}
+		}
+	} else if at < end && subs[at].TBegin <= limit {
+		low = at + 1
+		for step := 1; ; step *= 2 {
+			probe := min(end, at+step)
+			if probe == end || subs[probe].TBegin > limit {
+				high = probe
+				break
+			}
+			low = probe + 1
+		}
+	} else {
+		return at
+	}
+	for low < high {
+		mid := low + (high-low)/2
+		if subs[mid].TBegin <= limit {
+			low = mid + 1
+		} else {
+			high = mid
+		}
+	}
+	*cursor = int32(low)
+	return low
 }
 
 // NewChainer creates a new chainer.
@@ -289,10 +337,17 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 			ce.qGroupStarts = make([]int32, n)
 		}
 		qGroupStarts = ce.qGroupStarts[:n]
+		if cap(ce.qGroupCursors) < n {
+			ce.qGroupCursors = make([]int32, n)
+		}
+		ce.qGroupCursors = ce.qGroupCursors[:n]
 		start := 0
 		for index, sub := range *subs {
 			if index > 0 && sub.QBegin != (*subs)[index-1].QBegin {
 				start = index
+			}
+			if index == start {
+				ce.qGroupCursors[start] = int32(start)
 			}
 			qGroupStarts[index] = int32(start)
 		}
@@ -493,16 +548,7 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 					if j-start >= 8 {
 						// T starts are sorted within this Q group. Find its
 						// last anchor that can precede the current target.
-						low, high := start, j
-						for low < high {
-							mid := low + (high-low)/2
-							if (*subs)[mid].TBegin <= aTBegin {
-								low = mid + 1
-							} else {
-								high = mid
-							}
-						}
-						j = low // the loop decrements before inspecting this index
+						j = targetUpperBound(*subs, start, j, aTBegin, &ce.qGroupCursors[start]) // next iteration inspects j-1
 					}
 				}
 				continue

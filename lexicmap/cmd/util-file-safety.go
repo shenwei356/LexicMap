@@ -48,6 +48,17 @@ func resolveOutputPath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Abs/Dir clean .. lexically, before symlinks can change its parent.
+	// Keep the original components until EvalSymlinks has followed them.
+	if filepath.IsAbs(path) {
+		absolute = path
+	} else if filepath.VolumeName(path) == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		absolute = cwd + string(filepath.Separator) + path
+	}
 	parent, tail := absolute, ""
 	for {
 		real, err := filepath.EvalSymlinks(parent)
@@ -57,8 +68,16 @@ func resolveOutputPath(path string) (string, error) {
 		if !os.IsNotExist(err) || filepath.Dir(parent) == parent {
 			return "", err
 		}
-		tail = filepath.Join(filepath.Base(parent), tail)
-		parent = filepath.Dir(parent)
+		// Peel off only the missing suffix; filepath.Dir would clean ..
+		// in existing parents such as alias/../data/missing/output.
+		parent = strings.TrimRightFunc(parent, func(c rune) bool {
+			return c < 128 && os.IsPathSeparator(uint8(c))
+		})
+		last := strings.LastIndexFunc(parent, func(c rune) bool {
+			return c < 128 && os.IsPathSeparator(uint8(c))
+		})
+		tail = filepath.Join(parent[last+1:], tail)
+		parent = parent[:last+1]
 	}
 }
 

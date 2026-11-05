@@ -19,6 +19,8 @@ Attention:
      spacing, plus a 60 bp gap threshold and 30 bp target spacing. Seeds from both
      settings and both query orientations are combined and deduplicated. Set the
      threshold to 0 to disable filling. Existing indexes do not need to be rebuilt.
+  6. Queries must be at least 31 bp and no shorter than the index k-mer size.
+     Target fragments without a full 31-mer are skipped during fine alignment.
 
 Tips:
   1. When using -a/--all, the search result would be formatted to Blast-style format
