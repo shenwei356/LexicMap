@@ -3,16 +3,16 @@
 ### v0.10.1 - 2026-xx-xx
 
 - **`lexicmap search`**:
-    - **Improve alignment continuity for long queries by filling seed deserts on both query orientations** (>`--fill-desert-threshold`, default 50kb).
+    - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
 - **`lexicmap search, genome search/compare`**:
-    - Pseudoaligment:
-        - Reduce unnecessary predecessor scanning in large pseudoalignment anchor sets (>102,400 anchors), preserving scores and tie-breaking.
-        - Fix retaining single-anchor chains as candidates for alignment extension.
+    - Pseudoalignment:
+        - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
+        - Speed up pseudoalignment when there are more than 102,400 anchors, without changing results.
     - Alignment:
-        - Fix alignment hangs for a pair of sequence with highly repeatedly fragments.
-        - Fix WFA out-of-bounds access and invalid CIGARs in adaptive alignment.
-        - Enforce `--align-min-match-len` on the final HSP after extension and base-level alignment.
-        - **Correct repeat-shifted alignment windows without changing chaining scores or gap penalties**.
+        - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
+        - Ensure final alignments meet the minimum matching length set by `--align-min-match-len`.
+        - Fix hangs in `genome search` and `genome compare` when aligning sequences with highly repetitive regions.
+        - Fix crashes and invalid CIGAR strings in adaptive alignment.
 - **`lexicmap utils merge-search-results`**:
     - Skip empty search results with a warning naming each file. [#41](https://github.com/shenwei356/LexicMap/issues/41)
 
