@@ -22,12 +22,50 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+	"github.com/shenwei356/wfa"
 )
+
+// TestAlignVotedWindowMinLength checks the repetitive-window fallback,
+// including the inclusive boundary, reverse complements, and pooled reuse.
+func TestAlignVotedWindowMinLength(t *testing.T) {
+	for _, minimum := range []int{30, 50} {
+		for _, length := range []int{minimum - 1, minimum, minimum + 1} {
+			for _, reverse := range []bool{false, true} {
+				t.Run(fmt.Sprintf("minimum=%d/length=%d/reverse=%t", minimum, length, reverse), func(t *testing.T) {
+					idx := compareTestIndex(t)
+					idx.seqCompareOption.MinAlignLen = minimum
+					// A permissive E-value isolates the final length filter.
+					idx.opt.MaxEvalue = 10
+					q := []byte(indexTestDNA(length))
+					if reverse {
+						RC(q)
+					}
+					target := append([]byte(nil), q...)
+					algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+					defer wfa.RecycleAligner(algn)
+					sketch := &subjectSketch{seqLen: length}
+					score := scoreAndEvalue(2, -3, 5, 2, length, 0.625, 0.41)
+					subs := []SubstrPair{{QBegin: 0, TBegin: 0, Len: 11}, {QBegin: 4, TBegin: 4, Len: 11}, {QBegin: 8, TBegin: 8, Len: 11}}
+					for trial := 0; trial < 2; trial++ {
+						matched, aligned, gaps, _, _, ok := alignVotedWindow(q, nil, &subs, sketch, target, algn, 50, 3, 90, 70, 30, idx, &score)
+						if ok != (length >= minimum) {
+							t.Errorf("trial=%d: accepted=%t, aligned=%d, minimum=%d", trial, ok, aligned, minimum)
+						}
+						if ok && (matched != length || aligned != length || gaps != 0) {
+							t.Errorf("trial=%d: got matched/aligned/gaps=%d/%d/%d, want %d/%d/0", trial, matched, aligned, gaps, length, length)
+						}
+					}
+				})
+			}
+		}
+	}
+}
 
 func TestAddSampledKmerPosition(t *testing.T) {
 	kmers := make(map[uint64]uint32)

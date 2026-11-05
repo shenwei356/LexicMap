@@ -131,7 +131,7 @@ Flags:
       --align-band int                   ► Band size in backtracking the score matrix (pseudo
                                          alignment phase). (default 100)
       --align-max-gap int                ► Maximum gap in a HSP segment. (default 100)
-  -l, --align-min-match-len int          ► Minimum aligned length in a HSP segment. (default 30)
+  -l, --align-min-match-len int          ► Minimum aligned length in a HSP segment. (default 50)
   -i, --align-min-match-pident float     ► Minimum base identity (percentage) in a HSP segment.
                                          (default 70)
       --debug                            ► Print debug information, including a progress bar.

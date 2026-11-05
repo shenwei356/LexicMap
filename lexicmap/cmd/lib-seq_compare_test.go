@@ -418,3 +418,43 @@ func TestSeqCompareDefaultGapBoundary(t *testing.T) {
 		t.Fatalf("20-base internal gaps were not exercised in all orientations: %v", seenTwenty)
 	}
 }
+
+// TestSeqCompareFirstAnchor retains the longest unlinked match on either strand.
+func TestSeqCompareFirstAnchor(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		t.Run(fmt.Sprintf("reverse=%t", reverse), func(t *testing.T) {
+			opt := DefaultSeqComparatorOptions
+			opt.K = 31
+			opt.Chaining2Options = DefaultChaining2Options
+			opt.Chaining2Options.MinAlignLen = 20
+			query := []byte(indexTestDNA(600))
+			target := bytes.Repeat([]byte{'A'}, 600)
+			// Bound both exact matches and keep their diagonals too far apart to chain.
+			query[19], query[51], query[199], query[211] = 'C', 'C', 'C', 'C'
+			copy(target[20:], query[20:51])
+			copy(target[450:], query[200:211])
+			start := 20
+			if reverse {
+				RC(query)
+				RC(target)
+				start = 549
+			}
+			comparator := NewSeqComparator(&opt, &sync.Pool{New: func() interface{} {
+				return NewChainer2(&opt.Chaining2Options)
+			}})
+			if err := comparator.Index(query); err != nil {
+				t.Fatal(err)
+			}
+			defer comparator.RecycleIndex()
+			result, err := comparator.Compare(0, 600, target, 600)
+			if err != nil || result == nil {
+				t.Fatalf("lost the 31-base exact match: %v", err)
+			}
+			defer RecycleSeqComparatorResult(result)
+			want := []denseChainSummary{{1, 31, 31, 31, start, start + 30, start, start + 30, 100}}
+			if got := denseChain2Summary(result.Chains); !reflect.DeepEqual(got, want) {
+				t.Fatalf("chains = %+v, want %+v", got, want)
+			}
+		})
+	}
+}

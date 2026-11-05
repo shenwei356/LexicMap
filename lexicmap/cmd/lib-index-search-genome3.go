@@ -657,7 +657,7 @@ func alignVotedWindow(
 	defer wfa.RecycleAlignmentResult(cigar)
 	_, _, evalue := (*fScoreAndEvalue)(len(qseq), cigar)
 	matched, aligned, gaps := int(cigar.Matches), int(cigar.AlignLen), int(cigar.Gaps)
-	if aligned == 0 {
+	if aligned == 0 || aligned < idx.seqCompareOption.MinAlignLen {
 		return 0, 0, 0, 0, 0, false
 	}
 	pident := float64(matched) / float64(aligned) * 100
@@ -790,9 +790,9 @@ func alignChain(
 		if alignErr != nil {
 			continue
 		}
-		// score and e-value
+		// Check final length after extension and repetitive-region refinement.
 		_, _, evalue := (*fScoreAndEvalue)(len(_qseq), cigar)
-		if evalue > maxEvalue {
+		if evalue > maxEvalue || int(cigar.AlignLen) < idx.seqCompareOption.MinAlignLen {
 			wfa.RecycleAlignmentResult(cigar)
 			continue
 		}
@@ -1618,7 +1618,8 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 		}
 
 		_, _, evalue := fScoreAndEvalue(len(_qseq), cigar)
-		if evalue > maxEvalue {
+		// Only qualifying final HSPs may enter reciprocal-best-hit selection.
+		if evalue > maxEvalue || int(cigar.AlignLen) < idx.seqCompareOption.MinAlignLen {
 			wfa.RecycleAlignmentResult(cigar)
 			RecycleSeqComparatorResult(cr)
 			continue

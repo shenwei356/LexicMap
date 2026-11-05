@@ -544,7 +544,7 @@ func init() {
 		formatFlagUsage(`Output LexicMap index directory.`))
 
 	indexCmd.Flags().StringP("big-genomes", "G", "",
-		formatFlagUsage(`Out file of skipped files with $total_bases + ($num_contigs - 1) * $contig_interval >= -g/--max-genome. The second column is one of the skip types: no_valid_seqs, too_large_genome, too_many_seqs.`))
+		formatFlagUsage(`Out file of skipped files with $total_bases + ($num_contigs - 1) * $contig_interval >= -g/--max-genome. The second column is one of the skip types: no_valid_seqs, too_large_genome, too_many_seqs. Keep this file outside the output directory and its temporary merge directory (<out-dir>.tmp).`))
 
 	indexCmd.Flags().BoolP("force", "", false,
 		formatFlagUsage(`Overwrite existing output directory.`))

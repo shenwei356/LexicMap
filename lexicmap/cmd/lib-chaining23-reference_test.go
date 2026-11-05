@@ -51,7 +51,9 @@ func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int
 	maxscoresIdxs := &ce.maxscoresIdxs
 	*maxscoresIdxs = (*maxscoresIdxs)[:0]
 	*maxscoresIdxs = append(*maxscoresIdxs, uint64((*subs)[0].Len)<<32)
-	var s, m, M, g float64
+	var s, m, g float64
+	// Include the first anchor before scoring the remaining rows.
+	M := float64((*subs)[0].Len)
 	var mj, Mi int
 	var a, b SubstrPair
 	maxGap := float64(ce.options.MaxGap)

@@ -43,6 +43,46 @@ func TestCombinationCount(t *testing.T) {
 	}
 }
 
+// TestCompareMinAlignmentLength checks ordinary and reciprocal-best-hit
+// comparisons after extending a short anchor in 100-base inputs. The final
+// alignment spans 84 bases after mismatching ends are trimmed.
+func TestCompareMinAlignmentLength(t *testing.T) {
+	dir := t.TempDir()
+	query := []byte("TGGTCCGCGTAGTACAGAGACTGCCTTGAAATTTCGTGATTATGCAGCGCTACTTTGGAGTCCCGACTATGACTGGCTTTCTCTTTGGCGGAGGCCTACC")
+	subject := []byte("TGGTCCGGGTAGTACATAGACTGCCTTGAAATTTGGTGATTATTCAGCGCTAGTTTGGAGTGCCGACTATTACTGGCTTACTCTTTGGGGGAGGCCTCCC")
+	for _, reverse := range []bool{false, true} {
+		q, s := slices.Clone(query), slices.Clone(subject)
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, fmt.Sprintf("q-%t.fa", reverse)), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, fmt.Sprintf("s-%t.fa", reverse)), ">s\n"+string(s)+"\n")
+		for _, ortho := range []bool{false, true} {
+			for _, minimum := range []int{0, 84, 85} {
+				t.Run(fmt.Sprintf("reverse=%t/ortho=%t/minimum=%d", reverse, ortho, minimum), func(t *testing.T) {
+					args := []string{"genome", "compare", "--quiet", "-j", "2"}
+					if minimum != 0 { // also exercise the default threshold
+						args = append(args, "-l", strconv.Itoa(minimum))
+					}
+					if ortho {
+						args = append(args, "-O", "--frag-size", "100")
+					}
+					output := runSeedIndexCommand(t, append(args, qfile, sfile)...)
+					lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+					want := 2
+					if minimum > 84 {
+						want = 1
+					}
+					if len(lines) != want {
+						t.Fatalf("got %d lines, want %d:\n%s", len(lines), want, output)
+					}
+				})
+			}
+		}
+	}
+}
+
 // TestComparePairThresholds exercises asymmetric AF/ANI through the CLI, with
 // both input orders and both preparation paths. Filtering must use the pair.
 func TestComparePairThresholds(t *testing.T) {

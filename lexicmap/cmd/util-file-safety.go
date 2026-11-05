@@ -62,6 +62,45 @@ func resolveOutputPath(path string) (string, error) {
 	}
 }
 
+// checkFileOutsideDirectories protects auxiliary files from directory cleanup.
+// Check both the named path (a symlink can itself be removed) and its target.
+func checkFileOutsideDirectories(path, label string, dirs ...string) error {
+	if path == "" {
+		return nil
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	real, err := resolveOutputPath(path)
+	if err != nil {
+		return err
+	}
+	// Resolve directory aliases while retaining the final symlink's name.
+	parent, err := resolveOutputPath(filepath.Dir(absolute))
+	if err != nil {
+		return err
+	}
+	named := filepath.Join(parent, filepath.Base(absolute))
+	for _, dir := range dirs {
+		absoluteDir, err := filepath.Abs(dir)
+		if err != nil {
+			return err
+		}
+		realDir, err := resolveOutputPath(dir)
+		if err != nil {
+			return err
+		}
+		for _, pair := range [][2]string{{absoluteDir, absolute}, {realDir, named}, {realDir, real}} {
+			rel, err := filepath.Rel(pair[0], pair[1])
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("%s path %s must be outside output directory %s", label, path, dir)
+			}
+		}
+	}
+	return nil
+}
+
 // checkCommandFiles runs before logging or output creation. Paths named as
 // genome IDs are not files; explicit auxiliary inputs and file lists are.
 func checkCommandFiles(cmd *cobra.Command, args []string) error {
@@ -129,25 +168,14 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			replacedDirs = append(replacedDirs, path)
 		}
 	}
-	// Logs open before directory cleanup. Reject containment before either the
-	// log or an existing directory can be modified, including symlink aliases.
+	// Logs and skipped-genome reports open before directory cleanup. Reject
+	// containment before any file or directory can be modified.
 	// Preserve the more specific input-alias errors when both checks apply.
-	var logDirectoryErr error
-	if path := flag("log"); path != "" {
-		logPath, err := resolveOutputPath(path)
-		if err != nil {
-			return err
-		}
-		for _, dir := range replacedDirs {
-			real, err := resolveOutputPath(dir)
-			if err != nil {
-				return err
-			}
-			rel, err := filepath.Rel(real, logPath)
-			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-				logDirectoryErr = fmt.Errorf("log path %s must be outside output directory %s", path, dir)
-				break
-			}
+	var outputDirectoryErr error
+	for _, name := range []string{"log", "big-genomes"} {
+		if err := checkFileOutsideDirectories(flag(name), name, replacedDirs...); err != nil {
+			outputDirectoryErr = err
+			break
 		}
 	}
 	for i, a := range outputs {
@@ -336,7 +364,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		existingOutput = existingOutput || output.info != nil
 	}
 	if !existingOutput {
-		return logDirectoryErr
+		return outputDirectoryErr
 	}
 	walk := func(dir string, pattern *regexp.Regexp) error {
 		if dir == "" {
@@ -378,5 +406,5 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return logDirectoryErr
+	return outputDirectoryErr
 }

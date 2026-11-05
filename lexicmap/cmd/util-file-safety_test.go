@@ -576,3 +576,67 @@ func TestLogOutsideReplacedDirectories(t *testing.T) {
 		}
 	}
 }
+
+// Reports must survive directory replacement, including aliases in either direction.
+func TestBigGenomesOutsideReplacedDirectories(t *testing.T) {
+	for _, suffix := range []string{"", ExtTmpDir} {
+		for _, form := range []string{"existing", "missing", "parent-alias", "leaf-symlink", "aliased-leaf-symlink"} {
+			t.Run(suffix+"/"+form, func(t *testing.T) {
+				root := t.TempDir()
+				db := filepath.Join(root, "db")
+				replaced := db + suffix
+				report := filepath.Join(replaced, "skipped.tsv")
+				var sentinel string
+				if form != "missing" {
+					if err := os.Mkdir(replaced, 0700); err != nil {
+						t.Fatal(err)
+					}
+					sentinel = writeTestInput(t, filepath.Join(replaced, "keep"), "original\n")
+				}
+				passedReport := report
+				if form == "parent-alias" || form == "aliased-leaf-symlink" {
+					alias := filepath.Join(root, "alias")
+					if err := os.Symlink(replaced, alias); err != nil {
+						t.Fatal(err)
+					}
+					passedReport = filepath.Join(alias, "skipped.tsv")
+				}
+				switch form {
+				case "leaf-symlink", "aliased-leaf-symlink":
+					target := writeTestInput(t, filepath.Join(root, "external.tsv"), "original report\n")
+					if err := os.Symlink(target, report); err != nil {
+						t.Fatal(err)
+					}
+				case "existing":
+					writeTestInput(t, report, "original report\n")
+				}
+				logFile := writeTestInput(t, filepath.Join(root, "run.log"), "original log\n")
+				input := writeTestInput(t, filepath.Join(root, "ref.fa"), ">s\n"+indexTestDNA(100)+"\n")
+				big := writeTestInput(t, filepath.Join(root, "big.fa"), ">big\n"+indexTestDNA(1020)+"\n")
+				_, stderr, err := runAuditCommand(t, "", "index", "--quiet", "--force", "-j", "1", "-m", "64",
+					"-c", "2", "--partitions", "4", "-b", "1", "-g", "1000", "-O", db, "-G", passedReport, "--log", logFile, big, input)
+				if err == nil || !bytes.Contains(stderr, []byte("big-genomes path")) || !bytes.Contains(stderr, []byte("must be outside output directory")) {
+					t.Fatalf("unsafe report accepted: %v, %s", err, stderr)
+				}
+				if got, err := os.ReadFile(logFile); err != nil || string(got) != "original log\n" {
+					t.Fatalf("log changed: %q, %v", got, err)
+				}
+				if sentinel != "" {
+					if got, err := os.ReadFile(sentinel); err != nil || string(got) != "original\n" {
+						t.Fatalf("directory changed: %q, %v", got, err)
+					}
+				} else if _, err := os.Stat(replaced); !os.IsNotExist(err) {
+					t.Fatalf("directory created: %v", err)
+				}
+				got, err := os.ReadFile(report)
+				if form == "existing" || strings.HasSuffix(form, "leaf-symlink") {
+					if err != nil || string(got) != "original report\n" {
+						t.Fatalf("report changed: %q, %v", got, err)
+					}
+				} else if !os.IsNotExist(err) {
+					t.Fatalf("report created: %v", err)
+				}
+			})
+		}
+	}
+}

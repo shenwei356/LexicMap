@@ -298,7 +298,10 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 	// compute scores
 	// Scores and gaps are integral. Keep intermediates wider than the packed
 	// 32-bit score so comparisons retain their original pre-packing values.
-	var s, m, M, g int64
+	var s, m, g int64
+	// The loop starts at anchor 1; include anchor 0 in the global maximum
+	// and retain the earliest anchor when later scores tie it.
+	M := int64((*subs)[0].Len)
 	// var d float64
 	var mj, Mi int
 	// Anchors stay in place during chaining; read by address to avoid value copies.

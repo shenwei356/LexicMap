@@ -75,7 +75,7 @@ If you save *a few* **small** (viral) **complete** genomes (one sequence per gen
         - **Unwanted sequences** (such as plasmids) can be filtered out by regular expressions from the flag `-B/--seq-name-filter`.
     - **Genome size limit**. Some non-isolate assemblies might have extremely large genomes, e.g., [GCA_000765055.1](https://www.ncbi.nlm.nih.gov/datasets/genome/GCA_000765055.1/) has >150 Mb.
      The flag `-g/--max-genome` (default 20 Mb) is used to skip these input files, and the file list would be written to a file
-     via the flag `-G/--big-genomes`.
+     via the flag `-G/--big-genomes`. Keep this file outside the output directory and its temporary merge directory (`<out-dir>.tmp`).
         - **Changes since v0.5.0**:
             - Genomes with any single contig larger than the threshold will be skipped as before.
             - However, **fragmented (with many contigs) genomes with a total number of bases larger than the threshold will

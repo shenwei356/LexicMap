@@ -47,6 +47,55 @@ func denseChain2Summary(chains *[]*Chain2Result) []denseChainSummary {
 	return out
 }
 
+// TestChainer2FirstAnchorSelection checks independent optima and tie order,
+// including reversed coordinates and reuse after a rejected chain.
+func TestChainer2FirstAnchorSelection(t *testing.T) {
+	opt := DefaultChaining2Options
+	chainer := NewChainer2(&opt)
+	for _, tc := range []struct {
+		name                string
+		first, second       uint8
+		minScore, minLength int
+	}{
+		{"first maximum", 31, 11, 22, 20},
+		{"first tied maximum", 31, 31, 22, 20},
+		{"below score", 31, 11, 32, 20},
+		{"later maximum", 11, 31, 22, 20},
+		{"below length", 31, 11, 22, 32},
+	} {
+		for _, reverse := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/reverse=%t", tc.name, reverse), func(t *testing.T) {
+				opt.MinScore, opt.MinAlignLen = tc.minScore, tc.minLength
+				// The 250-base diagonal difference prevents these anchors from linking.
+				subs := []SubstrPair{{QBegin: 20, TBegin: 20, Len: tc.first}, {QBegin: 200, TBegin: 450, Len: tc.second}}
+				if reverse {
+					for i := range subs {
+						subs[i].QBegin = 600 - subs[i].QBegin - int32(subs[i].Len)
+						subs[i].TBegin = 600 - subs[i].TBegin - int32(subs[i].Len)
+					}
+					slices.Reverse(subs)
+				}
+				var want []denseChainSummary
+				for _, sub := range subs {
+					n := int(sub.Len)
+					if n >= tc.minScore && n >= tc.minLength {
+						want = append(want, denseChainSummary{1, n, n, n,
+							int(sub.QBegin), int(sub.QBegin) + n - 1, int(sub.TBegin), int(sub.TBegin) + n - 1, 100})
+					}
+				}
+				chains, _, _, _, _, _, _, _ := chainer.Chain(&subs)
+				got := denseChain2Summary(chains)
+				if chains != nil {
+					RecycleChaining2Result(chains)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("chains = %+v, want %+v", got, want)
+				}
+			})
+		}
+	}
+}
+
 // TestChainer2SingleAnchorRetainsExtensionCandidate checks the singleton
 // contract independently of the reference kernel and exercises pooled reuse.
 func TestChainer2SingleAnchorRetainsExtensionCandidate(t *testing.T) {

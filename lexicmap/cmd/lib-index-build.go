@@ -280,6 +280,10 @@ func BuildIndex(outdir string, infiles []string, opt *IndexBuildingOptions) erro
 	if err := checkOutputDirectory(outdir, "output directory"); err != nil {
 		return err
 	}
+	// The report must survive replacement of the index and temporary batches.
+	if err := checkFileOutsideDirectories(opt.BigGenomeFile, "big-genomes", outdir, filepath.Clean(outdir)+ExtTmpDir); err != nil {
+		return err
+	}
 	// Direct callers may bypass CLI validation; extraction requires capture 1.
 	if err := checkRefNameRegexp(opt.ReRefName); err != nil {
 		return err

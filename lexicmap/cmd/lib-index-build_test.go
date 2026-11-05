@@ -446,3 +446,43 @@ func TestIndexRejectsInsufficientFileBudget(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildIndexRejectsReportInsideOutput(t *testing.T) {
+	for _, suffix := range []string{"", ExtTmpDir} {
+		t.Run(suffix, func(t *testing.T) {
+			db := filepath.Join(t.TempDir(), "db")
+			if err := os.Mkdir(db+suffix, 0700); err != nil {
+				t.Fatal(err)
+			}
+			report := writeTestInput(t, filepath.Join(db+suffix, "skipped.tsv"), "original\n")
+			opt := &IndexBuildingOptions{GenomeBatchSize: 1, BigGenomeFile: report}
+			if err := BuildIndex(db, []string{"a.fa", "b.fa"}, opt); err == nil || !strings.Contains(err.Error(), "big-genomes path") {
+				t.Fatalf("unsafe report accepted: %v", err)
+			}
+			if got, err := os.ReadFile(report); err != nil || string(got) != "original\n" {
+				t.Fatalf("report changed: %q, %v", got, err)
+			}
+		})
+	}
+}
+
+// TestIndexBigGenomesReportSurvivesMerge covers an empty batch and final cleanup.
+func TestIndexBigGenomesReportSurvivesMerge(t *testing.T) {
+	root := t.TempDir()
+	big := writeTestInput(t, filepath.Join(root, "big.fa"), ">big\n"+indexTestDNA(1020)+"\n")
+	small := writeTestInput(t, filepath.Join(root, "small.fa"), ">small\n"+indexTestDNA(100)+"\n")
+	db := filepath.Join(root, "db")
+	report := filepath.Join(root, "skipped.tsv")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4",
+		"-b", "1", "-g", "1000", "-G", report, "-O", db, big, small)
+	if got, err := os.ReadFile(report); err != nil || string(got) != big+"\ttoo_large_genome\n" {
+		t.Fatalf("missing skipped genome: %q, %v", got, err)
+	}
+	info, err := readIndexInfo(filepath.Join(db, FileInfo))
+	if err != nil || info.Genomes != 1 || info.GenomeBatches != 2 {
+		t.Fatalf("incorrect merged index: %+v, %v", info, err)
+	}
+	if _, err := os.Stat(db + ExtTmpDir); !os.IsNotExist(err) {
+		t.Fatalf("temporary batches remain: %v", err)
+	}
+}
