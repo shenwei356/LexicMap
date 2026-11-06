@@ -13,6 +13,42 @@ weight: 30
 - Please run `lexicmap autocompletion` to update the shell autocompletion script.
 {{< /hint >}}
 
+### v0.10.1 - 2026-xx-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.1)
+
+- **`lexicmap`**:
+    - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
+- **`lexicmap index`**:
+    - Correct strand-dependent low-complexity seed filtering.
+- **`lexicmap search`**:
+    - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
+    - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
+    - Remove temporary alignment files when search output fails, including broken pipes.
+- **`lexicmap search, genome search/compare`**:
+    - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
+    - Pseudoalignment:
+        - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
+        - Fix terminal trimming that could reduce coverage or change ANI/AF after reverse complementation.
+        - Speed up pseudoalignment, without changing results.
+        - Keep pseudoalignment matches within the requested query region and include its final base consistently.
+    - Alignment:
+        - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
+        - Recover skipped two-base terminal extensions.
+        - Apply `--align-min-match-len` after extension, including in `genome search --OrthoANI`.
+        - Fix hangs in `genome search` and `genome compare` when aligning sequences with highly repetitive regions.
+        - Fix crashes and invalid CIGAR strings in adaptive alignment.
+- **`lexicmap utils merge-search-results`**:
+    - Skip empty result files with a warning. [#41](https://github.com/shenwei356/LexicMap/issues/41)
+    - Fix Top-N selection and ties for rounded identities and negative bit scores.
+    - Preserve columns and alignment fields when merging mixed output formats.
+- **`lexicmap utils 2sam`**:
+    - Correct AS and MAPQ calculation, including nonpositive alignment scores.
+    - Preserve primary/secondary flags and MAPQ across input files.
+- **`lexicmap utils seed-pos`**:
+    - Restore missing seed positions and fix seed-count histograms.
+    - Avoid overwriting distance plots for short genome chunks.
+
+## Previous versions
+
 ### v0.10.0 - 2026-10-21 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.0/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.0)
 
 There is a small change in the seed computation, but re-indexing is unnecessary.
@@ -141,8 +177,6 @@ There is a small change in the seed computation, but re-indexing is unnecessary.
     - Added a new flag `-e/--extra` to show more information.
 - `lexicmap utils masks`:
     - Changed the default values of `-m/--masks` and `-p/--prefix` to match those in `lexicmap index`.
-
-## Previous versions
 
 ### v0.8.1 - 2025-12-19 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.8.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.8.1)
 

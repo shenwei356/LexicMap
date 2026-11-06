@@ -63,7 +63,7 @@ Output format:
     8.  ctgs1,    Number of contigs in genome 1.
     9.  size1,    Size of the genome 1.
     10. ctgs2,    Number of contigs in genome 2.
-    11. size2,    Size of the genome 1.
+    11. size2,    Size of the genome 2.
 
 Usage:
   lexicmap genome compare [flags]

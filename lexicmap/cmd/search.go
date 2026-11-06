@@ -24,10 +24,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -448,6 +450,12 @@ Result ordering:
 
 		timeStart1 := time.Now()
 
+		// Receive SIGPIPE so stdout write failures can drain queries and remove
+		// their spill files before the command exits.
+		brokenPipe := make(chan os.Signal, 1)
+		signal.Notify(brokenPipe, syscall.SIGPIPE)
+		defer signal.Stop(brokenPipe)
+
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
 		checkError(err)
 		defer func() {
@@ -471,16 +479,10 @@ Result ordering:
 
 		row := make([]byte, 0, 512)
 		outputOptions := searchOutputOptions{showSseqIdx: showSseqIdx, showAvgQual: showAvgQual, prefixName: showSpeciesName || showTaxName}
-		printResult := func(q *Query) {
+		printResult := func(q *Query) error {
 			total++
 			if q.result == nil { // seqs shorter than K or queries without matches.
-				checkError(q.closeAlignmentPayload())
-				poolQuery.Put(q)
-
-				if gc && total&gcIntervalMinus1 == 0 {
-					runtime.GC()
-				}
-				return
+				return nil
 			}
 
 			if verbose {
@@ -509,8 +511,11 @@ Result ordering:
 			var spillReadDuration time.Duration
 			var _seq *seq.Seq
 			if showAvgQual {
-				_seq, err = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
-				checkError(err)
+				var qualErr error
+				_seq, qualErr = seq.NewSeqWithQualWithoutValidation(seq.Unlimit, q.seq, q.qual)
+				if qualErr != nil {
+					return qualErr
+				}
 			}
 			for _, r := range *q.result { // each genome
 				genomeName = ""
@@ -549,8 +554,7 @@ Result ordering:
 								spillReadBytes += uint64(len(cigar) + len(qseq) + len(tseq) + len(alignment))
 							}
 							if payloadErr != nil {
-								_ = q.closeAlignmentPayload()
-								checkError(payloadErr)
+								return payloadErr
 							}
 						}
 						var avgQual float64
@@ -560,7 +564,9 @@ Result ordering:
 						row = appendSearchResultRow(row[:0], queryID, len(q.seq), targets, id2name[r.BatchGenomeIndex], genomeName,
 							r, sd, c, _c, j, outputOptions, avgQual)
 						if moreColumns && len(row)+len(cigar)+len(qseq)+len(tseq)+len(alignment)+5 > maxSearchOutputRowBytes {
-							checkError(writeLargeSearchResultRow(outfh, row, cigar, qseq, tseq, alignment))
+							if writeErr := writeLargeSearchResultRow(outfh, row, cigar, qseq, tseq, alignment); writeErr != nil {
+								return writeErr
+							}
 						} else {
 							if moreColumns {
 								row = append(row, '\t')
@@ -574,7 +580,7 @@ Result ordering:
 							}
 							row = append(row, '\n')
 							if _, writeErr := outfh.Write(row); writeErr != nil {
-								checkError(writeErr)
+								return writeErr
 							}
 						}
 						// Retain common rows, but release large alignment payload copies.
@@ -592,27 +598,48 @@ Result ordering:
 					queryID, humanize.Comma(int64(len(q.seq))), humanize.Comma(int64(spillReadCount)),
 					humanize.IBytes(spillReadBytes), spillReadDuration)
 			}
-			idx.RecycleSearchResults(q.result)
-			q.result = nil
-			checkError(q.closeAlignmentPayload())
-
-			poolQuery.Put(q)
-			checkError(outfh.Flush())
-
-			if gc && total&gcIntervalMinus1 == 0 {
-				runtime.GC()
-			}
+			return nil
 		}
 
-		ch := make(chan *Query, maxQueryConcurrency)
-		done := make(chan int)
-		go func() {
-
-			for r := range ch {
-				printResult(r)
+		// The first error stops input submission. Completed and in-flight queries
+		// still reach the output worker, which owns their results and spill files.
+		stop := make(chan struct{})
+		var stopOnce sync.Once
+		var searchErr error
+		stopSearch := func(err error) {
+			if err != nil {
+				stopOnce.Do(func() {
+					searchErr = err
+					close(stop)
+				})
 			}
-
-			done <- 1
+		}
+		ch := make(chan *Query, maxQueryConcurrency)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for q := range ch {
+				hasResult := q.result != nil
+				select {
+				case <-stop:
+				default:
+					stopSearch(printResult(q))
+				}
+				idx.RecycleSearchResults(q.result)
+				q.result = nil
+				stopSearch(q.closeAlignmentPayload())
+				poolQuery.Put(q)
+				select {
+				case <-stop:
+				default:
+					if hasResult {
+						stopSearch(outfh.Flush())
+					}
+					if gc && total&gcIntervalMinus1 == 0 {
+						runtime.GC()
+					}
+				}
+			}
 		}()
 
 		// -------  input  -------
@@ -623,20 +650,42 @@ Result ordering:
 		var record *fastx.Record
 		K := idx.k
 
+	input:
 		for _, file := range files {
+			select {
+			case <-stop:
+				break input
+			default:
+			}
 			fastxReader, err := fastx.NewReader(nil, file, "")
-			checkError(err)
+			if err != nil {
+				stopSearch(err)
+				break
+			}
 
+		reading:
 			for {
+				select {
+				case <-stop:
+					break reading
+				default:
+				}
 				record, err = fastxReader.Read()
 				if err != nil {
 					if err == io.EOF {
 						break
 					}
-					checkError(err)
+					stopSearch(err)
 					break
 				}
 
+				if len(record.Seq.Seq) >= K {
+					select {
+					case tokens <- 1:
+					case <-stop:
+						break reading
+					}
+				}
 				query := poolQuery.Get().(*Query)
 				query.Reset()
 
@@ -646,7 +695,6 @@ Result ordering:
 					continue
 				}
 
-				tokens <- 1
 				wg.Add(1)
 
 				query.seqID = append(query.seqID, record.ID...)
@@ -667,9 +715,7 @@ Result ordering:
 
 					var err error
 					query.result, err = idx.Search(query, nil, idx.opt.Debug)
-					if err != nil {
-						checkError(err)
-					}
+					stopSearch(err)
 
 					ch <- query
 				}(query)
@@ -679,6 +725,11 @@ Result ordering:
 		wg.Wait()
 		close(ch)
 		<-done
+		if searchErr != nil {
+			_ = closeOutStream(outfh, gw, w)
+			_ = idx.Close()
+			checkError(searchErr)
+		}
 
 		// -------  final log  -------
 

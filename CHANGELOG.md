@@ -9,6 +9,7 @@
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
+    - Remove temporary alignment files when search output fails, including broken pipes.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:

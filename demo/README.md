@@ -512,39 +512,40 @@ Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  11249
 A single query
 
     $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz | csvtk pretty -t
-    13:08:38.259 [INFO] LexicMap v0.10.1 (3f499bb)
-    13:08:38.259 [INFO]   https://github.com/shenwei356/LexicMap
-    13:08:38.259 [INFO] 
-    13:08:38.259 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
-    13:08:38.259 [INFO]  CMD: lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz
-    13:08:38.259 [INFO] DATE: 2026-11-06
-    13:08:38.259 [INFO] 
-    13:08:38.259 [INFO] checking input files ...
-    13:08:38.259 [INFO]   1 input file given: refs/GCF_003697165.2.fa.gz
-    13:08:38.259 [INFO] 
-    13:08:38.259 [INFO] loading index: demo.lmi
-    13:08:38.259 [INFO]   reading masks...
-    13:08:38.261 [INFO]   reading indexes of seeds (k-mer-value) data...
-    13:08:38.261 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
-    13:08:38.316 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-    13:08:38.317 [INFO] index loaded in 57.632799ms
-    13:08:38.317 [INFO] 
-    13:08:38.317 [INFO] searching with 16 threads...
-    13:08:38.317 [INFO]   screen genomes with seed data of 1024 masks
-    13:08:38.317 [INFO]     keep the top 10 screened genomes, including all ties at the cutoff score
-    13:08:38.317 [INFO]   minimum query coverage per HSP: 30.00%
-    13:08:38.317 [INFO]   minimum base identity in a HSP segment: 70.00%
-    13:08:38.317 [INFO]   maximum evalue: 1.00e-15
-    13:08:38.317 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 4 queries
-    13:08:38.317 [INFO]   threads per query: 16
+    15:00:46.027 [INFO] LexicMap v0.10.1 (aba7a7c)
+    15:00:46.027 [INFO]   https://github.com/shenwei356/LexicMap
+    15:00:46.027 [INFO]
+    15:00:46.027 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+    15:00:46.027 [INFO]  CMD: lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz
+    15:00:46.027 [INFO] DATE: 2026-11-06
+    15:00:46.027 [INFO]
+    15:00:46.027 [INFO] checking input files ...
+    15:00:46.027 [INFO]   1 input file given: refs/GCF_003697165.2.fa.gz
+    15:00:46.027 [INFO]
+    15:00:46.027 [INFO] loading index: demo.lmi
+    15:00:46.027 [INFO]   reading masks...
+    15:00:46.029 [INFO]   reading indexes of seeds (k-mer-value) data...
+    15:00:46.029 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+    15:00:46.125 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    15:00:46.125 [INFO] index loaded in 98.050544ms
+    15:00:46.126 [INFO]
+    15:00:46.126 [INFO] searching with 16 threads...
+    15:00:46.126 [INFO]   screen genomes with seed data of 1024 masks
+    15:00:46.126 [INFO]     keep the top 10 screened genomes, including all ties at the cutoff score
+    15:00:46.126 [INFO]   minimum query coverage per HSP: 30.00%
+    15:00:46.126 [INFO]   minimum base identity in a HSP segment: 70.00%
+    15:00:46.126 [INFO]   maximum evalue: 1.00e-15
+    15:00:46.126 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 4 queries
+    15:00:46.126 [INFO]   threads per query: 16
 
-    13:08:43.567 [INFO] 
-    13:08:43.567 [INFO] processed queries: 1, speed: 11.428 queries per minute
-    13:08:43.567 [INFO] 100.0000% (1/1) queries matched
-    13:08:43.567 [INFO] done searching
-    13:08:43.568 [INFO] 
-    13:08:43.568 [INFO] elapsed time: 5.30850419s
-    13:08:43.568 [INFO] 
+    15:00:50.679 [INFO]
+    15:00:50.679 [INFO] processed queries: 1, speed: 13.178 queries per minute
+    15:00:50.679 [INFO] 100.0000% (1/1) queries matched
+    15:00:50.679 [INFO] done searching
+    15:00:50.679 [INFO]
+    15:00:50.679 [INFO] elapsed time: 4.651703937s
+    15:00:50.679 [INFO]
+
     query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
     ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   -----
     GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834        
