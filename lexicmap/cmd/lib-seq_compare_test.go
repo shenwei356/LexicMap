@@ -35,6 +35,138 @@ import (
 	"testing"
 )
 
+// A DUST score below the cutoff must retain both orientations in the seed tree.
+func TestSeqCompareDustOrientation(t *testing.T) {
+	query := []byte("AAAATCAAAATAAACAAAACCATTAAACAAA")
+	opt := DefaultSeqComparatorOptions
+	opt.K = 31
+	cpr := NewSeqComparator(&opt, nil)
+	var previous []uint64
+	for _, reverse := range []bool{false, true} {
+		entries, err := cpr.collectIndexEntries(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 2 {
+			t.Errorf("reverse=%t: got %d entries, want both strands", reverse, len(entries))
+		}
+		keys := make([]uint64, len(entries))
+		for i, entry := range entries {
+			keys[i] = entry.Key
+		}
+		slices.Sort(keys)
+		if reverse && !slices.Equal(keys, previous) {
+			t.Errorf("reverse complement changed retained seed keys")
+		}
+		previous = keys
+		RC(query)
+	}
+}
+
+// Terminal repeat trimming must retain the same anchors after reversing both
+// sequences, whether the repeated position is on the query or the target.
+func TestTrimSubStrPairsReverseComplement(t *testing.T) {
+	for _, swap := range []bool{false, true} {
+		anchors := []SubstrPair{{QBegin: 0, TBegin: 0, Len: 31}, {QBegin: 0, TBegin: 10, Len: 31}, {QBegin: 200, TBegin: 200, Len: 31}}
+		if swap {
+			for i := range anchors {
+				anchors[i].QBegin, anchors[i].TBegin = anchors[i].TBegin, anchors[i].QBegin
+			}
+		}
+		for _, reverse := range []bool{false, true} {
+			subs := slices.Clone(anchors)
+			want := slices.Clone(anchors[1:])
+			if reverse {
+				for _, pairs := range [][]SubstrPair{subs, want} {
+					for i := range pairs {
+						pairs[i].QBegin = 400 - pairs[i].QBegin - int32(pairs[i].Len)
+						pairs[i].TBegin = 400 - pairs[i].TBegin - int32(pairs[i].Len)
+					}
+					slices.Reverse(pairs)
+				}
+			}
+			capacity := cap(subs)
+			TrimSubStrPairs(&subs, 31, 100)
+			if !reflect.DeepEqual(subs, want) || cap(subs) != capacity {
+				t.Fatalf("swap=%t reverse=%t: got %+v (capacity %d), want %+v (capacity %d)", swap, reverse, subs, cap(subs), want, capacity)
+			}
+		}
+	}
+}
+
+func TestSubstrPairOverlap(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		a, b SubstrPair
+		want int32
+	}{
+		{"identical", SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, 31},
+		{"adjacent", SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, SubstrPair{QBegin: 31, TBegin: 31, Len: 31}, 0},
+		{"one base", SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, SubstrPair{QBegin: 30, TBegin: 31, Len: 31}, 1},
+		{"contained", SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, SubstrPair{QBegin: 5, TBegin: 50, Len: 10}, 10},
+		{"crossed target", SubstrPair{QBegin: 0, TBegin: 20, Len: 31}, SubstrPair{QBegin: 50, TBegin: 10, Len: 20}, 10},
+		{"empty", SubstrPair{QBegin: 0, TBegin: 0, Len: 31}, SubstrPair{QBegin: 5, TBegin: 5, Len: 0}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, swap := range []bool{false, true} {
+				a, b := tc.a, tc.b
+				if swap {
+					a, b = b, a
+				}
+				if got := overlap(a, b); got != tc.want {
+					t.Errorf("swap=%t: got overlap %d, want %d", swap, got, tc.want)
+				}
+				// Reflect both half-open intervals into the opposite orientation.
+				a.QBegin, a.TBegin = 100-a.QBegin-int32(a.Len), 100-a.TBegin-int32(a.Len)
+				b.QBegin, b.TBegin = 100-b.QBegin-int32(b.Len), 100-b.TBegin-int32(b.Len)
+				if got := overlap(a, b); got != tc.want {
+					t.Errorf("reverse swap=%t: got overlap %d, want %d", swap, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestTrimSubStrPairsOverlapThreshold(t *testing.T) {
+	for _, tc := range []struct {
+		length uint8
+		shift  int32
+		trim   bool
+	}{
+		{31, 7, false}, // 24/31 < 80%; the old extra base made this 25/31.
+		{30, 6, false}, // Exactly 80% is retained by the strict cutoff.
+		{31, 6, true},  // 25/31 > 80% is a repeat candidate.
+	} {
+		for _, swap := range []bool{false, true} {
+			anchors := []SubstrPair{{QBegin: 0, TBegin: 0, Len: tc.length}, {QBegin: tc.shift, TBegin: 20, Len: tc.length}, {QBegin: 200, TBegin: 200, Len: tc.length}}
+			if swap {
+				for i := range anchors {
+					anchors[i].QBegin, anchors[i].TBegin = anchors[i].TBegin, anchors[i].QBegin
+				}
+			}
+			for _, reverse := range []bool{false, true} {
+				subs, want := slices.Clone(anchors), slices.Clone(anchors)
+				if tc.trim {
+					want = want[1:]
+				}
+				if reverse {
+					for _, pairs := range [][]SubstrPair{subs, want} {
+						for i := range pairs {
+							pairs[i].QBegin = 400 - pairs[i].QBegin - int32(pairs[i].Len)
+							pairs[i].TBegin = 400 - pairs[i].TBegin - int32(pairs[i].Len)
+						}
+						slices.Reverse(pairs)
+					}
+				}
+				TrimSubStrPairs(&subs, 31, 100)
+				if !reflect.DeepEqual(subs, want) {
+					t.Errorf("length=%d shift=%d swap=%t reverse=%t: got %+v, want %+v", tc.length, tc.shift, swap, reverse, subs, want)
+				}
+			}
+		}
+	}
+}
+
 // TestSeqCompareQueryWindow checks containment on both anchor orientations and
 // both index forms, including matches that only touch a window boundary.
 func TestSeqCompareQueryWindow(t *testing.T) {

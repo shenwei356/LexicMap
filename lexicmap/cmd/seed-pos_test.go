@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -92,6 +93,23 @@ func TestSeedPosReadsRequestedBatches(t *testing.T) {
 	}
 }
 
+func TestSeedPosInvalidOffset(t *testing.T) {
+	db := writeSeedPosFixture(t, 1)
+	file := filepath.Join(db, DirGenomes, batchDir(0), FileSeedPositions) + seedposition.PositionsIndexFileExt
+	data, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary.BigEndian.PutUint64(data[24:32], ^uint64(0)-7)
+	if err := os.WriteFile(file, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, err := runAuditCommand(t, "", "utils", "seed-pos", "--quiet", "-j", "1", "-d", db, "-n", "g0")
+	if err == nil || bytes.Contains(stderr, []byte("panic:")) || !bytes.Contains(stderr, []byte(seedposition.ErrBrokenFile.Error())) {
+		t.Fatalf("expected corrupt-index error without a panic: %v\n%s", err, stderr)
+	}
+}
+
 // TestSeedPosZeroDistance keeps coincident seeds while emitting empty intervals.
 func TestSeedPosZeroDistance(t *testing.T) {
 	db := writeSeedPosFixture(t, 1)
@@ -138,6 +156,110 @@ func TestSeedPosPlotsWithBoundedReaders(t *testing.T) {
 	}
 	if len(files) != 4 {
 		t.Fatalf("expected two plots per genome, got %v", files)
+	}
+}
+
+// Every complete window contributes once, including the last and empty windows.
+func TestSeedPosWindowCounts(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		window string
+		step   string
+		locs   []uint32
+		want   string
+	}{
+		{"whole-sequence", "128", "100", []uint32{10 << 2, 30 << 2, 60 << 2}, "min=3, median=3, max=3"},
+		{"complete-kmers", "31", "31", []uint32{1 << 2, 31 << 2, 62 << 2}, "min=0, median=0, max=1"},
+		{"short-window", "10", "10", []uint32{10 << 2, 30 << 2, 60 << 2}, "min=0, median=0, max=0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := writeSeedPosFixture(t, 1)
+			writer, err := seedposition.NewWriter(filepath.Join(db, DirGenomes, batchDir(0), FileSeedPositions), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Write(tc.locs); err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			plots := filepath.Join(t.TempDir(), "plots")
+			runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-d", db, "-n", "g0", "--plot-dir", plots,
+				"--plot-ext", ".svg", "--slid-window", tc.window, "--slid-step", tc.step)
+			data, err := os.ReadFile(filepath.Join(plots, "g0.seed_number.svg"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(data, []byte(tc.want)) {
+				t.Fatalf("seed-count plot does not contain %q", tc.want)
+			}
+		})
+	}
+}
+
+// Exercise overlapping windows, gaps, coincident strands, and contig boundaries.
+func TestSeedWindowCounts(t *testing.T) {
+	locs := []uint32{0, 2, 10 << 2, 40<<2 | 1, 60 << 2, 80 << 2, 130<<2 | 1, 150 << 2, 150<<2 | 2, 169 << 2}
+	regions := [][2]int{{0, 110}, {120, 199}}
+	for window := uint32(1); window <= 112; window++ {
+		for _, step := range []uint32{1, 7, 40, 128} {
+			var want []float64
+			// Independent exhaustive definition: inspect every seed for each window.
+			for _, region := range regions {
+				for start := region[0]; start+int(window)-1 <= region[1]; start += int(step) {
+					n, gap := 0, false
+					for _, loc := range locs {
+						pos := int(loc >> 2)
+						if pos >= start && pos+31 <= start+int(window) {
+							n++
+							gap = gap || loc&1 != 0
+						}
+					}
+					if !gap {
+						want = append(want, float64(n))
+					}
+				}
+			}
+			got := seedWindowCounts(locs, regions, 31, window, step, nil)
+			if !slices.Equal(got, want) {
+				t.Fatalf("window=%d step=%d: got %v, want %v", window, step, got, want)
+			}
+		}
+	}
+	// Reversing the sequence reverses an exactly tiled window grid's counts.
+	locs = []uint32{0, 1 << 2, 31 << 2, 32 << 2, 63 << 2, 64 << 2, 95 << 2, 97 << 2}
+	reverse := make([]uint32, len(locs))
+	for i, loc := range locs {
+		reverse[len(locs)-1-i] = (128-31-loc>>2)<<2 | 2
+	}
+	forwardCounts := seedWindowCounts(locs, [][2]int{{0, 127}}, 31, 32, 32, nil)
+	reverseCounts := seedWindowCounts(reverse, [][2]int{{0, 127}}, 31, 32, 32, nil)
+	slices.Reverse(reverseCounts)
+	if !slices.Equal(forwardCounts, reverseCounts) {
+		t.Fatalf("reverse complement changed window counts: %v != %v", forwardCounts, reverseCounts)
+	}
+}
+
+// Chunks shorter than the counting window still need distinct distance plots.
+func TestSeedPosChunkPlotsWithoutWindows(t *testing.T) {
+	db := writeSeedPosFixture(t, 2)
+	var mapping bytes.Buffer
+	for batch := 0; batch < 2; batch++ {
+		binary.Write(&mapping, binary.BigEndian, uint16(2))
+		mapping.WriteString("g0")
+		binary.Write(&mapping, binary.BigEndian, uint64(batch)<<BITS_GENOME_IDX)
+	}
+	if err := os.WriteFile(filepath.Join(db, FileGenomeIndex), mapping.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	plots := filepath.Join(t.TempDir(), "plots")
+	runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-d", db, "-n", "g0", "--plot-dir", plots,
+		"--plot-ext", ".svg", "--slid-window", "200")
+	for _, name := range []string{"g0.svg", "g0_2.svg"} {
+		if _, err := os.Stat(filepath.Join(plots, name)); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

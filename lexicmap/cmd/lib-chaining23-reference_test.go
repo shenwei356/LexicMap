@@ -247,6 +247,7 @@ func referenceChaining3(ce *Chainer3, subs *[]SubstrPair) *Chain3Result {
 			}
 			path := poolChain3.Get().(*Chain3Result)
 			path.Reset()
+			path.NAnchors = nAnchors // Report the selected path's count, as in Chainer2.
 			path.AlignedBasesQ = nAlignedBasesQ
 			path.AlignedBasesT = nAlignedBasesT
 			path.MatchedBases = nMatchedBases

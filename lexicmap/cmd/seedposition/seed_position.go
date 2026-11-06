@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,6 +93,12 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
+	created := false // transfer file ownership only after writing both headers
+	defer func() {
+		if !created {
+			_ = w.fh.Close()
+		}
+	}()
 	w.w = bufio.NewWriterSize(w.fh, BufferSize)
 
 	w.buf = make([]byte, 24)
@@ -110,6 +117,7 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 		return nil, err
 	}
 	w.offset += 8
+	created = true
 	return w, nil
 }
 
@@ -187,15 +195,15 @@ func (w *Writer) Write(locs []uint32) error {
 }
 
 // Close writes the index file and finishes the writing.
-func (w *Writer) Close() error {
-	err := w.w.Flush()
+func (w *Writer) Close() (err error) {
+	// Release the data handle even if its final buffered write fails.
+	err = w.w.Flush()
+	closeErr := w.fh.Close()
 	if err != nil {
 		return err
 	}
-
-	err = w.fh.Close()
-	if err != nil {
-		return err
+	if closeErr != nil {
+		return closeErr
 	}
 
 	// write the index
@@ -204,6 +212,12 @@ func (w *Writer) Close() error {
 	if err != nil {
 		return err
 	}
+	// Close once on every path, preserving an earlier write or flush error.
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	wtr := bufio.NewWriterSize(fh, BufferSize)
 
 	// magic
@@ -241,12 +255,7 @@ func (w *Writer) Close() error {
 		return err
 	}
 
-	err = wtr.Flush()
-	if err != nil {
-		return err
-	}
-
-	return fh.Close()
+	return wtr.Flush()
 }
 
 // Reader is for reading the seed position of a genome
@@ -383,7 +392,9 @@ func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 	// -----------------------------------------------------------
 	// read index information
 	// 24 + 12 * idx
-	r.fh.Seek(int64(r.offset)+int64(idx)<<3+int64(idx)<<2, 0)
+	if _, err := r.fh.Seek(int64(r.offset)+int64(idx)*12, io.SeekStart); err != nil {
+		return err
+	}
 
 	// offset in the data file and bases
 	n, err := io.ReadFull(r.fh, buf[:12])
@@ -395,6 +406,10 @@ func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 	}
 	offset := int64(be.Uint64(buf[:8]))
 	nRecords := int(be.Uint32(buf[8:12])) // for check end
+	// The offset must fit int64, with room to skip the four-byte record count.
+	if offset < 0 || offset > math.MaxInt64-4 {
+		return ErrBrokenFile
+	}
 
 	if locs == nil {
 		tmp := make([]uint32, 0, nRecords)
@@ -408,7 +423,10 @@ func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 	var ctrlByte byte
 	var nBytes, nReaded, nDecoded int
 
-	r.fhData.Seek(offset+4, 0) // 4 is the 4 bytes for storing length of records
+	// A failed seek leaves the previous cursor in place; never decode from it.
+	if _, err := r.fhData.Seek(offset+4, io.SeekStart); err != nil {
+		return err
+	}
 
 	rounds := (nRecords + 3) >> 2
 

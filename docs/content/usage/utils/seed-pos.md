@@ -32,6 +32,8 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
+      Count only complete k-mers in complete windows, including zero counts.
+      Windows containing a seed marked as following a gap are skipped.
   The plot directory cannot be the current directory, its ancestors, or their aliases,
   even with --force.
   The plot directory must not contain the input index, even with --force.

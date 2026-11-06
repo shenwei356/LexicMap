@@ -221,7 +221,8 @@ func getFileListFromDir(path string, pattern *regexp.Regexp, threads int) ([]str
 	return files, err
 }
 
-var defaultExts = []string{".gz", ".xz", ".zst", ".bz"}
+// Strip compression before the sequence extension; retain legacy .bz names too.
+var defaultExts = []string{".gz", ".xz", ".zst", ".bz2", ".bz"}
 
 func filepathTrimExtension(file string, suffixes []string) (string, string, string) {
 	if suffixes == nil {
@@ -445,13 +446,19 @@ func randInts(start int, end int, n int) []int {
 	return ns
 }
 
-func readKVs(file string, ignoreCase bool) (map[string]string, error) {
+// readKVs reads string mappings and closes the input on every return path.
+func readKVs(file string, ignoreCase bool) (m map[string]string, err error) {
 	fh, err := xopen.Ropen(file)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 
-	m := make(map[string]string, 1024)
+	m = make(map[string]string, 1024)
 
 	items := make([]string, 2)
 	scanner := bufio.NewScanner(fh)
@@ -477,16 +484,33 @@ func readKVs(file string, ignoreCase bool) (map[string]string, error) {
 		return nil, err
 	}
 
-	return m, fh.Close()
+	return m, nil
 }
 
-func readKVsUint32(file string, ignoreCase bool, ignoreEmptyValue bool) (map[string]uint32, error) {
+// parseSearchResultCoordinates validates an inclusive, one-based TSV interval.
+func parseSearchResultCoordinates(kind, length, start, end string) (n, from, to int, err error) {
+	n, lengthErr := strconv.Atoi(length)
+	from, startErr := strconv.Atoi(start)
+	to, endErr := strconv.Atoi(end)
+	if lengthErr != nil || startErr != nil || endErr != nil || n <= 0 || from <= 0 || to < from || to > n {
+		err = fmt.Errorf("invalid %s coordinates %q..%q for length %q", kind, start, end, length)
+	}
+	return
+}
+
+// readKVsUint32 reads numeric mappings and preserves read errors over close errors.
+func readKVsUint32(file string, ignoreCase bool, ignoreEmptyValue bool) (m map[string]uint32, err error) {
 	fh, err := xopen.Ropen(file)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 
-	m := make(map[string]uint32, 1024)
+	m = make(map[string]uint32, 1024)
 
 	items := make([]string, 2)
 	scanner := bufio.NewScanner(fh)
@@ -521,5 +545,5 @@ func readKVsUint32(file string, ignoreCase bool, ignoreEmptyValue bool) (map[str
 		return nil, err
 	}
 
-	return m, fh.Close()
+	return m, nil
 }

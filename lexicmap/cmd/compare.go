@@ -921,13 +921,19 @@ func readPairFiles(files []string, hasHeaderLine bool) ([]string, error) {
 	return pairs, nil
 }
 
-func readPairs(file string, hasHeaderLine bool) ([]string, error) {
+// readPairs closes the input once, preserving scan errors over close errors.
+func readPairs(file string, hasHeaderLine bool) (list []string, err error) {
 	fh, err := xopen.Ropen(file)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 
-	list := make([]string, 0, 4096)
+	list = make([]string, 0, 4096)
 
 	items := make([]string, 2)
 	scanner := bufio.NewScanner(fh)
@@ -963,7 +969,7 @@ func readPairs(file string, hasHeaderLine bool) ([]string, error) {
 		return nil, err
 	}
 
-	return list, fh.Close()
+	return list, nil
 }
 
 // GPair owns results for one genome pair and pins any borrowed cache entries.

@@ -21,9 +21,49 @@
 package cmd
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
+
+// GSearchScreen can choose a different mask subset on each call to one index.
+func TestGSearchScreenCollectorReusesDifferentMaskCounts(t *testing.T) {
+	for _, counts := range [][]int{{8, 1}, {1, 8}, {8, 3, 8}} {
+		t.Run(fmt.Sprint(counts), func(t *testing.T) {
+			idx := newGSearchScreenCollectorTestIndex(1)
+			reused := &GSearchScreenResultDetail{}
+			for _, count := range counts {
+				// Guarantee reuse even if sync.Pool would discard its contents.
+				// Each completed collector owns exactly one result at a time.
+				idx.poolGSearchDetailResult = &sync.Pool{New: func() any { return reused }}
+				collector := newGSearchScreenCollector(idx, count, 1)
+				buffers := collector.newBuffers()
+				var wantSum uint64
+				for mask := range count {
+					length := uint8(20 + mask)
+					collector.add(buffers, gsearchScreenHit{batchGenomeIndex: 7, mask: int32(mask), length: length})
+					wantSum += uint64(length)
+				}
+				collector.flush(buffers)
+				collector.finish()
+				if len(collector.results[0]) != 1 {
+					t.Fatalf("got %d results, want one", len(collector.results[0]))
+				}
+				r := collector.results[0][0]
+				if len(r.LongestMatches) != count || r.SumPrefix != wantSum {
+					t.Fatalf("%d masks: got %d match slots, sum %d; want %d, %d", count, len(r.LongestMatches), r.SumPrefix, count, wantSum)
+				}
+				for mask, length := range r.LongestMatches {
+					if length != uint8(20+mask) {
+						t.Fatalf("mask %d: got prefix length %d", mask, length)
+					}
+				}
+				idx.RecycleGSearchScreenDetailResult(r)
+				clearGSearchScreenResults(collector.results)
+			}
+		})
+	}
+}
 
 func newGSearchScreenCollectorTestIndex(genomeBatches int) *Index {
 	idx := &Index{info: &IndexInfo{GenomeBatches: genomeBatches}}

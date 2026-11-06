@@ -581,7 +581,9 @@ func TrimSubStrPairs(subs *[]SubstrPair, k int, minDist float32) {
 		if distance(p, _p) < minDist &&
 			((p.QBegin == _p.QBegin || p.TBegin == _p.TBegin) || // case 1
 				(gap2(_p, p) > 11 && float64(overlap(_p, p))/float64(_p.Len) > 0.8)) { // case 2
-			start = i
+			// The loop starts at subs[1]; retain the inner anchor at i+1,
+			// matching the tail scan's inclusive end coordinate.
+			start = i + 1
 			_p = p
 			continue
 		}
@@ -609,7 +611,7 @@ func TrimSubStrPairs(subs *[]SubstrPair, k int, minDist float32) {
 
 	// fmt.Printf("start: %d, end: %d\n", start, end)
 
-	if start == 0 && end == len(*subs) {
+	if start == 0 && end == last {
 		return
 	}
 
@@ -623,15 +625,11 @@ func TrimSubStrPairs(subs *[]SubstrPair, k int, minDist float32) {
 	}
 }
 
-// a should be in front of b
+// overlap returns the larger intersection on query or target. Anchor ends are
+// exclusive, so adjacent anchors overlap by zero bases. Bound both ends to keep
+// contained anchors and reverse-complemented coordinates symmetric.
 func overlap(a, b SubstrPair) int32 {
-	var qo, to int32
-	if b.QBegin >= a.QBegin && b.QBegin <= a.QBegin+int32(a.Len) {
-		qo = a.QBegin + int32(a.Len) - b.QBegin + 1
-	}
-
-	if b.TBegin >= a.TBegin && b.TBegin <= a.TBegin+int32(a.Len) {
-		to = a.TBegin + int32(a.Len) - b.TBegin + 1
-	}
-	return max(qo, to)
+	qo := min(int64(a.QBegin)+int64(a.Len), int64(b.QBegin)+int64(b.Len)) - int64(max(a.QBegin, b.QBegin))
+	to := min(int64(a.TBegin)+int64(a.Len), int64(b.TBegin)+int64(b.Len)) - int64(max(a.TBegin, b.TBegin))
+	return int32(max(0, qo, to))
 }

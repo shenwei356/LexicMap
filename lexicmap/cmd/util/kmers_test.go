@@ -21,6 +21,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -41,7 +42,7 @@ func TestIsLowComplexityDust(t *testing.T) {
 }
 
 // TestIsLowComplexityDustMatchesTripletScore covers every supported k-mer
-// length, repetitive and random codes, and the retained original implementation.
+// length, repetitive and random codes, and the pooled implementation.
 func TestIsLowComplexityDustMatchesTripletScore(t *testing.T) {
 	var code uint64 = 0x9e3779b97f4a7c15
 	for k := uint8(3); k <= 32; k++ {
@@ -56,8 +57,8 @@ func TestIsLowComplexityDustMatchesTripletScore(t *testing.T) {
 				value = 0x5555555555555555 // alternating bases
 			}
 			var counts [64]int
-			// Preserve the current DUST window, including its final triplet.
-			for i := uint8(0); i <= k-2; i++ {
+			// A k-mer contains exactly k-2 complete triplets.
+			for i := uint8(0); i < k-2; i++ {
 				counts[(value>>(2*i))&63]++
 			}
 			score := 0
@@ -70,6 +71,51 @@ func TestIsLowComplexityDustMatchesTripletScore(t *testing.T) {
 			}
 			if slow := IsLowComplexityDustSlow(value, k); got != slow {
 				t.Fatalf("k=%d sample=%d code=%x: fast=%t, slow=%t", k, sample, value, got, slow)
+			}
+		}
+	}
+}
+
+// DUST counts complete triplets only, so reversing and complementing a k-mer
+// must preserve its score and filtering decision.
+func TestIsLowComplexityDustReverseComplement(t *testing.T) {
+	for k := uint8(0); k < 3; k++ {
+		if IsLowComplexityDust(0, k) || IsLowComplexityDustSlow(0, k) {
+			t.Errorf("length %d has no complete triplets", k)
+		}
+	}
+	for _, sequence := range []string{
+		"AAAATCAAAATAAACAAAACCATTAAACAAA", // score 45, but a padded AAA raises it to 54
+		"AAAAAAAAAAAA",                    // 10 complete triplets, score 45
+		"AAAAAAAAAAAAA",                   // 11 complete triplets, score 55
+	} {
+		bases := []byte(sequence)
+		var counts [64]int
+		for i := 0; i+3 <= len(bases); i++ {
+			triplet, err := kmers.Encode(bases[i : i+3])
+			if err != nil {
+				t.Fatal(err)
+			}
+			counts[triplet]++
+		}
+		score := 0
+		for _, count := range counts {
+			score += count * (count - 1) / 2
+		}
+		for _, reverse := range []bool{false, true} {
+			code, err := kmers.Encode(bases)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for name, filter := range map[string]func(uint64, uint8) bool{"fast": IsLowComplexityDust, "slow": IsLowComplexityDustSlow} {
+				if got := filter(code, uint8(len(bases))); got != (score > 50) {
+					t.Errorf("%s reverse=%t length=%d: got %t, complete-triplet score %d", name, reverse, len(bases), got, score)
+				}
+			}
+			// Reverse complement the synthetic sequence for the second pass.
+			for left, right := 0, len(bases)-1; left <= right; left, right = left+1, right-1 {
+				complement := func(base byte) byte { return "TGCA"[bytes.IndexByte([]byte("ACGT"), base)] }
+				bases[left], bases[right] = complement(bases[right]), complement(bases[left])
 			}
 		}
 	}

@@ -10,7 +10,7 @@ weight: 60
 
 **LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default**.
 
-**If you want to search some short reads, you need to build the index with small values of `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -D 25` for 100bp reads**. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as < 10,000.
+**If you want to search some short reads, you need to build the index with small values of `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 60 -d 30` for 125bp reads, or `-D 50 -d 25` for 100bp reads**. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as < 10,000.
 
 If you just want to search long (>1kb) queries for highly similar (>95%) targets, you can build an index with a bigger `-D/--seed-max-desert` (default 100) and `-d/--seed-in-desert-dist` (default 50), e.g., `-D 300 -d 150`. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
 process, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.
@@ -20,19 +20,17 @@ Note that **LexicMap is slow for ultra-long (>1Mb) queries, and the alignment mi
 ## Does LexicMap support fungal genomes? {#does-lexicmap-support-fungi-genomes}
 
 Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-**Fungal genomes are also supported; remember to increase the value of `-g/--max-genome` when running `lexicmap index`,
-which is used to skip genomes larger than 15Mb by default**.
+**Fungal genomes are supported. Increase `-g/--max-genome` if any contig exceeds its default limit of 20 Mb**.
+LexicMap skips a genome if any retained contig exceeds this limit. Genomes with shorter contigs can
+exceed the limit: they are split into chunks, and `lexicmap search` merges their alignment results.
 
-```
-  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
-                                  assemblies from Genbank) will be skipped. (default 15000000)
-```
+The maximum supported **chunk** size is 268,435,456 bases, including the intervals between contigs
+(1000 bp by default, configurable with `--contig-interval`). This is not a limit on the total size
+of a genome spread across multiple chunks.
 
-Maximum genome size is about 268 Mb (268,435,456). More precisely:
+For each chunk:
 
-    $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456
-
-as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.
+    $total_bases + ($num_contigs - 1) * $contig_interval <= 268,435,456
 
 For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap alignment can be slow.
 Since v0.9.0, you can set a small value of `-N, --top-n-chains` to keep a few matches if you only want to check if sequences match any position in a human genome, which would be faster.

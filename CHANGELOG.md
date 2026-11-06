@@ -3,25 +3,35 @@
 ### v0.10.1 - 2026-xx-xx
 
 - **`lexicmap`**:
-    - Protect input files and indexes from output paths involving symbolic links, `..`, or overlapping directories, including temporary merge directories.
+    - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
+- **`lexicmap index`**:
+    - Correct strand-dependent low-complexity seed filtering.
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
 - **`lexicmap search, genome search/compare`**:
+    - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:
         - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
+        - Fix terminal trimming that could reduce coverage or change ANI/AF after reverse complementation.
         - Speed up pseudoalignment, without changing results.
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:
         - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
-        - Retain search and comparison matches that reach `--align-min-match-len` only after extension, and enforce the final length limit in `genome search --OrthoANI`.
+        - Recover skipped two-base terminal extensions.
+        - Apply `--align-min-match-len` after extension, including in `genome search --OrthoANI`.
         - Fix hangs in `genome search` and `genome compare` when aligning sequences with highly repetitive regions.
         - Fix crashes and invalid CIGAR strings in adaptive alignment.
 - **`lexicmap utils merge-search-results`**:
-    - Reject mixed query IDs in a single input file when no query is selected, including with the default `-n 0`.
-    - Skip empty search results with a warning naming each file. [#41](https://github.com/shenwei356/LexicMap/issues/41)
+    - Skip empty result files with a warning. [#41](https://github.com/shenwei356/LexicMap/issues/41)
+    - Fix Top-N selection and ties for rounded identities and negative bit scores.
+    - Preserve columns and alignment fields when merging mixed output formats.
 - **`lexicmap utils 2sam`**:
-    - Compute exact alignment scores from CIGAR for the `AS` tag and MAPQ, instead of approximating them from rounded bitscores.
+    - Correct AS and MAPQ calculation, including nonpositive alignment scores.
+    - Preserve primary/secondary flags and MAPQ across input files.
+- **`lexicmap utils seed-pos`**:
+    - Restore missing seed positions and fix seed-count histograms.
+    - Avoid overwriting distance plots for short genome chunks.
 
 ### v0.10.0 - 2026-10-21
 

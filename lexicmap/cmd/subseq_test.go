@@ -244,6 +244,39 @@ func TestSubseqSearchResultInvalidStart(t *testing.T) {
 	}
 }
 
+// Invalid TSV coordinates must not silently become the first base of a contig.
+func TestSubseqSearchResultCoordinates(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	row := func(start, end, strand string) string {
+		return fmt.Sprintf("q\t3\t1\tg0\tcontig1\t100\t1\t1\t100\t3\t100\t0\t1\t3\t%s\t%s\t%s\t3\t0\t10\n", start, end, strand)
+	}
+	args := []string{"utils", "subseq", "--quiet", "-j", "2", "-d", db, "-f", "-", "-H"}
+	var invalid strings.Builder
+	for _, tc := range [][3]string{
+		{"bad", "3", "+"}, {"", "3", "+"}, {"0", "3", "+"}, {"-1", "3", "+"},
+		{"1", "bad", "+"}, {"1", "0", "+"}, {"3", "2", "+"},
+		{"1", "9223372036854775807", "+"}, {"1", "18446744073709551616", "+"},
+		{"1", "3", "?"}, {"1", "3", ""},
+	} {
+		input := row(tc[0], tc[1], tc[2])
+		invalid.WriteString(input)
+		out, stderr, err := runAuditCommand(t, input, args...)
+		if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "invalid subject") || strings.Contains(string(stderr), "panic:") {
+			t.Errorf("coordinates=%v: error=%v output bytes=%d stderr=%s", tc, err, len(out), stderr)
+		}
+	}
+	// Skipped records must still advance ordered output on both strands.
+	input := invalid.String() + row("1", "3", "+") + invalid.String() + row("1", "3", "-")
+	output, stderr, err := runAuditCommand(t, input, append(args, "--ignore-err")...)
+	if err != nil {
+		t.Fatalf("--ignore-err failed: %v %s", err, stderr)
+	}
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) != 4 || lines[1] != "ACG" || lines[3] != "CGT" {
+		t.Fatalf("malformed rows were not skipped in order: got %d lines", len(lines))
+	}
+}
+
 // TestSubseqExactIDExtractionErrors preserves exact-ID precedence across chunks.
 func TestSubseqExactIDExtractionErrors(t *testing.T) {
 	db := writeDetailsFixture(t, 2)

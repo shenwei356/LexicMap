@@ -37,9 +37,10 @@ Input:
          be split into chunks and alignments from these chunks will be merged in "lexicmap search".
          Chunk lengths include the N intervals between contigs.
      You need to increase the value for indexing fungi genomes.
-  5. Maximum genome size: 268,435,456.
-     More precisely: $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456, as we concatenate contigs with
-     1000-bp intervals of N’s to reduce the sequence scale to index.
+  5. Maximum genome chunk size: 268,435,456 bases, including the intervals between contigs.
+     Each chunk must satisfy: $total_bases + ($num_contigs - 1) * $contig_interval <= 268,435,456.
+     The default chunk limit is 20 Mb (-g/--max-genome), and the default contig interval is 1000 bp
+     (--contig-interval). A genome can exceed the chunk limit if each contig fits within it.
   6. A flag -l/--min-seq-len can filter out sequences shorter than the threshold (default is the k value).
   7. Soft-masked sequences are supported with --soft-masking.
   8. At most 131,072 batches and 131,072 genome chunks per batch are supported.
@@ -144,11 +145,13 @@ Usage:
 Flags:
   -b, --batch-size int                 ► Maximum number of genomes in each batch (maximum value:
                                        131072) (default 5000)
-  -G, --big-genomes string             ► Out file of skipped files with $total_bases + ($num_contigs -
-                                       1) * $contig_interval >= -g/--max-genome. The second column is
-                                       one of the skip types: no_valid_seqs, too_large_genome,
-                                       too_many_seqs. Keep this file outside the output directory and
-                                       its temporary merge directory (<out-dir>.tmp).
+  -G, --big-genomes string             ► Out file listing skipped genome files. The second column
+                                       gives the reason: no_valid_seqs or too_large_genome (a contig
+                                       exceeds -g/--max-genome). Chunk size is $total_bases +
+                                       ($num_contigs - 1) * $contig_interval; genomes exceeding
+                                       -g/--max-genome are split when each contig fits. Keep this file
+                                       outside the output directory and its temporary merge directory
+                                       (<out-dir>.tmp).
   -c, --chunks int                     ► Number of chunks for storing seeds (k-mer-value data) files.
                                        Max: 128. Default: the value of -j/--threads. (default 16)
       --contig-interval int            ► Length of interval (N's) between contigs in a genome. It
@@ -167,12 +170,12 @@ Flags:
   -M, --mask-file string               ► File of custom masks. This flag oversides -k/--kmer,
                                        -m/--masks, -s/--rand-seed etc.
   -m, --masks int                      ► Number of LexicHash masks. (default 20000)
-  -g, --max-genome int                 ► Maximum genome size. Genomes with any single contig larger
-                                       than the threshold will be skipped, while fragmented (with many
-                                       contigs) genomes larger than the threshold will be split into
-                                       chunks and alignments from these chunks will be merged in
-                                       "lexicmap search". The value needs to be smaller than the maximum
-                                       supported genome size: 268435456. (default 20000000)
+  -g, --max-genome int                 ► Maximum genome chunk size, including contig intervals.
+                                       Genomes with any single contig larger than the threshold will be
+                                       skipped, while fragmented (with many contigs) genomes larger than
+                                       the threshold will be split into chunks and alignments from these
+                                       chunks will be merged in "lexicmap search". The value must not
+                                       exceed 268435456. (default 20000000)
       --max-kmer-freq int              ► If a mask captures the same k-mer at more than N positions of
                                        a genome, only the first N positions will be retained. This
                                        option may reduce search sensitivity, but it's useful when simply

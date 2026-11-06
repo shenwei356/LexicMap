@@ -158,15 +158,20 @@ func MustSharingPrefixKmersSuffixMatches(code1, code2 uint64, k, p uint8) (n uin
 	return n
 }
 
-// IsLowComplexity checks k-mer complexity with DUST algorithm
+// IsLowComplexityDust checks k-mer complexity using complete DUST triplets.
 func IsLowComplexityDust(code uint64, k uint8) bool {
+	if k < 3 {
+		return false
+	}
 	// For each triplet, its previous count is the number of new equal pairs.
 	// Summing those counts gives the same DUST score as n*(n-1)/2 per bin,
 	// without scanning all 64 bins after every k-mer.
 	var counts [64]byte
 	var score uint16
 	var triplet uint64
-	end := k - 2
+	// A k-mer contains k-2 triplets, at offsets 0 through k-3. Including
+	// k-2 would prepend a zero-encoded A and make filtering strand-dependent.
+	end := k - 3
 
 	for i := uint8(0); i <= end; i++ {
 		triplet = (code >> (i << 1)) & 63
@@ -176,15 +181,18 @@ func IsLowComplexityDust(code uint64, k uint8) bool {
 	return score > 50
 }
 
-// IsLowComplexityDustSlow retains the original pooled-counter DUST implementation for comparison.
+// IsLowComplexityDustSlow retains the pooled-counter DUST implementation for comparison.
 func IsLowComplexityDustSlow(code uint64, k uint8) bool {
+	if k < 3 {
+		return false
+	}
 	counts := pool64Uint8s.Get().(*[]byte)
 	clear(*counts)
 
 	var i, end uint8
 	var c uint16
 
-	end = k - 2
+	end = k - 3
 	// for i = 0; i <= end; i++ {
 	// 	(*counts)[code>>(i<<1)&63]++
 	// }

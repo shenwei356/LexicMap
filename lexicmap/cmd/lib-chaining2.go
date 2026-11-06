@@ -221,7 +221,7 @@ func (r *Chain2Result) Reset() {
 	*r = Chain2Result{CIGAR: r.CIGAR[:0], QSeq: r.QSeq[:0], TSeq: r.TSeq[:0], Alignment: r.Alignment[:0]}
 }
 
-// Chain finds possible chain paths.
+// Chain finds possible chain paths. Empty anchor sets return no chains.
 // Please remember to call RecycleChaining2Result after using the results.
 // Returned results:
 //  1. Chain2Results.
@@ -245,6 +245,9 @@ func (ce *Chainer2) chainWithMinScore(subs *[]SubstrPair, minimumScore int) (*[]
 // chainWithLimits applies thresholds to the unextended anchor chain.
 func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLen int) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
+	if n == 0 {
+		return nil, 0, 0, 0, 0, 0, 0, 0
+	}
 
 	if n == 1 {
 		// A lone anchor can extend into a longer alignment. Leave its final

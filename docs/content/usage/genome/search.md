@@ -178,7 +178,8 @@ Flags:
   -I, --min-ani float                    ► Only output results where one genome has ANI > than this
                                          value (percentage). (default 70)
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP. (default 30)
-  -S, --only-genome-screening            ► Only perform genome screening, no ANI computation.
+  -S, --only-genome-screening            ► Only perform genome screening, no ANI computation. Queries
+                                         may be shorter than --frag-size.
   -o, --out-file string                  ► Out file, supports a ".gz" suffix ("-" for stdout).
                                          (default "-")
       --ref-name-regexp string           ► Regular expression with at least one capturing group (the

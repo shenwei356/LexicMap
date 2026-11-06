@@ -79,7 +79,7 @@ type Genome struct {
 	Seqs []*[]byte // only used by the method Seqs, for returning all sequences in the form of slices of .Seq
 
 	GenomeSize int       // bases of all sequences
-	Len        int       // length of contatenated sequences
+	Len        int       // sequence length, or the extracted region length after a subsequence read
 	NumSeqs    int       // number of sequences
 	SeqSizes   []int     // sizes of sequences
 	SeqIDs     []*[]byte // IDs of all sequences
@@ -205,6 +205,12 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 	if err != nil {
 		return nil, err
 	}
+	created := false // transfer file ownership only after writing both headers
+	defer func() {
+		if !created {
+			_ = w.fh.Close()
+		}
+	}()
 	w.w = bufio.NewWriterSize(w.fh, BufferSize)
 
 	w.buf = make([]byte, 24)
@@ -223,15 +229,14 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 		return nil, err
 	}
 	w.offset += 8
+	created = true
 	return w, nil
 }
 
 // Write writes one genome.
 // After calling this, you need to call RecycleGenome to recycle the genome.
+// Records rejected during validation are not indexed.
 func (w *Writer) Write(s *Genome) error {
-	// collect data for the index file
-	w.index = append(w.index, [2]int{w.offset, s.Len})
-
 	// write genome information
 	buf := w.buf
 	buf0 := w.bBuf
@@ -275,6 +280,10 @@ func (w *Writer) Write(s *Genome) error {
 	var newTwoBit bool
 	if b2 == nil {
 		b2 = Seq2TwoBit(s.Seq)
+		if b2 == nil {
+			// A nil sequence encodes the same empty record as a non-nil empty slice.
+			b2 = &[]byte{}
+		}
 		newTwoBit = true
 	}
 	bases := len(s.Seq)
@@ -299,6 +308,8 @@ func (w *Writer) Write(s *Genome) error {
 	if err != nil {
 		return err
 	}
+	// Only successfully written records belong in the directory.
+	w.index = append(w.index, [2]int{w.offset, s.Len})
 	w.offset += buf0.Len() + nbytes
 
 	if newTwoBit {
@@ -308,15 +319,15 @@ func (w *Writer) Write(s *Genome) error {
 }
 
 // Close writes the index file and finishes the writing.
-func (w *Writer) Close() error {
-	err := w.w.Flush()
+func (w *Writer) Close() (err error) {
+	// Release the data handle even if its final buffered write fails.
+	err = w.w.Flush()
+	closeErr := w.fh.Close()
 	if err != nil {
 		return err
 	}
-
-	err = w.fh.Close()
-	if err != nil {
-		return err
+	if closeErr != nil {
+		return closeErr
 	}
 
 	// write the index
@@ -325,6 +336,12 @@ func (w *Writer) Close() error {
 	if err != nil {
 		return err
 	}
+	// Close once on every path, preserving an earlier write or flush error.
+	defer func() {
+		if closeErr := fh.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	wtr := bufio.NewWriterSize(fh, BufferSize)
 
 	// magic
@@ -362,12 +379,7 @@ func (w *Writer) Close() error {
 		return err
 	}
 
-	err = wtr.Flush()
-	if err != nil {
-		return err
-	}
-
-	return fh.Close()
+	return wtr.Flush()
 }
 
 // Reader is for fast extracting of subsequence of any sequence in the data file.
@@ -501,7 +513,11 @@ func (r *Reader) GenomeInfo(idx int) (*Genome, error) {
 	g := PoolGenome.Get().(*Genome)
 	g.Reset()
 
-	r.fhData.Seek(offset, 0)
+	// Failed seeks leave the previous cursor in place; never parse from it.
+	if _, err := r.fhData.Seek(offset, io.SeekStart); err != nil {
+		RecycleGenome(g)
+		return nil, err
+	}
 
 	br := r.bufReader
 	br.Reset(r.fhData)
@@ -602,7 +618,9 @@ func (r *Reader) TotalBases() (int64, error) {
 	for idx := 0; idx < ngenomes; idx++ {
 		offset = int64(r.Index[idx<<1])
 
-		r.fhData.Seek(offset, 0)
+		if _, err := r.fhData.Seek(offset, io.SeekStart); err != nil {
+			return 0, err
+		}
 
 		br.Reset(r.fhData)
 
@@ -680,7 +698,10 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	g := PoolGenome.Get().(*Genome)
 	g.Reset()
 
-	r.fhData.Seek(offset, 0)
+	if _, err := r.fhData.Seek(offset, io.SeekStart); err != nil {
+		RecycleGenome(g)
+		return nil, err
+	}
 
 	br := r.bufReader
 	br.Reset(r.fhData)
@@ -824,6 +845,7 @@ func (r *Reader) SubSeq(idx int, start int, end int) (*Genome, error) {
 	*s = (*s)[:j]
 	if j >= l {
 		*s = (*s)[:l]
+		g.Len = l
 		return g, nil
 	}
 
@@ -971,6 +993,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 	*s = (*s)[:j]
 	if j >= l {
 		*s = (*s)[:l]
+		g.Len = l
 		return g, nil
 	}
 
@@ -1013,7 +1036,8 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 
 // SubSeq2 returns the subsequence of one genome (idx is 0-based),
 // from start to end (both are 0-based and included).
-// It also return the actual end position (0-based).
+// Negative starts become zero; the end is clipped to the contig or raised to start.
+// It also returns the actual end position (0-based) after these adjustments.
 // An absent sequence ID returns an error wrapping ErrSeqIDNotFound.
 // Please call RecycleGenome() after using the result.
 func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, int, error) {
@@ -1048,7 +1072,6 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	// -----------------------------------------------------------
 
 	start0, end0 := start, end // copy for checking seq len later
-	endR := end                // returned end, user might give a end longer than the seq len
 
 	if start < 0 {
 		start = 0
@@ -1059,6 +1082,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	if end < start {
 		end = start
 	}
+	endR := end // report the normalized end, then clip it to the selected contig below
 
 	// -----------------------------------------------------------
 	// get sequence information
@@ -1066,7 +1090,10 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	g := PoolGenome.Get().(*Genome)
 	g.Reset()
 
-	r.fhData.Seek(offset, 0)
+	if _, err := r.fhData.Seek(offset, io.SeekStart); err != nil {
+		RecycleGenome(g)
+		return nil, -1, err
+	}
 
 	br := r.bufReader
 	br.Reset(r.fhData)
@@ -1256,6 +1283,7 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 	*s = (*s)[:j]
 	if j >= l {
 		*s = (*s)[:l]
+		g.Len = l
 		return g, endR, nil
 	}
 
@@ -1373,8 +1401,8 @@ func Seq2TwoBit(s []byte) *[]byte {
 
 // TwoBit2Seq converts a 2bit-packed sequence to DNA.
 func TwoBit2Seq(b2 []byte, bases int) ([]byte, error) {
-	// possible bases for b2 of n bytes: [n*4-3, n*4]
-	if bases < (len(b2)<<2)-3 || bases > len(b2)<<2 {
+	// Packed length is ceil(bases/4). Check before allocating, without int overflow.
+	if bases < 0 || uint64(len(b2)) != (uint64(bases)+3)/4 {
 		return nil, ErrInvalidTwoBitData
 	}
 

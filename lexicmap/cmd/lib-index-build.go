@@ -529,7 +529,7 @@ const MASK_GENOME_IDX = (1 << BITS_GENOME_IDX) - 1
 // BITS_POSITION is the number of bits to store the k-mer position/coordinate.
 const BITS_POSITION = 28
 
-// MAX_GENOME_SIZE is the maximum genome size, 268435456
+// MAX_GENOME_SIZE is the maximum genome chunk size, including contig intervals.
 const MAX_GENOME_SIZE = 1 << BITS_POSITION
 
 // BITS_STRAND is the number of bits to indicate if the k-mer is from the reverse complement strand.
@@ -1071,10 +1071,6 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 			go func(refseq *genome.Genome) {
 				defer func() {
-					if debug {
-						log.Debugf("batch: %d, file #%d, finished computing seeds: %s", batch, refseq.GenomeIdx, refseq.ID)
-						log.Info()
-					}
 					wgMask.Done()
 					<-tokensMask
 				}()
@@ -1497,16 +1493,10 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 
 								// fmt.Printf("  the first pos: %d after a region: %d-%d\n", _j, _rs, (*skipRegions)[(_ri<<1)+1])
 
-								_ri++
-
-								// some short contigs might do not have seeds
-								for _ri+1 < nRegions && _j > (*skipRegions)[((_ri+1)<<1)+1] {
-									_rs += (*skipRegions)[((_ri+1)<<1)+1]
+								// Consume every crossed region. A seed-free contig can put
+								// two intervals before this seed; neither belongs to the next.
+								for _ri < nRegions && _j >= (*skipRegions)[(_ri<<1)+1] {
 									_ri++
-									if _ri == nRegions-1 {
-										checkRegion = false
-										break
-									}
 								}
 
 								if _ri == nRegions { // this is already the last one
@@ -1529,7 +1519,11 @@ func buildAnIndex(lh *lexichash.LexicHash, maskPrefix uint8, anchorPrefix uint8,
 				// recycle
 				poolMaskSkipRegions.Put(skipRegions)
 
-				// send to collect data
+				// Log before transferring ownership: the collector can recycle refseq.
+				if debug {
+					log.Debugf("batch: %d, file #%d, finished computing seeds: %s", batch, refseq.GenomeIdx, refseq.ID)
+					log.Info()
+				}
 				genomes <- refseq
 
 			}(refseq)

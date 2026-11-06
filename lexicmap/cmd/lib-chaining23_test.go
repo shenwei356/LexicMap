@@ -35,6 +35,52 @@ type denseChainSummary struct {
 	identity                             float64
 }
 
+// Empty batches must not panic or return a preceding batch's chain on reuse.
+func TestChaining23EmptyAnchors(t *testing.T) {
+	for _, capacity := range []int{0, 4} {
+		for _, kind := range []int{2, 3} {
+			t.Run(fmt.Sprintf("chainer=%d/capacity=%d", kind, capacity), func(t *testing.T) {
+				defer func() {
+					if value := recover(); value != nil {
+						t.Errorf("empty anchors caused a panic: %v", value)
+					}
+				}()
+				var empty []SubstrPair
+				if capacity > 0 {
+					empty = make([]SubstrPair, 0, capacity)
+				}
+				valid := []SubstrPair{{Len: 31}, {QBegin: 20, TBegin: 20, Len: 31}}
+				if kind == 2 {
+					chainer := NewChainer2(&DefaultChaining2Options)
+					for _, subs := range []*[]SubstrPair{&empty, &valid, &empty} {
+						got, matched, alignedQ, alignedT, qb, qe, tb, te := chainer.Chain(subs)
+						if got != nil {
+							defer RecycleChaining2Result(got)
+						}
+						if len(*subs) == 0 && (got != nil || matched != 0 || alignedQ != 0 || alignedT != 0 || qb != 0 || qe != 0 || tb != 0 || te != 0) {
+							t.Fatalf("empty input returned a chain or nonzero statistics")
+						}
+						if len(*subs) > 0 && got == nil {
+							t.Fatal("valid input lost its chain after an empty batch")
+						}
+					}
+				} else {
+					chainer := NewChainer3(&DefaultChaining3Options)
+					for _, subs := range []*[]SubstrPair{&empty, &valid, &empty} {
+						got := chainer.Chain(subs)
+						if got != nil {
+							defer poolChain3.Put(got)
+						}
+						if (got != nil) != (len(*subs) > 0) {
+							t.Fatalf("chain presence does not match the input batch")
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
 func denseChain2Summary(chains *[]*Chain2Result) []denseChainSummary {
 	if chains == nil {
 		return nil
@@ -220,23 +266,30 @@ func TestChaining3FirstAnchorSelection(t *testing.T) {
 		{
 			name: "singleton",
 			subs: []SubstrPair{{Len: 2}},
-			want: &denseChainSummary{matched: 2, alignedQ: 2, alignedT: 2, qe: 1, te: 1, identity: 100},
+			want: &denseChainSummary{anchors: 1, matched: 2, alignedQ: 2, alignedT: 2, qe: 1, te: 1, identity: 100},
 		},
 		{
 			name: "first sole maximum",
 			subs: []SubstrPair{{Len: 4}, {QBegin: 5, TBegin: 5, Len: 2}},
-			want: &denseChainSummary{matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
+			want: &denseChainSummary{anchors: 1, matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
 		},
 		{
 			name: "first tied maximum",
 			subs: []SubstrPair{{Len: 4}, {QBegin: 4, TBegin: 4, Len: 2}},
-			want: &denseChainSummary{matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
+			want: &denseChainSummary{anchors: 1, matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
 		},
 		{
 			name: "later maximum with tied predecessor score",
 			// Equal predecessor and standalone scores must still link to the earlier anchor.
 			subs: []SubstrPair{{Len: 2}, {QBegin: 1, TBegin: 1, Len: 4}},
-			want: &denseChainSummary{matched: 5, alignedQ: 5, alignedT: 5, qe: 4, te: 4, identity: 100},
+			want: &denseChainSummary{anchors: 2, matched: 5, alignedQ: 5, alignedT: 5, qe: 4, te: 4, identity: 100},
+		},
+		{
+			name: "only selected anchors counted",
+			// Exclude the crossed and distant anchors from the returned chain's count.
+			subs: []SubstrPair{{Len: 2}, {TBegin: 7, Len: 2}, {QBegin: 1, TBegin: 1, Len: 2},
+				{QBegin: 2, TBegin: 2, Len: 2}, {QBegin: 100, TBegin: 100, Len: 2}},
+			want: &denseChainSummary{anchors: 3, matched: 4, alignedQ: 4, alignedT: 4, qe: 3, te: 3, identity: 100},
 		},
 		{
 			name: "negative score rejected",

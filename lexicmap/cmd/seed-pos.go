@@ -73,6 +73,8 @@ Figures:
   Using -O/--plot-dir will write plots into given directory:
     - Histograms of seed distances.
     - Histograms of numbers of seeds in sliding windows.
+      Count only complete k-mers in complete windows, including zero counts.
+      Windows containing a seed marked as following a gap are skipped.
   The plot directory cannot be the current directory, its ancestors, or their aliases,
   even with --force.
   The plot directory must not contain the input index, even with --force.
@@ -278,15 +280,7 @@ Figures:
 			var ri, rs, rs_next int
 			var sseqid []byte
 
-			var seqRegion [2]int
-			var ws, we, end uint32 // start position of current window
-			var nSeeds int
-			var locs *[]uint32
 			var nSeqs int
-			var nPos, pi, ps int
-			k32p1 := uint32(info.K) - 1
-			var first bool
-			var hasGap bool
 
 			counter := make(map[string]int, len(m)) // for genomes splitting into chunks
 			var count int
@@ -427,6 +421,8 @@ Figures:
 				}
 
 				nPlot++
+				// Reserve the chunk suffix even when no seed-count plot can be made.
+				counter[refname]++
 
 				title := fmt.Sprintf("%s\n%s bp, %d contig(s), %s seeds",
 					refname, humanize.Comma(int64(ref2locs.Genome.GenomeSize)),
@@ -466,59 +462,10 @@ Figures:
 
 				// -------------------------------------------------------------
 
-				// sliding window
-				v2 = v2[:0]
-				locs = ref2locs.Locs
-				nPos = len(*locs)
-				ps = 0
-				for _, seqRegion = range *seqRegions { // each sequence
-					// fmt.Printf("seq region: %d\n", seqRegion)
-					if uint32(seqRegion[1]-seqRegion[0]+1) < window { // the sequence is shorter than the window
-						continue
-					}
-					end = uint32(seqRegion[1]+1) - window
-					// fmt.Printf("start:%d, end:%d\n", seqRegion[0], end)
+				// Count complete k-mers independently in each complete window.
+				v2 = seedWindowCounts(*ref2locs.Locs, *seqRegions, uint32(info.K), window, step, v2[:0])
 
-					nSeeds = 0
-					first = true
-					hasGap = false
-					for ws = uint32(seqRegion[0]); ws <= end; ws += step { // each window
-						we = ws + window - k32p1
-						// fmt.Printf("  window: %d-%d\n", ws, we)
-
-						for pi = ps; pi < nPos; pi++ {
-							pos2str = (*locs)[pi]
-							if !hasGap && pos2str&1 > 0 {
-								hasGap = true
-							}
-
-							pos = pos2str >> 2
-							// fmt.Printf("    pi:%d, pos:%d\n", pi, pos)
-
-							if first && pos >= ws+step {
-								first = false
-								ps = pi // start index of next window
-								// fmt.Printf("      next ps:%d\n", ps)
-							}
-
-							if pos >= ws && pos <= we {
-								nSeeds++
-								// fmt.Printf("      in range. nSeeds:%d\n", nSeeds)
-							} else if nSeeds > 0 { // out of current window
-								if !hasGap {
-									v2 = append(v2, float64(nSeeds))
-								}
-								// fmt.Printf("      out range. nSeeds:%d\n", nSeeds)
-								nSeeds = 0
-								first = true
-								hasGap = false
-								break
-							}
-						}
-					}
-				}
-
-				if len(v2) == 0 { // all sequences are smaller than the window size
+				if len(v2) == 0 { // no complete window without a gap marker
 					// ---------------------------------------------------------
 
 					if showProgressBar {
@@ -569,10 +516,6 @@ Figures:
 					chDuration <- time.Duration(float64(time.Since(ref2locs.StartTime)) / threadsFloat)
 				}
 				recycleRef2Locs(ref2locs)
-
-				// ---------------------------------------------------------
-
-				counter[refname]++
 			}
 
 			poolSkipRegions.Put(seqRegions)
@@ -658,6 +601,47 @@ Figures:
 			}
 		}
 	},
+}
+
+// seedWindowCounts appends counts of fully contained k-mers in complete windows.
+// Positions are sorted and encode strand and gap flags in their low two bits.
+// Omit windows containing a gap-marked seed. The moving [lo, hi)
+// range includes both strands and retains empty windows, including at EOF.
+func seedWindowCounts(locs []uint32, regions [][2]int, k, window, step uint32, counts []float64) []float64 {
+	lo, hi, gaps := 0, 0, 0
+	for _, region := range regions {
+		if uint32(region[1]-region[0]+1) < window {
+			continue
+		}
+		last := uint32(region[1]+1) - window
+		for start := uint32(region[0]); start <= last; {
+			if window < k {
+				counts = append(counts, 0)
+			} else {
+				// For [start, start+window), the final k-mer starts at start+window-k.
+				end := start + window - k
+				for lo < len(locs) && locs[lo]>>2 < start {
+					if lo < hi {
+						gaps -= int(locs[lo] & 1)
+					}
+					lo++
+				}
+				hi = max(hi, lo)
+				for hi < len(locs) && locs[hi]>>2 <= end {
+					gaps += int(locs[hi] & 1)
+					hi++
+				}
+				if gaps == 0 {
+					counts = append(counts, float64(hi-lo))
+				}
+			}
+			if step > last-start { // stop before advancing beyond the final window
+				break
+			}
+			start += step
+		}
+	}
+	return counts
 }
 
 // seedPlotBaseName preserves the existing chunk suffixes (ref, ref_2, ...).

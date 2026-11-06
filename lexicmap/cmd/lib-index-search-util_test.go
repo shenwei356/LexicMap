@@ -14,6 +14,9 @@ import (
 	"github.com/shenwei356/wfa"
 )
 
+// twoBaseExtensionSequence has a two-base tail beyond its last retained dense anchor.
+const twoBaseExtensionSequence = "TACAATCTTTAGTCGGGCCCCCCCTCTATCTCTGCTCGTCAGTCCCTTAGTCGCAAATAAAAAAGCATCAAATGCTTCGGAAAAAAAAA"
+
 // TestExtendRightFirstAnchor retains the sole matching terminal 2-mer.
 func TestExtendRightFirstAnchor(t *testing.T) {
 	if q, s := _extendRight([]byte("ACA"), []byte("ACC")); q != 2 || s != 2 {
@@ -57,21 +60,49 @@ func TestExtendMatchFirstAnchor(t *testing.T) {
 			seq1: "GGACA", seq2: "GGACC",
 			start1: 0, end1: 2, start2: 0, end2: 2,
 			rightLimit: 2,
-			want:       "GG",
+			want:       "GGAC", ext: [4]int{0, 2, 0, 2},
 		},
 		{
 			name: "left contig boundary",
 			seq1: "ACAGG", seq2: "CCAGG",
 			start1: 3, end1: 5, start2: 3, end2: 5,
 			leftLimit: 2,
-			want:      "GG",
+			want:      "CAGG", ext: [4]int{2, 0, 2, 0},
 		},
 		{
 			name: "two bases remaining",
 			seq1: "GGAC", seq2: "GGAC",
 			start1: 0, end1: 2, start2: 0, end2: 2,
 			leftLimit: 50, rightLimit: 50,
+			want: "GGAC", ext: [4]int{0, 2, 0, 2},
+		},
+		{
+			name: "two bases preceding",
+			seq1: "ACGG", seq2: "ACGG",
+			start1: 2, end1: 4, start2: 2, end2: 4,
+			leftLimit: 50, rightLimit: 50,
+			want: "ACGG", ext: [4]int{2, 0, 2, 0},
+		},
+		{
+			name: "one base remaining",
+			seq1: "GGA", seq2: "GGA",
+			start1: 0, end1: 2, start2: 0, end2: 2,
+			leftLimit: 50, rightLimit: 50,
 			want: "GG",
+		},
+		{
+			name: "right contig limit shorter than a seed",
+			seq1: "GGACA", seq2: "GGACC",
+			start1: 0, end1: 2, start2: 0, end2: 2,
+			rightLimit: 1,
+			want:       "GG",
+		},
+		{
+			name: "left contig limit shorter than a seed",
+			seq1: "ACAGG", seq2: "CCAGG",
+			start1: 3, end1: 5, start2: 3, end2: 5,
+			leftLimit: 1,
+			want:      "GG",
 		},
 		{
 			name: "different query and subject coordinates",

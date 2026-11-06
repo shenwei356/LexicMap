@@ -357,14 +357,17 @@ func recycleFragments(frags *[][]byte) {
 }
 
 // seqs2fragments retains every base and joins a terminal piece shorter than
-// minSeedLen to the preceding fragment of the same contig, when one exists.
+// half a fragment or minSeedLen to the preceding fragment of the same contig.
+// Nonpositive fragment lengths return no fragments.
 // Do not forget to recycle a non-nil result.
 func seqs2fragments(seqs *[]*[]byte, fragLen, minSeedLen int) (*[][]byte, int) {
-	if seqs == nil || len(*seqs) == 0 {
+	if fragLen <= 0 || seqs == nil || len(*seqs) == 0 {
 		return nil, 0
 	}
 
 	frags := poolFragments.Get().(*[][]byte)
+	// Ceil(fragLen/2) preserves the strict half-fragment cutoff for odd sizes.
+	minTailLen := max(minSeedLen, fragLen/2+fragLen%2)
 
 	var end, s, e int
 	var contig *[]byte
@@ -375,7 +378,7 @@ func seqs2fragments(seqs *[]*[]byte, fragLen, minSeedLen int) (*[][]byte, int) {
 		end = len(*contig)
 		for s = 0; s < end; s += fragLen {
 			e = min(s+fragLen, end)
-			if e-s < max(minSeedLen, fragLen/2) && s > 0 {
+			if e == end && e-s < minTailLen && s > 0 {
 				// A short tail may have no sampled seeds; align it with the preceding fragment.
 				(*frags)[len(*frags)-1] = (*contig)[s-fragLen : e]
 			} else {
@@ -393,6 +396,9 @@ func seqs2fragments(seqs *[]*[]byte, fragLen, minSeedLen int) (*[][]byte, int) {
 // qualFrags is nil when quals is empty.
 // The caller must recycle both non-nil fragment slices.
 func seqs2fragmentsWithQual(seqs, quals *[]*[]byte, fragLen, minSeedLen int) (*[][]byte, *[][]byte, int, error) {
+	if fragLen <= 0 {
+		return nil, nil, 0, fmt.Errorf("fragment length must be positive: %d", fragLen)
+	}
 	if quals == nil || len(*quals) == 0 {
 		frags, n := seqs2fragments(seqs, fragLen, minSeedLen)
 		return frags, nil, n, nil
@@ -409,6 +415,7 @@ func seqs2fragmentsWithQual(seqs, quals *[]*[]byte, fragLen, minSeedLen int) (*[
 	qualFrags := poolFragments.Get().(*[][]byte)
 	*frags = (*frags)[:0]
 	*qualFrags = (*qualFrags)[:0]
+	minTailLen := max(minSeedLen, fragLen/2+fragLen%2)
 
 	var n int
 	for i, contig := range *seqs {
@@ -422,7 +429,7 @@ func seqs2fragmentsWithQual(seqs, quals *[]*[]byte, fragLen, minSeedLen int) (*[
 		end := len(*contig)
 		for s := 0; s < end; s += fragLen {
 			e := min(s+fragLen, end)
-			if e-s < max(minSeedLen, fragLen/2) && s > 0 {
+			if e == end && e-s < minTailLen && s > 0 {
 				// Preserve sequence and quality coordinates through the merge.
 				(*frags)[len(*frags)-1] = (*contig)[s-fragLen : e]
 				(*qualFrags)[len(*qualFrags)-1] = (*qual)[s-fragLen : e]

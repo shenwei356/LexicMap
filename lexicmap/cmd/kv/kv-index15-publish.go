@@ -104,8 +104,13 @@ func backupIndex15File(sidecar, backup string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer dst.Close()
-	defer os.Remove(dst.Name())
+	dstClosed := false // close before publishing, including failed copies
+	defer func() {
+		if !dstClosed {
+			_ = dst.Close()
+		}
+		_ = os.Remove(dst.Name())
+	}()
 	if _, err = io.Copy(dst, src); err != nil {
 		return false, err
 	}
@@ -115,7 +120,9 @@ func backupIndex15File(sidecar, backup string) (bool, error) {
 	if err = dst.Sync(); err != nil {
 		return false, err
 	}
-	if err = dst.Close(); err != nil {
+	err = dst.Close()
+	dstClosed = true
+	if err != nil {
 		return false, err
 	}
 	if err = os.Rename(dst.Name(), backup); err != nil {

@@ -34,6 +34,144 @@ import (
 	"testing"
 )
 
+// A 50-base tail is shorter than half a 101-base fragment and must merge,
+// preserving the full 101-base shared region in both comparison directions.
+func TestCompareOddFragmentBoundary(t *testing.T) {
+	dir := t.TempDir()
+	sequence := "CCCCGCACAACTCGTTGAGCTACGGGTATTACCCGCGTTTAGTGGCTAGCGACTCGTGGACTTGCTGTACTGTCTACGGGCGTCAACTTGATAATCCCAAAAAAGCTTGGAATTCTTAAAAAGATGGTGTACGTCCCTCATACTTCGTATT"
+	want := "80.1587\t100.0000\t100.0000\t66.887\t100.000\t1\t151\t1\t101"
+	for _, reverse := range []bool{false, true} {
+		q, s := []byte(sequence), []byte(sequence[:101])
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, ortho := range []bool{false, true} {
+			for _, cache := range []string{"0", "1M"} {
+				args := []string{"genome", "compare", "--quiet", "-j", "2", "--frag-size", "101", "--min-af", "0", "--min-ani", "0", "--max-genome-cache-memory", cache, qfile, sfile}
+				if ortho {
+					args = append(args, "-O")
+				}
+				output := runSeedIndexCommand(t, args...)
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+				if len(lines) != 2 {
+					t.Fatalf("reverse=%t ortho=%t cache=%s: expected one comparison", reverse, ortho, cache)
+				}
+				if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+					t.Errorf("reverse=%t ortho=%t cache=%s: got %s, want %s", reverse, ortho, cache, got, want)
+				}
+			}
+		}
+	}
+}
+
+// Low-complexity filtering leaves a two-base tail outside the exact anchors.
+// Extending that tail must retain full self-coverage and pass a 99% AF filter.
+func TestCompareTwoBaseExtension(t *testing.T) {
+	dir := t.TempDir()
+	sequence := twoBaseExtensionSequence
+	want := "100.0000\t100.0000\t100.0000\t100.000\t100.000\t1\t89\t1\t89"
+	for _, reverse := range []bool{false, true} {
+		seq := []byte(sequence)
+		if reverse {
+			RC(seq)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(seq)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(seq)+"\n")
+		for _, cache := range []string{"0", "1M"} {
+			for _, ortho := range []bool{false, true} {
+				for _, af := range []string{"0", "99"} {
+					args := []string{"genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, "--min-af", af, qfile, sfile}
+					if ortho {
+						args = append(args, "-O")
+					}
+					output := runSeedIndexCommand(t, args...)
+					lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+					if len(lines) != 2 {
+						t.Errorf("reverse=%t cache=%s ortho=%t min-af=%s: expected one comparison, got %d", reverse, cache, ortho, af, len(lines)-1)
+						continue
+					}
+					if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+						t.Errorf("reverse=%t cache=%s ortho=%t min-af=%s: got %s, want %s", reverse, cache, ortho, af, got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// A 24-base overlap between 31-base anchors is below the 80% trimming cutoff.
+// Keeping the terminal anchor preserves the full query and its AF-qualified hit.
+func TestCompareTerminalAnchorOverlap(t *testing.T) {
+	dir := t.TempDir()
+	query := "TTTCGTCATGTGTGAGCCTAATGTGTGAGCCAAATCTCGGCGCTTGTGTGATTCTTGACATCGCGGCACAAACTTATTACGAGGTTACCAGATATAATGAGGCCTGAATACAGGTATACGGATGTGTGCCATCACGAGCCCCGTATTGTTACCCGTGCACGAACAGGTGGCCCTTTTATGCCGCCCAGACCAGTAAAGAAATGGGCTACATGTTGTGTAGAATCCCCCGAA"
+	subject := query[:20] + query[7:] // Insert a 13-base tandem repeat.
+	want := "97.2632\t94.6721\t94.6721\t100.000\t94.672\t1\t231\t1\t244"
+	for _, reverse := range []bool{false, true} {
+		q, s := []byte(query), []byte(subject)
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, cache := range []string{"0", "1M"} {
+			for _, af := range []string{"0", "94"} {
+				output := runSeedIndexCommand(t, "genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, "--min-af", af, qfile, sfile)
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+				if len(lines) != 2 {
+					t.Errorf("reverse=%t cache=%s min-af=%s: expected one comparison, got %d", reverse, cache, af, len(lines)-1)
+					continue
+				}
+				if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+					t.Errorf("reverse=%t cache=%s min-af=%s: got %s, want %s", reverse, cache, af, got, want)
+				}
+			}
+		}
+	}
+}
+
+// A repeated terminal anchor must not change AF filtering when both inputs
+// are reverse-complemented, with or without the prepared-genome cache.
+func TestCompareTerminalRepeatOrientation(t *testing.T) {
+	dir := t.TempDir()
+	query := "GGCCCAGTCCAGATCCTCGGAAGTCCCAACTAACGAATAAGTAGATCCTTCTAAATAGTAGTATACGAATGTAATCAACATATTACCGCACCCAACTTTGATTGGGTCATAAACAAACATCATGTTTCTGGAGGCGGTTTGTGAGACCGACAAACGCGATAGAGTAATCTTATAAATCAGGCAAATACTCGGTCCTTTCTACGGGTCGCGGCCGCGTGGTCATAGGCAGTT"
+	subject := "GGCCCAGTCCAGATCCTCGGAAGTCCCAACTAACGATTAAGTTGATCCGTCTAAGTAGTATTATACCAATGTCATCAATAGGCCCAGTCCAGATCCTCGGAAGTCCCAACTAACGAACATAATGTTCCTGGACGCGGTGTGTGACACCGATAAACGGGATAGCGTAATTTTATAGATCAGCCAAATGCTCGGGCCTTTGTACGGGTCGCGGCCGCGTGGTCATAGGCAGTT"
+	var want string
+	for _, cache := range []string{"0", "1M"} {
+		for _, reverse := range []bool{false, true} {
+			q, s := []byte(query), []byte(subject)
+			if reverse {
+				RC(q)
+				RC(s)
+			}
+			qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+			sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+			for _, af := range []string{"0", "50"} {
+				output := runSeedIndexCommand(t, "genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, "--min-af", af, qfile, sfile)
+				lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+				if af == "50" {
+					if len(lines) != 1 {
+						t.Errorf("cache=%s reverse=%t: comparison below AF threshold was retained", cache, reverse)
+					}
+					continue
+				}
+				if len(lines) != 2 {
+					t.Fatalf("cache=%s reverse=%t: expected one comparison, got %d", cache, reverse, len(lines)-1)
+				}
+				got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t")
+				if want == "" {
+					want = got
+				} else if got != want {
+					t.Errorf("cache=%s reverse=%t: metrics %q differ from %q", cache, reverse, got, want)
+				}
+			}
+		}
+	}
+}
+
 // Extended HSPs must survive -l in both comparison modes and both orientations.
 func TestCompareExtendedAlignmentLength(t *testing.T) {
 	dir := t.TempDir()

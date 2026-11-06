@@ -227,12 +227,19 @@ func (wtr *Writer) Index15Stats() Index15Stats {
 
 // Close is very important
 func (wtr *Writer) Close() (err error) {
-	// Flush errors must still release all output descriptors.
-	defer wtr.fh.Close()
-	defer wtr.fhi.Close()
-	if wtr.fh15 != nil {
-		defer wtr.fh15.Close()
-	}
+	// Close each output once; the primary index closes after data and sidecar.
+	dataClosed, sidecarClosed := false, false
+	defer func() {
+		if !dataClosed {
+			_ = wtr.fh.Close()
+		}
+		if !sidecarClosed && wtr.fh15 != nil {
+			_ = wtr.fh15.Close()
+		}
+		if closeErr := wtr.fhi.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	err = wtr.w.Flush()
 	if err != nil {
 		return err
@@ -244,6 +251,7 @@ func (wtr *Writer) Close() (err error) {
 		}
 	}
 	err = wtr.fh.Close()
+	dataClosed = true
 	if err != nil {
 		return err
 	}
@@ -260,13 +268,11 @@ func (wtr *Writer) Close() (err error) {
 		if _, err = wtr.fh15.WriteAt(wtr.buf[:8], 32); err != nil {
 			return err
 		}
-		if err = wtr.fh15.Close(); err != nil {
+		err = wtr.fh15.Close()
+		sidecarClosed = true
+		if err != nil {
 			return err
 		}
-	}
-	err = wtr.fhi.Close()
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -1206,8 +1212,11 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 		return err
 	}
 	tmpName := fhi.Name()
+	indexClosed := false // the temporary index must close before publication
 	defer func() {
-		_ = fhi.Close()
+		if !indexClosed {
+			_ = fhi.Close()
+		}
 		_ = os.Remove(tmpName)
 	}()
 	wi := bufio.NewWriterSize(fhi, IOBufferSize)
@@ -1533,6 +1542,7 @@ func CreateKVIndexWithProgress(file string, nAnchors int, progress IndexProgress
 		return err
 	}
 	err = fhi.Close()
+	indexClosed = true
 	if err != nil {
 		return err
 	}

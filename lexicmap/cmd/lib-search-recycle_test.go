@@ -111,7 +111,7 @@ func TestTrimSubStrPairsPreservesAnchorsAndCapacity(t *testing.T) {
 		input []SubstrPair
 		want  []SubstrPair
 	}{
-		{"both ends", anchors, anchors[1:5]},
+		{"both ends", anchors, anchors[2:5]},
 		{"all discarded", anchors[:3], []SubstrPair{}},
 		{"no overhang", anchors[3:5], anchors[3:5]},
 		{"single anchor", anchors[3:4], anchors[3:4]},

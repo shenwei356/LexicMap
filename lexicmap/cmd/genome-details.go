@@ -249,8 +249,11 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	if err != nil {
 		return err
 	}
+	writerClosed := false // the cache must close before publication
 	defer func() {
-		_ = fhw.Close()
+		if !writerClosed {
+			_ = fhw.Close()
+		}
 		_ = os.Remove(fhw.Name())
 	}()
 	bw := bufio.NewWriterSize(fhw, IOBufferSize)
@@ -265,7 +268,12 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to read genome index mapping file: %w", err)
 	}
-	defer fh.Close()
+	mappingClosed := false
+	defer func() {
+		if !mappingClosed {
+			_ = fh.Close()
+		}
+	}()
 	// Keep shared indexes readable to the same users as the genome mapping.
 	stat, err := fh.Stat()
 	if err != nil {
@@ -480,10 +488,10 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	}
 
 	if err = bw.Flush(); err != nil {
-		_ = fhw.Close()
 		return err
 	}
 	err = fhw.Close()
+	writerClosed = true
 	if err != nil {
 		return err
 	}
@@ -495,7 +503,9 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 			return err
 		}
 	}
-	if err = fh.Close(); err != nil {
+	err = fh.Close()
+	mappingClosed = true
+	if err != nil {
 		return err
 	}
 	return os.Rename(fhw.Name(), fileGenomeDetails)

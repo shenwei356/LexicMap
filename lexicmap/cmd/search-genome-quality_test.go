@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"bytes"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -29,6 +31,78 @@ import (
 
 	"github.com/shenwei356/wfa"
 )
+
+// Tail merging preserves every base and uses the exact half-fragment boundary,
+// including odd fragment lengths and seed lengths larger than a full fragment.
+func TestSeqs2FragmentsTailBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		length, fragment, seed int
+		lengths                []int
+	}{
+		{149, 100, 13, []int{149}},
+		{150, 100, 13, []int{100, 50}},
+		{151, 100, 13, []int{100, 51}},
+		{150, 101, 13, []int{150}},
+		{151, 101, 13, []int{151}},
+		{152, 101, 13, []int{101, 51}},
+		{14, 4, 5, []int{4, 4, 6}},
+	} {
+		t.Run(fmt.Sprintf("length=%d/fragment=%d/seed=%d", tc.length, tc.fragment, tc.seed), func(t *testing.T) {
+			sequence := []byte(indexTestDNA(tc.length))
+			quality := make([]byte, tc.length)
+			for i := range quality {
+				quality[i] = byte(33 + i%94)
+			}
+			seqs, quals := []*[]byte{&sequence}, []*[]byte{&quality}
+			plain, n := seqs2fragments(&seqs, tc.fragment, tc.seed)
+			defer recycleFragments(plain)
+			withQual, qual, qn, err := seqs2fragmentsWithQual(&seqs, &quals, tc.fragment, tc.seed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer recycleFragments(withQual)
+			defer recycleFragments(qual)
+			if n != tc.length || qn != tc.length {
+				t.Fatalf("base count: %d/%d, want %d", n, qn, tc.length)
+			}
+			for i, fragments := range []*[][]byte{plain, withQual, qual} {
+				if len(*fragments) != len(tc.lengths) {
+					t.Errorf("result %d: got %d fragments, want %v", i, len(*fragments), tc.lengths)
+					continue
+				}
+				for j, fragment := range *fragments {
+					if len(fragment) != tc.lengths[j] {
+						t.Errorf("result %d fragment %d: length %d, want %d", i, j, len(fragment), tc.lengths[j])
+					}
+				}
+				original := sequence
+				if i == 2 {
+					original = quality
+				}
+				if !bytes.Equal(bytes.Join(*fragments, nil), original) {
+					t.Errorf("result %d did not preserve all original bytes in order", i)
+				}
+			}
+		})
+	}
+}
+
+func TestSeqs2FragmentsInvalidLength(t *testing.T) {
+	sequence, quality := []byte("ACGT"), []byte("IIII")
+	seqs, quals := []*[]byte{&sequence}, []*[]byte{&quality}
+	for _, length := range []int{0, -1} {
+		frags, n := seqs2fragments(&seqs, length, 1)
+		if frags != nil || n != 0 {
+			t.Fatalf("invalid length %d produced fragments", length)
+		}
+		for _, values := range []*[]*[]byte{nil, &quals} {
+			frags, qual, n, err := seqs2fragmentsWithQual(&seqs, values, length, 1)
+			if err == nil || frags != nil || qual != nil || n != 0 {
+				t.Fatalf("invalid length %d: fragments=%v, qualities=%v, bases=%d, err=%v", length, frags, qual, n, err)
+			}
+		}
+	}
+}
 
 func TestSeqs2FragmentsWithQual(t *testing.T) {
 	seq1, seq2 := []byte("AAAACCCCGG"), []byte("TTTTAAA")

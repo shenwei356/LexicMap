@@ -102,7 +102,12 @@ Tips:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genome index mapping file: %s", err))
 		}
-		defer fh.Close()
+		mappingClosed := false // release the source before replacing its path
+		defer func() {
+			if !mappingClosed {
+				_ = fh.Close()
+			}
+		}()
 		// Keep the published mapping accessible to the same readers.
 		mappingInfo, err := fh.Stat()
 		checkError(err)
@@ -176,7 +181,9 @@ Tips:
 
 		checkError(bw.Flush())
 		checkError(fhGI.Close())
-		checkError(fh.Close())
+		err = fh.Close()
+		mappingClosed = true
+		checkError(err)
 
 		// A no-op must leave the original mapping and any existing backup intact.
 		if _n == 0 {

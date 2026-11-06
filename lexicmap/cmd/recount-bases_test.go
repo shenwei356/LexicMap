@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 )
 
 // writeRecountFixture supplies tiny independent batch files without building seed indexes.
@@ -52,6 +54,49 @@ func writeRecountFixture(t *testing.T, dir string, batches int) *IndexInfo {
 		t.Fatal(err)
 	}
 	return info
+}
+
+// Search recounts older indexes before opening its persistent readers.
+func TestUpdateInputBasesRejectsFailedSeek(t *testing.T) {
+	dir := t.TempDir()
+	info := writeRecountFixture(t, dir, 1)
+	fileInfo := filepath.Join(dir, FileInfo)
+	original, err := os.ReadFile(fileInfo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, DirGenomes, batchDir(0), FileGenomes)
+	w, err := genome.NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 2 {
+		id := []byte{'s', byte('0' + i)}
+		g := &genome.Genome{ID: id, Seq: bytes.Repeat([]byte{'A'}, 32768),
+			Len: 32768, GenomeSize: 32768, NumSeqs: 1, SeqSizes: []int{32768}, SeqIDs: []*[]byte{&id}}
+		if err := w.Write(g); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(file + genome.GenomeIndexFileExt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	be.PutUint64(data[24+12:], ^uint64(0))
+	if err := os.WriteFile(file+genome.GenomeIndexFileExt, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := updateInputBases(info, dir, 1)
+	if err == nil || got != 0 || info.InputBases != 77 {
+		t.Fatalf("failed seek published a total: %d, %+v, %v", got, info, err)
+	}
+	after, err := os.ReadFile(fileInfo)
+	if err != nil || !bytes.Equal(after, original) {
+		t.Fatal("failed seek changed index metadata")
+	}
 }
 
 func TestUpdateInputBases(t *testing.T) {

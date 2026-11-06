@@ -21,6 +21,7 @@
 package genome
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -29,6 +30,148 @@ import (
 	"strings"
 	"testing"
 )
+
+// A rejected record must not leave a phantom entry in the record directory.
+func TestWriterRejectedRecord(t *testing.T) {
+	for _, writeValid := range []bool{false, true} {
+		t.Run(fmt.Sprint(writeValid), func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "genomes.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer w.fh.Close()
+			id := []byte("s")
+			g := &Genome{ID: []byte("g"), Seq: []byte("ACGT"), Len: 4, GenomeSize: 4,
+				NumSeqs: 1, SeqSizes: []int{4}, SeqIDs: []*[]byte{&id}, TwoBit: &[]byte{}}
+			if err := w.Write(g); !errors.Is(err, ErrInvalidTwoBitData) {
+				t.Fatalf("invalid packed sequence: %v", err)
+			}
+			want := uint32(0)
+			if writeValid {
+				g.TwoBit = nil
+				if err := w.Write(g); err != nil {
+					t.Fatal(err)
+				}
+				want = 1
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			if r.nSeqs != want {
+				t.Fatalf("rejected record was indexed: got %d records, want %d", r.nSeqs, want)
+			}
+			if writeValid {
+				got, err := r.Seq(0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer RecycleGenome(got)
+				if !bytes.Equal(got.Seq, g.Seq) {
+					t.Fatalf("valid record changed: %q", got.Seq)
+				}
+			}
+		})
+	}
+}
+
+// Nil and non-nil empty sequence slices represent the same empty record.
+func TestWriterEmptySequence(t *testing.T) {
+	var wantData, wantIndex []byte
+	for _, empty := range [][]byte{{}, nil} {
+		t.Run(fmt.Sprintf("nil=%t", empty == nil), func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "genomes.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer w.fh.Close()
+			if err := w.Write(&Genome{ID: []byte("empty"), Seq: empty}); err != nil {
+				t.Fatal(err)
+			}
+			id := []byte("s")
+			valid := &Genome{ID: []byte("valid"), Seq: []byte("ACGT"), GenomeSize: 4, Len: 4,
+				NumSeqs: 1, SeqSizes: []int{4}, SeqIDs: []*[]byte{&id}}
+			if err := w.Write(valid); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			index, err := os.ReadFile(file + GenomeIndexFileExt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if empty != nil {
+				wantData, wantIndex = data, index
+			} else if !bytes.Equal(data, wantData) || !bytes.Equal(index, wantIndex) {
+				t.Fatal("nil sequence changed the record encoding")
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			g, err := r.GenomeInfo(0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r.nSeqs != 2 || string(g.ID) != "empty" || g.Len != 0 || g.NumSeqs != 0 {
+				t.Fatalf("incorrect empty-record metadata: %v", g)
+			}
+			RecycleGenome(g)
+			g, err = r.Seq(1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(g.Seq, valid.Seq) {
+				t.Fatalf("empty record changed the next sequence: %q", g.Seq)
+			}
+			RecycleGenome(g)
+		})
+	}
+}
+
+// writerFailure injects a delayed I/O error without relying on a full filesystem.
+type writerFailure struct{ err error }
+
+func (w writerFailure) Write([]byte) (int, error) { return 0, w.err }
+
+func TestWriterCloseAfterFlushError(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.fh.Close()
+	index := file + GenomeIndexFileExt
+	if err := os.WriteFile(index, []byte("original index"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("injected write failure")
+	w.w = bufio.NewWriter(writerFailure{want})
+	if _, err := w.w.WriteString("buffered record"); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); !errors.Is(err, want) {
+		t.Fatalf("lost flush error: %v", err)
+	}
+	if _, err := w.fh.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Errorf("data file still open after flush failure: %v", err)
+	}
+	if got, err := os.ReadFile(index); err != nil || string(got) != "original index" {
+		t.Fatalf("published index after data failure: %q, %v", got, err)
+	}
+}
 
 // TestSubSeqBounds covers packed-byte padding and reads beyond a record or contig.
 func TestSubSeqBounds(t *testing.T) {
@@ -110,6 +253,9 @@ func TestSubSeqBounds(t *testing.T) {
 								if string(g.Seq) != want[max(bounds[0], 0):] {
 									t.Fatalf("bounds=%v: got %s, want suffix of %s", bounds, g.Seq, want)
 								}
+								if g.Len != len(g.Seq) {
+									t.Errorf("bounds=%v: extracted length is %d, but Len is %d", bounds, len(g.Seq), g.Len)
+								}
 								RecycleGenome(g)
 							}
 						}
@@ -117,6 +263,126 @@ func TestSubSeqBounds(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The reported contig end must describe the extracted bases after normalization.
+func TestSubSeq2NormalizedEnd(t *testing.T) {
+	file, _ := writeDeferredFixture(t, 2)
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	for record := 0; record < 3; record++ {
+		g, err := r.Seqs(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, sequence := range g.Seqs {
+			for _, bounds := range [][2]int{{-3, -1}, {-3, 2}, {2, -1}, {2, 0}, {2, 2}, {1, 3}, {3, 100}} {
+				start := max(bounds[0], 0)
+				end := max(start, min(bounds[1], len(*sequence)-1))
+				got, actualEnd, err := r.SubSeq2(record, *g.SeqIDs[i], bounds[0], bounds[1])
+				if err != nil {
+					t.Fatal(err)
+				}
+				if actualEnd != end || !bytes.Equal(got.Seq, (*sequence)[start:end+1]) {
+					t.Errorf("record=%d contig=%d bounds=%v: got %q ending at %d, want %q ending at %d", record, i, bounds, got.Seq, actualEnd, (*sequence)[start:end+1], end)
+				}
+				RecycleGenome(got)
+			}
+		}
+		RecycleGenome(g)
+	}
+}
+
+// A rejected record offset must not reuse the cursor left by a previous read.
+func TestReaderRejectsFailedMetadataSeek(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, length := range []int{16384, 16384, 8192} {
+		id := []byte("s")
+		g := &Genome{ID: []byte(fmt.Sprintf("g%d", i)), Seq: bytes.Repeat([]byte{'A'}, length),
+			Len: length, GenomeSize: length, NumSeqs: 1, SeqSizes: []int{length}, SeqIDs: []*[]byte{&id}}
+		if err := w.Write(g); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(file + GenomeIndexFileExt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A uint64 offset of all ones becomes -1, and Seek leaves the cursor intact.
+	be.PutUint64(data[24+2*12:], ^uint64(0))
+	if err := os.WriteFile(file+GenomeIndexFileExt, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, method := range []string{"GenomeInfo", "SubSeq", "SubSeq2", "TotalBases"} {
+		t.Run(method, func(t *testing.T) {
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			// A complete packed read ends at the next record's metadata.
+			g, err := r.Seq(0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			RecycleGenome(g)
+			g = nil
+			switch method {
+			case "GenomeInfo":
+				g, err = r.GenomeInfo(2)
+			case "SubSeq":
+				g, err = r.SubSeq(2, 0, 3)
+			case "SubSeq2":
+				g, _, err = r.SubSeq2(2, []byte("s"), 0, 3)
+			case "TotalBases":
+				_, err = r.TotalBases()
+			}
+			if g != nil {
+				RecycleGenome(g)
+				t.Error("returned a genome after a failed seek")
+			}
+			if err == nil {
+				t.Fatal("accepted an unseekable record offset")
+			}
+			// The same reader must remain usable for an unaffected record.
+			g, err = r.GenomeInfo(1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer RecycleGenome(g)
+			if string(g.ID) != "g1" || g.GenomeSize != 16384 {
+				t.Fatal("failed seek changed the following valid read")
+			}
+		})
+	}
+}
+
+func TestTwoBit2SeqInvalidLengths(t *testing.T) {
+	for _, packed := range [][]byte{nil, {}, {0x1b}, {0x1b, 0x1b}} {
+		for bases := -4; bases <= len(packed)*4+1; bases++ {
+			t.Run(fmt.Sprintf("bytes=%d/bases=%d", len(packed), bases), func(t *testing.T) {
+				valid := bases >= 0 && (bases+3)/4 == len(packed)
+				got, err := TwoBit2Seq(packed, bases)
+				if !valid {
+					if got != nil || !errors.Is(err, ErrInvalidTwoBitData) {
+						t.Fatalf("invalid length: got %q, error %v", got, err)
+					}
+				} else if err != nil || string(got) != "ACGTACGT"[:bases] {
+					t.Fatalf("valid length: got %q, error %v", got, err)
+				}
+			})
+		}
 	}
 }
 

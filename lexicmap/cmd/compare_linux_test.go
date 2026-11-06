@@ -24,9 +24,11 @@ package cmd
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"testing"
@@ -72,6 +74,53 @@ func TestCompareRawInputFileBudget(t *testing.T) {
 		slices.Sort(got)
 		if err != nil || !slices.Equal(got, want) {
 			t.Fatalf("cache=%s: error=%v stderr=%s output differs=%v", cache, err, stderr, !slices.Equal(got, want))
+		}
+	}
+}
+
+func TestReadPairsClosesInput(t *testing.T) {
+	gcPercent := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(gcPercent)
+	for _, compressed := range []bool{false, true} {
+		for _, scanError := range []bool{false, true} {
+			t.Run(fmt.Sprintf("gzip=%t/error=%t", compressed, scanError), func(t *testing.T) {
+				data := []byte("first\tsecond\n")
+				if scanError {
+					data = []byte("first\t" + strings.Repeat("x", 70<<10) + "\n")
+				}
+				if compressed {
+					var buf bytes.Buffer
+					w := gzip.NewWriter(&buf)
+					if _, err := w.Write(data); err != nil {
+						t.Fatal(err)
+					}
+					if err := w.Close(); err != nil {
+						t.Fatal(err)
+					}
+					data = buf.Bytes()
+				}
+				file := filepath.Join(t.TempDir(), "pairs")
+				if err := os.WriteFile(file, data, 0600); err != nil {
+					t.Fatal(err)
+				}
+				pairs, err := readPairs(file, false)
+				if (err != nil) != scanError {
+					t.Fatalf("scan error=%t: got %v", scanError, err)
+				}
+				if !scanError && !slices.Equal(pairs, []string{"first", "second"}) {
+					t.Fatalf("unexpected pairs: %v", pairs)
+				}
+				entries, err := os.ReadDir("/proc/self/fd")
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, entry := range entries {
+					target, err := os.Readlink(filepath.Join("/proc/self/fd", entry.Name()))
+					if err == nil && target == file {
+						t.Error("pair file remains open after readPairs returns")
+					}
+				}
+			})
 		}
 	}
 }

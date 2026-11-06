@@ -1032,6 +1032,7 @@ func (idx *Index) Close() error {
 	// genome reader
 	if idx.hasGenomeRdrs {
 		var wg sync.WaitGroup
+		var errMu sync.Mutex // concurrent batches may both fail to close
 		for _, pool := range idx.poolGenomeRdrs {
 			wg.Add(1)
 			go func(pool chan *genome.Reader) {
@@ -1039,7 +1040,9 @@ func (idx *Index) Close() error {
 				for rdr := range pool {
 					err := rdr.Close()
 					if err != nil {
+						errMu.Lock()
 						_err = err
+						errMu.Unlock()
 					}
 				}
 				wg.Done()
@@ -2650,7 +2653,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 								}
 
 								similarityScore = float64(c.BitScore) * c.PIdent
-								if similarityScore > maxSimilarityScore {
+								// Permissive E-values can retain negative bitscores.
+								if !hasResult || similarityScore > maxSimilarityScore {
 									maxSimilarityScore = similarityScore
 								}
 								hasResult = true
@@ -2919,7 +2923,8 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 						}
 
 						similarityScore = float64(c.BitScore) * c.PIdent
-						if similarityScore > maxSimilarityScore {
+						// Seed the maximum from the first retained HSP, even if negative.
+						if !hasResult || similarityScore > maxSimilarityScore {
 							maxSimilarityScore = similarityScore
 						}
 						hasResult = true

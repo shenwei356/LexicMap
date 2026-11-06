@@ -27,8 +27,10 @@ import (
 	"testing"
 )
 
-func TestSampleQueryFragmentMatchesPointerBasedSampler(t *testing.T) {
+func TestSampleQueryFragmentMatchesReference(t *testing.T) {
 	// Generated with the sampler at ffc3b1f before changing buffer ownership.
+	// Five seeds in case 6 were restored after independently counting complete
+	// DUST triplets; their scores are 45, not the padded score of 55.
 	data, err := os.ReadFile("testdata/query-seeds.json")
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +48,21 @@ func TestSampleQueryFragmentMatchesPointerBasedSampler(t *testing.T) {
 		if err != nil || !slices.Equal(buffer, tt.Seeds) {
 			t.Fatalf("case %d: sampled k-mers changed, err=%v", i, err)
 		}
+	}
+}
+
+func TestSampleQueryFragmentDustOrientation(t *testing.T) {
+	fragment := []byte("AAAAAAAAAAAAG")
+	for strand := uint64(0); strand < 2; strand++ {
+		seeds, err := sampleQueryFragment(fragment, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Both directions retain the same canonical k-mer at position zero.
+		if !slices.Equal(seeds, []uint64{2, strand}) {
+			t.Errorf("strand %d: got %v, want one seed with canonical key 2", strand, seeds)
+		}
+		RC(fragment)
 	}
 }
 

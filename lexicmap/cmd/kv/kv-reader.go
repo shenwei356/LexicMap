@@ -57,11 +57,16 @@ type Reader struct {
 }
 
 // NewReader creates a reader.
-func NewReader(file string) (*Reader, error) {
+func NewReader(file string) (reader *Reader, err error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
+	defer func() {
+		if err != nil { // only successful readers take ownership of the file
+			_ = fh.Close()
+		}
+	}()
 
 	r := bufio.NewReaderSize(fh, IOBufferSize)
 
@@ -1018,11 +1023,16 @@ type IndexReader struct {
 }
 
 // NewIndexReader creates a index reader
-func NewIndexReader(file string) (*IndexReader, error) {
+func NewIndexReader(file string) (reader *IndexReader, err error) {
 	fh, err := os.Open(file)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading kv-data file")
 	}
+	defer func() {
+		if err != nil { // reject invalid headers without retaining a descriptor
+			_ = fh.Close()
+		}
+	}()
 
 	r := bufio.NewReaderSize(fh, IOBufferSize)
 

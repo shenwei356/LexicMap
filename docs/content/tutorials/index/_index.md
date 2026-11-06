@@ -41,12 +41,14 @@ Terminology differences:
 **Genome size**\
 LexicMap is mainly suitable for small genomes like Archaea, Bacteria, Viruses, fungi, and plasmids.
 
-Maximum genome size: 268 Mb (268,435,456).
-More precisely:
+The maximum supported genome **chunk** size is 268,435,456 bases, including the intervals between contigs.
+For each chunk:
 
-    $total_bases + ($num_contigs - 1) * 1000 <= 268,435,456
+    $total_bases + ($num_contigs - 1) * $contig_interval <= 268,435,456
 
-as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.
+The default chunk limit is 20 Mb (`-g/--max-genome`), and the default interval is 1000 bp (`--contig-interval`).
+A genome can exceed the chunk limit if each retained contig fits within it; LexicMap splits such genomes
+into chunks and merges their alignment results in `lexicmap search`.
 
 {{< /hint >}}
 
@@ -150,8 +152,8 @@ See the [paper](https://bioinf.shenwei.me/LexicMap/introduction/#citation) for d
 
     1. For each genome file in a genome batch.
         1. Optionally discarding sequences via regular expression (`-B/--seq-name-filter`).
-        2. Skipping genomes bigger than the value of `-g/--max-genome`.
-        3. Concatenating all sequences, with intervals of 1000-bp N's.
+        2. Skipping genomes with any retained contig longer than `-g/--max-genome`; splitting other oversized genomes into chunks.
+        3. Concatenating the sequences within each chunk, with intervals of 1000 bp by default (`--contig-interval`).
         4. Capturing the most similar k-mer (in non-gap and non-interval regions) for each mask and recording the k-mer and its location(s) and strand information. Base N is treated as A.
         5. Filling sketching deserts (genome regions longer than `--seed-max-desert` [default 100] without any captured k-mers/seeds).
            In a sketching desert, not a single k-mer is captured because there's another k-mer in another place which shares a longer prefix with the mask.

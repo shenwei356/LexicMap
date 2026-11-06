@@ -23,7 +23,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/shenwei356/xopen"
@@ -110,6 +109,7 @@ Input:
 		var cigar, qseq, sseq, align string
 
 		var headerLine bool
+		var lineNo int       // physical input line, including blank lines and the header
 		var firstRecord bool // each input starts a new query/subject group
 		var iGenome, iSeq int
 		var preQuery, preGenome, preSeq string
@@ -129,11 +129,13 @@ Input:
 			checkError(err)
 
 			headerLine = true
+			lineNo = 0
 			firstRecord = true
 
 			scanner = bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
 			for scanner.Scan() {
+				lineNo++
 				line = strings.TrimRight(scanner.Text(), "\r\n")
 				if line == "" {
 					continue
@@ -174,12 +176,25 @@ Input:
 				sseq = items[22]
 				// align = items[23]
 
-				_qstart, _ = strconv.Atoi(qstart)
-				_qend, _ = strconv.Atoi(qend)
-				_sstart, _ = strconv.Atoi(sstart)
-				_send, _ = strconv.Atoi(send)
+				// All three strings are sliced at the same alignment columns.
+				if len(qseq) == 0 || len(qseq) != len(sseq) || len(qseq) != len(align) {
+					checkError(fmt.Errorf("%s: line %d: invalid alignment lengths: qseq=%d, sseq=%d, align=%d (expected equal, nonzero lengths)", file, lineNo, len(qseq), len(sseq), len(align)))
+				}
 
-				_ = _qend
+				_, _qstart, _qend, err = parseSearchResultCoordinates("query", qlen, qstart, qend)
+				if err != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
+				}
+				_, _sstart, _send, err = parseSearchResultCoordinates("subject", slen, sstart, send)
+				if err != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
+				}
+				if sstr != "+" && sstr != "-" {
+					checkError(fmt.Errorf("%s: line %d: invalid strand %q (expected + or -)", file, lineNo, sstr))
+				}
+				if len(qseq)-ngaps(qseq) != _qend-_qstart+1 || len(sseq)-ngaps(sseq) != _send-_sstart+1 {
+					checkError(fmt.Errorf("%s: line %d: alignment spans do not match query and subject coordinates", file, lineNo))
+				}
 
 				if sstr == "+" {
 					_strand = "Plus"

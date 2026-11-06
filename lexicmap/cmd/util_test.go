@@ -21,6 +21,11 @@
 package cmd
 
 import (
+	"bytes"
+	"compress/bzip2"
+	"compress/gzip"
+	"encoding/base64"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -28,6 +33,66 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestGenomeNamesFromCompressedFiles(t *testing.T) {
+	// A bzip2-compressed synthetic 600-base FASTA record, with an ID-only header.
+	compressed, err := base64.StdEncoding.DecodeString(
+		"QlpoOTFBWSZTWRstSnwAAAVPgHAQAAEogAQAAgAoADABmACGptqmgeoQNA0Bp4qUmkH5vw/Rd/ftuv58cKCVAWcFpagNGt9n3g333vPjLEtJo5RFTS50ZDPVkXhi10M5lyHvXeMHDu9arNXluPFZsXaQHZpyA8wt" +
+			"jRrP5+/L3wLQRhHAijoM4pkKxDYsKiVzzJnSYjnQBmt9+/PnvhRznOrBBIV70WV9jDUCEw9gbRJ00IT1mysgay56F6hKNS82aCcU8k0LkAbIuBmboYoNNE60hTrgxcVbBEjnhg5yOEUFACaTEJkk+LuSKcKEgNlqU+A=")
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain, err := io.ReadAll(bzip2.NewReader(bytes.NewReader(compressed)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gz bytes.Buffer
+	zw := gzip.NewWriter(&gz)
+	if _, err := zw.Write(plain); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, format := range []struct {
+		ext  string
+		data []byte
+	}{{".fa", plain}, {".fa.gz", gz.Bytes()}, {".fa.bz2", compressed}, {".FA.BZ2", compressed}} {
+		for _, pattern := range []struct{ regexp, want string }{
+			{"", "sample"}, {`missing-(.+)`, "sample"}, {`(sam)ple`, "sam"},
+		} {
+			t.Run(format.ext+"/"+pattern.regexp, func(t *testing.T) {
+				dir := t.TempDir()
+				file := writeTestInput(t, filepath.Join(dir, "sample"+format.ext), string(format.data))
+				re, err := compileRefNameRegexp(pattern.regexp)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Both genome commands and index construction use the same fallback.
+				for _, read := range []func() (*GQuery, error){
+					func() (*GQuery, error) { return ReadGenomeFromFile(file, re, false) },
+					func() (*GQuery, error) { return NewGenomeReader(31, re).Read(file, false, false) },
+				} {
+					q, err := read()
+					if err != nil || q == nil {
+						t.Fatalf("read genome: %v", err)
+					}
+					if string(q.id) != pattern.want || q.genomeSize != 600 {
+						t.Errorf("genome ID/size = %q/%d, want %q/600", q.id, q.genomeSize, pattern.want)
+					}
+					RecycleGQuery(q)
+				}
+				db := filepath.Join(dir, "db")
+				runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "1", "--partitions", "4",
+					"--ref-name-regexp", pattern.regexp, "-O", db, file)
+				got := runSeedIndexCommand(t, "utils", "genomes", "--quiet", "-d", db)
+				if string(got) != "ref\tchunked\n"+pattern.want+"\t\n" {
+					t.Errorf("indexed genome names = %q", got)
+				}
+			})
+		}
+	}
+}
 
 func TestRefNameRegexpCaptureValidation(t *testing.T) {
 	for _, pattern := range []string{`(?:.*)`, `(?i:.*)`, `\(.+\)`, `[(].*[)]`, `(`} {

@@ -47,26 +47,31 @@ func readComparableIndex15File(t *testing.T, file, ext string) []byte {
 	return data
 }
 
-// TestIndex15WriterCloseError propagates secondary flush failures and closes every output.
+// TestIndex15WriterCloseError checks cleanup after each output's flush fails.
 func TestIndex15WriterCloseError(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "seeds")
-	writer, err := NewWriterWithIndex15(16, 0, 1, file, 7, 6, false, MinIndex15Threshold)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.WriteDataOfAMask(map[uint64]*[]uint64{0: &[]uint64{1}}); err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.fh15.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.Close(); !errors.Is(err, os.ErrClosed) {
-		t.Fatalf("secondary flush failure was not returned: %v", err)
-	}
-	for _, file := range []*os.File{writer.fh, writer.fhi, writer.fh15} {
-		if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
-			t.Fatalf("output descriptor remains open after failure: %v", err)
-		}
+	for _, output := range []string{"data", "primary", "secondary"} {
+		t.Run(output, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "seeds")
+			writer, err := NewWriterWithIndex15(16, 0, 1, file, 7, 6, false, MinIndex15Threshold)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.WriteDataOfAMask(map[uint64]*[]uint64{0: &[]uint64{1}}); err != nil {
+				t.Fatal(err)
+			}
+			failed := map[string]*os.File{"data": writer.fh, "primary": writer.fhi, "secondary": writer.fh15}[output]
+			if err := failed.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Close(); !errors.Is(err, os.ErrClosed) {
+				t.Fatalf("flush failure was not returned: %v", err)
+			}
+			for _, file := range []*os.File{writer.fh, writer.fhi, writer.fh15} {
+				if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+					t.Fatalf("output descriptor remains open after failure: %v", err)
+				}
+			}
+		})
 	}
 }
 

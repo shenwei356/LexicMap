@@ -155,8 +155,11 @@ func (c *gsearchScreenCollector) collect(worker int) {
 				r = c.idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
 				r.BatchGenomeIndex = append(r.BatchGenomeIndex, hit.batchGenomeIndex)
 				r.SumPrefix = 0
-				if r.LongestMatches == nil {
+				// Per-call mask subsets can change the size of pooled results.
+				if cap(r.LongestMatches) < c.screenMaskCount {
 					r.LongestMatches = make([]uint8, c.screenMaskCount)
+				} else {
+					r.LongestMatches = r.LongestMatches[:c.screenMaskCount]
 				}
 				(*page)[pageSlot] = r
 				results = append(results, r)

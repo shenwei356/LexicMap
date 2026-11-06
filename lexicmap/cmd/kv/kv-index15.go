@@ -466,22 +466,27 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 		return stats, err
 	}
 	indexTmpName := indexTmp.Name()
-	defer indexTmp.Close()
+	indexClosed := false // both temporary indexes must close before publication
 	keepIndexTmp := false
 	defer func() {
+		if !indexClosed {
+			_ = indexTmp.Close()
+		}
 		if !keepIndexTmp {
 			_ = os.Remove(indexTmpName)
 		}
 	}()
 	index15Tmp, err := os.CreateTemp(dir, "."+base+".idx15-*")
 	if err != nil {
-		indexTmp.Close()
 		return stats, err
 	}
 	index15TmpName := index15Tmp.Name()
-	defer index15Tmp.Close()
+	index15Closed := false
 	keepIndex15Tmp := false
 	defer func() {
+		if !index15Closed {
+			_ = index15Tmp.Close()
+		}
 		if !keepIndex15Tmp {
 			_ = os.Remove(index15TmpName)
 		}
@@ -614,10 +619,14 @@ func CreateKVIndex15WithProgress(file string, partitions int, threshold uint64, 
 	if err = index15Tmp.Sync(); err != nil {
 		return stats, err
 	}
-	if err = indexTmp.Close(); err != nil {
+	err = indexTmp.Close()
+	indexClosed = true
+	if err != nil {
 		return stats, err
 	}
-	if err = index15Tmp.Close(); err != nil {
+	err = index15Tmp.Close()
+	index15Closed = true
+	if err != nil {
 		return stats, err
 	}
 	mode := os.FileMode(0644)

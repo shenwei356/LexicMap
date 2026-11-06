@@ -34,6 +34,32 @@ import (
 	"github.com/shenwei356/wfa"
 )
 
+// OrthoANI must retain the final two matching bases before applying AF filters.
+func TestGenomeSearchTwoBaseExtension(t *testing.T) {
+	dir := t.TempDir()
+	sequence := indexTestDNA(1000) + twoBaseExtensionSequence
+	ref := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+sequence+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "16", "-m", "64", "-c", "1", "--partitions", "4", "-O", db, ref)
+	for _, reverse := range []bool{false, true} {
+		q := []byte(sequence)
+		if reverse {
+			RC(q)
+		}
+		query := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		out := runSeedIndexCommand(t, "genome", "search", "--quiet", "-j", "1", "-d", db, "-p", "11", "-m", "0", "-n", "0", "-O", "--min-af", "99.9", query)
+		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+		if len(lines) != 2 {
+			t.Errorf("reverse=%t: got %d hits, want one", reverse, len(lines)-1)
+			continue
+		}
+		row := strings.Split(lines[1], "\t")
+		if row[2] != "100.0000" || row[3] != "100.000" || row[4] != "100.000" {
+			t.Errorf("reverse=%t: incomplete self-alignment: %v", reverse, row)
+		}
+	}
+}
+
 // Genome search must apply -l after extending its sampled and dense chains.
 func TestGenomeSearchExtendedAlignmentLength(t *testing.T) {
 	dir := t.TempDir()

@@ -98,7 +98,7 @@ func (r *Chain3Result) Reset() {
 
 var sub0 = SubstrPair{}
 
-// Chain finds the possible chain path.
+// Chain finds the possible chain path. Empty anchor sets return no chain.
 // Please remember to call RecycleChaining3Result after using the results.
 // Returned results:
 //  1. Chain3Result.
@@ -110,6 +110,9 @@ var sub0 = SubstrPair{}
 //  7. TEnd.
 func (ce *Chainer3) Chain(subs *[]SubstrPair) *Chain3Result {
 	n := len(*subs)
+	if n == 0 {
+		return nil
+	}
 
 	var i, j int
 	bandBase := int32(ce.options.BandBase) // band size of banded-DP
@@ -284,6 +287,7 @@ func (ce *Chainer3) Chain(subs *[]SubstrPair) *Chain3Result {
 
 			path := poolChain3.Get().(*Chain3Result)
 			path.Reset()
+			path.NAnchors = nAnchors // Count only anchors on the selected traceback.
 			// reverseInts(path.Chain)
 			path.AlignedBasesQ = nAlignedBasesQ
 			path.AlignedBasesT = nAlignedBasesT

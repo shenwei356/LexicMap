@@ -118,7 +118,7 @@ func TestKVData(t *testing.T) {
 
 	// write data
 
-	file := "t.kv"
+	file := filepath.Join(t.TempDir(), "seeds")
 	_, err := WriteKVData(k, 0, data, file, lenPrefix, 2, 512, false)
 	if err != nil {
 		t.Errorf("%s", err)
@@ -180,8 +180,13 @@ func TestKVData(t *testing.T) {
 	// reader
 	rdr, err := NewReader(file)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := rdr.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	var ok bool
 	var values *[]uint64
 	for i := 0; i < nMasks; i++ {
@@ -223,42 +228,29 @@ func TestKVData(t *testing.T) {
 	// reader
 	rdr2, err := NewReader(file)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatal(err)
 	}
-
-	var v uint64
-	for i := 0; i < nMasks; i++ {
-		m0 := make(map[uint64]uint64) // input
-		var _i uint64
-		for _i = 0; _i < n; _i++ {
-			m0[prefix|_i] = _i
+	t.Cleanup(func() {
+		if err := rdr2.Close(); err != nil {
+			t.Error(err)
 		}
+	})
 
+	for i := 0; i < nMasks; i++ {
 		m1, err := rdr2.ReadDataOfAMaskAsList()
 		if err != nil {
-			t.Errorf("%s", err)
+			t.Fatal(err)
 		}
 
-		if len(m0) > len(m1) {
-			t.Errorf("k-mer number mismatch, expected: >=%d, result: %d", len(m0), len(m1))
-			return
+		// Inspect the returned alternating key/value list, not the input map.
+		if len(m1) != int(n)*2 {
+			t.Fatalf("mask %d: expected %d key/value entries, got %d", i, n*2, len(m1))
 		}
-
-		var j uint64
-		for j = 0; j < n; j++ {
-			if v, ok = m0[prefix|j]; !ok {
-				t.Errorf("missing k-mer: %d: %s", i, lexichash.MustDecode(prefix|j, k))
-				return
+		for j := uint64(0); j < n; j++ {
+			if m1[j*2] != prefix|j || m1[j*2+1] != j {
+				t.Fatalf("mask %d entry %d: got (%d, %d), want (%d, %d)",
+					i, j, m1[j*2], m1[j*2+1], prefix|j, j)
 			}
-			if v != j {
-				t.Errorf("%s: value mismatch, expected: %d, result: %d",
-					lexichash.MustDecode(prefix|j, k), j, (*values)[0])
-				return
-			}
-			delete(m0, prefix|j)
-		}
-		if len(m0) != 0 {
-			t.Errorf("wanted %d k-mer", len(m0))
 		}
 	}
 
@@ -267,8 +259,13 @@ func TestKVData(t *testing.T) {
 
 	scr, err := NewSearcher(file, 1)
 	if err != nil {
-		t.Errorf("%s", err)
+		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := scr.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	var mPrefix uint8
 
@@ -409,17 +406,6 @@ func TestKVData(t *testing.T) {
 		}
 	}
 
-	// -------------------------------------------------------------------
-
-	// clean up
-	if os.RemoveAll(file) != nil {
-		t.Errorf("failed to remove the kv-data file: %s", file)
-		return
-	}
-	if os.RemoveAll(fileIdx) != nil {
-		t.Errorf("failed to remove the kv-data file: %s", fileIdx)
-		return
-	}
 }
 
 // TestLargeSeedDataRoundTrip checks all positions in a large single posting list.

@@ -30,12 +30,155 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/seedposition"
+	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/lexichash"
 )
+
+// A genome's completion log must precede the downstream owners that can recycle it.
+func TestIndexDebugGenomeHandoff(t *testing.T) {
+	dir := t.TempDir()
+	db, logFile := filepath.Join(dir, "db"), filepath.Join(dir, "index.log")
+	const genomes = 64
+	args := []string{"index", "--quiet", "--debug", "--log", logFile,
+		"-j", "4", "-m", "64", "-c", "1", "--partitions", "4", "-O", db}
+	want := make(map[string]string, genomes)
+	for i := range genomes {
+		id := fmt.Sprintf("g%03d", i)
+		want[id] = fmt.Sprint(i)
+		args = append(args, writeTestInput(t, filepath.Join(dir, id+".fa"), ">s\n"+indexTestDNA(96+i)+"\n"))
+	}
+	runSeedIndexCommand(t, args...)
+	data, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(`file #(\d+), (finished computing seeds|genome data saved|seeds collected): (\S+)`)
+	finished := make(map[string]int, genomes)
+	for _, match := range pattern.FindAllStringSubmatch(string(data), -1) {
+		index, stage, id := match[1], match[2], match[3]
+		if want[id] != index {
+			t.Fatalf("debug log read a reused genome: index=%s id=%s stage=%s", index, id, stage)
+		}
+		if stage == "finished computing seeds" {
+			finished[id]++
+		} else if finished[id] != 1 {
+			t.Fatalf("genome %s reached %q before its completion log", id, stage)
+		}
+	}
+	for id := range want {
+		if finished[id] != 1 {
+			t.Errorf("genome %s has %d completion logs, want 1", id, finished[id])
+		}
+	}
+	info, err := readIndexInfo(filepath.Join(db, FileInfo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Genomes != genomes || info.InputGenomes != genomes {
+		t.Fatalf("debug indexing lost genomes: stored=%d inputs=%d", info.Genomes, info.InputGenomes)
+	}
+}
+
+// Several seed-free regions between adjacent seeds need only one boundary flag.
+func TestIndexSeedPositionsAcrossUnseededRegions(t *testing.T) {
+	for _, contigs := range []bool{false, true} {
+		for _, gaps := range []int{2, 3} {
+			for _, reverse := range []bool{false, true} {
+				for _, noFill := range []bool{false, true} {
+					t.Run(fmt.Sprintf("contigs=%t/gaps=%d/reverse=%t/noFill=%t", contigs, gaps, reverse, noFill), func(t *testing.T) {
+						dir := t.TempDir()
+						sequences := []string{indexTestDNA(1000)}
+						for range gaps - 1 {
+							sequences = append(sequences, strings.Repeat("A", 31))
+						}
+						sequences = append(sequences, indexTestDNA(1000))
+						interval := 1000
+						if !contigs {
+							interval = 10
+						}
+						if reverse {
+							for i, sequence := range sequences {
+								sequences[i] = string((&seq.Seq{Alphabet: seq.DNA, Seq: []byte(sequence)}).RevCom().Seq)
+							}
+						}
+						var input strings.Builder
+						var ends []int
+						position := 0
+						for i, sequence := range sequences {
+							if i > 0 {
+								ends = append(ends, position+interval-1)
+								position += interval
+							}
+							position += len(sequence)
+							if contigs || i == 0 {
+								fmt.Fprintf(&input, ">s%d\n", i)
+							} else {
+								input.WriteString(strings.Repeat("N", interval))
+							}
+							input.WriteString(sequence)
+							input.WriteByte('\n')
+						}
+						file := writeTestInput(t, filepath.Join(dir, "g.fa"), input.String())
+						db := filepath.Join(dir, "db")
+						args := []string{"index", "--quiet", "-j", "1", "-m", "64", "-c", "1", "--partitions", "4", "--save-seed-pos", "-O", db, file}
+						if noFill {
+							args = append(args, "--no-desert-filling")
+						}
+						runSeedIndexCommand(t, args...)
+						reader, err := seedposition.NewReader(filepath.Join(db, DirGenomes, batchDir(0), FileSeedPositions))
+						if err != nil {
+							t.Fatal(err)
+						}
+						var positions []uint32
+						err = reader.SeedPositions(0, &positions)
+						closeErr := reader.Close()
+						if err != nil || closeErr != nil {
+							t.Fatalf("reading positions: %v, %v", err, closeErr)
+						}
+						previous, flags := -1, 0
+						for _, packed := range positions {
+							position := int(packed >> 2)
+							wantFlag := false
+							for _, end := range ends {
+								wantFlag = wantFlag || previous < end && end <= position
+							}
+							if (packed&1 != 0) != wantFlag {
+								t.Errorf("seed at %d after %d: boundary flag=%d, want %t", position, previous, packed&1, wantFlag)
+							}
+							if wantFlag {
+								flags++
+							}
+							previous = position
+						}
+						if flags != 1 || len(positions) < 4 {
+							t.Fatalf("fixture did not cross all seed-free regions together: flags=%d, seeds=%d", flags, len(positions))
+						}
+						if contigs {
+							output := runSeedIndexCommand(t, "utils", "seed-pos", "--quiet", "-j", "1", "-d", db, "-n", "g")
+							rows := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")[1:]
+							if len(rows) != len(positions) {
+								t.Fatalf("seed-pos retained %d of %d positions", len(rows), len(positions))
+							}
+							for i, row := range rows {
+								fields := strings.Split(row, "\t")
+								packed := positions[i]
+								if len(fields) != 6 || fields[2] != fmt.Sprint((packed>>2)+1) || fields[4] != string(lexichash.Strands[packed>>1&1]) {
+									t.Fatalf("seed-pos changed position or strand at row %d: %q", i+1, row)
+								}
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+}
 
 func TestIndexSeedChunkCountPreservesLayout(t *testing.T) {
 	// Check every supported chunk count across divisible and uneven mask counts.

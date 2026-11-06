@@ -93,8 +93,8 @@ func TestDeferredMetadataMatchesEager(t *testing.T) {
 					t.Fatalf("contigs=%d record=%d bounds=%v: extraction differs", contigs, idx, bounds)
 				}
 				begin, end := max(bounds[0], 0), min(bounds[1], len(sequence)-1)
-				if !bytes.Equal(lazy.Seq, sequence[begin:end+1]) {
-					t.Fatal("incorrect decoded bases")
+				if !bytes.Equal(lazy.Seq, sequence[begin:end+1]) || lazy.Len != end-begin+1 {
+					t.Errorf("incorrect decoded bases or length: bounds=%v Len=%d, want %d", bounds, lazy.Len, end-begin+1)
 				}
 				lazy, err = r.LoadMetadata(idx, lazy)
 				if err != nil {
@@ -120,6 +120,14 @@ func TestDeferredMetadataMatchesEager(t *testing.T) {
 				}
 				if !bytes.Equal(lazy.Seq, sequence) || lazy.SeqIDs[0] != id {
 					t.Fatal("hydrated reader reuse differs")
+				}
+				// A short extraction must replace the length from a previous long read.
+				lazy, err = r.SubSeqWithoutMetadata(idx, 1, 1, lazy)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if lazy.Len != 1 || !bytes.Equal(lazy.Seq, sequence[1:2]) || lazy.SeqIDs[0] != id {
+					t.Fatal("short extraction retained a stale length or changed metadata")
 				}
 				RecycleGenome(eager)
 				RecycleGenome(lazy)

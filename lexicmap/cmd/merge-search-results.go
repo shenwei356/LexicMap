@@ -22,10 +22,13 @@ package cmd
 
 import (
 	"bufio"
+	"cmp"
 	"container/heap"
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,16 +48,21 @@ Attention:
      If not, please specify one query with the flag -q/--query.
      Query selection also applies when only one input file is given.
      Merging without -q rejects mixed query IDs, including within one subject group.
+     All records for the selected query must have the same positive query length.
+     Hit counts must be positive integers, identities finite values in [0,100],
+     and bit scores integers (negative scores are supported).
   2. We assume that genome IDs are distinct across all indexes.
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   4. Both the default 20- and 24-column formats are supported,
-     and formats better be consistent across all input files.
-     If not, the output format would be the one with a valid record.
+     and the first retained result selects the output format.
+     In 24-column output, missing alignment fields are left empty.
+     In 20-column output, alignment fields are omitted.
   5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
      bitscore * pident, retaining all ties at the cutoff score.
      Unlike 'lexicmap search -n', this does not use chaining scores.
-     Selected genome results are buffered in memory to count retained genome hits.
+     Ranking uses the rounded TSV values, which can change the original search order.
+     Only the top N genomes and cutoff ties are buffered for final output.
   6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
      -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
   7. Empty inputs are skipped with a warning naming each file (unless --quiet).
@@ -114,6 +122,7 @@ Attention:
 		}()
 
 		var retained []*SearchResultOfAGenome
+		selected := topSearchResults{SearchResultsHeap: SearchResultsHeap{entries: &retained}, limit: topN}
 
 		// readers
 
@@ -165,11 +174,12 @@ Attention:
 		checkColumns := true
 		checkQuery := query == ""
 		var qlen string
+		var queryLength uint64 // numerical length shared by all selected-query records
 		var moreColumns bool
 		var idx0 int
 		countTotalHits := true
 		var hits int
-		var cutoff float64
+		var order int // traversal order preserves ties after the selected heap is sorted
 
 		for {
 			if len(*(results.entries)) == 0 {
@@ -205,11 +215,9 @@ Attention:
 
 				moreColumns = rGnm.Records[0].Extra != ""
 
-				fmt.Fprintf(outfh, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\tcls\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
-				if moreColumns {
-					fmt.Fprintf(outfh, "\tcigar\tqseq\tsseq\talign")
+				if topN == 0 {
+					writeMergedSearchHeader(outfh, moreColumns)
 				}
-				fmt.Fprintln(outfh)
 			}
 
 			if checkQuery && query != rGnm.Query {
@@ -217,23 +225,25 @@ Attention:
 					query, files[idx0], rGnm.Query, files[rGnm.idx],
 				))
 			}
+			// Each reader validates its own rows; check consistency across files too.
+			length, _ := strconv.ParseUint(rGnm.Qlen, 10, 64)
+			if queryLength == 0 {
+				queryLength = length
+			} else if length != queryLength {
+				checkError(fmt.Errorf("inconsistent query lengths in %s and %s: %s != %s", files[idx0], files[rGnm.idx], qlen, rGnm.Qlen))
+			}
 
 			idx = rGnm.idx
-			keep := topN == 0 || n < topN || rGnm.Score == cutoff
-			if keep {
+			if topN == 0 {
 				n++
-				if topN > 0 && n == topN {
-					cutoff = rGnm.Score
-				}
-			}
-			if topN > 0 && keep {
-				// Retained results own their records until the final hit count is known.
-				retained = append(retained, rGnm)
-			} else {
-				if keep {
-					writeMergedGenomeResult(outfh, rGnm, query, qlen, hits, moreColumns)
-				}
+				writeMergedGenomeResult(outfh, rGnm, query, qlen, hits, moreColumns)
 				RecycleSearchResultOfAGenome(rGnm)
+			} else {
+				// Rounded TSV identities can invert the full-precision search order.
+				// Inspect every genome, retaining only the best N and cutoff ties.
+				rGnm.order = order
+				order++
+				selected.Add(rGnm)
 			}
 
 			// -------------------------------------------------
@@ -253,6 +263,12 @@ Attention:
 
 		if checkColumns && singleInput != nil && singleInput.header != "" {
 			fmt.Fprintln(outfh, singleInput.header)
+		}
+		if topN > 0 && len(retained) > 0 {
+			retained = selected.Results()
+			n = len(retained)
+			moreColumns = retained[0].Records[0].Extra != ""
+			writeMergedSearchHeader(outfh, moreColumns)
 		}
 		for i, r := range retained {
 			writeMergedGenomeResult(outfh, r, query, qlen, n, moreColumns)
@@ -284,6 +300,15 @@ func init() {
 	mergeCmd.SetUsageTemplate(usageTemplate(""))
 }
 
+// writeMergedSearchHeader waits for Top-N selection to determine the output format.
+func writeMergedSearchHeader(out io.Writer, moreColumns bool) {
+	fmt.Fprint(out, "query\tqlen\thits\tsgenome\tsseqid\tqcovGnm\tcls\thsp\tqcovHSP\talenHSP\tpident\tgaps\tqstart\tqend\tsstart\tsend\tsstr\tslen\tevalue\tbitscore")
+	if moreColumns {
+		fmt.Fprint(out, "\tcigar\tqseq\tsseq\talign")
+	}
+	fmt.Fprintln(out)
+}
+
 func writeMergedGenomeResult(out io.Writer, r *SearchResultOfAGenome, query, qlen string, hits int, moreColumns bool) {
 	for _, record := range r.Records {
 		fmt.Fprintf(out, "%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
@@ -292,14 +317,20 @@ func writeMergedGenomeResult(out io.Writer, r *SearchResultOfAGenome, query, qle
 			record.Gaps, record.Qstart, record.Qend, record.Sstart, record.Send,
 			record.Sstr, record.Slen, record.Evalue, record.Bitscore)
 		if moreColumns {
-			fmt.Fprintf(out, "\t%s", record.Extra)
+			if record.Extra == "" {
+				// Preserve four optional columns when merging a 20-column row.
+				fmt.Fprint(out, "\t\t\t\t")
+			} else {
+				fmt.Fprintf(out, "\t%s", record.Extra)
+			}
 		}
 		fmt.Fprintln(out)
 	}
 }
 
 type SearchResultOfAGenome struct {
-	idx int // the index of reader, only for merge
+	idx   int // the index of reader, only for merge
+	order int // traversal order for stable Top-N ties
 
 	Hits    int
 	Query   string
@@ -307,7 +338,7 @@ type SearchResultOfAGenome struct {
 	Sgenome string
 	QcovGnm string
 
-	Score float64 // float64(BitScore) * PIdent
+	Score float64 // BitScore * PIdent; three-decimal TSV ties are preserved
 
 	Records []*SearchResultOfASequence
 }
@@ -320,6 +351,7 @@ var poolSearchResultOfAGenome = &sync.Pool{New: func() interface{} {
 }}
 
 func RecycleSearchResultOfAGenome(r *SearchResultOfAGenome) {
+	r.order = 0
 	r.Hits = 0
 	r.Query = ""
 	r.Qlen = ""
@@ -386,6 +418,62 @@ func (h SearchResultsHeap) Pop() interface{} {
 	return x
 }
 
+// topSearchResults owns a min-heap of at most limit genomes, plus all extra
+// genomes tied at its minimum score. A rising cutoff releases obsolete ties.
+type topSearchResults struct {
+	SearchResultsHeap
+	limit int
+	ties  []*SearchResultOfAGenome
+}
+
+func (h topSearchResults) Less(i, j int) bool {
+	a, b := (*h.entries)[i], (*h.entries)[j]
+	return a.Score < b.Score || a.Score == b.Score && a.order > b.order
+}
+
+func (h *topSearchResults) Add(r *SearchResultOfAGenome) {
+	if h.Len() < h.limit {
+		heap.Push(h, r)
+		return
+	}
+	cutoff := (*h.entries)[0].Score
+	if r.Score < cutoff {
+		RecycleSearchResultOfAGenome(r)
+		return
+	}
+	if r.Score == cutoff {
+		h.ties = append(h.ties, r)
+		return
+	}
+	old := heap.Pop(h).(*SearchResultOfAGenome)
+	heap.Push(h, r)
+	if (*h.entries)[0].Score == cutoff {
+		h.ties = append(h.ties, old)
+		return
+	}
+	RecycleSearchResultOfAGenome(old)
+	for _, tied := range h.ties {
+		RecycleSearchResultOfAGenome(tied)
+	}
+	clear(h.ties)
+	h.ties = h.ties[:0]
+}
+
+// Results transfers retained records in score order, preserving traversal ties.
+func (h *topSearchResults) Results() []*SearchResultOfAGenome {
+	results := append(*h.entries, h.ties...)
+	clear(h.ties)
+	h.ties = nil
+	*h.entries = results
+	slices.SortFunc(results, func(a, b *SearchResultOfAGenome) int {
+		if order := cmp.Compare(b.Score, a.Score); order != 0 {
+			return order
+		}
+		return cmp.Compare(a.order, b.order)
+	})
+	return results
+}
+
 type SearchResultReader struct {
 	query  string
 	header string // published before the first result or the channel close
@@ -433,6 +521,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 	go func() {
 		defer fh.Close()
 		var line string
+		var lineNumber uint64 // Physical line number, including headers and blank lines.
 		headerLine := true
 		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
 		var pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
@@ -442,6 +531,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 		var _hits int
 
 		var sgenomePre, firstQuery string
+		var firstQueryLength uint64
 
 		items := make([]string, ncols)
 
@@ -451,6 +541,7 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 		var score float64
 
 		for scanner.Scan() {
+			lineNumber++
 			line = strings.TrimRight(scanner.Text(), "\r\n")
 			if line == "" {
 				continue
@@ -481,6 +572,16 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 			}
 
 			qlen = items[1]
+			length, parseErr := strconv.ParseUint(qlen, 10, 64)
+			if parseErr != nil || length == 0 {
+				checkError(fmt.Errorf("invalid query length %q in %s", qlen, file))
+			}
+			// Validate before subject grouping can hide a row's query length.
+			if firstQueryLength == 0 {
+				firstQueryLength = length
+			} else if length != firstQueryLength {
+				checkError(fmt.Errorf("inconsistent query lengths for %q in %s: %d != %d", query, file, firstQueryLength, length))
+			}
 			hits = items[2]
 			sgenome = items[3]
 			sseqid = items[4]
@@ -499,6 +600,8 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 			slen = items[17]
 			evalue = items[18]
 
+			// Optional alignment fields belong only to the current row.
+			extra = ""
 			if i := strings.IndexByte(items[19], '\t'); i > 0 { // the search result has >=20 columns
 				bitscore = items[19][:i]
 				extra = items[19][i+1:]
@@ -508,17 +611,18 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 
 			_bitscore, err = strconv.Atoi(bitscore)
 			if err != nil {
-				checkError(fmt.Errorf("failed to parse bitsocre: %s", pident))
+				checkError(fmt.Errorf("%s:%d: invalid bitscore %q: expected an integer", file, lineNumber, bitscore))
 			}
 
 			_hits, err = strconv.Atoi(hits)
-			if err != nil {
-				checkError(fmt.Errorf("failed to parse hits: %s", hits))
+			if err != nil || _hits <= 0 {
+				checkError(fmt.Errorf("%s:%d: invalid hits %q: expected a positive integer", file, lineNumber, hits))
 			}
 
 			_pident, err = strconv.ParseFloat(pident, 64)
-			if err != nil {
-				checkError(fmt.Errorf("failed to parse pident: %s", pident))
+			// NaN breaks heap comparisons; other invalid identities distort ranking.
+			if err != nil || math.IsNaN(_pident) || math.IsInf(_pident, 0) || _pident < 0 || _pident > 100 {
+				checkError(fmt.Errorf("%s:%d: invalid pident %q: expected a finite value in [0,100]", file, lineNumber, pident))
 			}
 
 			// -------
@@ -560,8 +664,9 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 
 			rGnm.Records = append(rGnm.Records, rSeq)
 
-			score = float64(_bitscore) * _pident // upate score
-			if score > rGnm.Score {
+			score = searchResultScore(_bitscore, _pident)
+			// Seed the maximum from a real HSP, including a negative score.
+			if len(rGnm.Records) == 1 || score > rGnm.Score {
 				rGnm.Score = score
 			}
 		}
@@ -583,4 +688,13 @@ func NewSearchResultReader(file string, query string, bufferSize int64) (*Search
 
 func (r *SearchResultReader) Next() *SearchResultOfAGenome {
 	return <-r.ch
+}
+
+// searchResultScore preserves exact ties for search's three-decimal identities
+// by multiplying integer thousandths. Keep additional input precision when present.
+func searchResultScore(bitscore int, pident float64) float64 {
+	if identity := math.Round(pident * 1000); identity/1000 == pident {
+		return float64(bitscore) * identity / 1000
+	}
+	return float64(bitscore) * pident
 }

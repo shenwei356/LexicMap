@@ -15,16 +15,21 @@ Attention:
      If not, please specify one query with the flag -q/--query.
      Query selection also applies when only one input file is given.
      Merging without -q rejects mixed query IDs, including within one subject group.
+     All records for the selected query must have the same positive query length.
+     Hit counts must be positive integers, identities finite values in [0,100],
+     and bit scores integers (negative scores are supported).
   2. We assume that genome IDs are distinct across all indexes.
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   4. Both the default 20- and 24-column formats are supported,
-     and formats better be consistent across all input files.
-     If not, the output format would be the one with a valid record.
+     and the first retained result selects the output format.
+     In 24-column output, missing alignment fields are left empty.
+     In 20-column output, alignment fields are omitted.
   5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
      bitscore * pident, retaining all ties at the cutoff score.
      Unlike 'lexicmap search -n', this does not use chaining scores.
-     Selected genome results are buffered in memory to count retained genome hits.
+     Ranking uses the rounded TSV values, which can change the original search order.
+     Only the top N genomes and cutoff ties are buffered for final output.
   6. Reader buffers start at up to 64 KiB and grow for long alignment rows up to
      -b/--buffer-size (default 20M). Increase -b if a row exceeds this limit.
   7. Empty inputs are skipped with a warning naming each file (unless --quiet).

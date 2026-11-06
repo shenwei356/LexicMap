@@ -13,6 +13,12 @@ Convert the default search output to SAM format
 Input:
    - Output file of 'lexicmap search' with the flag -a/--all.
      Results with --show-avg-qual are also supported.
+   - Each reference name must have one consistent length across all input files.
+     Use -c/--concat-sgenome-sseqid to distinguish sequence IDs shared by different genomes.
+   - Names must meet SAM character restrictions. Query names are limited to 254
+     printable ASCII characters and cannot contain @.
+   - Records for each query must be contiguous, including across input files,
+     and must have the same query length. A group may span adjacent files.
    - Do not support STDIN.
 
 Output:
@@ -23,6 +29,7 @@ Output:
    - NM (edit distance) and AS (alignment score) fields are produced.
      AS uses match +2, mismatch -3, and gap -(5 + 2 * length), excluding clipping.
      MAPQ uses the same raw alignment scores.
+     With alternative alignments, a nonpositive primary score gives MAPQ=0.
    - Custom integer length tags are emitted in this order:
      ZA:i: alignment length (alenHSP, without the optional quality suffix).
      ZQ:i: query alignment span (qend - qstart + 1).

@@ -23,6 +23,7 @@ package cmd
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -31,8 +32,207 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/wfa"
 )
+
+// Closing several batches can report errors concurrently. Empty readers inject
+// os.ErrInvalid without closing a descriptor owned by another live reader.
+func TestIndexCloseReaderErrors(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := genome.NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	directory, err := genome.ReadIndex(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx := &Index{
+		opt:            &IndexSearchingOptions{},
+		hasGenomeRdrs:  true,
+		poolGenomeRdrs: make([]chan *genome.Reader, 16),
+	}
+	idx.genomeReaderIndexes.Store(0, &sharedGenomeReaderIndex{index: directory})
+	for i := range idx.poolGenomeRdrs {
+		pool := make(chan *genome.Reader, 2)
+		idx.poolGenomeRdrs[i] = pool
+		pool <- &genome.Reader{}
+		rdr, err := directory.NewReader()
+		if err != nil {
+			t.Fatal(err)
+		}
+		pool <- rdr
+	}
+	if err := idx.Close(); !errors.Is(err, os.ErrInvalid) {
+		t.Fatalf("Close returned %v, want the injected reader error", err)
+	}
+	for batch, pool := range idx.poolGenomeRdrs {
+		if _, ok := <-pool; ok {
+			t.Fatalf("batch %d still contains an unclosed reader", batch)
+		}
+	}
+	idx.genomeReaderIndexes.Range(func(_, _ any) bool {
+		t.Error("Close retained shared genome metadata")
+		return false
+	})
+}
+
+// Permissive E-values can retain negative bitscores, which must still sort by
+// the best actual HSP score within a cluster and within a genome.
+func TestSearchNegativeSimilarityScores(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(93))
+	query := make([]byte, 1000)
+	for i := range query {
+		query[i] = "ACGT"[rng.Intn(4)]
+	}
+	var refs []string
+	var combined strings.Builder
+	for j, shape := range [][2]int{{44, 17}, {44, 18}, {44, 19}, {38, 16}, {38, 17}, {38, 18}} {
+		subject := append([]byte(nil), query...)
+		for i, base := range subject {
+			if i%shape[0] >= shape[1] {
+				subject[i] = "ACGT"[(strings.IndexByte("ACGT", base)+1+rng.Intn(3))%4]
+			}
+		}
+		fasta := fmt.Sprintf(">s%d\n%s\n", j, subject)
+		combined.WriteString(fasta)
+		refs = append(refs, writeTestInput(t, filepath.Join(dir, fmt.Sprintf("g%d.fa", j)), fasta))
+	}
+	for _, sameGenome := range []bool{false, true} {
+		db := filepath.Join(dir, fmt.Sprintf("db-%t", sameGenome))
+		inputs := refs
+		if sameGenome {
+			inputs = []string{writeTestInput(t, filepath.Join(dir, "combined.fa"), combined.String())}
+		}
+		runSeedIndexCommand(t, append([]string{"index", "--quiet", "-j", "1", "-k", "16", "-m", "256", "-c", "1", "--partitions", "4", "-O", db}, inputs...)...)
+		for _, reverse := range []bool{false, true} {
+			t.Run(fmt.Sprintf("sameGenome=%t/reverse=%t", sameGenome, reverse), func(t *testing.T) {
+				q := append([]byte(nil), query...)
+				if reverse {
+					RC(q)
+				}
+				file := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+				out := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "11", "-P", "11", "-n", "0", "-N", "0", "-i", "60", "-e", "1e100", "--align-max-gap", "100", "-a", file)
+				reader := csv.NewReader(strings.NewReader(string(out)))
+				reader.Comma = '\t'
+				rows, err := reader.ReadAll()
+				if err != nil {
+					t.Fatal(err)
+				}
+				var keys []string
+				scores := make(map[string]float64)
+				for _, row := range rows[1:] {
+					key := row[3]
+					if sameGenome {
+						key += ":" + row[6] // HSP cluster within the genome
+					}
+					bitscore, err := strconv.Atoi(row[19])
+					if err != nil {
+						t.Fatal(err)
+					}
+					// Use unrounded identity from the alignment, like search itself.
+					score := float64(bitscore) * float64(strings.Count(row[23], "|")) / float64(len(row[23])) * 100
+					previous, ok := scores[key]
+					if !ok {
+						keys = append(keys, key)
+					}
+					if !ok || score > previous {
+						scores[key] = score
+					}
+				}
+				negative := 0
+				for i, key := range keys {
+					if scores[key] < 0 {
+						negative++
+					}
+					if i > 0 && scores[keys[i-1]] < scores[key] {
+						t.Errorf("score order increased: %s=%g, %s=%g", keys[i-1], scores[keys[i-1]], key, scores[key])
+					}
+				}
+				if negative < 2 {
+					t.Fatalf("fixture needs at least two negative-score groups, got %d", negative)
+				}
+			})
+		}
+	}
+}
+
+// A borderline DUST score must not remove an exact hit on either strand.
+func TestSearchDustOrientation(t *testing.T) {
+	dir := t.TempDir()
+	sequence := []byte("AAAATCAAAATAAACAAAACCATTAAACAAA")
+	var previous string
+	for _, reverseTarget := range []bool{false, true} {
+		ref := writeTestInput(t, filepath.Join(dir, "g.fa"), ">s\n"+string(sequence)+"\n")
+		db := filepath.Join(dir, fmt.Sprintf("db-%t", reverseTarget))
+		runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "31", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
+		for _, reverseQuery := range []bool{false, true} {
+			query := []byte("AAAATCAAAATAAACAAAACCATTAAACAAA")
+			if reverseQuery {
+				RC(query)
+			}
+			input := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+string(query)+"\n")
+			output := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "11", "-P", "11", "-n", "0", "-N", "0", "-l", "20", input)
+			reader := csv.NewReader(strings.NewReader(string(output)))
+			reader.Comma = '\t'
+			rows, err := reader.ReadAll()
+			if err != nil || len(rows) != 2 {
+				t.Fatalf("targetRC=%t queryRC=%t: got %d rows, err=%v; want one hit", reverseTarget, reverseQuery, len(rows)-1, err)
+			}
+			row := rows[1]
+			strand := "+"
+			if reverseTarget != reverseQuery {
+				strand = "-"
+			}
+			if row[9] != "31" || row[10] != "100.000" || row[12] != "1" || row[13] != "31" || row[14] != "1" || row[15] != "31" || row[16] != strand {
+				t.Fatalf("wrong exact-hit coordinates or strand: %v", row)
+			}
+			row[16] = "" // only the relative strand changes
+			result := strings.Join(row, "\t")
+			if previous != "" && result != previous {
+				t.Fatalf("orientation changed exact-hit fields: %s != %s", result, previous)
+			}
+			previous = result
+		}
+		RC(sequence)
+	}
+}
+
+// A two-base extension must reach -l and preserve complete coordinates/CIGAR
+// on both strands, even when the terminal k-mers were filtered as low complexity.
+func TestSearchTwoBaseExtension(t *testing.T) {
+	dir := t.TempDir()
+	sequence := twoBaseExtensionSequence
+	ref := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+sequence+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "16", "-m", "64", "-c", "1", "--partitions", "4", "-O", db, ref)
+	for _, reverse := range []bool{false, true} {
+		q := []byte(sequence)
+		strand := "+"
+		if reverse {
+			RC(q)
+			strand = "-"
+		}
+		query := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		output := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-p", "11", "-P", "11", "-n", "0", "-N", "0", "-l", "89", "-a", query)
+		reader := csv.NewReader(strings.NewReader(string(output)))
+		reader.Comma = '\t'
+		rows, err := reader.ReadAll()
+		if err != nil || len(rows) != 2 {
+			t.Errorf("reverse=%t: got %d rows, err=%v; want one hit", reverse, len(rows)-1, err)
+			continue
+		}
+		row := rows[1]
+		if row[5] != "100.000" || row[9] != "89" || row[10] != "100.000" || row[12] != "1" || row[13] != "89" || row[14] != "1" || row[15] != "89" || row[16] != strand || row[20] != "89M" {
+			t.Errorf("reverse=%t: wrong full-length alignment: %v", reverse, row[:21])
+		}
+	}
+}
 
 // TestSearchMinAlignmentLength checks the final HSP length after extending a
 // single exact anchor, including the inclusive boundary and both strands.

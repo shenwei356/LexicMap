@@ -24,7 +24,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"regexp"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +42,12 @@ var toSamCmd = &cobra.Command{
 Input:
    - Output file of 'lexicmap search' with the flag -a/--all.
      Results with --show-avg-qual are also supported.
+   - Each reference name must have one consistent length across all input files.
+     Use -c/--concat-sgenome-sseqid to distinguish sequence IDs shared by different genomes.
+   - Names must meet SAM character restrictions. Query names are limited to 254
+     printable ASCII characters and cannot contain @.
+   - Records for each query must be contiguous, including across input files,
+     and must have the same query length. A group may span adjacent files.
    - Do not support STDIN.
 
 Output:
@@ -52,6 +58,7 @@ Output:
    - NM (edit distance) and AS (alignment score) fields are produced.
      AS uses match +2, mismatch -3, and gap -(5 + 2 * length), excluding clipping.
      MAPQ uses the same raw alignment scores.
+     With alternative alignments, a nonpositive primary score gives MAPQ=0.
    - Custom integer length tags are emitted in this order:
      ZA:i: alignment length (alenHSP, without the optional quality suffix).
      ZQ:i: query alignment span (qend - qstart + 1).
@@ -111,6 +118,7 @@ Output:
 		var qlen, qstart, qend string
 
 		var headerLine bool
+		var lineNo int
 		var preQuery string
 
 		// ---------------------------------------------------------------
@@ -121,18 +129,21 @@ Output:
 		}
 
 		var key string
-		var ok bool
 		refs := make([]string, 0, 2048)
-		m := make(map[string]struct{}, 1024)
+		m := make(map[string]int, 1024)                // reference name -> validated sequence length
+		seenQueries := make(map[string]struct{}, 1024) // completed/current query groups
+		var previousQueryLength int
 		for _, file := range files {
 			fh, err = xopen.Ropen(file)
 			checkError(err)
 
 			headerLine = true
+			lineNo = 0
 
 			scanner = bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
 			for scanner.Scan() {
+				lineNo++
 				line = strings.TrimRight(scanner.Text(), "\r\n")
 				if line == "" {
 					continue
@@ -146,10 +157,32 @@ Output:
 				if len(items) < ncols {
 					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", len(items), ncols))
 				}
+				query = items[0]
+				if !validSAMQueryName(query) {
+					checkError(fmt.Errorf("%s: line %d: invalid SAM query name %q (expected 1-254 printable ASCII characters excluding @)", file, lineNo, query))
+				}
+				queryLength, _, _, coordErr := parseSearchResultCoordinates("query", items[1], items[12], items[13])
+				if coordErr != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, coordErr))
+				}
+				if query != preQuery {
+					if _, exists := seenQueries[query]; exists {
+						checkError(fmt.Errorf("%s: line %d: noncontiguous records for SAM query %q; group all records for each query before conversion", file, lineNo, query))
+					}
+					// Do not retain the entire alignment row for each query ID.
+					seenQueries[strings.Clone(query)] = struct{}{}
+					preQuery, previousQueryLength = query, queryLength
+				} else if queryLength != previousQueryLength {
+					checkError(fmt.Errorf("%s: line %d: inconsistent lengths for SAM query %q: %d and %d", file, lineNo, query, previousQueryLength, queryLength))
+				}
 
 				slen = items[17] // let the compiler to reduce boundary checking
 				sgenome = items[3]
 				sseqid = items[4]
+				referenceLength, _, _, coordErr := parseSearchResultCoordinates("subject", slen, items[14], items[15])
+				if coordErr != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, coordErr))
+				}
 
 				// reference sequence name -> sequence length
 				if concatSgenomeAndSseqid {
@@ -157,17 +190,29 @@ Output:
 				} else {
 					key = sseqid
 				}
-				if _, ok = m[key]; !ok {
+				if previous, ok := m[key]; ok {
+					if previous != referenceLength {
+						hint := ""
+						if !concatSgenomeAndSseqid {
+							hint = "; use -c/--concat-sgenome-sseqid for sequence IDs shared by different genomes"
+						}
+						checkError(fmt.Errorf("%s: line %d: inconsistent lengths for SAM reference %q: %d and %d%s", file, lineNo, key, previous, referenceLength, hint))
+					}
+				} else {
+					if !validSAMReferenceName(key) {
+						checkError(fmt.Errorf("%s: line %d: invalid SAM reference name %q", file, lineNo, key))
+					}
 					refs = append(refs, key)
 					refs = append(refs, slen)
 
-					m[key] = struct{}{}
+					m[key] = referenceLength
 				}
 			}
 
 			checkError(scanner.Err())
 			checkError(fh.Close())
 		}
+		seenQueries = nil // validation is complete; no query-name table is needed in round 2
 
 		fmt.Fprintf(outfh, "@HD\tVN:1.6\tSO:unsorted\tGO:query\n")
 		e := len(refs) - 2
@@ -196,18 +241,18 @@ Output:
 		aligns := make([]*SearchResultOfASequence2, 0, 1024)
 		var _qlen int
 		var clip5, clip3 string
+		preQuery = ""
 		for _, file := range files {
 			fh, err = xopen.Ropen(file)
 			checkError(err)
 
 			headerLine = true
-			preQuery = ""
-			aligns = aligns[:0]
-			clear(m)
+			lineNo = 0
 
 			scanner = bufio.NewScanner(fh)
 			scanner.Buffer(buf, int(bufferSize))
 			for scanner.Scan() {
+				lineNo++
 				line = strings.TrimRight(scanner.Text(), "\r\n")
 				if line == "" {
 					continue
@@ -239,21 +284,45 @@ Output:
 				slen = items[17]
 				cigar = items[20]
 
-				_qcovHSP, _ = strconv.ParseFloat(qcovHSP, 64)
+				// MAPQ needs finite percentages and a valid gap count; parse
+				// failures must not silently lower or inflate confidence.
+				_qcovHSP, err = strconv.ParseFloat(qcovHSP, 64)
+				if err != nil || math.IsNaN(_qcovHSP) || math.IsInf(_qcovHSP, 0) || _qcovHSP < 0 || _qcovHSP > 100 {
+					checkError(fmt.Errorf("%s: line %d: invalid qcovHSP %q (expected a finite percentage in [0, 100])", file, lineNo, qcovHSP))
+				}
 				// --show-avg-qual decorates the length as length:quality.
 				length, _, _ := strings.Cut(alenHSP, ":")
 				_alenHSP, err = strconv.Atoi(length)
 				if err != nil || _alenHSP <= 0 {
-					checkError(fmt.Errorf("invalid alenHSP %q in %s", alenHSP, file))
+					checkError(fmt.Errorf("%s: line %d: invalid alenHSP %q", file, lineNo, alenHSP))
 				}
-				_pident, _ = strconv.ParseFloat(pident, 64)
-				_gaps, _ = strconv.Atoi(gaps)
-				editDistance, algnScore = alignmentStatsFromCIGAR(cigar)
-				_qlen, _ = strconv.Atoi(qlen)
-				_qstart, qstartErr := strconv.Atoi(qstart)
-				_qend, qendErr := strconv.Atoi(qend)
-				if qstartErr != nil || qendErr != nil || _qstart <= 0 || _qend < _qstart || _qend > _qlen {
-					checkError(fmt.Errorf("invalid query coordinates %q..%q for length %q in %s", qstart, qend, qlen, file))
+				_pident, err = strconv.ParseFloat(pident, 64)
+				if err != nil || math.IsNaN(_pident) || math.IsInf(_pident, 0) || _pident < 0 || _pident > 100 {
+					checkError(fmt.Errorf("%s: line %d: invalid pident %q (expected a finite percentage in [0, 100])", file, lineNo, pident))
+				}
+				_gaps, err = strconv.Atoi(gaps)
+				if err != nil || _gaps < 0 || _gaps > _alenHSP {
+					checkError(fmt.Errorf("%s: line %d: invalid gaps %q (expected an integer in [0, %d])", file, lineNo, gaps, _alenHSP))
+				}
+				var _qstart, _qend int
+				_qlen, _qstart, _qend, err = parseSearchResultCoordinates("query", qlen, qstart, qend)
+				if err != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
+				}
+				_, start, end, coordErr := parseSearchResultCoordinates("subject", slen, sstart, send)
+				if coordErr != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, coordErr))
+				}
+				if sstr != "+" && sstr != "-" {
+					checkError(fmt.Errorf("%s: line %d: invalid strand %q (expected + or -)", file, lineNo, sstr))
+				}
+				querySpan, referenceSpan := _qend-_qstart+1, end-start+1
+				editDistance, algnScore, err = alignmentStatsFromCIGAR(cigar, querySpan, referenceSpan, _alenHSP)
+				if err != nil {
+					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
+				}
+				if n := len(qseq) - strings.Count(qseq, "-"); n != querySpan {
+					checkError(fmt.Errorf("%s: line %d: query sequence length %d does not match query span %d", file, lineNo, n, querySpan))
 				}
 
 				flag = 0
@@ -295,13 +364,8 @@ Output:
 				r.PNEXT = "0"
 				r.TLEN = 0 // SAM single-segment templates have no paired template length.
 				// Keep the former TLEN value in a custom tag with explicit span semantics.
-				start, startErr := strconv.Atoi(sstart)
-				end, endErr := strconv.Atoi(send)
-				if startErr != nil || endErr != nil || start <= 0 || end < start {
-					checkError(fmt.Errorf("invalid subject coordinates %q..%q in %s", sstart, send, file))
-				}
-				r.ReferenceSpan = end - start + 1
-				r.QuerySpan = _qend - _qstart + 1
+				r.ReferenceSpan = referenceSpan
+				r.QuerySpan = querySpan
 				if len(aligns) == 0 || preQuery != query {
 					r.SEQ = strings.Repeat("N", _qstart-1) + strings.ReplaceAll(qseq, "-", "") + strings.Repeat("N", _qlen-_qend)
 				} else {
@@ -328,20 +392,51 @@ Output:
 				aligns = append(aligns, r)
 				preQuery = query
 			}
-			if len(aligns) > 0 {
-				checkError(writeSAMQuery(outfh, preQuery, aligns))
-				clear(aligns)
-				aligns = aligns[:0]
-			}
-
 			checkError(scanner.Err())
 			checkError(fh.Close())
+		}
+		// An input file boundary does not end a query that continues in the next file.
+		if len(aligns) > 0 {
+			checkError(writeSAMQuery(outfh, preQuery, aligns))
+			clear(aligns)
+			aligns = aligns[:0]
 		}
 
 		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart))
 		}
 	},
+}
+
+// validSAMQueryName checks the SAM v1.6 QNAME length and ASCII restrictions.
+func validSAMQueryName(name string) bool {
+	if len(name) == 0 || len(name) > 254 {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] < '!' || name[i] > '~' || name[i] == '@' {
+			return false
+		}
+	}
+	return true
+}
+
+// validSAMReferenceName checks SN/RNAME delimiters and reserved leading symbols.
+// See https://samtools.github.io/hts-specs/SAMv1.pdf, section 1.2.1.
+func validSAMReferenceName(name string) bool {
+	if len(name) == 0 || name[0] == '*' || name[0] == '=' {
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if name[i] < '!' || name[i] > '~' {
+			return false
+		}
+		switch name[i] {
+		case '\\', ',', '"', '\'', '`', '(', ')', '[', ']', '{', '}', '<', '>':
+			return false
+		}
+	}
+	return true
 }
 
 // reverseSAMCIGAR changes from query-forward to reference-forward operation order.
@@ -375,10 +470,15 @@ func writeSAMQuery(w io.Writer, query string, aligns []*SearchResultOfASequence2
 			other.FLAG |= 0x100
 			maxScore = max(maxScore, other.score)
 		}
-		mapq := 40 * float64(a.score-maxScore) / float64(a.score)
-		mapq *= a.qcovHSP / 100
-		mapq *= (a.pident / 100) * (1 - a.gaps/float64(a.alenHSP))
-		a.MAPQ = uint32(min(60, max(0, int(mapq))))
+		// A nonpositive denominator can invert the score difference or divide
+		// by zero. Confidence also requires beating every alternative.
+		a.MAPQ = 0
+		if a.score > 0 && a.score > maxScore {
+			mapq := 40 * float64(a.score-maxScore) / float64(a.score)
+			mapq *= a.qcovHSP / 100
+			mapq *= (a.pident / 100) * (1 - a.gaps/float64(a.alenHSP))
+			a.MAPQ = uint32(min(60, max(0, int(mapq))))
+		}
 	}
 	for _, a := range aligns {
 		if _, err := fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%d\t%s\t%s\t%s\t%d\t%s\t%s\tNM:i:%d\tAS:i:%d\tZA:i:%d\tZQ:i:%d\tZR:i:%d\n",
@@ -444,24 +544,52 @@ func init() {
 }
 
 // alignmentStatsFromCIGAR uses search's +2/-3 and gap-open 5 + extension 2*k
-// scoring. Search emits exact matches as M and mismatches as X; clipping is free.
+// scoring. Search emits M/=, X, I, and D; clipping is added by the converter.
 // Rounded bitscores cannot recover the raw score, especially odd scores.
-func alignmentStatsFromCIGAR(cigar string) (distance, score int) {
-	var n int
-	for _, found := range reCIGAR.FindAllStringSubmatch(cigar, -1) {
-		n, _ = strconv.Atoi(found[1])
-		switch found[2] {
-		case "M", "=":
+func alignmentStatsFromCIGAR(cigar string, querySpan, referenceSpan, alignmentLen int) (distance, score int, err error) {
+	// A single-base gap costs seven, the largest absolute cost per column.
+	if cigar == "" || alignmentLen <= 0 || alignmentLen > int(^uint(0)>>1)/7 {
+		return 0, 0, fmt.Errorf("invalid CIGAR %q or alignment length %d", cigar, alignmentLen)
+	}
+	var query, reference, aligned int
+	for i := 0; i < len(cigar); {
+		start := i
+		for i < len(cigar) && cigar[i] >= '0' && cigar[i] <= '9' {
+			i++
+		}
+		if start == i || i == len(cigar) {
+			return 0, 0, fmt.Errorf("invalid CIGAR %q", cigar)
+		}
+		n, parseErr := strconv.Atoi(cigar[start:i])
+		if parseErr != nil || n <= 0 || n > alignmentLen-aligned {
+			return 0, 0, fmt.Errorf("invalid CIGAR %q for alignment length %d", cigar, alignmentLen)
+		}
+		switch cigar[i] {
+		case 'M', '=':
+			query += n
+			reference += n
 			score += 2 * n
-		case "X":
+		case 'X':
+			query += n
+			reference += n
 			distance += n
 			score -= 3 * n
-		case "I", "D":
+		case 'I', 'D':
+			if cigar[i] == 'I' {
+				query += n
+			} else {
+				reference += n
+			}
 			distance += n
 			score -= 5 + 2*n
+		default:
+			return 0, 0, fmt.Errorf("invalid CIGAR %q: unsupported search operation %q", cigar, cigar[i])
 		}
+		aligned += n
+		i++
 	}
-	return distance, score
+	if query != querySpan || reference != referenceSpan || aligned != alignmentLen {
+		return 0, 0, fmt.Errorf("CIGAR spans (%d, %d, %d) do not match query, subject, and alignment lengths (%d, %d, %d)", query, reference, aligned, querySpan, referenceSpan, alignmentLen)
+	}
+	return distance, score, nil
 }
-
-var reCIGAR = regexp.MustCompile(`(\d+)([M=XIDNSHP])`)

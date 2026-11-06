@@ -719,7 +719,12 @@ Output format:
 				}
 
 				// fmt.Printf("seqs: %d, len: %d\n", len(query.seqs), len(query.bigSeq))
-				if query.genomeSize < fragSize {
+				// Screening needs a complete k-mer, not an ANI-sized fragment.
+				if onlyGenomeScreening && query.genomeSize < idx.k {
+					ch <- query
+					return
+				}
+				if !onlyGenomeScreening && query.genomeSize < fragSize {
 					log.Warningf("query genome %s is smaller than fragment size (%d), skipped", query.id, fragSize)
 					ch <- query
 					return
@@ -914,7 +919,7 @@ func init() {
 
 	// only for research
 	gsearchCmd.Flags().BoolP("only-genome-screening", "S", false,
-		formatFlagUsage(`Only perform genome screening, no ANI computation.`))
+		formatFlagUsage(`Only perform genome screening, no ANI computation. Queries may be shorter than --frag-size.`))
 	gsearchCmd.Flags().BoolP("extra", "", false,
 		formatFlagUsage(`Show extra columns for -S/--only-genome-screening.`))
 

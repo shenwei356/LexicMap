@@ -21,12 +21,47 @@
 package seedposition
 
 import (
+	"bufio"
+	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 )
+
+// writerFailure injects a delayed I/O error without relying on a full filesystem.
+type writerFailure struct{ err error }
+
+func (w writerFailure) Write([]byte) (int, error) { return 0, w.err }
+
+func TestWriterCloseAfterFlushError(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "positions.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.fh.Close()
+	index := file + PositionsIndexFileExt
+	if err := os.WriteFile(index, []byte("original index"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("injected write failure")
+	w.w = bufio.NewWriter(writerFailure{want})
+	if _, err := w.w.WriteString("buffered record"); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); !errors.Is(err, want) {
+		t.Fatalf("lost flush error: %v", err)
+	}
+	if _, err := w.fh.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Errorf("data file still open after flush failure: %v", err)
+	}
+	if got, err := os.ReadFile(index); err != nil || string(got) != "original index" {
+		t.Fatalf("published index after data failure: %q, %v", got, err)
+	}
+}
 
 func TestSeedPositions(t *testing.T) {
 	tests := [][]uint32{
@@ -42,7 +77,7 @@ func TestSeedPositions(t *testing.T) {
 		{1, 15, 300, 301, 2500, 3100, 3111, 5000, 10000},
 	}
 
-	file := "test.bin"
+	file := filepath.Join(t.TempDir(), "positions.bin")
 
 	// ---------------------------------------
 
@@ -77,6 +112,12 @@ func TestSeedPositions(t *testing.T) {
 		t.Error(err)
 		return
 	}
+	// Close before TempDir cleanup, including when a read assertion fails.
+	t.Cleanup(func() {
+		if err := rdr.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	locs := make([]uint32, 64)
 	var test []uint32
@@ -105,19 +146,6 @@ func TestSeedPositions(t *testing.T) {
 		}
 	}
 
-	// clean up
-
-	err = os.RemoveAll(file)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	err = os.RemoveAll(file + PositionsIndexFileExt)
-	if err != nil {
-		t.Error(err)
-		return
-	}
 }
 
 // Closing and reopening pooled readers must reset the record-directory offset.
@@ -151,5 +179,42 @@ func TestSeedPositionReaderReuse(t *testing.T) {
 		if !reflect.DeepEqual(got, want[i]) {
 			t.Fatalf("reopen %d: got %v, want %v", n, got, want[i])
 		}
+	}
+}
+
+// Invalid offsets must not decode bytes at the file's previous cursor position.
+func TestSeedPositionsInvalidOffset(t *testing.T) {
+	for _, offset := range []uint64{1 << 63, ^uint64(0) - 7, ^uint64(0), 1<<63 - 3} {
+		t.Run(fmt.Sprint(offset), func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "positions.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Write([]uint32{1, 15, 300, 301}); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			index := file + PositionsIndexFileExt
+			data, err := os.ReadFile(index)
+			if err != nil {
+				t.Fatal(err)
+			}
+			be.PutUint64(data[24:32], offset)
+			if err := os.WriteFile(index, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			var positions []uint32
+			if err := r.SeedPositions(0, &positions); err == nil {
+				t.Fatalf("decoded invalid offset as positions %v", positions)
+			}
+		})
 	}
 }

@@ -13,7 +13,7 @@ Extract all sequences of a given genome
 Attention:
   1. All degenerate bases in reference genomes were converted to the lexicographic first bases.
      E.g., N was converted to A. Therefore, consecutive A's in output might be N's in the genomes.
-  2. Large genomes fragmented into multiple chunks during indexing (total size > 15 Mb by default,
+  2. Large genomes fragmented into multiple chunks during indexing (chunk limit: 20 Mb by default,
      configurable with -g/--max-genome in 'lexicmap index'), such as many fungal genomes,
      may have their sequence order rearranged relative to the original input files.
 

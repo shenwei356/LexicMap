@@ -44,3 +44,92 @@ func TestBLASTGroupingBoundaries(t *testing.T) {
 		t.Fatalf("wrong group numbering:\n%s", out)
 	}
 }
+
+func TestBLASTAlignmentLengths(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		q, s, middle int
+		valid        bool
+	}{
+		{"short", 4, 4, 4, true},
+		{"line boundary", 60, 60, 60, true},
+		{"multiple lines", 61, 61, 61, true},
+		{"short subject", 61, 60, 61, false},
+		{"long subject", 60, 61, 60, false},
+		{"short annotation", 61, 61, 60, false},
+		{"long annotation", 60, 60, 61, false},
+		{"empty", 0, 0, 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			row := fmt.Sprintf("q\t61\t1\tg\ts\t100\t1\t1\t100\t%d\t100\t0\t1\t%d\t1\t%d\t+\t61\t0\t100\t%dM\t%s\t%s\t%s\n", tc.q, tc.q, tc.s, tc.q, strings.Repeat("A", tc.q), strings.Repeat("A", tc.s), strings.Repeat("|", tc.middle))
+			input := auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n\n" + row
+			out, stderr, err := runAuditCommand(t, input, "utils", "2blast", "--quiet", "-")
+			if tc.valid {
+				if err != nil || strings.Count(string(out), "Query  ") != (tc.q+59)/60 {
+					t.Fatalf("valid alignment failed: %v\n%s\n%s", err, stderr, out)
+				}
+			} else if err == nil || strings.Contains(string(stderr), "panic:") || !strings.Contains(string(stderr), "invalid alignment lengths") || !strings.Contains(string(stderr), "line 3") {
+				t.Fatalf("expected alignment-length error at line 3, got %v\n%s", err, stderr)
+			}
+		})
+	}
+}
+
+func TestBLASTGappedCoordinates(t *testing.T) {
+	for _, strand := range []string{"+", "-"} {
+		t.Run(strand, func(t *testing.T) {
+			// Gaps cross the 60-column display boundary; each strand must end at
+			// the corresponding inclusive coordinate despite different spans.
+			q, s := strings.Repeat("A", 59)+"--AC", strings.Repeat("A", 59)+"GT-C"
+			row := fmt.Sprintf("q\t100\t1\tg\ts\t61\t1\t1\t61\t63\t95.2\t3\t3\t63\t10\t71\t%s\t100\t0\t100\t59M2D1I1M\t%s\t%s\t%s\n", strand, q, s, strings.Repeat("|", 59)+"   |")
+			out := runSeedIndexCommand(t, "utils", "2blast", "--quiet", writeTestInput(t, filepath.Join(t.TempDir(), "input.tsv"), auditSearchHeader+"\tcigar\tqseq\tsseq\talign\n"+row))
+			var query, subject string
+			for _, line := range strings.Split(string(out), "\n") {
+				if strings.HasPrefix(line, "Query  ") {
+					query = strings.Join(strings.Fields(line), " ")
+				} else if strings.HasPrefix(line, "Sbjct  ") {
+					subject = strings.Join(strings.Fields(line), " ")
+				}
+			}
+			wantSubject := "Sbjct 70 T-C 71"
+			if strand == "-" {
+				wantSubject = "Sbjct 11 T-C 10"
+			}
+			if query != "Query 62 -AC 63" || subject != wantSubject {
+				t.Fatalf("wrong terminal coordinates: %s; %s", query, subject)
+			}
+		})
+	}
+}
+
+func TestBLASTInvalidCoordinates(t *testing.T) {
+	base := strings.Split("q\t4\t1\tg\ts\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t4\t0\t8\t4M\tACGT\tACGT\t||||", "\t")
+	for _, tc := range []struct {
+		name, value, message string
+		column               int
+	}{
+		{"bad query start", "bad", "invalid query coordinates", 12},
+		{"zero query start", "0", "invalid query coordinates", 12},
+		{"reversed query", "5", "invalid query coordinates", 12},
+		{"query overrun", "5", "invalid query coordinates", 13},
+		{"query length overflow", "18446744073709551616", "invalid query coordinates", 1},
+		{"bad subject start", "bad", "invalid subject coordinates", 14},
+		{"zero subject start", "0", "invalid subject coordinates", 14},
+		{"reversed subject", "5", "invalid subject coordinates", 14},
+		{"subject overrun", "5", "invalid subject coordinates", 15},
+		{"subject length overflow", "18446744073709551616", "invalid subject coordinates", 17},
+		{"invalid strand", "?", "invalid strand", 16},
+		{"query span", "3", "alignment spans", 13},
+		{"subject span", "3", "alignment spans", 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fields := append([]string(nil), base...)
+			fields[tc.column] = tc.value
+			input := auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n\n" + strings.Join(fields, "\t") + "\n"
+			_, stderr, err := runAuditCommand(t, input, "utils", "2blast", "--quiet", "-")
+			if err == nil || strings.Contains(string(stderr), "panic:") || !strings.Contains(string(stderr), tc.message) || !strings.Contains(string(stderr), "line 3") {
+				t.Fatalf("expected %s at line 3: %v\n%s", tc.message, err, stderr)
+			}
+		})
+	}
+}
