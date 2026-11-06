@@ -543,30 +543,19 @@ func (cpr *SeqComparator) RecycleIndex() {
 	}
 }
 
-// TrimSubStrPairs trims anchors for query/subjects with tandem repeats in either end.
-//
-// case 1: embeded anchor in query/target
-//
-//	61: 156-186 (+) vs 1163-1193 (+), len:31
-//	62: 157-187 (-) vs 1164-1194 (-), len:31
-//	63: 158-188 (+) vs 1165-1195 (+), len:31
-//	64: 168-195 (-) vs 1168-1195 (-), len:28
-//	65: 175-202 (-) vs 1168-1195 (-), len:28 <---
-//	66: 182-209 (-) vs 1168-1195 (-), len:28 <---
-//	67: 189-216 (-) vs 1168-1195 (-), len:28 <---
-//	68: 196-223 (+) vs 1168-1195 (+), len:28 <---
-//	69: 203-230 (+) vs 1168-1195 (+), len:28 <---
-//	70: 210-237 (-) vs 1168-1195 (-), len:28 <---
-//	71: 217-244 (-) vs 1168-1195 (-), len:28 <--- gap=7, overlap=28 (28/28)
-//
-// case 2: big overlap + big gap
-//
-//	727: 789-819 (-) vs 789-819 (-), len:31
-//	728: 790-820 (-) vs 790-820 (-), len:31
-//	729: 804-821 (-) vs 821-838 (-), len:18 <--- gap=17, overlap=17 (17/18)
+// TrimSubStrPairs trims terminal tandem-repeat anchors of equal length.
+// Mixed lengths can change both start distances and anchor order under reverse
+// complementation. Preserve those candidates for chaining and final alignment.
 func TrimSubStrPairs(subs *[]SubstrPair, k int, minDist float32) {
 	if len(*subs) < 2 {
 		return
+	}
+
+	length := (*subs)[0].Len
+	for _, sub := range (*subs)[1:] {
+		if sub.Len != length {
+			return
+		}
 	}
 
 	var _p, p SubstrPair

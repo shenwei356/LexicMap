@@ -22,6 +22,8 @@
 // Keep their scoring, packing and tie-breaking independent of the optimized kernels.
 package cmd
 
+import "math"
+
 func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int, int, int, int, int, int, int) {
 	n := len(*subs)
 	if n == 1 { // a lone anchor is retained as an extension candidate
@@ -119,7 +121,7 @@ func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int
 	}
 	paths := poolChains2.Get().(*[]*Chain2Result)
 	var nMatchedBases, nAlignedBasesQ, nAlignedBasesT int
-	_, qB, qE, tB, tE := chainARegion(
+	_, qB, qE, tB, tE := referenceChainARegion(
 		subs,
 		maxscoresIdxs,
 		0,
@@ -265,4 +267,237 @@ func referenceChaining3(ce *Chainer3, subs *[]SubstrPair) *Chain3Result {
 		i = j
 	}
 	return nil
+}
+
+// Original recursive backtracking retained as an independent output oracle.
+func referenceChainARegion(subs *[]SubstrPair, // a region of the subs
+	maxscoresIdxs *[]uint64,
+	offset int, // offset of this region of subs
+	minScore float64, // the threshold
+	minAlignLen int,
+	minPident float64,
+	paths *[]*Chain2Result, // paths
+	_nMatchedBases *int,
+	_nAlignedBasesQ *int,
+	_nAlignedBasesT *int,
+	Mi0 int, // found Mi
+	bounds *[]int32, // intervals of previous chains
+	heuristicKmerPidentThreshold float64,
+) (
+	float64, // score
+	int, // query begin position (0-based)
+	int, // query end position (0-based)
+	int, // target begin position (0-based)
+	int, // target end position (0-based)
+) {
+	var _mi uint64
+	var m, M float64
+	var i, Mi int
+	if Mi0 < 0 { // Mi is not given
+		for i, _mi = range *maxscoresIdxs {
+			m = float64(_mi >> 32)
+			if m > M || m == M && int(uint32(_mi)) == offset+Mi && extendsChain2End((*subs)[Mi], (*subs)[i]) {
+				M, Mi = m, i
+			}
+		}
+		if M < minScore { // no valid anchors
+			return 0, -1, -1, -1, -1
+		}
+	} else {
+		Mi = Mi0
+	}
+
+	var nMatchedBases int
+	var nAlignedBasesQ, nAlignedBasesT int
+
+	i = Mi
+	var j int
+	var qB, qE, tB, tE int // the bound of the chain (0-based)
+	qB, tB = math.MaxInt, math.MaxInt
+	var qb, qe, tb, te int32 // the bound (0-based)
+	var sub *SubstrPair
+	var beginOfNextAnchor int
+	var pident float64
+	firstAnchorOfAChain := true
+	var nAnchors int
+	for {
+		j = int((*maxscoresIdxs)[i]&4294967295) - offset // previous seed
+
+		if j < 0 { // the first anchor is not in current region
+			break
+		}
+
+		sub = &(*subs)[i]
+
+		nAnchors++
+
+		if firstAnchorOfAChain {
+			firstAnchorOfAChain = false
+
+			qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
+			te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
+			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
+
+			nMatchedBases += int(sub.Len)
+		} else {
+			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
+
+			if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
+				nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
+			} else {
+				nMatchedBases += int(sub.Len)
+			}
+		}
+		beginOfNextAnchor = int(sub.QBegin)
+
+		if i == j { // the path starts here
+			if firstAnchorOfAChain { // sadly, there's no anchor added.
+				break
+			}
+
+			nAlignedBasesQ += int(qe) - int(qb) + 1
+
+			if nAlignedBasesQ < minAlignLen {
+				firstAnchorOfAChain = true
+				break
+			}
+
+			nAlignedBasesT += int(te) - int(tb) + 1
+
+			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
+
+			if pident < heuristicKmerPidentThreshold {
+				firstAnchorOfAChain = true
+				break
+			}
+			if pident > 100 {
+				pident = 100
+			}
+
+			path := poolChain2.Get().(*Chain2Result)
+			path.Reset()
+			path.NAnchors = nAnchors
+			path.AlignedBasesQ = nAlignedBasesQ
+			path.AlignedBasesT = nAlignedBasesT
+			path.MatchedBases = nMatchedBases
+			path.PIdent = pident
+			path.QBegin, path.QEnd = int(qb), int(qe)
+			path.TBegin, path.TEnd = int(tb), int(te)
+			*paths = append(*paths, path)
+
+			*_nAlignedBasesQ += nAlignedBasesQ
+			*_nAlignedBasesT += nAlignedBasesT
+			*_nMatchedBases += nMatchedBases
+
+			firstAnchorOfAChain = true
+			break
+		}
+
+		i = j
+	}
+
+	if j < 0 { // the first anchor is not in current region
+		if nAnchors > 0 {
+			nAlignedBasesQ += int(qe) - int(qb) + 1
+			nAlignedBasesT += int(te) - int(tb) + 1
+
+			if nAlignedBasesQ >= minAlignLen {
+				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
+				if pident >= heuristicKmerPidentThreshold {
+					if pident > 100 {
+						pident = 100
+					}
+
+					path := poolChain2.Get().(*Chain2Result)
+					path.Reset()
+					path.NAnchors = nAnchors
+					path.AlignedBasesQ = nAlignedBasesQ
+					path.AlignedBasesT = nAlignedBasesT
+					path.MatchedBases = nMatchedBases
+					path.PIdent = pident
+					path.QBegin, path.QEnd = int(qb), int(qe)
+					path.TBegin, path.TEnd = int(tb), int(te)
+					*paths = append(*paths, path)
+
+					*_nAlignedBasesQ += nAlignedBasesQ
+					*_nAlignedBasesT += nAlignedBasesT
+					*_nMatchedBases += nMatchedBases
+
+				}
+			}
+		}
+	}
+
+	qB, qE = int(qb), int(qe)
+	tB, tE = int(tb), int(te)
+
+	if Mi != len(*maxscoresIdxs)-1 { // Mi is not the last element
+		tmp := (*subs)[Mi+1:]
+		tmpsi := (*maxscoresIdxs)[Mi+1:]
+		_score, _qB, _qE, _tB, _tE := referenceChainARegion(
+			&tmp,
+			&tmpsi,
+			offset+Mi+1,
+			minScore,
+			minAlignLen,
+			minPident,
+			paths,
+			_nMatchedBases,
+			_nAlignedBasesQ,
+			_nAlignedBasesT,
+			-1,
+			bounds,
+			heuristicKmerPidentThreshold,
+		)
+		if _score > 0 {
+			if _qB < qB {
+				qB = _qB
+			}
+			if _qE > qE {
+				qE = _qE
+			}
+			if _tB < tB {
+				tB = _tB
+			}
+			if _tE > tE {
+				tE = _tE
+			}
+		}
+	}
+
+	if i > 0 { // the first anchor is not the first element
+		tmp := (*subs)[:i]
+		tmpsi := (*maxscoresIdxs)[:i]
+		_score, _qB, _qE, _tB, _tE := referenceChainARegion(
+			&tmp,
+			&tmpsi,
+			offset,
+			minScore,
+			minAlignLen,
+			minPident,
+			paths,
+			_nMatchedBases,
+			_nAlignedBasesQ,
+			_nAlignedBasesT,
+			-1,
+			bounds,
+			heuristicKmerPidentThreshold,
+		)
+		if _score > 0 {
+			if _qB < qB {
+				qB = _qB
+			}
+			if _qE > qE {
+				qE = _qE
+			}
+			if _tB < tB {
+				tB = _tB
+			}
+			if _tE > tE {
+				tE = _tE
+			}
+		}
+	}
+
+	return M, qB, qE, tB, tE
 }

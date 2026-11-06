@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"reflect"
 	"slices"
@@ -184,5 +185,192 @@ func TestChainer2CursorReuseMatchesReference(t *testing.T) {
 		if r != nil {
 			RecycleChaining2Result(r)
 		}
+	}
+}
+
+// Disjoint chains force repeated maximum searches. A zero-score terminal anchor
+// in each group also exercises continuation ties in indexed subregions.
+func disjointChain2Anchors(groups int) []SubstrPair {
+	subs := make([]SubstrPair, 0, groups*3)
+	for i := range groups {
+		q, t := int32(i*500), int32(i*1000)
+		subs = append(subs, SubstrPair{QBegin: q, TBegin: t, Len: 31},
+			SubstrPair{QBegin: q + 31, TBegin: t + 31, Len: 31},
+			SubstrPair{QBegin: q + 100, TBegin: t + 125, Len: 25})
+	}
+	return subs
+}
+
+func TestChainer2DisjointRegionsMatchReference(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		subs := disjointChain2Anchors(2000)
+		if reverse {
+			for i := range subs {
+				subs[i].QBegin = 2000000 - subs[i].QBegin - int32(subs[i].Len)
+				subs[i].TBegin = 3000000 - subs[i].TBegin - int32(subs[i].Len)
+			}
+			slices.Reverse(subs)
+		}
+		opt := DefaultChaining2Options
+		opt.MinScore = 38
+		got, ref := NewChainer2(&opt), NewChainer2(&opt)
+		g, gm, gq, gt, gqb, gqe, gtb, gte := got.Chain(&subs)
+		r, rm, rq, rt, rqb, rqe, rtb, rte := referenceChaining2(ref, &subs)
+		if g == nil || r == nil {
+			t.Fatal("missing disjoint chains")
+		}
+		if len(*g) != 2000 || !reflect.DeepEqual(denseChain2Summary(g), denseChain2Summary(r)) ||
+			[7]int{gm, gq, gt, gqb, gqe, gtb, gte} != [7]int{rm, rq, rt, rqb, rqe, rtb, rte} {
+			t.Fatalf("reverse=%t: independent chains changed", reverse)
+		}
+		RecycleChaining2Result(g)
+		RecycleChaining2Result(r)
+	}
+}
+
+// Partial blocks and same-score branches must select exactly the endpoint of
+// the original left-to-right scan, including nonzero global predecessor offsets.
+func TestChain2PeakIndexMatchesScan(t *testing.T) {
+	rng := rand.New(rand.NewSource(1906))
+	for _, n := range []int{63, 64, 65, 1024, 2049} {
+		subs := make([]SubstrPair, n)
+		scores := make([]uint64, n)
+		const offset = 17
+		for i := range subs {
+			subs[i] = SubstrPair{QBegin: int32(i * 3), TBegin: int32(i * 5), Len: uint8(1 + rng.Intn(31))}
+			previous := i
+			if i > 0 && rng.Intn(3) != 0 {
+				previous = rng.Intn(i)
+			}
+			scores[i] = uint64(rng.Intn(5))<<32 | uint64(offset+previous)
+		}
+		index := chain2PeakIndex{subs: subs, scores: scores, offset: offset}
+		index.best(0, n)
+		if index.tree != nil {
+			t.Fatal("a single scan allocated the optional index")
+		}
+		if n < chain2PeakBlockSize {
+			index.build() // Exercise partial blocks smaller than the activation limit.
+		} else {
+			for range 5 {
+				index.best(0, n)
+			}
+			if index.tree == nil || index.scanned > 5*n {
+				t.Fatal("repeated scans did not activate the index")
+			}
+		}
+		for range 2000 {
+			begin := rng.Intn(n)
+			end := begin + 1 + rng.Intn(n-begin)
+			want, score := begin, uint64(0)
+			for i := begin; i < end; i++ {
+				m := scores[i] >> 32
+				if m > score || m == score && int(uint32(scores[i])) == offset+want && extendsChain2End(subs[want], subs[i]) {
+					want, score = i, m
+				}
+			}
+			got, s := index.best(begin, end)
+			if got != want || s != float64(score) {
+				t.Fatalf("n=%d range=[%d,%d): got %d/%g, want %d/%d", n, begin, end, got, s, want, score)
+			}
+		}
+	}
+}
+
+// Compare the complete traversal with the recursive oracle, including rejected
+// chains, partial predecessor paths, bounds and depth-first output order.
+func TestChainARegionMatchesReference(t *testing.T) {
+	rng := rand.New(rand.NewSource(8494))
+	for trial := range 100 {
+		n := 64 + rng.Intn(512)
+		subs := make([]SubstrPair, n)
+		scores := make([]uint64, n)
+		offset := rng.Intn(100)
+		for i := range subs {
+			subs[i] = SubstrPair{QBegin: int32(i * 10), TBegin: int32(rng.Intn(n * 10)), Len: uint8(1 + rng.Intn(31))}
+			previous := i
+			if i > 0 && rng.Intn(3) == 0 {
+				previous = rng.Intn(i)
+			}
+			scores[i] = uint64(rng.Intn(100))<<32 | uint64(offset+previous)
+		}
+		var expected []denseChainSummary
+		var want [7]int
+		var wantScore float64
+		minimum, align, identity := float64(rng.Intn(110)), rng.Intn(50), float64(rng.Intn(80))
+		for _, reference := range []bool{true, false} {
+			paths := poolChains2.Get().(*[]*Chain2Result)
+			var matched, q, tgt int
+			fn := chainARegion
+			if reference {
+				fn = referenceChainARegion
+			}
+			s, qb, qe, tb, te := fn(&subs, &scores, offset, minimum, align, 0, paths, &matched, &q, &tgt, -1, nil, identity)
+			got := denseChain2Summary(paths)
+			stats := [7]int{matched, q, tgt, qb, qe, tb, te}
+			if reference {
+				expected, want, wantScore = got, stats, s
+			} else if s != wantScore || stats != want || !reflect.DeepEqual(got, expected) {
+				t.Fatalf("trial=%d: iterative traversal differs from reference", trial)
+			}
+			RecycleChaining2Result(paths)
+		}
+	}
+}
+
+func BenchmarkChainARegionDisjoint(b *testing.B) {
+	for _, groups := range []int{1000, 4000, 16000} {
+		subs := disjointChain2Anchors(groups)
+		scores := make([]uint64, len(subs))
+		for i := range groups {
+			scores[3*i] = 31<<32 | uint64(3*i)
+			scores[3*i+1] = 62<<32 | uint64(3*i)
+			scores[3*i+2] = 62<<32 | uint64(3*i+1)
+		}
+		for _, reference := range []bool{true, false} {
+			b.Run(fmt.Sprintf("groups=%d/reference=%t", groups, reference), func(b *testing.B) {
+				fn := chainARegion
+				if reference {
+					fn = referenceChainARegion
+				}
+				// Warm the shared result pools equally; large legacy runs may
+				// otherwise calibrate to b.N=1 while the new path runs many times.
+				warm := poolChains2.Get().(*[]*Chain2Result)
+				var wm, wq, wt int
+				fn(&subs, &scores, 0, 38, 50, 0, warm, &wm, &wq, &wt, 2, nil, 15)
+				RecycleChaining2Result(warm)
+				b.ReportAllocs()
+				b.ResetTimer()
+				for range b.N {
+					paths := poolChains2.Get().(*[]*Chain2Result)
+					var m, q, tgt int
+					fn(&subs, &scores, 0, 38, 50, 0, paths, &m, &q, &tgt, 2, nil, 15)
+					if len(*paths) != groups {
+						b.Fatal("lost chains")
+					}
+					RecycleChaining2Result(paths)
+				}
+			})
+		}
+	}
+}
+
+// Custom zero-length/zero-threshold inputs retain the legacy complete-path
+// comparison, including NaN identity, while normal callers use positive lengths.
+func TestChainARegionZeroLength(t *testing.T) {
+	subs := []SubstrPair{{}, {QBegin: 1, TBegin: 1}}
+	scores := []uint64{0, 1}
+	for _, reference := range []bool{true, false} {
+		fn := chainARegion
+		if reference {
+			fn = referenceChainARegion
+		}
+		paths := poolChains2.Get().(*[]*Chain2Result)
+		var m, q, tgt int
+		fn(&subs, &scores, 0, 0, 0, 0, paths, &m, &q, &tgt, 0, nil, 0)
+		if len(*paths) != 2 || !math.IsNaN((*paths)[0].PIdent) || !math.IsNaN((*paths)[1].PIdent) {
+			t.Fatalf("reference=%t: zero-length behavior changed", reference)
+		}
+		RecycleChaining2Result(paths)
 	}
 }

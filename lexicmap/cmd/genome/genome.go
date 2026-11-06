@@ -184,8 +184,8 @@ type Writer struct {
 	fh    *os.File
 	w     *bufio.Writer
 
-	bBuf   bytes.Buffer
-	buf    []byte // 24 bytes buffer
+	bBuf   bytes.Buffer // encoding scratch, reused until Close
+	buf    []byte       // 24 bytes buffer
 	offset int
 
 	// offsets
@@ -239,7 +239,7 @@ func NewWriter(file string, batch uint32) (*Writer, error) {
 func (w *Writer) Write(s *Genome) error {
 	// write genome information
 	buf := w.buf
-	buf0 := w.bBuf
+	buf0 := &w.bBuf
 	buf0.Reset()
 
 	if len(s.ID) > 65535 { // truncate super-long genome ID
@@ -320,6 +320,8 @@ func (w *Writer) Write(s *Genome) error {
 
 // Close writes the index file and finishes the writing.
 func (w *Writer) Close() (err error) {
+	// A closed writer no longer needs its largest record/index buffer.
+	defer func() { w.bBuf = bytes.Buffer{} }()
 	// Release the data handle even if its final buffered write fails.
 	err = w.w.Flush()
 	closeErr := w.fh.Close()
@@ -358,7 +360,7 @@ func (w *Writer) Close() (err error) {
 	}
 
 	buf := w.buf
-	buf0 := w.bBuf
+	buf0 := &w.bBuf
 	buf0.Reset()
 
 	// batch number

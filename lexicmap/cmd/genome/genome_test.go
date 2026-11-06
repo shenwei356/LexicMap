@@ -31,6 +31,57 @@ import (
 	"testing"
 )
 
+// Repeated records reuse encoding scratch without changing the saved directory.
+func TestWriterBufferReuse(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := false
+	t.Cleanup(func() {
+		if !closed {
+			w.fh.Close()
+		}
+	})
+	id := []byte("contig")
+	packed := make([]byte, 1000)
+	g := &Genome{ID: []byte("genome"), Seq: make([]byte, 4000), TwoBit: &packed,
+		Len: 4000, GenomeSize: 4000, NumSeqs: 1000}
+	for range g.NumSeqs {
+		g.SeqIDs = append(g.SeqIDs, &id)
+		g.SeqSizes = append(g.SeqSizes, 4)
+	}
+	if allocations := testing.AllocsPerRun(20, func() {
+		if err := w.Write(g); err != nil {
+			t.Fatal(err)
+		}
+	}); allocations != 0 {
+		t.Errorf("repeated metadata encoding allocated %.0f times per record", allocations)
+	}
+	records := len(w.index)
+	closed = true // Close owns the handle even when finalization fails.
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if w.bBuf.Cap() != 0 {
+		t.Error("closed writer retains encoding scratch")
+	}
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	got, err := r.GenomeInfo(records - 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer RecycleGenome(got)
+	if got.NumSeqs != g.NumSeqs || got.Len != g.Len || !bytes.Equal(got.ID, g.ID) {
+		t.Fatal("reused metadata changed the saved record")
+	}
+}
+
 // A rejected record must not leave a phantom entry in the record directory.
 func TestWriterRejectedRecord(t *testing.T) {
 	for _, writeValid := range []bool{false, true} {

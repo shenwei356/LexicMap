@@ -99,6 +99,39 @@ func TestTrimSubStrPairsReverseComplement(t *testing.T) {
 	}
 }
 
+// A short repeat at the same start must not remove a longer terminal match.
+// Re-sort transformed intervals: mixed-length anchors do not simply reverse order.
+func TestTrimSubStrPairsVariableTerminal(t *testing.T) {
+	fixtures := [][]SubstrPair{
+		{{QBegin: 0, TBegin: 0, Len: 17}, {QBegin: 0, TBegin: 16, Len: 11}, {QBegin: 16, TBegin: 26, Len: 31}},
+		// A mixed-length boundary changes ordering, even when the pair that
+		// would be trimmed in the opposite orientation has equal lengths.
+		{{QBegin: 0, TBegin: 28, Len: 31}, {QBegin: 2, TBegin: 38, Len: 31}, {QBegin: 33, TBegin: 39, Len: 17}, {QBegin: 34, TBegin: 17, Len: 17}, {QBegin: 34, TBegin: 34, Len: 11}},
+	}
+	for _, anchors := range fixtures {
+		for _, swap := range []bool{false, true} {
+			for _, reverse := range []bool{false, true} {
+				subs := slices.Clone(anchors)
+				for i := range subs {
+					if reverse {
+						subs[i].QBegin = 100 - subs[i].QBegin - int32(subs[i].Len)
+						subs[i].TBegin = 100 - subs[i].TBegin - int32(subs[i].Len)
+					}
+					if swap {
+						subs[i].QBegin, subs[i].TBegin = subs[i].TBegin, subs[i].QBegin
+					}
+				}
+				ClearSubstrPairs(&subs, 31)
+				want := slices.Clone(subs)
+				TrimSubStrPairs(&subs, 31, 100)
+				if !reflect.DeepEqual(subs, want) {
+					t.Errorf("swap=%t reverse=%t: got %+v, want %+v", swap, reverse, subs, want)
+				}
+			}
+		}
+	}
+}
+
 func TestSubstrPairOverlap(t *testing.T) {
 	for _, tc := range []struct {
 		name string

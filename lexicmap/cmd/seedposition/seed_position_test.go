@@ -31,6 +31,52 @@ import (
 	"testing"
 )
 
+// Reusing one writer must amortize encoding allocations and preserve positions.
+func TestWriterBufferReuse(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "positions.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := false
+	t.Cleanup(func() {
+		if !closed {
+			w.fh.Close()
+		}
+	})
+	positions := make([]uint32, 100000)
+	for i := range positions {
+		positions[i] = uint32(i * 20)
+	}
+	if allocations := testing.AllocsPerRun(20, func() {
+		if err := w.Write(positions); err != nil {
+			t.Fatal(err)
+		}
+	}); allocations != 0 {
+		t.Errorf("repeated position encoding allocated %.0f times per record", allocations)
+	}
+	records := len(w.index)
+	closed = true // Close owns the handle even when finalization fails.
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if w.bBuf.Cap() != 0 {
+		t.Error("closed writer retains encoding scratch")
+	}
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	var got []uint32
+	if err := r.SeedPositions(records-1, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, positions) {
+		t.Fatal("reused buffer changed the saved positions")
+	}
+}
+
 // writerFailure injects a delayed I/O error without relying on a full filesystem.
 type writerFailure struct{ err error }
 

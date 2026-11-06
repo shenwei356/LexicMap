@@ -746,305 +746,208 @@ func extendsChain2End(previous, current SubstrPair) bool {
 		(qEnd > previousQEnd || tEnd > previousTEnd)
 }
 
-func chainARegion(subs *[]SubstrPair, // a region of the subs
-	// maxscores *[]int, // a region of maxscores
-	maxscoresIdxs *[]uint64,
-	offset int, // offset of this region of subs
-	minScore float64, // the threshold
-	minAlignLen int,
-	minPident float64,
-	paths *[]*Chain2Result, // paths
-	_nMatchedBases *int,
-	_nAlignedBasesQ *int,
-	_nAlignedBasesT *int,
-	Mi0 int, // found Mi
-	bounds *[]int32, // intervals of previous chains
+// chain2PeakIndex accelerates repeated maximum-score queries on disjoint regions.
+// It is built only after scans exceed four full passes. Most calls finish with
+// one or a few chains and allocate no index. Scratch is local to this call.
+// A tree over 64-anchor blocks costs at most 1/4 byte per anchor; same-score
+// successor links cost 4 bytes per anchor. Boundary blocks are scanned directly.
+type chain2PeakIndex struct {
+	subs    []SubstrPair // immutable anchors for endpoint-extension ties
+	scores  []uint64     // packed scores and global predecessor indexes
+	offset  int          // global index of subs[0]
+	scanned int          // total entries scanned before constructing the tree
+	tree    []uint32     // index+1 of the first maximum in each block-tree node; 0 is empty
+	next    []uint32     // index+1 of the first eligible same-score extending child
+	size    int          // number of leaves in the block tree
+}
+
+const chain2PeakBlockSize = 64 // bound direct boundary scans while keeping the tree small
+
+// better returns the higher score, retaining the earlier index on ties.
+func (p *chain2PeakIndex) better(a, b uint32) uint32 {
+	if a == 0 {
+		return b
+	}
+	if b == 0 {
+		return a
+	}
+	x, y := p.scores[a-1]>>32, p.scores[b-1]>>32
+	if x > y || x == y && a < b {
+		return a
+	}
+	return b
+}
+
+// build records first maxima and same-score successors in one local allocation.
+func (p *chain2PeakIndex) build() {
+	n := len(p.scores)
+	blocks := (n + chain2PeakBlockSize - 1) / chain2PeakBlockSize
+	p.size = 1 << bits.Len(uint(blocks-1))
+	storage := make([]uint32, n+2*p.size)
+	p.next, p.tree = storage[:n], storage[n:]
+	for i, packed := range p.scores {
+		leaf := p.size + i/chain2PeakBlockSize
+		p.tree[leaf] = p.better(p.tree[leaf], uint32(i+1))
+		previous := int(uint32(packed)) - p.offset
+		if previous >= 0 && previous < i && p.next[previous] == 0 &&
+			packed>>32 == p.scores[previous]>>32 && extendsChain2End(p.subs[previous], p.subs[i]) {
+			p.next[previous] = uint32(i + 1)
+		}
+	}
+	for i := p.size - 1; i > 0; i-- {
+		p.tree[i] = p.better(p.tree[i*2], p.tree[i*2+1])
+	}
+}
+
+// best preserves the scan's tie rule: start at the first maximum and follow
+// its first same-score extending child, then that child's first child, etc.
+// A later sibling cannot replace the already selected child:
+//
+//	root -> child A -> grandchild
+//	     -> child B              (ignored after A)
+//
+// These links belong to the selected backtracking path, so following them
+// across all disjoint regions visits at most n anchors in total.
+func (p *chain2PeakIndex) best(begin, end int) (int, float64) {
+	if p.tree == nil && p.scanned >= 4*len(p.scores) && end-begin >= chain2PeakBlockSize && uint64(len(p.scores)) <= math.MaxUint32 {
+		p.build()
+	}
+	if p.tree == nil {
+		p.scanned += end - begin
+		best, score := begin, uint64(0)
+		for i := begin; i < end; i++ {
+			packed := p.scores[i]
+			m := packed >> 32
+			if m > score || m == score && int(uint32(packed)) == p.offset+best && extendsChain2End(p.subs[best], p.subs[i]) {
+				best, score = i, m
+			}
+		}
+		return best, float64(score)
+	}
+	var best uint32
+	left := min((begin+chain2PeakBlockSize-1)/chain2PeakBlockSize*chain2PeakBlockSize, end)
+	for i := begin; i < left; i++ {
+		best = p.better(best, uint32(i+1))
+	}
+	right := max(left, end/chain2PeakBlockSize*chain2PeakBlockSize)
+	for i := right; i < end; i++ {
+		best = p.better(best, uint32(i+1))
+	}
+	for lo, hi := p.size+left/chain2PeakBlockSize, p.size+right/chain2PeakBlockSize; lo < hi; lo, hi = lo/2, hi/2 {
+		if lo&1 != 0 {
+			best = p.better(best, p.tree[lo])
+			lo++
+		}
+		if hi&1 != 0 {
+			hi--
+			best = p.better(best, p.tree[hi])
+		}
+	}
+	at := int(best) - 1
+	for next := p.next[at]; next != 0 && int(next)-1 < end; next = p.next[at] {
+		at = int(next) - 1
+	}
+	return at, float64(p.scores[at] >> 32)
+}
+
+// chainARegion visits the selected chain, then right and left regions, retaining
+// the original recursive output order and bounds even for filtered-out chains.
+// An explicit stack prevents deep recursion for many independent short chains.
+func chainARegion(subs *[]SubstrPair, maxscoresIdxs *[]uint64, offset int,
+	minScore float64, minAlignLen int, _ float64, paths *[]*Chain2Result,
+	_nMatchedBases, _nAlignedBasesQ, _nAlignedBasesT *int, Mi0 int, _ *[]int32,
 	heuristicKmerPidentThreshold float64,
-) (
-	float64, // score
-	int, // query begin position (0-based)
-	int, // query end position (0-based)
-	int, // target begin position (0-based)
-	int, // target end position (0-based)
-) {
-	// fmt.Printf("region: [%d, %d]\n", offset, offset+len(*subs)-1)
-	var _mi uint64
-	var m, M float64
-	var i, Mi int
-	if Mi0 < 0 { // Mi is not given
-		// find the next highest score
-		// for i, m = range *maxscores {
-		for i, _mi = range *maxscoresIdxs {
-			m = float64(_mi >> 32)
-			// Packed predecessor indexes stay global in recursive regions.
-			if m > M || m == M && int(uint32(_mi)) == offset+Mi && extendsChain2End((*subs)[Mi], (*subs)[i]) {
-				M, Mi = m, i
+) (float64, int, int, int, int) {
+	// Regions use local half-open indexes; packed predecessors remain global.
+	type region struct{ begin, end, best int }
+	var scratch [32]region
+	pending := append(scratch[:0], region{0, len(*subs), Mi0})
+	peaks := chain2PeakIndex{subs: *subs, scores: *maxscoresIdxs, offset: offset}
+	var rootScore float64
+	var qB, qE, tB, tE int
+	first := true
+	for len(pending) > 0 {
+		r := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		mi, score := r.best, float64(0)
+		if mi < 0 {
+			mi, score = peaks.best(r.begin, r.end)
+			if score < minScore {
+				if first {
+					return 0, -1, -1, -1, -1
+				}
+				continue
 			}
 		}
-		if M < minScore { // no valid anchors
-			return 0, -1, -1, -1, -1
-		}
-	} else {
-		Mi = Mi0
-	}
-	// fmt.Printf("  Mi: %d, M: %f\n", Mi, M)
-
-	var nMatchedBases int
-	var nAlignedBasesQ, nAlignedBasesT int
-
-	i = Mi
-	var j int
-	var qB, qE, tB, tE int // the bound of the chain (0-based)
-	qB, tB = math.MaxInt, math.MaxInt
-	var qb, qe, tb, te int32 // the bound (0-based)
-	var sub *SubstrPair
-	var beginOfNextAnchor int
-	var pident float64
-	// var overlapped bool
-	// var nb, bi, bj int // index of bounds
-	firstAnchorOfAChain := true
-	var nAnchors int
-	for {
-		// j = (*maxscoresIdxs)[i] - offset // previous seed
-		j = int((*maxscoresIdxs)[i]&4294967295) - offset // previous seed
-
-		if j < 0 { // the first anchor is not in current region
-			break
+		if first {
+			rootScore = score
 		}
 
-		// check if an anchor overlaps with previous chains
-		//
-		// Query
-		// |        te  / (OK)
-		// |        |  /
-		// |(NO)/   |____qe
-		// |   /   /
-		// |qb____/    / (NO)
-		// |   /  |   /
-		// |OK/   |tb
-		// o-------------------- Ref
-		//
-		sub = &(*subs)[i]
-
-		// overlapped = false
-		// nb = len(*bounds) >> 2 // len(bounds) / 4
-		// for bi = 0; bi < nb; bi++ {
-		// 	bj = bi << 2
-		// 	if !((sub.QBegin > (*bounds)[bj+1] && sub.TBegin > (*bounds)[bj+3]) || // top right
-		// 		(sub.QBegin+int32(sub.Len)-1 < (*bounds)[bj] && sub.TBegin+int32(sub.Len)-1 < (*bounds)[bj+2])) { // bottom left
-		// 		overlapped = true
-		// 		break
-		// 	}
-		// }
-
-		// if overlapped {
-		// 	// fmt.Printf("  %d (%s) is overlapped previous chain, j=%d\n", i, *sub, j)
-
-		// 	// can not continue here, must check if i == j
-		// } else {
-		// path.Chain = append(path.Chain, i+offset) // record the seed
-		// path.NAnchors++
-		nAnchors++
-
-		// fmt.Printf(" AAADDD %d (%s). firstAnchorOfAChain: %v\n", i, *sub, firstAnchorOfAChain)
-
-		if firstAnchorOfAChain {
-			// fmt.Printf(" record bound beginning with: %s\n", sub)
-			firstAnchorOfAChain = false
-
-			qe = int32(sub.QBegin) + int32(sub.Len) - 1   // end
-			te = int32(sub.TBegin) + int32(sub.Len) - 1   // end
-			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // in case there's only one anchor
-
-			nMatchedBases += int(sub.Len)
-		} else {
-			qb, tb = int32(sub.QBegin), int32(sub.TBegin) // begin
-
-			if int(sub.QBegin)+int(sub.Len)-1 >= beginOfNextAnchor {
-				nMatchedBases += beginOfNextAnchor - int(sub.QBegin)
+		var qb, qe, tb, te int32
+		var matched, nAnchors, nextBegin int
+		complete := false // the predecessor path starts inside this region
+		i := mi
+		for {
+			previous := int(uint32((*maxscoresIdxs)[i])) - offset
+			if previous < r.begin {
+				break
+			}
+			sub := (*subs)[i]
+			if nAnchors == 0 {
+				qe, te = sub.QBegin+int32(sub.Len)-1, sub.TBegin+int32(sub.Len)-1
+				matched = int(sub.Len)
+			} else if int(sub.QBegin)+int(sub.Len)-1 >= nextBegin {
+				matched += nextBegin - int(sub.QBegin)
 			} else {
-				nMatchedBases += int(sub.Len)
+				matched += int(sub.Len)
 			}
+			qb, tb = sub.QBegin, sub.TBegin
+			nextBegin = int(sub.QBegin)
+			nAnchors++
+			if i == previous {
+				complete = true
+				break
+			}
+			i = previous
 		}
-		beginOfNextAnchor = int(sub.QBegin)
-		// }
-
-		if i == j { // the path starts here
-			if firstAnchorOfAChain { // sadly, there's no anchor added.
-				break
-			}
-
-			nAlignedBasesQ += int(qe) - int(qb) + 1
-
-			if nAlignedBasesQ < minAlignLen {
-				firstAnchorOfAChain = true
-				break
-			}
-
-			nAlignedBasesT += int(te) - int(tb) + 1
-
-			pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
-			// fmt.Println(nMatchedBases, nAlignedBasesQ, pident)
-
-			// the pident here (pseudo alignment) would be much lower than the real one .
-			if pident < heuristicKmerPidentThreshold {
-				firstAnchorOfAChain = true
-				break
-			}
-			if pident > 100 {
-				pident = 100
-			}
-
-			path := poolChain2.Get().(*Chain2Result)
-			path.Reset()
-			path.NAnchors = nAnchors
-			// reverseInts(path.Chain)
-			path.AlignedBasesQ = nAlignedBasesQ
-			path.AlignedBasesT = nAlignedBasesT
-			path.MatchedBases = nMatchedBases
-			path.PIdent = pident
-			path.QBegin, path.QEnd = int(qb), int(qe)
-			path.TBegin, path.TEnd = int(tb), int(te)
-			*paths = append(*paths, path)
-
-			*_nAlignedBasesQ += nAlignedBasesQ
-			*_nAlignedBasesT += nAlignedBasesT
-			*_nMatchedBases += nMatchedBases
-
-			// fmt.Printf("chain a %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-			// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
-
-			firstAnchorOfAChain = true
-			break
-		}
-
-		i = j
-	}
-
-	if j < 0 { // the first anchor is not in current region
-		// fmt.Printf(" found only part of the chain, nAnchors: %d\n", path.NAnchors)
-		// if len(path.Chain) == 0 {
 		if nAnchors > 0 {
-			nAlignedBasesQ += int(qe) - int(qb) + 1
-			nAlignedBasesT += int(te) - int(tb) + 1
-
-			if nAlignedBasesQ >= minAlignLen {
-				pident = float64(nMatchedBases) / float64(max(nAlignedBasesQ, nAlignedBasesT)) * 100
-				if pident >= heuristicKmerPidentThreshold {
-					if pident > 100 {
-						pident = 100
-					}
-
+			alignedQ, alignedT := int(qe)-int(qb)+1, int(te)-int(tb)+1
+			if alignedQ >= minAlignLen {
+				identity := float64(matched) / float64(max(alignedQ, alignedT)) * 100
+				keep := identity >= heuristicKmerPidentThreshold
+				if complete { // Preserve the original comparison for zero-length paths too.
+					keep = !(identity < heuristicKmerPidentThreshold)
+				}
+				if keep {
 					path := poolChain2.Get().(*Chain2Result)
 					path.Reset()
-					path.NAnchors = nAnchors
-					// reverseInts(path.Chain)
-					path.AlignedBasesQ = nAlignedBasesQ
-					path.AlignedBasesT = nAlignedBasesT
-					path.MatchedBases = nMatchedBases
-					path.PIdent = pident
-					path.QBegin, path.QEnd = int(qb), int(qe)
-					path.TBegin, path.TEnd = int(tb), int(te)
+					path.NAnchors, path.MatchedBases = nAnchors, matched
+					path.AlignedBasesQ, path.AlignedBasesT = alignedQ, alignedT
+					path.PIdent = min(identity, 100)
+					path.QBegin, path.QEnd, path.TBegin, path.TEnd = int(qb), int(qe), int(tb), int(te)
 					*paths = append(*paths, path)
-
-					*_nAlignedBasesQ += nAlignedBasesQ
-					*_nAlignedBasesT += nAlignedBasesT
-					*_nMatchedBases += nMatchedBases
-
-					// fmt.Printf("chain b %d (%d, %d) vs (%d, %d), a:%d, m:%d\n",
-					// 	len(*paths), qb, qe, tb, te, nAlignedBasesQ, nMatchedBases)
+					*_nMatchedBases += matched
+					*_nAlignedBasesQ += alignedQ
+					*_nAlignedBasesT += alignedT
 				}
 			}
 		}
-	}
-
-	// *bounds = append(*bounds, qb)
-	// *bounds = append(*bounds, qe)
-	// *bounds = append(*bounds, tb)
-	// *bounds = append(*bounds, te)
-
-	// initialize the boundary
-	qB, qE = int(qb), int(qe)
-	tB, tE = int(tb), int(te)
-
-	// fmt.Printf("  i: %d\n", i)
-
-	// the unchecked region on the right
-	// if Mi != len(*maxscores)-1 { // Mi is not the last element
-	if Mi != len(*maxscoresIdxs)-1 { // Mi is not the last element
-		tmp := (*subs)[Mi+1:]
-		// tmps := (*maxscores)[Mi+1:]
-		tmpsi := (*maxscoresIdxs)[Mi+1:]
-		_score, _qB, _qE, _tB, _tE := chainARegion(
-			&tmp,
-			// &tmps,
-			&tmpsi,
-			offset+Mi+1,
-			minScore,
-			minAlignLen,
-			minPident,
-			paths,
-			_nMatchedBases,
-			_nAlignedBasesQ,
-			_nAlignedBasesT,
-			-1,
-			bounds,
-			heuristicKmerPidentThreshold,
-		)
-		if _score > 0 {
-			if _qB < qB {
-				qB = _qB
-			}
-			if _qE > qE {
-				qE = _qE
-			}
-			if _tB < tB {
-				tB = _tB
-			}
-			if _tE > tE {
-				tE = _tE
-			}
+		if first {
+			qB, qE, tB, tE = int(qb), int(qe), int(tb), int(te)
+			first = false
+		} else if score > 0 {
+			qB, qE = min(qB, int(qb)), max(qE, int(qe))
+			tB, tE = min(tB, int(tb)), max(tE, int(te))
+		}
+		// Push left first so the right region is processed first, as before.
+		if i > r.begin {
+			pending = append(pending, region{r.begin, i, -1})
+		}
+		if mi+1 < r.end {
+			pending = append(pending, region{mi + 1, r.end, -1})
 		}
 	}
-
-	// the unchecked region on the left
-	if i > 0 { // the first anchor is not the first element
-		tmp := (*subs)[:i]
-		// tmps := (*maxscores)[:i]
-		tmpsi := (*maxscoresIdxs)[:i]
-		_score, _qB, _qE, _tB, _tE := chainARegion(
-			&tmp,
-			// &tmps,
-			&tmpsi,
-			offset,
-			minScore,
-			minAlignLen,
-			minPident,
-			paths,
-			_nMatchedBases,
-			_nAlignedBasesQ,
-			_nAlignedBasesT,
-			-1,
-			bounds,
-			heuristicKmerPidentThreshold,
-		)
-		if _score > 0 {
-			if _qB < qB {
-				qB = _qB
-			}
-			if _qE > qE {
-				qE = _qE
-			}
-			if _tB < tB {
-				tB = _tB
-			}
-			if _tE > tE {
-				tE = _tE
-			}
-		}
-	}
-
-	return M, qB, qE, tB, tE
+	return rootScore, qB, qE, tB, tE
 }
 
 func distance2(a, b SubstrPair) float64 {

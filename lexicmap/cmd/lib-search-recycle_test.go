@@ -99,12 +99,12 @@ func TestClearSubstrPairsPreservesSurvivorAndCapacity(t *testing.T) {
 func TestTrimSubStrPairsPreservesAnchorsAndCapacity(t *testing.T) {
 	anchors := []SubstrPair{
 		{QBegin: 0, TBegin: 0, Len: 31},
-		{QBegin: 0, TBegin: 10, Len: 21},
-		{QBegin: 0, TBegin: 20, Len: 11},
+		{QBegin: 0, TBegin: 10, Len: 31},
+		{QBegin: 0, TBegin: 20, Len: 31},
 		{QBegin: 200, TBegin: 200, Len: 31, QRC: true},
 		{QBegin: 500, TBegin: 500, Len: 31, TRC: true},
-		{QBegin: 500, TBegin: 510, Len: 21},
-		{QBegin: 500, TBegin: 520, Len: 11},
+		{QBegin: 500, TBegin: 510, Len: 31},
+		{QBegin: 500, TBegin: 520, Len: 31},
 	}
 	for _, tt := range []struct {
 		name  string

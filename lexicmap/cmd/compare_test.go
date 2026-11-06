@@ -35,6 +35,41 @@ import (
 	"testing"
 )
 
+// Mixed-length terminal repeats must not change ANI/AF or threshold decisions
+// when both sequences are reverse-complemented.
+func TestCompareVariableTerminalTrim(t *testing.T) {
+	data, err := os.ReadFile("testdata/chain-variable-terminal-trim.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct{ Query, Target string }
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	const want = "99.2042\t98.5507\t98.5507\t100.000\t98.682\t1\t749\t1\t759"
+	for _, reverse := range []bool{false, true} {
+		q, s := []byte(fixture.Query), []byte(fixture.Target)
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		dir := t.TempDir()
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, cache := range []string{"0", "1M"} {
+			out := runSeedIndexCommand(t, "genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, "--min-af", "98", qfile, sfile)
+			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+			if len(lines) != 2 {
+				t.Errorf("reverse=%t cache=%s: got %d hits, want one", reverse, cache, len(lines)-1)
+				continue
+			}
+			if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+				t.Errorf("reverse=%t cache=%s: got %s, want %s", reverse, cache, got, want)
+			}
+		}
+	}
+}
+
 // A zero-score terminal extension must not change ANI/AF or remove an AF-
 // qualified pair when both input sequences are reverse-complemented.
 func TestCompareZeroScoreExtension(t *testing.T) {

@@ -6,6 +6,7 @@
     - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
 - **`lexicmap index`**:
     - Correct strand-dependent low-complexity seed filtering.
+    - Reduce allocation overhead when indexing fragmented genomes or saving seed positions.
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
@@ -14,8 +15,8 @@
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:
         - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
-        - Fix missing terminal regions that could reduce coverage, change ANI/AF, or remove matches after reverse complementation.
-        - Speed up pseudoalignment, without changing results.
+        - Fix missing terminal regions, including repetitive sequence ends, that could reduce coverage, change ANI/AF, or remove matches after reverse complementation.
+        - Speed up pseudoalignment, including alignments with many separate matching regions, without changing results.
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:
         - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
@@ -30,6 +31,7 @@
 - **`lexicmap utils 2sam`**:
     - Correct AS and MAPQ calculation, including nonpositive alignment scores.
     - Preserve primary/secondary flags and MAPQ across input files.
+    - Reduce memory use when converting long alignments with many reference sequences.
 - **`lexicmap utils seed-pos`**:
     - Restore missing seed positions and fix seed-count histograms.
     - Avoid overwriting distance plots for short genome chunks.

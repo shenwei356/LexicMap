@@ -202,9 +202,10 @@ Output:
 					if !validSAMReferenceName(key) {
 						checkError(fmt.Errorf("%s: line %d: invalid SAM reference name %q", file, lineNo, key))
 					}
-					refs = append(refs, key)
-					refs = append(refs, slen)
-
+					// These short fields outlive the row, whose aligned sequences
+					// can be large. Detach both, including slen in concatenated mode.
+					key = strings.Clone(key)
+					refs = append(refs, key, strings.Clone(slen))
 					m[key] = referenceLength
 				}
 			}
