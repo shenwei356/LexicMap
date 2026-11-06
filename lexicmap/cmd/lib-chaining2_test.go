@@ -137,6 +137,43 @@ func TestChainer2VariableLengthScore(t *testing.T) {
 	}
 }
 
+// Query ends must advance strictly; target ends may tie. The same interval
+// relationships must be accepted after reflecting both coordinate systems.
+func TestChainer2VariableLengthEnds(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		q, target int32
+		linked    bool
+	}{
+		{"query-contained", 13, 20, false},
+		{"query-end-tie", 14, 20, false},
+		{"target-contained", 20, 13, false},
+		{"target-end-tie", 20, 14, true},
+		{"both-advance", 20, 20, true},
+	} {
+		for _, reverse := range []bool{false, true} {
+			subs := []SubstrPair{{Len: 25}, {QBegin: tc.q, TBegin: tc.target, Len: 11}}
+			if reverse {
+				for i := range subs {
+					subs[i].QBegin = 200 - subs[i].QBegin - int32(subs[i].Len)
+					subs[i].TBegin = 200 - subs[i].TBegin - int32(subs[i].Len)
+				}
+				slices.SortFunc(subs, func(a, b SubstrPair) int { return int(a.QBegin) - int(b.QBegin) })
+			}
+			opt := Chaining2Options{MaxGap: 20, MinScore: 1, BandBase: 100, BandCount: 50}
+			chainer := NewChainer2(&opt)
+			chains, _, _, _, _, _, _, _ := chainer.Chain(&subs)
+			if chains != nil {
+				RecycleChaining2Result(chains)
+			}
+			linked := uint32(chainer.maxscoresIdxs[1]) == 0
+			if linked != tc.linked {
+				t.Errorf("%s reverse=%t: linked=%t, want %t", tc.name, reverse, linked, tc.linked)
+			}
+		}
+	}
+}
+
 // Reuse one chainer across changing group sizes, orders and band limits. Compare
 // every packed score/predecessor and chain field, including reverse complements.
 func TestChainer2CursorReuseMatchesReference(t *testing.T) {

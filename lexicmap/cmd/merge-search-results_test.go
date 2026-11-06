@@ -24,7 +24,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -35,6 +37,113 @@ import (
 	"strings"
 	"testing"
 )
+
+// mergeTestInput exposes close failures without relying on filesystem behavior.
+type mergeTestInput struct {
+	io.Reader
+	closeErr error
+	closes   int
+}
+
+func (r *mergeTestInput) Close() error { r.closes++; return r.closeErr }
+
+// Direct reads must work without a temporary directory whenever the configured
+// budget can hold every input, including equality after reserved descriptors.
+func TestMergeSearchResultsFileBudget(t *testing.T) {
+	dir := t.TempDir()
+	files := make([]string, 200)
+	for i := range files {
+		row := fmt.Sprintf("q\t4\t1\tg%d\ts\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t4\t0\t%d\n", i, 1000-i)
+		files[i] = writeTestInput(t, filepath.Join(dir, fmt.Sprintf("%d.tsv", i)), auditSearchHeader+"\n"+row)
+	}
+	// A regular file cannot contain a spool file. Direct reading must ignore it.
+	unusableTemp := writeTestInput(t, filepath.Join(dir, "not-a-directory"), "preserve\n")
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, unusableTemp)
+	}
+	var expected []byte
+	for _, budget := range []int{0, len(files) + reservedOpenFiles, len(files) + reservedOpenFiles - 1} {
+		args := []string{"utils", "merge-search-results", "--quiet"}
+		if budget != 0 {
+			args = append(args, "--max-open-files", strconv.Itoa(budget))
+		}
+		out, stderr, err := runAuditCommand(t, "", append(args, files...)...)
+		if budget == len(files)+reservedOpenFiles-1 {
+			if err == nil || !strings.Contains(string(stderr), "failed to create temporary merge input") {
+				t.Fatalf("insufficient direct-reader budget did not use temporary storage: %v: %s", err, stderr)
+			}
+			continue
+		}
+		if err != nil || bytes.Count(out, []byte("\n")) != len(files)+1 {
+			t.Fatalf("budget=%d: direct reading failed: %v: %s", budget, err, stderr)
+		}
+		if expected == nil {
+			expected = out
+		} else if !bytes.Equal(out, expected) {
+			t.Fatal("file budget changed merged output")
+		}
+	}
+}
+
+// Reject an unusable budget before opening either output or log files.
+func TestMergeSearchResultsInvalidFileBudget(t *testing.T) {
+	dir := t.TempDir()
+	output := writeTestInput(t, filepath.Join(dir, "output.tsv"), "preserve\n")
+	logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "preserve\n")
+	for _, budget := range []int{0, reservedOpenFiles} {
+		_, stderr, err := runAuditCommand(t, "", "utils", "merge-search-results", "--quiet",
+			"--max-open-files", strconv.Itoa(budget), "--log", logFile, "-o", output)
+		if err == nil || !strings.Contains(string(stderr), "--max-open-files") {
+			t.Fatalf("invalid file budget accepted: %v: %s", err, stderr)
+		}
+		for _, file := range []string{output, logFile} {
+			if got, err := os.ReadFile(file); err != nil || string(got) != "preserve\n" {
+				t.Fatalf("file changed before budget validation: %s: %q: %v", file, got, err)
+			}
+		}
+	}
+}
+
+// EOF, validation failure, and early cancellation each close the source once.
+func TestSearchResultReaderClosesOnce(t *testing.T) {
+	row := "q\t4\t2\ta\ts\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t4\t0\t10\n"
+	closeErr := errors.New("close failed")
+	for _, mode := range []string{"eof", "parse-error", "early-close"} {
+		body := auditSearchHeader + "\n" + row
+		if mode == "parse-error" {
+			body += "invalid\n"
+		}
+		if mode == "early-close" {
+			body += strings.Replace(row, "\ta\t", "\tb\t", 1)
+		}
+		source := &mergeTestInput{Reader: strings.NewReader(body), closeErr: closeErr}
+		reader := newSearchResultReader("input.tsv", "", 65536, source)
+		result := reader.Next()
+		if mode == "early-close" {
+			if result == nil {
+				t.Fatal("missing first group")
+			}
+			RecycleSearchResultOfAGenome(result)
+			if err := reader.Close(); !errors.Is(err, closeErr) {
+				t.Fatalf("lost close error: %v", err)
+			}
+		} else {
+			if result != nil {
+				RecycleSearchResultOfAGenome(result)
+				t.Fatal("returned a group after input failure")
+			}
+			if !errors.Is(reader.Err(), closeErr) {
+				t.Fatalf("lost close error: %v", reader.Err())
+			}
+			if mode == "parse-error" && !strings.Contains(reader.Err().Error(), "columns") {
+				t.Fatal("lost parse error")
+			}
+		}
+		if err := reader.Close(); err != nil || source.closes != 1 || reader.Next() != nil {
+			t.Fatalf("%s: close count=%d, error=%v", mode, source.closes, err)
+		}
+	}
+}
 
 func TestMergeSearchResultsCommand(t *testing.T) {
 	if os.Getenv("LEXICMAP_MERGE_TEST_HELPER") != "1" {

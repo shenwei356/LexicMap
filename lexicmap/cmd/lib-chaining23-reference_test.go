@@ -77,6 +77,11 @@ func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int
 			if bQBegin == aQBegin || bTBegin > aTBegin {
 				continue
 			}
+			// Both interval boundaries must respect the chaining order.
+			if a.Len != b.Len && (int64(b.QBegin)+int64(b.Len) >= int64(a.QBegin)+int64(a.Len) ||
+				int64(b.TBegin)+int64(b.Len) > int64(a.TBegin)+int64(a.Len)) {
+				continue
+			}
 			_bCount++
 			_bBase = aQBegin - bQBegin - int32(b.Len)
 			if !(_bBase <= bandBase || _bCount <= bandCount) {

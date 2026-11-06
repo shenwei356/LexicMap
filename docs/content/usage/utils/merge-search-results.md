@@ -36,6 +36,11 @@ Attention:
      If all inputs are empty, the command succeeds without writing results.
      A completed search writes a header even when no matches are found.
      Header-only inputs are accepted.
+  8. Inputs are read directly when their count fits --max-open-files minus 9
+     reserved descriptors. Otherwise, decompressed inputs are first copied to one
+     file in the system temporary directory (TMPDIR on Unix), then merged.
+     The temporary file is removed on completion or error.
+     Allow temporary disk space for the decompressed inputs, including with -n.
 
 Usage:
   lexicmap utils merge-search-results [flags]
@@ -44,6 +49,9 @@ Flags:
   -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
                              when "bufio.Scanner: token too long" error reported (default "20M")
   -h, --help                 help for merge-search-results
+      --max-open-files int   ► File budget including 9 reserved descriptors (minimum: 10). Read inputs
+                             directly when they fit; otherwise use one temporary file. Set "ulimit -n"
+                             at least this high. (default 1024)
   -o, --out-file string      ► Out file, supports the ".gz" suffix ("-" for stdout). (default "-")
   -q, --query string         ► Query ID to merge
   -n, --top-n-genomes int    ► Keep the top N genome matches by the highest alignment bitscore *
@@ -110,9 +118,20 @@ The merge command filters completed alignment results and cannot recover candida
 discarded during the original searches.
 
 With `-n` enabled, selected genome results are buffered in memory until their count
-is known, then written with the correct `hits` value. No temporary files are used.
+is known, then written with the correct `hits` value.
 This also supports standard input. The buffer includes all ties at the cutoff score,
 so its size depends on the number and size of retained alignments, not only N.
+
+`--max-open-files` defaults to `1024`, including 9 reserved descriptors for standard
+streams, runtime files, logging, output, and temporary storage. Inputs are read
+directly when their count is at most `--max-open-files - 9`. For example, 200 inputs
+are read directly with the default budget, while `--max-open-files 64` allows 55
+direct inputs. Set `ulimit -n` at least as high as the configured budget.
+
+When the input count exceeds the available budget, all inputs are copied to one
+file in the system temporary directory (`TMPDIR` on Unix) before merging. Allow
+disk space for all decompressed input data, including with `-n`. The file is removed
+on completion or error.
 
 If some files contain search results for multiple queries, specify one query to merge.
 

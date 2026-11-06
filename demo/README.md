@@ -418,37 +418,37 @@ Here we accelerate searching by
             --top-n-genomes 5 \
             --top-n-chains 1
             
-        13:06:17.741 [INFO] LexicMap v0.10.1 (3f499bb)
-        13:06:17.741 [INFO]   https://github.com/shenwei356/LexicMap
-        13:06:17.741 [INFO] 
-        13:06:17.742 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
-        13:06:17.742 [INFO]  CMD: lexicmap search -d demo.lmi/ q.long-reads.fasta.gz -o q.long-reads.fasta.gz.lexicmap.tsv.gz --min-qcov-per-hsp 70 --top-n-genomes 5 --top-n-chains 1
-        13:06:17.742 [INFO] DATE: 2026-11-06
-        13:06:17.742 [INFO] 
-        13:06:17.742 [INFO] checking input files ...
-        13:06:17.742 [INFO]   1 input file given: q.long-reads.fasta.gz
-        13:06:17.742 [INFO] 
-        13:06:17.742 [INFO] loading index: demo.lmi
-        13:06:17.742 [INFO]   reading masks...
-        13:06:17.743 [INFO]   reading indexes of seeds (k-mer-value) data...
-        13:06:17.743 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
-        13:06:18.054 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-        13:06:18.054 [INFO] index loaded in 312.810702ms
-        13:06:18.055 [INFO] 
-        13:06:18.055 [INFO] searching with 16 threads...
-        13:06:18.055 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
-        13:06:18.055 [INFO]   keep the top 5 genomes
-        13:06:18.055 [INFO]   keep the top 1 chains
-        13:06:18.055 [INFO]   lazy genome metadata enabled, contig metadata will be read only after pseudoalignment finds a match
-        processed queries: 3456, speed: 11351.217 queries per minute
-        13:06:37.555 [INFO] 
-        13:06:37.555 [INFO] processed queries: 3692, speed: 11359.810 queries per minute
-        13:06:37.555 [INFO] 76.2459% (2815/3692) queries matched
-        13:06:37.555 [INFO] done searching
-        13:06:37.555 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
-        13:06:37.569 [INFO] 
-        13:06:37.569 [INFO] elapsed time: 19.827892154s
-        13:06:37.569 [INFO] 
+        23:07:43.191 [INFO] LexicMap v0.10.1 (b99fe7e)
+        23:07:43.191 [INFO]   https://github.com/shenwei356/LexicMap
+        23:07:43.191 [INFO] 
+        23:07:43.191 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+        23:07:43.191 [INFO]  CMD: lexicmap search -d demo.lmi/ q.long-reads.fasta.gz -o q.long-reads.fasta.gz.lexicmap.tsv.gz --min-qcov-per-hsp 70 --top-n-genomes 5 --top-n-chains 1
+        23:07:43.191 [INFO] DATE: 2026-11-06
+        23:07:43.192 [INFO] 
+        23:07:43.192 [INFO] checking input files ...
+        23:07:43.192 [INFO]   1 input file given: q.long-reads.fasta.gz
+        23:07:43.192 [INFO] 
+        23:07:43.192 [INFO] loading index: demo.lmi
+        23:07:43.192 [INFO]   reading masks...
+        23:07:43.193 [INFO]   reading indexes of seeds (k-mer-value) data...
+        23:07:43.193 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+        23:07:43.538 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+        23:07:43.539 [INFO] index loaded in 347.173643ms
+        23:07:43.539 [INFO] 
+        23:07:43.539 [INFO] searching with 16 threads...
+        23:07:43.539 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 64 queries
+        23:07:43.539 [INFO]   keep the top 5 genomes
+        23:07:43.539 [INFO]   keep the top 1 chains
+        23:07:43.539 [INFO]   lazy genome metadata enabled, contig metadata will be read only after pseudoalignment finds a match
+        processed queries: 3584, speed: 11367.496 queries per minute
+        23:08:03.034 [INFO] 
+        23:08:03.034 [INFO] processed queries: 3692, speed: 11362.803 queries per minute
+        23:08:03.034 [INFO] 76.2730% (2816/3692) queries matched
+        23:08:03.034 [INFO] done searching
+        23:08:03.034 [INFO] search results saved to: q.long-reads.fasta.gz.lexicmap.tsv.gz
+        23:08:03.040 [INFO] 
+        23:08:03.040 [INFO] elapsed time: 19.848019164s
+        23:08:03.040 [INFO] 
 
 
 Result overview:
@@ -463,13 +463,13 @@ Result overview:
     GCF_900638025.1_r28    6375    1      GCF_900638025.1   NZ_LR134481.1       99.953    1     1     99.953    6542      92.831   261    3        6374    137490    143940    -      2062405   0.00e+00   8982       Haemophilus parainfluenzae
     GCF_002949675.1_r183   8176    1      GCF_002949675.1   NZ_CP026774.1       99.682    1     1     99.682    8188      98.107   82     27       8176    4194298   4202441   +      4395762   0.00e+00   13876      Shigella dysenteriae      
     GCF_003697165.2_r46    2169    1      GCF_003697165.2   NZ_CP033092.2       93.177    1     1     93.177    2101      90.243   111    12       2032    4489774   4491843   +      4903501   0.00e+00   2632       Escherichia coli          
-    GCF_000006945.2_r8     7258    1      GCF_000006945.2   NC_003197.2         99.724    1     1     99.724    7301      97.630   91     20       7257    4618964   4626236   +      4857450   0.00e+00   12130      Salmonella enterica       
     GCF_000017205.1_r183   14521   1      GCF_000017205.1   NC_009656.1         99.910    1     1     99.910    14685     96.765   269    14       14521   3874715   3889307   +      6588339   0.00e+00   23596      Pseudomonas aeruginosa    
+    GCF_000006945.2_r8     7258    1      GCF_000006945.2   NC_003197.2         99.724    1     1     99.724    7301      97.630   91     20       7257    4618964   4626236   +      4857450   0.00e+00   12130      Salmonella enterica       
     GCF_009759685.1_r164   3132    1      GCF_009759685.1   NZ_CP046654.1       99.042    1     1     99.042    3152      94.670   86     20       3121    1768740   1771855   +      3980848   0.00e+00   4735       Acinetobacter baumannii   
-    GCF_001027105.1_r148   20294   1      GCF_001027105.1   NZ_CP011526.1       99.921    1     1     99.921    20481     97.100   307    16       20293   2352020   2372396   +      2755072   0.00e+00   33358      Staphylococcus aureus     
     GCF_001544255.1_r110   9910    1      GCF_001544255.1   NZ_BCQD01000005.1   99.839    1     1     99.839    9983      97.666   131    17       9910    155488    165428    +      191690    0.00e+00   16567      Enterococcus faecium      
     GCF_000006945.2_r109   3788    2      GCF_000006945.2   NC_003197.2         99.393    1     1     99.393    3799      97.026   67     10       3774    4633318   4637083   -      4857450   0.00e+00   6145       Salmonella enterica       
-    GCF_000006945.2_r109   3788    2      GCF_002950215.1   NZ_CP026788.1       70.301    1     1     70.301    2700      82.296   60     840      3502    2488829   2491505   -      4659463   0.00e+00   2565       Shigella flexneri       
+    GCF_000006945.2_r109   3788    2      GCF_002950215.1   NZ_CP026788.1       70.301    1     1     70.301    2700      82.296   60     840      3502    2488829   2491505   -      4659463   0.00e+00   2565       Shigella flexneri         
+    GCF_002950215.1_r182   1718    1      GCF_002950215.1   NZ_CP026790.1       99.593    1     1     99.593    1781      89.163   95     5        1715    134666    136421    +      165702    0.00e+00   2089       Shigella flexneri   
 
 Blast-style format:
 
@@ -512,48 +512,47 @@ Sbjct  1124934  AAAGACACTCTTTGAAGTACCTGAAGTCTGATAAGCGATTATTCTCTCCATGT-ACT  11249
 A single query
 
     $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz | csvtk pretty -t
-    15:00:46.027 [INFO] LexicMap v0.10.1 (aba7a7c)
-    15:00:46.027 [INFO]   https://github.com/shenwei356/LexicMap
-    15:00:46.027 [INFO]
-    15:00:46.027 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
-    15:00:46.027 [INFO]  CMD: lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz
-    15:00:46.027 [INFO] DATE: 2026-11-06
-    15:00:46.027 [INFO]
-    15:00:46.027 [INFO] checking input files ...
-    15:00:46.027 [INFO]   1 input file given: refs/GCF_003697165.2.fa.gz
-    15:00:46.027 [INFO]
-    15:00:46.027 [INFO] loading index: demo.lmi
-    15:00:46.027 [INFO]   reading masks...
-    15:00:46.029 [INFO]   reading indexes of seeds (k-mer-value) data...
-    15:00:46.029 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
-    15:00:46.125 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
-    15:00:46.125 [INFO] index loaded in 98.050544ms
-    15:00:46.126 [INFO]
-    15:00:46.126 [INFO] searching with 16 threads...
-    15:00:46.126 [INFO]   screen genomes with seed data of 1024 masks
-    15:00:46.126 [INFO]     keep the top 10 screened genomes, including all ties at the cutoff score
-    15:00:46.126 [INFO]   minimum query coverage per HSP: 30.00%
-    15:00:46.126 [INFO]   minimum base identity in a HSP segment: 70.00%
-    15:00:46.126 [INFO]   maximum evalue: 1.00e-15
-    15:00:46.126 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 4 queries
-    15:00:46.126 [INFO]   threads per query: 16
+    00:48:53.351 [INFO] LexicMap v0.10.1
+    00:48:53.351 [INFO]   https://github.com/shenwei356/LexicMap
+    00:48:53.351 [INFO] 
+    00:48:53.351 [INFO]  CWD: /home/shenwei/go/src/github.com/shenwei356/LexicMap/demo
+    00:48:53.351 [INFO]  CMD: lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz
+    00:48:53.351 [INFO] DATE: 2026-11-07
+    00:48:53.351 [INFO] 
+    00:48:53.351 [INFO] checking input files ...
+    00:48:53.351 [INFO]   1 input file given: refs/GCF_003697165.2.fa.gz
+    00:48:53.351 [INFO] 
+    00:48:53.351 [INFO] loading index: demo.lmi
+    00:48:53.351 [INFO]   reading masks...
+    00:48:53.353 [INFO]   reading indexes of seeds (k-mer-value) data...
+    00:48:53.353 [INFO]   creating searcher pools for 16 seed data files, each with 4 searchers...
+    00:48:53.411 [INFO]   creating reader pools for 1 genome batches, each with 16 readers...
+    00:48:53.411 [INFO] index loaded in 60.82242ms
+    00:48:53.412 [INFO] 
+    00:48:53.412 [INFO] searching with 16 threads...
+    00:48:53.412 [INFO]   screen genomes with seed data of 1024 masks
+    00:48:53.412 [INFO]     keep the top 10 screened genomes, including all ties at the cutoff score
+    00:48:53.412 [INFO]   minimum query coverage per HSP: 30.00%
+    00:48:53.412 [INFO]   minimum base identity in a HSP segment: 70.00%
+    00:48:53.412 [INFO]   maximum evalue: 1.00e-15
+    00:48:53.412 [INFO]   maximum number of concurrent queries: 8, force garbage collection for every 4 queries
+    00:48:53.412 [INFO]   threads per query: 16
 
-    15:00:50.679 [INFO]
-    15:00:50.679 [INFO] processed queries: 1, speed: 13.178 queries per minute
-    15:00:50.679 [INFO] 100.0000% (1/1) queries matched
-    15:00:50.679 [INFO] done searching
-    15:00:50.679 [INFO]
-    15:00:50.679 [INFO] elapsed time: 4.651703937s
-    15:00:50.679 [INFO]
-
+    00:48:57.732 [INFO] 
+    00:48:57.732 [INFO] processed queries: 1, speed: 13.889 queries per minute
+    00:48:57.732 [INFO] 100.0000% (1/1) queries matched
+    00:48:57.732 [INFO] done searching
+    00:48:57.732 [INFO] 
+    00:48:57.732 [INFO] elapsed time: 4.381210022s
+    00:48:57.732 [INFO] 
     query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname
     ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   -----
     GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834        
-    GCF_003697165.2   GCF_002949675.1   96.7896    67.632    74.374    2          5034834   2          4578459        
-    GCF_003697165.2   GCF_002950215.1   96.7074    73.272    74.704    2          5034834   3          4938295        
-    GCF_003697165.2   GCF_000006945.2   81.5408    55.812    56.753    2          5034834   2          4951383        
-    GCF_003697165.2   GCF_000742135.1   80.4634    46.981    42.652    2          5034834   5          5545784        
-    
+    GCF_003697165.2   GCF_002949675.1   96.7976    67.626    74.367    2          5034834   2          4578459        
+    GCF_003697165.2   GCF_002950215.1   96.7258    73.258    74.690    2          5034834   3          4938295        
+    GCF_003697165.2   GCF_000006945.2   81.5228    55.952    56.895    2          5034834   2          4951383        
+    GCF_003697165.2   GCF_000742135.1   80.4563    47.082    42.744    2          5034834   5          5545784        
+        
     # with species name
     $ lexicmap genome search -d demo.lmi/ refs/GCF_003697165.2.fa.gz \
             --taxdump ~/.taxonkit/ --genome2taxid taxid.map --show-species-name --quiet \
@@ -562,11 +561,10 @@ A single query
     query             subject           ANI        qAF       sAF       qcontigs   qsize     scontigs   ssize     sname                
     ---------------   ---------------   --------   -------   -------   --------   -------   --------   -------   ---------------------
     GCF_003697165.2   GCF_003697165.2   100.0000   100.000   100.000   2          5034834   2          5034834   Escherichia coli     
-    GCF_003697165.2   GCF_002949675.1   96.7896    67.632    74.374    2          5034834   2          4578459   Shigella dysenteriae 
-    GCF_003697165.2   GCF_002950215.1   96.7074    73.272    74.704    2          5034834   3          4938295   Shigella flexneri    
-    GCF_003697165.2   GCF_000006945.2   81.5408    55.812    56.753    2          5034834   2          4951383   Salmonella enterica  
-    GCF_003697165.2   GCF_000742135.1   80.4634    46.981    42.652    2          5034834   5          5545784   Klebsiella pneumoniae
-
+    GCF_003697165.2   GCF_002949675.1   96.7976    67.626    74.367    2          5034834   2          4578459   Shigella dysenteriae 
+    GCF_003697165.2   GCF_002950215.1   96.7258    73.258    74.690    2          5034834   3          4938295   Shigella flexneri    
+    GCF_003697165.2   GCF_000006945.2   81.5228    55.952    56.895    2          5034834   2          4951383   Salmonella enterica  
+    GCF_003697165.2   GCF_000742135.1   80.4563    47.082    42.744    2          5034834   5          5545784   Klebsiella pneumoniae
 
 Self-alignment
 
@@ -596,7 +594,6 @@ Pairwise comparison
 
     genome1           genome2           tANI      ANI1      ANI2      AF1      AF2      ctgs1   size1     ctgs2   size2  
     ---------------   ---------------   -------   -------   -------   ------   ------   -----   -------   -----   -------
-    GCF_003697165.2   GCF_002950215.1   73.4218   96.7074   96.8315   73.272   77.989   2       5034834   3       4938295
-    GCF_003697165.2   GCF_002949675.1   71.8041   96.7896   96.5454   67.632   81.004   2       5034834   2       4578459
-    GCF_002949675.1   GCF_002950215.1   77.0694   97.0916   97.6576   82.979   74.968   2       4578459   3       4938295
-
+    GCF_003697165.2   GCF_002949675.1   71.8018   96.7976   96.5559   67.626   81.000   2       5034834   2       4578459
+    GCF_003697165.2   GCF_002950215.1   73.4179   96.7258   96.8329   73.258   77.994   2       5034834   3       4938295
+    GCF_002949675.1   GCF_002950215.1   77.0710   97.1085   97.6493   82.970   74.982   2       4578459   3       4938295

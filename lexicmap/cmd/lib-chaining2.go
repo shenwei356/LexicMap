@@ -545,6 +545,14 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 			if bQBegin == aQBegin {
 				continue
 			}
+			// Starts and ends must advance together for variable-length anchors:
+			// Q: b [----------]   a [---] inside b cannot extend the chain.
+			// Equal Q ends become equal Q starts after reverse complementation;
+			// T ends may tie, just as T starts may tie. Widen before adding lengths.
+			if a.Len != b.Len && (int64(bQBegin)+int64(b.Len) >= int64(aQBegin)+int64(a.Len) ||
+				int64(bTBegin)+int64(b.Len) > int64(aTBegin)+int64(a.Len)) {
+				continue
+			}
 			if bTBegin > aTBegin {
 				if qGroupStarts != nil {
 					start := int(qGroupStarts[j])

@@ -723,26 +723,18 @@ func TestSearchRepeatRefinement(t *testing.T) {
 				seen[row[0]+"/"+row[4]] = true
 			}
 			if coverage.hsp == "85" || coverage.genome == "85" {
-				// Short chains can extend into additional HSPs, allowing the
-				// reverse query to pass genome coverage while its main HSP is <85%.
+				// Both query orientations retain the longer window when the
+				// refined 354-base alignment would fail the coverage threshold.
+				wantBegin, wantEnd, wantCIGAR = 28, 399, "11M3X9M9I12M1X11M9I307M"
 				if row[0] == "rc-query" {
-					if coverage.hsp == "85" {
-						t.Fatal("reverse query passed HSP coverage")
-					}
-					if qs == wantBegin && qe == wantEnd && number(9) == 354 && number(11) == 0 && row[20] == wantCIGAR {
-						seen[row[0]+"/"+row[4]] = true
-					}
+					wantBegin, wantEnd, wantCIGAR = 19, 390, "313M9I5M1X18M3X9M9I5M"
 				}
-				if qs == 28 && qe == 399 && number(9) == 372 && number(11) == 18 {
+				if qs == wantBegin && qe == wantEnd && number(9) == 372 && number(11) == 18 && row[20] == wantCIGAR {
 					seen[row[0]+"/"+row[4]] = true
 				}
 			}
 		}
-		wantHits := 4
-		if coverage.hsp == "85" {
-			wantHits = 2
-		}
-		if len(seen) != wantHits {
+		if len(seen) != 4 {
 			t.Fatalf("coverage=%+v: missing expected results: %s", coverage, output)
 		}
 	}

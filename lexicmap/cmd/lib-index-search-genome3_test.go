@@ -35,6 +35,34 @@ import (
 	"github.com/shenwei356/wfa"
 )
 
+// Contained variable-length anchors must not select different alignment windows
+// after reversing both sequences, which could change final identity filtering.
+func TestAlignChainVariableAnchorContainment(t *testing.T) {
+	idx := compareTestIndex(t)
+	idx.seqCompareOption.MaxGap = 20
+	cpr := NewSeqComparator(idx.seqCompareOption, idx.poolChainers2)
+	algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+	defer wfa.RecycleAligner(algn)
+	query := []byte("ACTTCAGAACATCTGCGTTTACGGAATGCATCTTAGAAAGAATGGGTGTTTCACTACCAGTGATTCGGCCATCCGCGGCCTCAGGGAAG")
+	target := []byte("ACTTCAGAACATCACTTCAGAACATCTGCGTTTACGGATGCGTTTACGGCATGCATCTCAGAAAGGATGGGTGTTCCACTACCAGTGATCCAGCAACCCGCGGCCTCCGGGCAG")
+	for _, reverse := range []bool{false, true} {
+		if err := cpr.Index(query); err != nil {
+			t.Fatal(err)
+		}
+		score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+		chain := &Chain2Result{QEnd: len(query) - 1, TEnd: len(target) - 1}
+		matched, aligned, gaps, _, _, ok := alignChain(query, nil, target, chain,
+			&subjectSketch{seqLen: len(target)}, algn, cpr, 0, 50, 70, 30, idx, &score)
+		cpr.RecycleIndex()
+		if !ok || [3]int{matched, aligned, gaps} != [3]int{75, 94, 12} {
+			t.Errorf("reverse=%t: accepted=%t, matches/aligned/gaps=%d/%d/%d; want true, 75/94/12",
+				reverse, ok, matched, aligned, gaps)
+		}
+		RC(query)
+		RC(target)
+	}
+}
+
 // The coverage bound must allow terminal extension, equality, and later chains.
 func TestChainsCanReachQueryCoverage(t *testing.T) {
 	short := &Chain2Result{QBegin: 100, QEnd: 139, TBegin: 100, TEnd: 139}
