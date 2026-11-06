@@ -24,6 +24,7 @@ package cmd
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -55,10 +56,15 @@ func TestSearchOutputFailureCleansSpills(t *testing.T) {
 	for _, tc := range []struct {
 		name, query string
 		queued      bool
+		streaming   bool
+		compressed  bool
 	}{
-		{"write", ref, false},
-		{"flush", short, false},
-		{"broken_pipe", ref, true},
+		{"write", ref, false, false, false},
+		{"flush", short, false, false, false},
+		{"broken_pipe", ref, true, false, false},
+		{"streaming_flush", short, false, true, false},
+		{"streaming_broken_pipe", ref, true, true, false},
+		{"streaming_gzip", ref, true, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			temp := t.TempDir()
@@ -75,11 +81,23 @@ func TestSearchOutputFailureCleansSpills(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
+			if tc.streaming {
+				query = "-"
+			}
 			args := append(append([]string{}, base...), query, "-o", output)
 			command := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestSeedIndexCommand$", "--"}, args...)...)
 			command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1", "TMPDIR="+temp)
 			var stderr bytes.Buffer
 			command.Stderr = &stderr
+			var stdin io.WriteCloser
+			if tc.streaming {
+				var err error
+				stdin, err = command.StdinPipe()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer stdin.Close()
+			}
 			if tc.queued {
 				var err error
 				pipe, err = command.StdoutPipe()
@@ -90,6 +108,33 @@ func TestSearchOutputFailureCleansSpills(t *testing.T) {
 			}
 			if err := command.Start(); err != nil {
 				t.Fatal(err)
+			}
+			if tc.streaming {
+				inputSequence := sequence
+				if !tc.queued {
+					inputSequence = sequence[:400]
+				}
+				// The next header releases q2, then leaves the input reader
+				// waiting for data. Keep stdin open until the command exits.
+				var input io.Writer = stdin
+				var compressor *gzip.Writer
+				if tc.compressed {
+					compressor = gzip.NewWriter(stdin)
+					input = compressor
+				}
+				if _, err := fmt.Fprintf(input, ">q1\n%s\n>q2\n%s\n>q3\n", inputSequence, inputSequence); err != nil {
+					t.Fatal(err)
+				}
+				if compressor != nil {
+					// Release the decoder's 1 MiB read-ahead block while leaving
+					// q3 and the gzip stream unfinished, awaiting upstream data.
+					if _, err := io.WriteString(compressor, strings.Repeat("N", 1<<20)); err != nil {
+						t.Fatal(err)
+					}
+					if err := compressor.Flush(); err != nil {
+						t.Fatal(err)
+					}
+				}
 			}
 			if tc.queued {
 				// Withhold reads until the blocked writer and another query own

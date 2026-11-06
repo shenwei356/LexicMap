@@ -782,7 +782,7 @@ func alignChain(
 			break
 		}
 
-		_qseq, _tseq, qLeftExt, _, _, _, extErr := extendMatch(
+		_qseq, _tseq, qLeftExt, qRightExt, tLeftExt, tRightExt, extErr := extendMatch(
 			qfrag, tSubseq,
 			c.QBegin, c.QEnd+1,
 			c.TBegin, c.TEnd+1,
@@ -793,7 +793,9 @@ func alignChain(
 		}
 
 		// cigar, alignErr := algn.Align(_qseq, _tseq)
-		cigar, alignErr := alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), qLen, 0, *fScoreAndEvalue)
+		flanks := alignmentFlanks{c.QBegin - qLeftExt, qLen - 1 - c.QEnd - qRightExt,
+			tExpBegin + c.TBegin - tLeftExt - contigStart, contigEnd - 1 - tExpBegin - c.TEnd - tRightExt}
+		cigar, alignErr := alignWindowWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), qLen, 0, flanks, *fScoreAndEvalue)
 		if alignErr != nil {
 			continue
 		}
@@ -1634,14 +1636,16 @@ func (idx *Index) compareTwoGenomesOrthoANIPrepared(query, subject *GQuery, qp, 
 		// b) base-level alignment
 		c = cr.BestChain // borrow the highest-scoring chain, regardless of coordinate order
 
-		_qseq, _tseq, _, _, _, _, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
+		_qseq, _tseq, qLeft, qRight, tLeft, tRight, err := extendMatch(a, b, c.QBegin, c.QEnd+1, c.TBegin, c.TEnd+1, idx.opt.ExtendLength2, c.TBegin, idx.opt.ExtendLength2, false)
 		if err != nil {
 			RecycleSeqComparatorResult(cr)
 			return fmt.Errorf("fail to extend aligned region: %s", err)
 		}
 
 		// cigar, err := algn.Align(_qseq, _tseq)
-		cigar, err := alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, minQcovHSP, fScoreAndEvalue)
+		flanks := alignmentFlanks{c.QBegin - qLeft, len(a) - 1 - c.QEnd - qRight,
+			c.TBegin - tLeft, len(b) - 1 - c.TEnd - tRight}
+		cigar, err := alignWindowWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, minQcovHSP, flanks, fScoreAndEvalue)
 		if err != nil {
 			RecycleSeqComparatorResult(cr)
 			return fmt.Errorf("fail to align sequences: %s", err)

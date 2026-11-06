@@ -671,7 +671,8 @@ func TestSearchRepeatRefinement(t *testing.T) {
 	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">query\n"+repeatWindowQuery+"\n>rc-query\n"+string(rcq)+"\n")
 	db := filepath.Join(dir, "db")
 	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, ref)
-	for _, coverage := range []struct{ hsp, genome, gap string }{{"0", "0", "20"}, {"0", "0", "100"}, {"90", "0", "100"}, {"0", "90", "100"}} {
+	// 85% lies between the refined 354/417 and unrefined 372/417 query spans.
+	for _, coverage := range []struct{ hsp, genome, gap string }{{"0", "0", "20"}, {"0", "0", "100"}, {"85", "0", "100"}, {"0", "85", "100"}} {
 		output := runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", "-Q", coverage.genome, "-q", coverage.hsp, "-a", "--align-max-gap", coverage.gap, query)
 		reader := csv.NewReader(strings.NewReader(string(output)))
 		reader.Comma = '\t'
@@ -708,7 +709,7 @@ func TestSearchRepeatRefinement(t *testing.T) {
 			}
 			for field, minimum := range map[int]string{5: coverage.genome, 8: coverage.hsp} {
 				value, err := strconv.ParseFloat(row[field], 64)
-				if err != nil || (minimum == "90" && value < 90) {
+				if err != nil || (minimum == "85" && value < 85) {
 					t.Fatalf("coverage filter violated: %v", row[:20])
 				}
 			}
@@ -721,24 +722,24 @@ func TestSearchRepeatRefinement(t *testing.T) {
 				}
 				seen[row[0]+"/"+row[4]] = true
 			}
-			if coverage.hsp == "90" || coverage.genome == "90" {
+			if coverage.hsp == "85" || coverage.genome == "85" {
 				// Short chains can extend into additional HSPs, allowing the
-				// reverse query to pass genome coverage while its main HSP is <90%.
+				// reverse query to pass genome coverage while its main HSP is <85%.
 				if row[0] == "rc-query" {
-					if coverage.hsp == "90" {
+					if coverage.hsp == "85" {
 						t.Fatal("reverse query passed HSP coverage")
 					}
 					if qs == wantBegin && qe == wantEnd && number(9) == 354 && number(11) == 0 && row[20] == wantCIGAR {
 						seen[row[0]+"/"+row[4]] = true
 					}
 				}
-				if qs == 1 && qe == 399 && number(9) == 408 && number(11) == 63 {
+				if qs == 28 && qe == 399 && number(9) == 372 && number(11) == 18 {
 					seen[row[0]+"/"+row[4]] = true
 				}
 			}
 		}
 		wantHits := 4
-		if coverage.hsp == "90" {
+		if coverage.hsp == "85" {
 			wantHits = 2
 		}
 		if len(seen) != wantHits {

@@ -63,7 +63,7 @@ type Chainer2 struct {
 	// maxscores     []int
 	// maxscoresIdxs []int
 	maxscoresIdxs []uint64 // pack score (32bit) and index (32bit) to save ram.
-	maxPotential  []int64  // zero-gap score bounds in global or diagonal-bin prefixes
+	maxPotential  []int64  // packed predecessor score maxima in global or diagonal-bin prefixes
 	diagonalSeen  []uint64 // reusable approximate set of earlier anchor diagonals
 	qGroupStarts  []int32  // first anchor of each equal-query-position group
 	qGroupCursors []int32  // previous target upper bounds, indexed by group start
@@ -356,7 +356,7 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 		}
 	}
 	if usePotential {
-		maxPotential = append(maxPotential, int64((*subs)[0].Len)*2)
+		maxPotential = append(maxPotential, int64((*subs)[0].Len))
 	}
 
 	// compute scores
@@ -412,8 +412,8 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 	// diagonal. Its global prefix bound prevents early exits for other chains.
 	// Instead, keep prefix maxima along linked lists of folded diagonal bins:
 	//
-	// bin A:  2 -> 8 -> 13    score+length maxima for A only
-	// bin B:  4 -> 9 -> 15    score+length maxima for B only
+	// bin A:  2 -> 8 -> 13    score maxima for A only
+	// bin B:  4 -> 9 -> 15    score maxima for B only
 	//
 	// A predecessor can link only if its T-Q diagonal is within MaxGap of the
 	// current diagonal. At most three bins overlap that interval. Collisions
@@ -499,17 +499,17 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 			if j < 0 {
 				break
 			}
-			// Each earlier anchor t can contribute at most score[t]+len[t],
-			// because the gap penalty is nonnegative. Keep the prefix maximum
-			// of these zero-gap bounds. For example, with len=13 throughout:
+			// Each predecessor t can contribute at most score[t]+a.Len,
+			// because the gap penalty is nonnegative. Store prefix maxima of
+			// predecessor scores and add the current length at lookup time:
 			//
 			//   anchor         0      1      2      current
 			//   Q/T           0/0   13/13  26/26     39/39
 			//   score          13     26     39       ?
-			//   score+len      26     39     52
+			//   current len                         31
 			//
-			// Linking current to anchor 2 gives m=39+13=52. Before checking
-			// anchor 1, maxPotential[1]=39, so neither 1 nor 0 can match m.
+			// Linking current to anchor 2 gives m=39+31=70. Before checking
+			// anchor 1, maxPotential[1]+31=57, so neither 1 nor 0 can match m.
 			// Use strict > to preserve the existing preference for earlier ties.
 			if useDiagonalPotential {
 				if j < potentialLimit {
@@ -528,10 +528,10 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 					}
 				}
 				// Strict inequality retains earlier predecessors on equal scores.
-				if m > potentialBound {
+				if m > potentialBound+int64(a.Len) {
 					break
 				}
-			} else if usePotential && m > maxPotential[j] {
+			} else if usePotential && m > maxPotential[j]+int64(a.Len) {
 				break
 			}
 
@@ -643,10 +643,9 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 				continue
 			}
 
-			// s = (*maxscores)[j] + int(b.Len) - g // compute the score
-			// s = int((*maxscoresIdxs)[j]>>32) + int(b.Len) - g // compute the score
-			s = int64((*maxscoresIdxs)[j]>>32) + int64(b.Len) - g // compute the score
-			// (*scores)[k] = s                // necessary?
+			// The predecessor score already includes b. Add a's length so a
+			// 13 -> 31 chain scores 44 in either orientation, rather than 26/62.
+			s = int64((*maxscoresIdxs)[j]>>32) + int64(a.Len) - g
 
 			if s >= m { // update the max score of current seed/anchor
 				m = s
@@ -658,7 +657,7 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 		// *maxscoresIdxs = append(*maxscoresIdxs, mj) // save where the max score comes from
 		*maxscoresIdxs = append(*maxscoresIdxs, uint64(m)<<32|uint64(mj))
 		if usePotential {
-			potential := int64(uint32(m)) + int64(a.Len)
+			potential := int64(uint32(m))
 			if useDiagonalPotential {
 				bin := uint64((int64(aTBegin)-int64(aQBegin))>>potentialShift) & (diagonalPotentialBins - 1)
 				head := potentialHeads[bin]

@@ -34,6 +34,39 @@ import (
 	"testing"
 )
 
+// Variable anchor lengths must not drop a terminal region and fail the AF
+// filter in just one orientation of the same sequence pair.
+func TestCompareVariableAnchorCoverage(t *testing.T) {
+	dir := t.TempDir()
+	for _, reverse := range []bool{false, true} {
+		q, s := []byte(variableAnchorQuery), []byte(variableAnchorTarget)
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, ortho := range []bool{false, true} {
+			// Match the fragment size to this short fixture so OrthoANI's
+			// shared-k-mer screen does not use a 1020-base count threshold.
+			args := []string{"genome", "compare", "--quiet", "-j", "2", "--frag-size", "156", "--min-af", "95", "--max-genome-cache-memory", "0", qfile, sfile}
+			if ortho {
+				args = append(args, "-O")
+			}
+			output := runSeedIndexCommand(t, args...)
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+			if len(lines) != 2 {
+				t.Errorf("reverse=%t ortho=%t: got %d hits, want one", reverse, ortho, len(lines)-1)
+				continue
+			}
+			want := "91.0256\t91.0256\t91.0256\t100.000\t100.000\t1\t156\t1\t156"
+			if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+				t.Errorf("reverse=%t ortho=%t: got %s, want %s", reverse, ortho, got, want)
+			}
+		}
+	}
+}
+
 // A 50-base tail is shorter than half a 101-base fragment and must merge,
 // preserving the full 101-base shared region in both comparison directions.
 func TestCompareOddFragmentBoundary(t *testing.T) {

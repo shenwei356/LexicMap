@@ -35,6 +35,11 @@ import (
 	"testing"
 )
 
+// Synthetic mismatches leave a 13-base anchor before a run of 31-base anchors.
+// Retaining both ends allows extension to cover all 156 bases in either strand.
+const variableAnchorQuery = "GGAGTAGTCTGGGTGAATGAGGTAATCGGTACCATCGCTCTTCTAGATCTGTAAGTGGCGACGAGGAAGACTGGGGTGAGTACGAAAGTTCCCGAACATGCCTTGTTTAGCCCGGGAGTATAAGCGGAGTGTCTCACCCTCCTACAGGGTTTGTTT"
+const variableAnchorTarget = "GGAGTAGTCTCGGTGAATGACGTAATCGGTACCACGGCTCTTCAAGATCTGTGGGTAGCGACGAGGAAGACTGGGGTGAGTACGAAAGTTCCCGAACATGCCTTGTTTACCCCGGGAGTACAAGCGGAGTGTATCTCTCTCCTACAGGGTCTGTTT"
+
 // A DUST score below the cutoff must retain both orientations in the seed tree.
 func TestSeqCompareDustOrientation(t *testing.T) {
 	query := []byte("AAAATCAAAATAAACAAAACCATTAAACAAA")
@@ -594,7 +599,7 @@ func TestSeqCompareDefaultGapBoundary(t *testing.T) {
 						defer wfa.RecycleAligner(algn)
 						score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
 						for _, chain := range *cr.Chains {
-							a, b, _, _, _, _, e := extendMatch(q, target, chain.QBegin, chain.QEnd+1, chain.TBegin, chain.TEnd+1, 50, chain.TBegin, len(target)-1-chain.TEnd, false)
+							a, b, qLeft, qRight, tLeft, tRight, e := extendMatch(q, target, chain.QBegin, chain.QEnd+1, chain.TBegin, chain.TEnd+1, 50, chain.TBegin, len(target)-1-chain.TEnd, false)
 							if e != nil {
 								t.Fatal(e)
 							}
@@ -602,7 +607,9 @@ func TestSeqCompareDefaultGapBoundary(t *testing.T) {
 							if e != nil {
 								t.Fatal(e)
 							}
-							after, e := alignWithRepeatRefinement(algn, a, b, 31, len(q), 0, score)
+							flanks := alignmentFlanks{chain.QBegin - qLeft, len(q) - 1 - chain.QEnd - qRight,
+								chain.TBegin - tLeft, len(target) - 1 - chain.TEnd - tRight}
+							after, e := alignWindowWithRepeatRefinement(algn, a, b, 31, len(q), 0, flanks, score)
 							if e != nil {
 								wfa.RecycleAlignmentResult(before)
 								t.Fatal(e)

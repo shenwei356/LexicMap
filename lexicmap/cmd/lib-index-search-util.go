@@ -256,6 +256,21 @@ func trimOps(ops []uint64) []uint64 {
 func alignWithRepeatRefinement(algn *wfa.Aligner, q, t []byte, minExact, queryLen int, minQcov float64,
 	score func(int, *wfa.AlignmentResult) (int, int, float64),
 ) (*wfa.AlignmentResult, error) {
+	return alignWindowWithRepeatRefinement(algn, q, t, minExact, queryLen, minQcov, alignmentFlanks{}, score)
+}
+
+// alignmentFlanks counts bases outside the WFA window, within the query and
+// subject contig. Left/right follow the orientation of the supplied sequences.
+type alignmentFlanks struct {
+	queryLeft, queryRight   int
+	targetLeft, targetRight int
+}
+
+// alignWindowWithRepeatRefinement includes flanks already removed by chaining
+// when deciding whether a repeat-copy candidate is internal to the longer input.
+func alignWindowWithRepeatRefinement(algn *wfa.Aligner, q, t []byte, minExact, queryLen int, minQcov float64,
+	flanks alignmentFlanks, score func(int, *wfa.AlignmentResult) (int, int, float64),
+) (*wfa.AlignmentResult, error) {
 	original, err := algn.Align(q, t)
 	if err != nil || original == nil || original.Gaps == 0 || len(q) == len(t) {
 		return original, err
@@ -281,7 +296,7 @@ func alignWithRepeatRefinement(algn *wfa.Aligner, q, t []byte, minExact, queryLe
 			ti += n
 		}
 	}
-	if longest < minExact || diagonal == 0 {
+	if longest < minExact {
 		return original, nil
 	}
 
@@ -293,10 +308,15 @@ func alignWithRepeatRefinement(algn *wfa.Aligner, q, t []byte, minExact, queryLe
 		return original, nil
 	}
 	n := min(len(q)-qb, len(t)-tb)
-	// Reject a one-sided crop: reversing both inputs maps it to the excluded
-	// zero diagonal. This also avoids trading a short terminal indel for a
-	// mismatch simply by clipping a few bases from the longer input.
-	if n != min(len(q), len(t)) || (qb+n == len(q) && tb+n == len(t)) ||
+	// Require flanks on both ends of the longer original sequence. A chain
+	// may already have removed one flank from this WFA window; counting only
+	// window-local flanks would reject the same repeat copy in one orientation.
+	// True terminal indels still cannot be traded for clipped mismatches.
+	left, right := flanks.queryLeft+qb, flanks.queryRight+len(q)-qb-n
+	if len(t) > len(q) {
+		left, right = flanks.targetLeft+tb, flanks.targetRight+len(t)-tb-n
+	}
+	if n != min(len(q), len(t)) || left <= 0 || right <= 0 ||
 		q[qb] != t[tb] || q[qb+n-1] != t[tb+n-1] ||
 		float64(n)/float64(queryLen)*100 < minQcov {
 		return original, nil

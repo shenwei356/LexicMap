@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Original float64 kernels retained only for differential tests and benchmarks.
+// Unpruned float64 kernels retained only for differential tests and benchmarks.
 // Keep their scoring, packing and tie-breaking independent of the optimized kernels.
 package cmd
 
@@ -96,8 +96,9 @@ func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int
 			if g > maxGap { // limit the gap. necessary?
 				continue
 			}
-			s = float64((*maxscoresIdxs)[j]>>32) + float64(b.Len) - g // compute the score
-			if s >= m {                                               // update the max score of current seed/anchor
+			// Each transition adds the current anchor, not its predecessor again.
+			s = float64((*maxscoresIdxs)[j]>>32) + float64(a.Len) - g
+			if s >= m { // update the max score of current seed/anchor
 				m = s
 				mj = j
 			}

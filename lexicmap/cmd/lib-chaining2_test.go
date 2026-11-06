@@ -21,11 +21,50 @@
 package cmd
 
 import (
+	"fmt"
 	"math/rand"
 	"reflect"
 	"slices"
 	"testing"
 )
+
+// Each linked anchor contributes its own length. Reversing a chain must not
+// replace its shorter terminal anchor with another copy of the longer one.
+func TestChainer2VariableLengthScore(t *testing.T) {
+	for _, gap := range []int32{0, 3} {
+		for _, reverse := range []bool{false, true} {
+			for _, extra := range []int{0, 1} {
+				t.Run(fmt.Sprintf("gap=%d/reverse=%t/threshold+%d", gap, reverse, extra), func(t *testing.T) {
+					opt := DefaultChaining2Options
+					wantScore := 13 + 31 - int(gap)
+					opt.MinScore, opt.MinAlignLen = wantScore+extra, 1
+					subs := []SubstrPair{{QBegin: 20, TBegin: 20, Len: 13}, {QBegin: 60, TBegin: 60 + gap, Len: 31}}
+					if reverse {
+						for i := range subs {
+							subs[i].QBegin = 200 - subs[i].QBegin - int32(subs[i].Len)
+							subs[i].TBegin = 200 - subs[i].TBegin - int32(subs[i].Len)
+						}
+						slices.Reverse(subs)
+					}
+					chainer := NewChainer2(&opt)
+					chains, _, _, _, _, _, _, _ := chainer.Chain(&subs)
+					if chains != nil {
+						defer RecycleChaining2Result(chains)
+					}
+					if got := chainer.maxscoresIdxs[1]; got != uint64(wantScore)<<32 {
+						t.Errorf("score/predecessor=%d/%d, want %d/0", got>>32, uint32(got), wantScore)
+					}
+					if (chains != nil) != (extra == 0) {
+						t.Fatalf("retained=%t at minimum score %d", chains != nil, opt.MinScore)
+					}
+					if chains != nil && (len(*chains) != 1 || (*chains)[0].NAnchors != 2) {
+						t.Fatalf("want one two-anchor chain, got %+v", denseChain2Summary(chains))
+					}
+				})
+			}
+		}
+	}
+}
 
 // Reuse one chainer across changing group sizes, orders and band limits. Compare
 // every packed score/predecessor and chain field, including reverse complements.

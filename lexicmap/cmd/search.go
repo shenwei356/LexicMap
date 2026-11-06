@@ -657,20 +657,22 @@ Result ordering:
 				break input
 			default:
 			}
-			fastxReader, err := fastx.NewReader(nil, file, "")
-			if err != nil {
-				stopSearch(err)
-				break
-			}
+			next := make(chan struct{})
+			reads := readSearchInput(file, next, stop)
 
 		reading:
 			for {
 				select {
 				case <-stop:
 					break reading
-				default:
+				case next <- struct{}{}:
 				}
-				record, err = fastxReader.Read()
+				select {
+				case <-stop:
+					break reading
+				case input := <-reads:
+					record, err = input.record, input.err
+				}
 				if err != nil {
 					if err == io.EOF {
 						break
@@ -720,7 +722,6 @@ Result ordering:
 					ch <- query
 				}(query)
 			}
-			fastxReader.Close()
 		}
 		wg.Wait()
 		close(ch)
@@ -750,6 +751,60 @@ Result ordering:
 
 		checkError(idx.Close())
 	},
+}
+
+// searchInputResult borrows the parser's record until the next read request.
+type searchInputResult struct {
+	record *fastx.Record
+	err    error
+}
+
+// readSearchInput keeps blocking opens and reads off the submission goroutine,
+// so output failure can drain running queries without waiting for upstream EOF.
+// A request is sent only after the previous record has been copied into a Query.
+// The reader owns parser cleanup; closing a pooled parser concurrently with Read
+// is unsafe. An OS read that cannot be interrupted remains here until it returns
+// or the command exits after reporting the original error.
+func readSearchInput(file string, next <-chan struct{}, stop <-chan struct{}) <-chan searchInputResult {
+	results := make(chan searchInputResult)
+	go func() {
+		select {
+		case <-stop:
+			return
+		case <-next:
+		}
+		reader, err := fastx.NewReader(nil, file, "")
+		defer func() {
+			if reader != nil {
+				reader.Close()
+			}
+		}()
+		for {
+			var record *fastx.Record
+			if err == nil {
+				record, err = reader.Read()
+			}
+			if err != nil && reader != nil {
+				// Release this file before the consumer advances to another.
+				reader.Close()
+				reader = nil
+			}
+			select {
+			case <-stop:
+				return
+			case results <- searchInputResult{record: record, err: err}:
+			}
+			if err != nil {
+				return
+			}
+			select {
+			case <-stop:
+				return
+			case <-next:
+			}
+		}
+	}()
+	return results
 }
 
 func init() {

@@ -2546,7 +2546,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 								// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 								// cigar, err = algn.Align(_qseq, _tseq)
-								cigar, err = alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), fScoreAndEvalue)
+								flanks := alignmentFlanks{c.QBegin - _s1, len(s) - 1 - c.QEnd - _e1, c.TBegin - _s2, c.MaxExtLen - _e2}
+								if rc {
+									flanks.targetLeft, flanks.targetRight = c.MaxExtLen-_s2, c.TBegin-_e2
+								}
+								cigar, err = alignWindowWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), flanks, fScoreAndEvalue)
 								if err != nil {
 									checkError(fmt.Errorf("fail to align sequence"))
 								}
@@ -2814,7 +2818,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 						// fmt.Printf("q: %s\nt: %s\n", _qseq, _tseq)
 						// cigar, err = algn.Align(_qseq, _tseq)
-						cigar, err = alignWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), fScoreAndEvalue)
+						flanks := alignmentFlanks{c.QBegin - _s1, len(s) - 1 - c.QEnd - _e1, c.TBegin - _s2, c.MaxExtLen - _e2}
+						if rc {
+							flanks.targetLeft, flanks.targetRight = c.MaxExtLen-_s2, c.TBegin-_e2
+						}
+						cigar, err = alignWindowWithRepeatRefinement(algn, _qseq, _tseq, int(cpr.options.K), cr.QueryLen, max(minQcovHSP, minQcovGnm), flanks, fScoreAndEvalue)
 						if err != nil {
 							checkError(fmt.Errorf("fail to align sequence"))
 						}

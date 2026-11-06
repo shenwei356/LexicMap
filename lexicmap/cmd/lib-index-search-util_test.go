@@ -140,6 +140,56 @@ func TestExtendMatchFirstAnchor(t *testing.T) {
 const repeatWindowQuery = "CCTGTTGCTCCTGTTGCTCCTGTTGGACCTGTTGCTCCATCTGCTCCTGTATTTCCTGTTGCTCCTGTTGGACCTGTTGCTCCATCTGCTCCTGTATTTCCTGTTGCTCCTGTTGCTCCTGTTGGACCTGCTACTCCATCTGCTCCTGTATTTCCTGTTGCTCCTGTTGGACCTGTTGCTCCATCTGCTCCTGTTGGACCTGTCGCTCCTGTTGCCCCTGTTGCTCCTGTTATTCCTACTCCTGTTGGGCCTGTTGCTCCTGTTGGACCTGTTGCTCCAGGTGTTCCTGCTGCTCCTGTTGCTCCTGTTGGGCCTACTAATCCATTTGCTCCTGTTGCCCCTGTTGCTCCTGTTGGACCTGTTACTCCTGTTGCTCCGTCTGCTCCTGTTGCCCCTGTTGCTCCTGTTGCTCCTGTT"
 const repeatWindowTarget = "CCTGTTGCTCCTGTTGCTCCTGTTGCTCCTGTTGGGCCTGTTGCTCCTGTATTTCCTGTTGCTCCTGTTGCTCCTGTTGGACCTGCTACTCCATCTGCTCCTGTATTTCCTGTTGCTCCTGTTGGACCTGTTGCTCCATCTGCTCCTGTTGGACCTGTCGCTCCTGTTGCCCCTGTTGCTCCTGTTATTCCTACTCCTGTTGGGCCTGTTGCTCCTGTTGGACCTGTTGCTCCAGGTGTTCCTGCTGCTCCTGTTGCTCCTGTTGGGCCTACTAATCCATTTGCTCCTGTTGCCCCTGTTGCTCCTGTTGGACCTGTTACTCCTGTTGCTCCGTCTGCTCCTGTTGCCCCTGTT"
 
+// Chaining can remove one repeat flank before WFA. Preserve the original
+// two-sided window test across reversal and query/target exchange.
+func TestRepeatRefinementChainedFlanks(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, swap := range []bool{false, true} {
+			t.Run(fmt.Sprintf("reverse=%t/swap=%t", reverse, swap), func(t *testing.T) {
+				q, target := []byte(repeatWindowQuery), []byte(repeatWindowTarget)
+				begin, end := 27, 399
+				if reverse {
+					RC(q)
+					RC(target)
+					begin, end = len(q)-end, len(q)-begin
+				}
+				flanks := alignmentFlanks{queryLeft: begin, queryRight: len(q) - end}
+				q = q[begin:end]
+				if swap {
+					q, target = target, q
+					flanks = alignmentFlanks{targetLeft: flanks.queryLeft, targetRight: flanks.queryRight}
+				}
+				algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+				defer wfa.RecycleAligner(algn)
+				algn.AdaptiveReduction(wfa.DefaultAdaptiveOption)
+				score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+				baseline, err := algn.Align(q, target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer wfa.RecycleAlignmentResult(baseline)
+				terminal, err := alignWithRepeatRefinement(algn, q, target, 31, len(q), 0, score)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer wfa.RecycleAlignmentResult(terminal)
+				if !reflect.DeepEqual(terminal, baseline) {
+					t.Fatal("refined a terminal crop without original flanks")
+				}
+				got, err := alignWindowWithRepeatRefinement(algn, q, target, 31, len(q), 0, flanks, score)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer wfa.RecycleAlignmentResult(got)
+				if got.Matches != 344 || got.AlignLen != 354 || got.Gaps != 0 {
+					t.Fatalf("lost repeat refinement after chaining: %d/%d, gaps=%d", got.Matches, got.AlignLen, got.Gaps)
+				}
+			})
+		}
+	}
+
+}
+
 // TestRepeatRefinementCoordinates covers both clipping directions and checks
 // that full/trimmed CIGAR rendering still consumes the original inputs.
 func TestRepeatRefinementCoordinates(t *testing.T) {

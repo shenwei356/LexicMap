@@ -22,7 +22,7 @@ weight: 30
 - **`lexicmap search`**:
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
-    - Remove temporary alignment files when search output fails, including broken pipes.
+    - Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:
@@ -32,7 +32,7 @@ weight: 30
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:
         - **Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments**.
-        - Recover skipped two-base terminal extensions.
+        - **Recover some missing matches and terminal alignment regions**, including cases where reverse complementation changed query coverage or ANI/AF.
         - Apply `--align-min-match-len` after extension, including in `genome search --OrthoANI`.
         - Fix hangs in `genome search` and `genome compare` when aligning sequences with highly repetitive regions.
         - Fix crashes and invalid CIGAR strings in adaptive alignment.
