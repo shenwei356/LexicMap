@@ -23,6 +23,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -33,6 +34,90 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/wfa"
 )
+
+// The coverage bound must allow terminal extension, equality, and later chains.
+func TestChainsCanReachQueryCoverage(t *testing.T) {
+	short := &Chain2Result{QBegin: 100, QEnd: 139, TBegin: 100, TEnd: 139}
+	long := &Chain2Result{QBegin: 100, QEnd: 399, TBegin: 100, TEnd: 399}
+	// Evaluate the percentage in the same order as the final coverage filter.
+	maxPaired, queryLen := short.QEnd-short.QBegin+101, 1000
+	boundary := float64(maxPaired) / float64(queryLen) * 100
+	for _, tc := range []struct {
+		name   string
+		chains []*Chain2Result
+		qlen   int
+		tlen   int
+		ext    int
+		qcov   float64
+		want   bool
+	}{
+		{"short", []*Chain2Result{short}, 1000, 1000, 50, 30, false},
+		{"extended-equality", []*Chain2Result{short}, 1000, 1000, 50, boundary, true},
+		{"above-bound", []*Chain2Result{short}, 1000, 1000, 50, math.Nextafter(boundary, 100), false},
+		{"query-edge", []*Chain2Result{{QBegin: 0, QEnd: 39, TBegin: 100, TEnd: 139}}, 1000, 1000, 50, 10, false},
+		{"target-edge", []*Chain2Result{short}, 1000, 140, 50, 10, false},
+		{"later-chain", []*Chain2Result{short, long}, 1000, 1000, 50, 30, true},
+		{"disabled", []*Chain2Result{short}, 1000, 1000, 0, 0, true},
+		{"unlimited-extension", []*Chain2Result{short}, 1000, 1000, math.MaxInt, 100, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := chainsCanReachQueryCoverage(tc.chains, tc.qlen, tc.tlen, tc.ext, tc.qcov); got != tc.want {
+				t.Fatalf("can reach coverage=%t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
+// Disabling the early bound and applying coverage to the completed alignment
+// is an independent oracle for rejection, statistics, and reverse complements.
+func TestAlignChainCoverageMatchesFinalFilter(t *testing.T) {
+	idx := compareTestIndex(t)
+	idx.opt.MaxEvalue = 10
+	q := []byte(indexTestDNA(500))
+	for _, length := range []int{40, 150, 300, 500} {
+		for _, gapped := range []bool{false, true} {
+			for _, reverse := range []bool{false, true} {
+				query := append([]byte(nil), q...)
+				target := append([]byte(nil), q[(500-length)/2:(500+length)/2]...)
+				if gapped {
+					mid := len(target) / 2
+					inserted := make([]byte, len(target)+7)
+					copy(inserted, target[:mid])
+					copy(inserted[mid:], "GATTACA")
+					copy(inserted[mid+7:], target[mid:])
+					target = inserted
+				}
+				if reverse {
+					RC(query)
+					RC(target)
+				}
+				cpr := NewSeqComparator(idx.seqCompareOption, idx.poolChainers2)
+				if err := cpr.Index(query); err != nil {
+					t.Fatal(err)
+				}
+				algn := wfa.New(wfa.DefaultPenalties, &wfa.Options{GlobalAlignment: true})
+				score := scoreAndEvalue(2, -3, 5, 2, len(target), 0.625, 0.41)
+				chain := &Chain2Result{QBegin: 240, QEnd: 259, TBegin: len(target)/2 - 10, TEnd: len(target)/2 + 9}
+				for _, ext := range []int{0, 2, 50} {
+					wm, wa, wg, wp, wpa, wok := alignChain(query, nil, target, chain, &subjectSketch{seqLen: len(target)},
+						algn, cpr, 500, ext, 70, 0, idx, &score)
+					coverage := float64(wa-wg) / float64(len(query)) * 100
+					for _, minimum := range []float64{0, 30, 100, coverage, math.Nextafter(coverage, 101)} {
+						m, a, g, pi, pia, ok := alignChain(query, nil, target, chain, &subjectSketch{seqLen: len(target)},
+							algn, cpr, 500, ext, 70, minimum, idx, &score)
+						want := wok && coverage >= minimum
+						if ok != want || ok && (m != wm || a != wa || g != wg || pi != wp || pia != wpa) {
+							t.Fatalf("length=%d gapped=%t reverse=%t ext=%d coverage=%g: got %t/%d/%d/%d/%g/%g; want %t/%d/%d/%d/%g/%g",
+								length, gapped, reverse, ext, minimum, ok, m, a, g, pi, pia, want, wm, wa, wg, wp, wpa)
+						}
+					}
+				}
+				wfa.RecycleAligner(algn)
+				cpr.RecycleIndex()
+			}
+		}
+	}
+}
 
 // OrthoANI must retain the final two matching bases before applying AF filters.
 func TestGenomeSearchTwoBaseExtension(t *testing.T) {

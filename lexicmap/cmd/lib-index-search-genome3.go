@@ -751,6 +751,13 @@ func alignChain(
 	}
 	defer RecycleSeqComparatorResult(cr)
 
+	// Reject only when every sub-chain is too short even after full extension.
+	// Skipping individual chains could change the first accepted chain and its
+	// fallback order. Final HSP length and identity checks remain below.
+	if !chainsCanReachQueryCoverage(*cr.Chains, qLen, len(tSubseq), extLen2, minQcov) {
+		return 0, 0, 0, 0, 0, false
+	}
+
 	// Try the highest-scoring sub-chain first, then retain the existing fallback order.
 	var totMatched, totAligned, totGaps int
 	var pidentAdjusted float64
@@ -822,6 +829,29 @@ func alignChain(
 	}
 
 	return totMatched, totAligned, totGaps, pident, pidentAdjusted, true
+}
+
+// chainsCanReachQueryCoverage bounds paired bases before extension and WFA.
+// A 40-base chain with 50-base flanks can pair at most 140 bases, even if
+// extension succeeds completely. Gaps and repeat refinement cannot increase
+// paired bases beyond the shorter expanded input. Clip both flanks to their
+// sequence boundaries, and use the final filter's arithmetic to preserve ties.
+func chainsCanReachQueryCoverage(chains []*Chain2Result, qLen, tLen, extLen int, minQcov float64) bool {
+	if minQcov <= 0 {
+		return true
+	}
+	for _, c := range chains {
+		if c.QEnd < c.QBegin || c.TEnd < c.TBegin {
+			continue
+		}
+		// Bound each addition before summing, including very large extLen.
+		maxQ := c.QEnd - c.QBegin + 1 + min(extLen, c.QBegin) + min(extLen, qLen-1-c.QEnd)
+		maxT := c.TEnd - c.TBegin + 1 + min(extLen, c.TBegin) + min(extLen, tLen-1-c.TEnd)
+		if float64(min(maxQ, maxT))/float64(qLen)*100 >= minQcov {
+			return true
+		}
+	}
+	return false
 }
 
 func subjectContigBounds(sketch *subjectSketch, position int) (int, int) {

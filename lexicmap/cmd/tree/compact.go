@@ -49,7 +49,15 @@ type CompactTree struct {
 	offsets     []uint32 // value boundaries, including the final sentinel
 	values      []uint32 // duplicate values retain their original sorted-entry order
 	starts      []uint32 // key boundaries for the optional prefix directory
+
+	prefixFilter []uint64 // optional presence bitmap for quick rejection of missing prefixes
 }
+
+// A seven-base bitmap costs 2 KiB and rejects most misses in fragment indexes.
+const compactFilterBases uint8 = 7
+
+// Each word stores the presence of 64 adjacent prefixes.
+const compactFilterWords = 1 << (2*compactFilterBases - 6)
 
 // compactShape counts exact allocation sizes; callers supply sorted entries.
 func compactShape(k uint8, entries []BatchEntry) (unique int, prefix uint8) {
@@ -76,7 +84,11 @@ func CompactTreeBytes(k uint8, entries []BatchEntry) int64 {
 	if prefix != 0 {
 		directory = 1<<(2*prefix) + 1
 	}
-	return int64(unsafe.Sizeof(CompactTree{})) + int64(unique)*8 + int64(unique+1)*4 + int64(len(entries))*4 + int64(directory)*4
+	filterBytes := int64(0)
+	if k >= compactFilterBases && unique >= 256 {
+		filterBytes = compactFilterWords * 8
+	}
+	return int64(unsafe.Sizeof(CompactTree{})) + int64(unique)*8 + int64(unique+1)*4 + int64(len(entries))*4 + int64(directory)*4 + filterBytes
 }
 
 // NewCompactTree copies entries sorted by Key for k in [1,32]. It retains no
@@ -104,12 +116,19 @@ func NewCompactTree(k uint8, entries []BatchEntry) *CompactTree {
 			c.starts[bucket] = uint32(j)
 		}
 	}
+	if k >= compactFilterBases && unique >= 256 {
+		c.prefixFilter = make([]uint64, compactFilterWords)
+		for _, key := range c.keys {
+			prefix := key >> (2 * (k - compactFilterBases))
+			c.prefixFilter[prefix>>6] |= uint64(1) << (prefix & 63)
+		}
+	}
 	return c
 }
 
 // RetainedBytes includes every owned backing-array capacity and the tree object.
 func (c *CompactTree) RetainedBytes() int64 {
-	return int64(unsafe.Sizeof(*c)) + int64(cap(c.keys))*8 + int64(cap(c.offsets))*4 + int64(cap(c.values))*4 + int64(cap(c.starts))*4
+	return int64(unsafe.Sizeof(*c)) + int64(cap(c.keys))*8 + int64(cap(c.offsets))*4 + int64(cap(c.values))*4 + int64(cap(c.starts))*4 + int64(cap(c.prefixFilter))*8
 }
 
 // lower finds the first key at least target within an already bounded subtree.
@@ -132,6 +151,15 @@ func (c *CompactTree) SearchEach(key uint64, p uint8, fn func(uint64, uint8, []u
 	p = min(max(p, 1), c.k)
 	shift := 2 * (c.k - p)
 	prefix := key >> shift
+	// A missing shorter prefix proves an exact-prefix miss. Prefixes ending
+	// in AA still need the historical short-edge fallback below, even when
+	// the bitmap is empty for their first seven bases.
+	if len(c.prefixFilter) != 0 && p >= compactFilterBases && prefix&15 != 0 {
+		first := key >> (2 * (c.k - compactFilterBases))
+		if c.prefixFilter[first>>6]&(uint64(1)<<(first&63)) == 0 {
+			return false
+		}
+	}
 	lo, hi := 0, len(c.keys)
 	if c.prefixBases != 0 && p >= c.prefixBases {
 		bucket := key >> (2 * (c.k - c.prefixBases))

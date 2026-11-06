@@ -29,7 +29,7 @@ import (
 )
 
 func TestCompactTreeMatchesMutable(t *testing.T) {
-	for _, k := range []uint8{1, 2, 6, 15, 31, 32} {
+	for _, k := range []uint8{1, 2, 6, 7, 8, 15, 31, 32} {
 		for _, n := range []int{0, 1, 96, 256, 1024, 4096} {
 			t.Run(fmt.Sprintf("k=%d/n=%d", k, n), func(t *testing.T) {
 				source := NewTree(k)
@@ -98,21 +98,23 @@ func TestCompactTreeMatchesMutable(t *testing.T) {
 
 // Preserve the original short-edge behavior even when the directory misses.
 func TestCompactTreeLegacyShortEdge(t *testing.T) {
-	for _, n := range []int{2, 256} {
-		source := NewTree(6)
-		entries := make([]BatchEntry, n)
-		for i := range entries {
-			entries[i] = BatchEntry{256 + uint64(i), uint32(i)}
-		} // ACxxxx
-		source.InsertSortedBatch(entries)
-		source.BuildPrefixDirectory()
-		compact := NewCompactTree(6, entries)
-		var want, got []SearchResult
-		source.SearchEach(0, 6, func(key uint64, p uint8, v []uint32) { want = append(want, SearchResult{key, p, slices.Clone(v)}) })
-		compact.SearchEach(0, 6, func(key uint64, p uint8, v []uint32) { got = append(got, SearchResult{key, p, slices.Clone(v)}) })
-		RecycleTree(source)
-		if len(want) != n || !reflect.DeepEqual(got, want) {
-			t.Fatalf("n=%d: got=%v want=%v", n, got, want)
+	for _, k := range []uint8{6, 8} {
+		for _, n := range []int{2, 256} {
+			source := NewTree(k)
+			entries := make([]BatchEntry, n)
+			for i := range entries {
+				entries[i] = BatchEntry{uint64(1)<<(2*(k-2)) + uint64(i), uint32(i)}
+			} // AC... keys, while the query is entirely A.
+			source.InsertSortedBatch(entries)
+			source.BuildPrefixDirectory()
+			compact := NewCompactTree(k, entries)
+			var want, got []SearchResult
+			source.SearchEach(0, k, func(key uint64, p uint8, v []uint32) { want = append(want, SearchResult{key, p, slices.Clone(v)}) })
+			compact.SearchEach(0, k, func(key uint64, p uint8, v []uint32) { got = append(got, SearchResult{key, p, slices.Clone(v)}) })
+			RecycleTree(source)
+			if len(want) != n || !reflect.DeepEqual(got, want) {
+				t.Fatalf("k=%d/n=%d: got=%v want=%v", k, n, got, want)
+			}
 		}
 	}
 }
