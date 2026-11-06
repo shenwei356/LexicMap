@@ -104,7 +104,11 @@ func referenceChaining2(ce *Chainer2, subs *[]SubstrPair) (*[]*Chain2Result, int
 			}
 		}
 		*maxscoresIdxs = append(*maxscoresIdxs, uint64(m)<<32|uint64(mj))
-		if m > M { // the biggest score in the whole score matrix
+		// Retain zero-score extensions without changing independent-chain ties.
+		previous := (*subs)[Mi]
+		qEnd, tEnd := int64(a.QBegin)+int64(a.Len), int64(a.TBegin)+int64(a.Len)
+		oldQEnd, oldTEnd := int64(previous.QBegin)+int64(previous.Len), int64(previous.TBegin)+int64(previous.Len)
+		if m > M || m == M && mj == Mi && qEnd >= oldQEnd && tEnd >= oldTEnd && (qEnd > oldQEnd || tEnd > oldTEnd) {
 			M, Mi = m, i
 		}
 	}

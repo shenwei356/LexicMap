@@ -23,6 +23,7 @@ package cmd
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
@@ -33,6 +34,43 @@ import (
 	"strings"
 	"testing"
 )
+
+// A zero-score terminal extension must not change ANI/AF or remove an AF-
+// qualified pair when both input sequences are reverse-complemented.
+func TestCompareZeroScoreExtension(t *testing.T) {
+	data, err := os.ReadFile("testdata/chain-zero-score-extension.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct{ Query, Target string }
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	const want = "89.4604\t89.1457\t89.1457\t96.614\t99.081\t1\t1004\t1\t979"
+	for _, reverse := range []bool{false, true} {
+		q, s := []byte(fixture.Query), []byte(fixture.Target)
+		if reverse {
+			RC(q)
+			RC(s)
+		}
+		dir := t.TempDir()
+		qfile := writeTestInput(t, filepath.Join(dir, "q.fa"), ">q\n"+string(q)+"\n")
+		sfile := writeTestInput(t, filepath.Join(dir, "s.fa"), ">s\n"+string(s)+"\n")
+		for _, cache := range []string{"0", "1M"} {
+			for _, af := range []string{"0", "95"} {
+				out := runSeedIndexCommand(t, "genome", "compare", "--quiet", "-j", "2", "--max-genome-cache-memory", cache, "--min-af", af, qfile, sfile)
+				lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+				if len(lines) != 2 {
+					t.Errorf("reverse=%t cache=%s min-af=%s: got %d hits, want one", reverse, cache, af, len(lines)-1)
+					continue
+				}
+				if got := strings.Join(strings.Split(lines[1], "\t")[2:], "\t"); got != want {
+					t.Errorf("reverse=%t cache=%s min-af=%s: got %s, want %s", reverse, cache, af, got, want)
+				}
+			}
+		}
+	}
+}
 
 // Variable anchor lengths must not drop a terminal region and fail the AF
 // filter in just one orientation of the same sequence pair.

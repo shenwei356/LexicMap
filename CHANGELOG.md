@@ -14,7 +14,7 @@
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:
         - **Fix missed alignments supported by a single qualifying anchor, which may result in more short matches**.
-        - Fix terminal trimming that could reduce coverage or change ANI/AF after reverse complementation.
+        - Fix missing terminal regions that could reduce coverage, change ANI/AF, or remove matches after reverse complementation.
         - Speed up pseudoalignment, without changing results.
         - Keep pseudoalignment matches within the requested query region and include its final base consistently.
     - Alignment:

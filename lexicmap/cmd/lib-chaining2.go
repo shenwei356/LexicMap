@@ -363,8 +363,8 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 	// Scores and gaps are integral. Keep intermediates wider than the packed
 	// 32-bit score so comparisons retain their original pre-packing values.
 	var s, m, g int64
-	// The loop starts at anchor 1; include anchor 0 in the global maximum
-	// and retain the earliest anchor when later scores tie it.
+	// The loop starts at anchor 1; include anchor 0 in the global maximum.
+	// Independent tied chains retain their earlier endpoint.
 	M := int64((*subs)[0].Len)
 	// var d float64
 	var mj, Mi int
@@ -672,7 +672,7 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 			}
 		}
 
-		if m > M { // the biggest score in the whole score matrix
+		if m > M || m == M && mj == Mi && extendsChain2End((*subs)[Mi], *a) {
 			M, Mi = m, i
 		}
 	}
@@ -728,6 +728,24 @@ func (ce *Chainer2) chainWithLimits(subs *[]SubstrPair, minimumScore, minAlignLe
 	return paths, nMatchedBases, nAlignedBasesQ, nAlignedBasesT, qB, qE, tB, tE
 }
 
+// extendsChain2End keeps a same-score continuation of the selected endpoint.
+// A 31-base anchor followed by 25 bases across a 25-base gap still scores 31:
+//
+//	query:   [31] -------- [25]
+//	target:  [31] ----------- [25]
+//
+// Keeping only the first anchor loses the terminal region in one orientation.
+// Callers require a direct predecessor link, preserving ties between separate
+// chains. Neither sequence end may shrink, including on unsorted inputs.
+func extendsChain2End(previous, current SubstrPair) bool {
+	qEnd := int64(current.QBegin) + int64(current.Len)
+	tEnd := int64(current.TBegin) + int64(current.Len)
+	previousQEnd := int64(previous.QBegin) + int64(previous.Len)
+	previousTEnd := int64(previous.TBegin) + int64(previous.Len)
+	return qEnd >= previousQEnd && tEnd >= previousTEnd &&
+		(qEnd > previousQEnd || tEnd > previousTEnd)
+}
+
 func chainARegion(subs *[]SubstrPair, // a region of the subs
 	// maxscores *[]int, // a region of maxscores
 	maxscoresIdxs *[]uint64,
@@ -758,7 +776,8 @@ func chainARegion(subs *[]SubstrPair, // a region of the subs
 		// for i, m = range *maxscores {
 		for i, _mi = range *maxscoresIdxs {
 			m = float64(_mi >> 32)
-			if m > M {
+			// Packed predecessor indexes stay global in recursive regions.
+			if m > M || m == M && int(uint32(_mi)) == offset+Mi && extendsChain2End((*subs)[Mi], (*subs)[i]) {
 				M, Mi = m, i
 			}
 		}

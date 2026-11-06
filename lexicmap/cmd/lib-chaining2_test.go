@@ -28,6 +28,76 @@ import (
 	"testing"
 )
 
+// An anchor whose length cancels its gap penalty still extends the same chain.
+// Exercise the initial maximum and recursive regions on both sides of it.
+func TestChainer2ZeroScoreExtension(t *testing.T) {
+	for _, recursive := range []bool{false, true} {
+		for _, reverse := range []bool{false, true} {
+			for _, terminalAnchors := range []int{1, 2} {
+				t.Run(fmt.Sprintf("recursive=%t/reverse=%t/ends=%d", recursive, reverse, terminalAnchors), func(t *testing.T) {
+					subs := []SubstrPair{{QBegin: 200, TBegin: 200, Len: 31}, {QBegin: 300, TBegin: 325, Len: 25}}
+					want := [5]int{2, 200, 324, 200, 349}
+					if terminalAnchors == 2 {
+						subs = append(subs, SubstrPair{QBegin: 400, TBegin: 450, Len: 25})
+						want = [5]int{3, 200, 424, 200, 474}
+					}
+					if recursive {
+						// A higher independent score forces the tested chain into a
+						// recursive region whose packed predecessor indexes are global.
+						subs = append([]SubstrPair{{TBegin: 2000, Len: 41}}, subs...)
+					}
+					if reverse {
+						for i := range subs {
+							subs[i].QBegin = 3000 - subs[i].QBegin - int32(subs[i].Len)
+							subs[i].TBegin = 3000 - subs[i].TBegin - int32(subs[i].Len)
+						}
+						slices.Reverse(subs)
+						want = [5]int{want[0], 2999 - want[2], 2999 - want[1], 2999 - want[4], 2999 - want[3]}
+					}
+					opt := Chaining2Options{MaxGap: 100, MinScore: 22, BandBase: 100, BandCount: 50}
+					chains, _, _, _, _, _, _, _ := NewChainer2(&opt).Chain(&subs)
+					if chains == nil {
+						t.Fatal("missing chain")
+					}
+					defer RecycleChaining2Result(chains)
+					wantCount, position := 1, 0
+					if recursive {
+						wantCount, position = 2, 1
+					}
+					if len(*chains) != wantCount {
+						t.Fatalf("got %d chains, want %d: %+v", len(*chains), wantCount, denseChain2Summary(chains))
+					}
+					c := (*chains)[position]
+					if got := [5]int{c.NAnchors, c.QBegin, c.QEnd, c.TBegin, c.TEnd}; got != want {
+						t.Fatalf("chain = %v, want %v", got, want)
+					}
+				})
+			}
+		}
+	}
+}
+
+// An equal score cannot justify shortening either side of the selected chain.
+func TestChainer2ZeroScoreExtensionPreservesBounds(t *testing.T) {
+	for _, swap := range []bool{false, true} {
+		subs := []SubstrPair{{Len: 31}, {QBegin: 10, TBegin: 23, Len: 13}}
+		if swap {
+			subs[1].QBegin, subs[1].TBegin = subs[1].TBegin, subs[1].QBegin
+		}
+		opt := Chaining2Options{MaxGap: 100, MinScore: 22, BandBase: 100, BandCount: 50}
+		chains, _, _, _, _, _, _, _ := NewChainer2(&opt).Chain(&subs)
+		if chains == nil {
+			t.Fatal("missing chain")
+		}
+		got := denseChain2Summary(chains)
+		RecycleChaining2Result(chains)
+		want := []denseChainSummary{{anchors: 1, matched: 31, alignedQ: 31, alignedT: 31, qe: 30, te: 30, identity: 100}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("swap=%t: got %+v, want %+v", swap, got, want)
+		}
+	}
+}
+
 // Each linked anchor contributes its own length. Reversing a chain must not
 // replace its shorter terminal anchor with another copy of the longer one.
 func TestChainer2VariableLengthScore(t *testing.T) {
