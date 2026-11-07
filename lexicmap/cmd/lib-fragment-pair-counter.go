@@ -38,6 +38,53 @@ const maxFragmentPairCounterCells = (maxFragmentPairCounterBytes - 8) * 8 / 17
 // the original hash counter rather than multiplying scanning work without bound.
 const maxFragmentPairCounterBlocks = 16
 
+// Small key runs keep the direct loop; grouping must amortize its linear scan.
+const minGroupedFragmentPairs = 1 << 16
+
+// fragmentKmerRun counts a fragment's occurrences in one immutable equal-key run.
+// Key sorting can interleave fragments, so grouping cannot rely on adjacency.
+// Counts saturate at the final counter's ceiling.
+type fragmentKmerRun struct {
+	fragment uint32
+	count    uint32
+}
+
+// appendFragmentRuns never reorders shared entries or changes their ownership.
+func appendFragmentRuns(dst []fragmentKmerRun, index map[uint32]int, entries []rtree.BatchEntry) []fragmentKmerRun {
+	dst = dst[:0]
+	clear(index)
+	for _, entry := range entries {
+		fragment := entry.Val >> 1
+		if i, ok := index[fragment]; ok {
+			dst[i].count = min(maxFragmentPairCount, dst[i].count+1)
+		} else {
+			index[fragment] = len(dst)
+			dst = append(dst, fragmentKmerRun{fragment: fragment, count: 1})
+		}
+	}
+	return dst
+}
+
+// groupFragmentRuns compresses only expensive key cross products. With no
+// repeated fragments, the original loop avoids a multiplication per position.
+func (cpr *FragmentComparator) groupFragmentRuns(a, b []rtree.BatchEntry) ([]fragmentKmerRun, []fragmentKmerRun, bool) {
+	if len(b) == 0 || len(a) <= minGroupedFragmentPairs/len(b) {
+		return nil, nil, false
+	}
+	if cpr.runIndex == nil {
+		cpr.runIndex = make(map[uint32]int)
+	}
+	cpr.runsA = appendFragmentRuns(cpr.runsA, cpr.runIndex, a)
+	cpr.runsB = appendFragmentRuns(cpr.runsB, cpr.runIndex, b)
+	return cpr.runsA, cpr.runsB, len(cpr.runsA) < len(a) || len(cpr.runsB) < len(b)
+}
+
+// addFragmentOccurrences preserves multiplicity and saturation without overflow:
+// a fragment seen twice in A and three times in B contributes 2*3=6 positions.
+func addFragmentOccurrences(count uint16, a, b uint32) uint16 {
+	return uint16(min(uint64(maxFragmentPairCount), uint64(count)+uint64(a)*uint64(b)))
+}
+
 // fragmentPairCounterShape chooses query-row blocks within the scratch budget.
 // Fragment IDs come from Val>>1, so their maxima fit the original uint32 encoding.
 func fragmentPairCounterShape(a, b []rtree.BatchEntry) (rows, cols, blockRows int, ok bool) {
@@ -61,8 +108,8 @@ func fragmentPairCounterShape(a, b []rtree.BatchEntry) (rows, cols, blockRows in
 }
 
 // scanPairsDense counts one bounded block of query rows at a time, rescanning
-// the immutable sorted streams for each block. It enumerates every original
-// position cross product exactly once, saturating each uint16 count at 65,535.
+// the immutable sorted streams for each block. It preserves the full positional
+// cross product, saturating each uint16 count at 65,535.
 // A false result selects the hash path without allocating counter scratch.
 func (cpr *FragmentComparator) scanPairsDense(a, b []rtree.BatchEntry) (*[]uint64, bool) {
 	if len(a) == 0 || len(b) == 0 {
@@ -106,6 +153,24 @@ func (cpr *FragmentComparator) scanPairsDense(a, b []rtree.BatchEntry) (*[]uint6
 			}
 			for jb < len(b) && b[jb].Key == ka {
 				jb++
+			}
+			if runsA, runsB, grouped := cpr.groupFragmentRuns(a[ia:ja], b[ib:jb]); grouped {
+				for _, a := range runsA {
+					row := int(a.fragment)
+					if row < firstRow || row >= lastRow {
+						continue
+					}
+					offset := (row - firstRow) * cols
+					for _, b := range runsB {
+						cell := offset + int(b.fragment)
+						if counter[cell] == 0 {
+							visited[cell>>6] |= uint64(1) << (cell & 63)
+						}
+						counter[cell] = addFragmentOccurrences(counter[cell], a.count, b.count)
+					}
+				}
+				ia, ib = ja, jb
+				continue
 			}
 			for _, ea := range a[ia:ja] {
 				row := int(ea.Val >> 1)

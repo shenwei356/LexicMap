@@ -105,7 +105,12 @@ func TestReaderConstructorClosesRejectedFiles(t *testing.T) {
 		}
 		t.Run(name+"/valid", func(t *testing.T) {
 			file := filepath.Join(t.TempDir(), "seeds")
-			if err := os.WriteFile(file, header, 0600); err != nil {
+			data := header
+			if !index {
+				// One empty mask still has an eight-byte seed count.
+				data = append(append([]byte(nil), header...), make([]byte, 8)...)
+			}
+			if err := os.WriteFile(file, data, 0600); err != nil {
 				t.Fatal(err)
 			}
 			r, err := open(file)

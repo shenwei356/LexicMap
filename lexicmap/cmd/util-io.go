@@ -39,6 +39,16 @@ var IOBufferSize = 65536 // os.Getpagesize()
 // Concurrent readers and writers need separate allowances.
 const reservedOpenFiles = 9
 
+// isStreamingInput identifies inputs that can wait indefinitely for a producer.
+// Regular files keep buffered output; streams must flush before the next read.
+func isStreamingInput(file string) bool {
+	if isStdin(file) {
+		return true
+	}
+	info, err := os.Stat(file)
+	return err != nil || !info.Mode().IsRegular()
+}
+
 func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteCloser, *os.File, error) {
 	var w *os.File
 	if file == "-" {

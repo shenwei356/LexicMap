@@ -22,8 +22,12 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/shenwei356/xopen"
 	"github.com/spf13/cobra"
@@ -47,260 +51,298 @@ Input:
 
 		outFile := getFlagString(cmd, "out-file")
 		defer setupCommandLog(opt, outFile)()
-		outputLog := opt.Verbose || opt.Log2File
-
-		bufferSizeS := getFlagString(cmd, "buffer-size")
-		if bufferSizeS == "" {
-			checkError(fmt.Errorf("value of buffer size. supported unit: K, M, G"))
-		}
-
-		bufferSize, err := ParseByteSize(bufferSizeS)
-		if err != nil {
-			checkError(fmt.Errorf("invalid value of buffer size. supported unit: K, M, G"))
-		}
-
-		kvFileSeq := getFlagString(cmd, "kv-file-seq")
-		kvFileGenome := getFlagString(cmd, "kv-file-genome")
-		ignoreCase := getFlagBool(cmd, "ignore-case")
-
-		hasKVSeq := kvFileSeq != ""
-		hasKVGenome := kvFileGenome != ""
-
-		var kvsSeq, kvsGenome map[string]string
-
-		if hasKVSeq {
-			kvsSeq, err = readKVs(kvFileSeq, ignoreCase)
-			if err != nil {
-				checkError(fmt.Errorf("read sseqid kv file: %s", err))
-			} else if outputLog {
-				log.Infof("%d pairs of sseqid key-value loaded", len(kvsSeq))
-			}
-		}
-
-		if hasKVGenome {
-			kvsGenome, err = readKVs(kvFileGenome, ignoreCase)
-			if err != nil {
-				checkError(fmt.Errorf("read sseqid kv file: %s", err))
-			} else if outputLog {
-				log.Infof("%d pairs of sgenome key-value loaded", len(kvsGenome))
-			}
-		}
-
-		// ---------------------------------------------------------------
-		// output file handler
-		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
-		checkError(err)
-		defer func() {
-			checkError(closeOutStream(outfh, gw, w))
-		}()
-
-		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
-
-		// Grow for long records instead of eagerly allocating an unusually large limit.
-		buf := make([]byte, min(bufferSize, 20<<20))
-		var fh *xopen.Reader
-		var line string
-		var scanner *bufio.Scanner
-
-		ncols := 24
-		items := make([]string, ncols)
-
-		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
-		var cigar, qseq, sseq, align string
-
-		var headerLine bool
-		var lineNo int       // physical input line, including blank lines and the header
-		var firstRecord bool // each input starts a new query/subject group
-		var iGenome, iSeq int
-		var preQuery, preGenome, preSeq string
-		var rows, i, j, end int
-		var _qstart, _qend, _sstart, _send int
-		var _qstart2, _qend2, _sstart2, _send2 int
-		var posW int
-		var fA, fQ, fT string
-		var _strand string
-		var q, t string
-		var rc bool
-
-		var value string
-
-		for _, file := range files {
-			fh, err = xopen.Ropen(file)
-			checkError(err)
-
-			headerLine = true
-			lineNo = 0
-			firstRecord = true
-
-			scanner = bufio.NewScanner(fh)
-			scanner.Buffer(buf, int(bufferSize))
-			for scanner.Scan() {
-				lineNo++
-				line = strings.TrimRight(scanner.Text(), "\r\n")
-				if line == "" {
-					continue
-				}
-				if headerLine {
-					headerLine = false
-					continue
-				}
-
-				stringSplitNByByte(line, '\t', ncols, &items)
-				if len(items) < ncols {
-					checkError(fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", len(items), ncols))
-				}
-
-				align = items[23] // let the compiler to reduce boundary checking
-				query = items[0]
-				qlen = items[1]
-				hits = items[2]
-				sgenome = items[3]
-				sseqid = items[4]
-				qcovGnm = items[5]
-				cls = items[6]
-				hsp = items[7]
-				qcovHSP = items[8]
-				alenHSP = items[9]
-				pident = items[10]
-				gaps = items[11]
-				qstart = items[12]
-				qend = items[13]
-				sstart = items[14]
-				send = items[15]
-				sstr = items[16]
-				slen = items[17]
-				evalue = items[18]
-				bitscore = items[19]
-				cigar = items[20]
-				qseq = items[21]
-				sseq = items[22]
-				// align = items[23]
-
-				// All three strings are sliced at the same alignment columns.
-				if len(qseq) == 0 || len(qseq) != len(sseq) || len(qseq) != len(align) {
-					checkError(fmt.Errorf("%s: line %d: invalid alignment lengths: qseq=%d, sseq=%d, align=%d (expected equal, nonzero lengths)", file, lineNo, len(qseq), len(sseq), len(align)))
-				}
-
-				_, _qstart, _qend, err = parseSearchResultCoordinates("query", qlen, qstart, qend)
-				if err != nil {
-					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
-				}
-				_, _sstart, _send, err = parseSearchResultCoordinates("subject", slen, sstart, send)
-				if err != nil {
-					checkError(fmt.Errorf("%s: line %d: %w", file, lineNo, err))
-				}
-				if sstr != "+" && sstr != "-" {
-					checkError(fmt.Errorf("%s: line %d: invalid strand %q (expected + or -)", file, lineNo, sstr))
-				}
-				if len(qseq)-ngaps(qseq) != _qend-_qstart+1 || len(sseq)-ngaps(sseq) != _send-_sstart+1 {
-					checkError(fmt.Errorf("%s: line %d: alignment spans do not match query and subject coordinates", file, lineNo))
-				}
-
-				if sstr == "+" {
-					_strand = "Plus"
-					rc = false
-				} else {
-					_strand = "Minus"
-					rc = true
-				}
-
-				posW = max(len(qend), len(send))
-				fQ = fmt.Sprintf("Query  %%-%dd  %%s  %%d\n", posW)
-				fA = fmt.Sprintf("       %%%ds  %%s\n", posW)
-				fT = fmt.Sprintf("Sbjct  %%-%dd  %%s  %%d\n", posW)
-
-				_ = cigar
-
-				newQuery := firstRecord || preQuery != query
-				newGenome := newQuery || preGenome != sgenome
-				newSeq := newGenome || preSeq != sseqid
-				if newQuery {
-					iGenome = 0
-					fmt.Fprintf(outfh, "Query = %s\nLength = %s\n\n", query, qlen)
-				}
-				if newGenome {
-					iGenome++
-					value = ""
-					if hasKVGenome {
-						if ignoreCase {
-							value = kvsGenome[strings.ToLower(sgenome)]
-						} else {
-							value = kvsGenome[sgenome]
-						}
-					}
-					fmt.Fprintf(outfh, "[Subject genome #%d/%s] = %s %s\nQuery coverage per genome = %s%%\n\n",
-						iGenome, hits, sgenome, value, qcovGnm)
-				}
-				if newSeq {
-					iSeq = 1
-					value = ""
-					if hasKVSeq {
-						if ignoreCase {
-							value = kvsSeq[strings.ToLower(sseqid)]
-						} else {
-							value = kvsSeq[sseqid]
-						}
-					}
-					fmt.Fprintf(outfh, ">%s %s\nLength = %s\n\n", sseqid, value, slen)
-				}
-
-				fmt.Fprintf(outfh, " HSP cluster #%s, HSP #%s\n", cls, hsp)
-				firstRecord = false
-				fmt.Fprintf(outfh, " Score = %s bits, Expect = %s\n", bitscore, evalue)
-				fmt.Fprintf(outfh, " Query coverage per seq = %s%%, Aligned length = %s, Identities = %s%%, Gaps = %s\n",
-					qcovHSP, alenHSP, pident, gaps)
-				fmt.Fprintf(outfh, " Query range = %s-%s, Subject range = %s-%s, Strand = Plus/%s\n\n",
-					qstart, qend, sstart, send, _strand)
-
-				rows = (len(qseq) + 59) / 60
-
-				_qstart2 = _qstart
-				if rc {
-					_sstart2 = _send
-				} else {
-					_sstart2 = _sstart
-				}
-				for i = 0; i < rows; i++ {
-					j = i * 60
-					if i < rows-1 {
-						end = j + 60
-					} else {
-						end = len(qseq)
-					}
-					q, t = qseq[j:end], sseq[j:end]
-
-					_qend2 = _qstart2 + len(q) - ngaps(q) - 1
-					if rc {
-						_send2 = _sstart2 - (len(t) - ngaps(t)) + 1
-					} else {
-						_send2 = _sstart2 + len(t) - ngaps(t) - 1
-					}
-
-					fmt.Fprintf(outfh, fQ, _qstart2, q, _qend2)
-					fmt.Fprintf(outfh, fA, " ", align[j:end])
-					fmt.Fprintf(outfh, fT, _sstart2, t, _send2)
-					outfh.WriteByte('\n')
-
-					_qstart2 = _qend2 + 1
-					if rc {
-						_sstart2 = _send2 - 1
-					} else {
-						_sstart2 = _send2 + 1
-					}
-				}
-				outfh.WriteByte('\n')
-
-				iSeq++
-				preQuery = query
-				preGenome = sgenome
-				preSeq = sseqid
-
-			}
-
-			checkError(scanner.Err())
-			checkError(fh.Close())
-		}
+		checkError(convertSearchResultsToBlast(cmd, args, opt, outFile))
 	},
+}
+
+// convertSearchResultsToBlast owns input and output cleanup on every error path.
+func convertSearchResultsToBlast(cmd *cobra.Command, args []string, opt *Options, outFile string) (err error) {
+	// Keep stdout errors on the cleanup path instead of exiting on SIGPIPE.
+	brokenPipe := make(chan os.Signal, 1)
+	signal.Notify(brokenPipe, syscall.SIGPIPE)
+	defer signal.Stop(brokenPipe)
+
+	outputLog := opt.Verbose || opt.Log2File
+
+	bufferSizeS := getFlagString(cmd, "buffer-size")
+	if bufferSizeS == "" {
+		return fmt.Errorf("value of buffer size. supported unit: K, M, G")
+	}
+
+	bufferSize, err := ParseByteSize(bufferSizeS)
+	if err != nil {
+		return fmt.Errorf("invalid value of buffer size. supported unit: K, M, G")
+	}
+
+	kvFileSeq := getFlagString(cmd, "kv-file-seq")
+	kvFileGenome := getFlagString(cmd, "kv-file-genome")
+	ignoreCase := getFlagBool(cmd, "ignore-case")
+
+	hasKVSeq := kvFileSeq != ""
+	hasKVGenome := kvFileGenome != ""
+
+	var kvsSeq, kvsGenome map[string]string
+
+	if hasKVSeq {
+		kvsSeq, err = readKVs(kvFileSeq, ignoreCase)
+		if err != nil {
+			return fmt.Errorf("read sseqid kv file: %s", err)
+		} else if outputLog {
+			log.Infof("%d pairs of sseqid key-value loaded", len(kvsSeq))
+		}
+	}
+
+	if hasKVGenome {
+		kvsGenome, err = readKVs(kvFileGenome, ignoreCase)
+		if err != nil {
+			return fmt.Errorf("read sseqid kv file: %s", err)
+		} else if outputLog {
+			log.Infof("%d pairs of sgenome key-value loaded", len(kvsGenome))
+		}
+	}
+
+	// ---------------------------------------------------------------
+	// output file handler
+	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, closeOutStream(outfh, gw, w))
+	}()
+
+	files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+
+	// Grow for long records instead of eagerly allocating an unusually large limit.
+	buf := make([]byte, min(bufferSize, 20<<20))
+	var fh *xopen.Reader
+	defer func() {
+		if fh != nil {
+			err = errors.Join(err, fh.Close())
+		}
+	}()
+	var line string
+	var scanner *bufio.Scanner
+
+	ncols := 24
+	items := make([]string, ncols)
+
+	var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP, pident, gaps, qstart, qend, sstart, send, sstr, slen, evalue, bitscore string
+	var cigar, qseq, sseq, align string
+
+	var headerLine bool
+	var lineNo int       // physical input line, including blank lines and the header
+	var firstRecord bool // each input starts a new query/subject group
+	var iGenome, iSeq int
+	var preQuery, preGenome, preSeq string
+	var rows, i, j, end int
+	var _qstart, _qend, _sstart, _send int
+	var _qstart2, _qend2, _sstart2, _send2 int
+	var posW int
+	var fA, fQ, fT string
+	var _strand string
+	var q, t string
+	var rc bool
+
+	var value string
+
+	for _, file := range files {
+		flushEachRecord := isStreamingInput(file)
+		fh, err = xopen.Ropen(file)
+		if err != nil {
+			return err
+		}
+
+		headerLine = true
+		lineNo = 0
+		firstRecord = true
+
+		scanner = bufio.NewScanner(fh)
+		scanner.Buffer(buf, int(bufferSize))
+		for scanner.Scan() {
+			lineNo++
+			line = strings.TrimRight(scanner.Text(), "\r\n")
+			if line == "" {
+				continue
+			}
+			if headerLine {
+				headerLine = false
+				continue
+			}
+
+			stringSplitNByByte(line, '\t', ncols, &items)
+			if len(items) < ncols {
+				return fmt.Errorf("the input has only %d columns (<%d), did you forget to add -a/--all for 'lexicmap search'?", len(items), ncols)
+			}
+
+			align = items[23] // let the compiler to reduce boundary checking
+			query = items[0]
+			qlen = items[1]
+			hits = items[2]
+			sgenome = items[3]
+			sseqid = items[4]
+			qcovGnm = items[5]
+			cls = items[6]
+			hsp = items[7]
+			qcovHSP = items[8]
+			alenHSP = items[9]
+			pident = items[10]
+			gaps = items[11]
+			qstart = items[12]
+			qend = items[13]
+			sstart = items[14]
+			send = items[15]
+			sstr = items[16]
+			slen = items[17]
+			evalue = items[18]
+			bitscore = items[19]
+			cigar = items[20]
+			qseq = items[21]
+			sseq = items[22]
+			// align = items[23]
+
+			// All three strings are sliced at the same alignment columns.
+			if len(qseq) == 0 || len(qseq) != len(sseq) || len(qseq) != len(align) {
+				return fmt.Errorf("%s: line %d: invalid alignment lengths: qseq=%d, sseq=%d, align=%d (expected equal, nonzero lengths)", file, lineNo, len(qseq), len(sseq), len(align))
+			}
+
+			_, _qstart, _qend, err = parseSearchResultCoordinates("query", qlen, qstart, qend)
+			if err != nil {
+				return fmt.Errorf("%s: line %d: %w", file, lineNo, err)
+			}
+			_, _sstart, _send, err = parseSearchResultCoordinates("subject", slen, sstart, send)
+			if err != nil {
+				return fmt.Errorf("%s: line %d: %w", file, lineNo, err)
+			}
+			if sstr != "+" && sstr != "-" {
+				return fmt.Errorf("%s: line %d: invalid strand %q (expected + or -)", file, lineNo, sstr)
+			}
+			if len(qseq)-ngaps(qseq) != _qend-_qstart+1 || len(sseq)-ngaps(sseq) != _send-_sstart+1 {
+				return fmt.Errorf("%s: line %d: alignment spans do not match query and subject coordinates", file, lineNo)
+			}
+
+			if sstr == "+" {
+				_strand = "Plus"
+				rc = false
+			} else {
+				_strand = "Minus"
+				rc = true
+			}
+
+			posW = max(len(qend), len(send))
+			fQ = fmt.Sprintf("Query  %%-%dd  %%s  %%d\n", posW)
+			fA = fmt.Sprintf("       %%%ds  %%s\n", posW)
+			fT = fmt.Sprintf("Sbjct  %%-%dd  %%s  %%d\n", posW)
+
+			_ = cigar
+
+			newQuery := firstRecord || preQuery != query
+			newGenome := newQuery || preGenome != sgenome
+			newSeq := newGenome || preSeq != sseqid
+			if newQuery {
+				iGenome = 0
+				fmt.Fprintf(outfh, "Query = %s\nLength = %s\n\n", query, qlen)
+			}
+			if newGenome {
+				iGenome++
+				value = ""
+				if hasKVGenome {
+					if ignoreCase {
+						value = kvsGenome[strings.ToLower(sgenome)]
+					} else {
+						value = kvsGenome[sgenome]
+					}
+				}
+				fmt.Fprintf(outfh, "[Subject genome #%d/%s] = %s %s\nQuery coverage per genome = %s%%\n\n",
+					iGenome, hits, sgenome, value, qcovGnm)
+			}
+			if newSeq {
+				iSeq = 1
+				value = ""
+				if hasKVSeq {
+					if ignoreCase {
+						value = kvsSeq[strings.ToLower(sseqid)]
+					} else {
+						value = kvsSeq[sseqid]
+					}
+				}
+				fmt.Fprintf(outfh, ">%s %s\nLength = %s\n\n", sseqid, value, slen)
+			}
+
+			fmt.Fprintf(outfh, " HSP cluster #%s, HSP #%s\n", cls, hsp)
+			firstRecord = false
+			fmt.Fprintf(outfh, " Score = %s bits, Expect = %s\n", bitscore, evalue)
+			fmt.Fprintf(outfh, " Query coverage per seq = %s%%, Aligned length = %s, Identities = %s%%, Gaps = %s\n",
+				qcovHSP, alenHSP, pident, gaps)
+			fmt.Fprintf(outfh, " Query range = %s-%s, Subject range = %s-%s, Strand = Plus/%s\n\n",
+				qstart, qend, sstart, send, _strand)
+
+			rows = (len(qseq) + 59) / 60
+
+			_qstart2 = _qstart
+			if rc {
+				_sstart2 = _send
+			} else {
+				_sstart2 = _sstart
+			}
+			for i = 0; i < rows; i++ {
+				j = i * 60
+				if i < rows-1 {
+					end = j + 60
+				} else {
+					end = len(qseq)
+				}
+				q, t = qseq[j:end], sseq[j:end]
+
+				_qend2 = _qstart2 + len(q) - ngaps(q) - 1
+				if rc {
+					_send2 = _sstart2 - (len(t) - ngaps(t)) + 1
+				} else {
+					_send2 = _sstart2 + len(t) - ngaps(t) - 1
+				}
+
+				fmt.Fprintf(outfh, fQ, _qstart2, q, _qend2)
+				fmt.Fprintf(outfh, fA, " ", align[j:end])
+				fmt.Fprintf(outfh, fT, _sstart2, t, _send2)
+				if err := outfh.WriteByte('\n'); err != nil {
+					return err
+				}
+
+				_qstart2 = _qend2 + 1
+				if rc {
+					_sstart2 = _send2 - 1
+				} else {
+					_sstart2 = _send2 + 1
+				}
+			}
+			if err := outfh.WriteByte('\n'); err != nil {
+				return err
+			}
+
+			// Flush before Scan can block on an unfinished input stream.
+			if flushEachRecord {
+				if err := outfh.Flush(); err != nil {
+					return err
+				}
+			}
+
+			iSeq++
+			preQuery = query
+			preGenome = sgenome
+			preSeq = sseqid
+
+		}
+
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		closeErr := fh.Close()
+		fh = nil
+		if closeErr != nil {
+			return closeErr
+		}
+	}
+	return nil
 }
 
 func init() {

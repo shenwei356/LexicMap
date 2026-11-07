@@ -1036,22 +1036,23 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 	anchorPrefix := buf[4]
 
 	// index of the first mask in current chunk.
-	var iFirstMask int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
 		return 0, -1, 0, 0, 0, err
 	}
-	iFirstMask = int(be.Uint64(buf))
+	firstMask := be.Uint64(buf)
 
 	// mask chunk size
-	var nMasks int
 	_, err = io.ReadFull(r, buf)
 	if err != nil {
 		return 0, -1, 0, 0, 0, err
 	}
-	nMasks = int(be.Uint64(buf))
+	nMasks := be.Uint64(buf)
 
-	return k, iFirstMask, nMasks, maskPrefix, anchorPrefix, nil
+	if _, err := checkKVIndexLayout(fh, k, maskPrefix, anchorPrefix, firstMask, nMasks); err != nil {
+		return 0, -1, 0, 0, 0, err
+	}
+	return k, int(firstMask), int(nMasks), maskPrefix, anchorPrefix, nil
 }
 
 // ReadKVDataHeader reads only the header information from kv-data file.

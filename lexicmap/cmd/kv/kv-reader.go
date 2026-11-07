@@ -44,6 +44,8 @@ type Reader struct {
 	fh   *os.File // file handler of the kv-data file
 	r    *bufio.Reader
 
+	source *io.LimitedReader // unread file bytes, excluding bufio read-ahead
+
 	buf     []byte
 	buf8    []uint8
 	buf2048 []uint8 // for parsing seed data
@@ -68,12 +70,20 @@ func NewReader(file string) (reader *Reader, err error) {
 		}
 	}()
 
-	r := bufio.NewReaderSize(fh, IOBufferSize)
+	info, err := fh.Stat()
+	if err != nil {
+		return nil, err
+	}
+	source := &io.LimitedReader{R: fh, N: info.Size()}
+	r := bufio.NewReaderSize(source, IOBufferSize)
 
 	rdr := &Reader{
 		file: file,
 		fh:   fh,
 		r:    r,
+
+		source: source,
+
 		buf:  make([]byte, 64),
 		buf8: make([]uint8, 8),
 
@@ -87,10 +97,7 @@ func NewReader(file string) (reader *Reader, err error) {
 	var n int
 
 	// check the magic number
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -105,10 +112,7 @@ func NewReader(file string) (reader *Reader, err error) {
 		return nil, ErrInvalidFileFormat
 	}
 	// read version information
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -125,16 +129,43 @@ func NewReader(file string) (reader *Reader, err error) {
 	if err != nil {
 		return nil, err
 	}
-	rdr.ChunkIndex = int(be.Uint64(buf))
+	firstMask := be.Uint64(buf)
 
 	// mask chunk size
-	_, err = io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
+	n, _ = io.ReadFull(r, buf)
+	if n < 8 {
+		return nil, ErrBrokenFile
 	}
-	rdr.ChunkSize = int(be.Uint64(buf))
+	maskCount := be.Uint64(buf)
+	// Every mask has an eight-byte count, even when it contains no seeds.
+	// Bound both in-memory slice headers and the complete mask-index range.
+	if rdr.K == 0 || rdr.K > 32 || firstMask > uint64(math.MaxInt) ||
+		maskCount > uint64(math.MaxInt)-firstMask || maskCount > uint64(math.MaxInt/48) ||
+		maskCount > uint64(rdr.remainingBytes()/8) {
+		return nil, ErrBrokenFile
+	}
+	rdr.ChunkIndex, rdr.ChunkSize = int(firstMask), int(maskCount)
 
 	return rdr, nil
+}
+
+// remainingBytes includes bytes already fetched by the buffered reader.
+func (rdr *Reader) remainingBytes() int64 {
+	return rdr.source.N + int64(rdr.r.Buffered())
+}
+
+// readMaskKmerCount validates allocation sizes before converting a disk count.
+// A key pair needs at least six bytes (two controls and four one-byte values),
+// even with empty posting lists. A list needs two uint64s per distinct key.
+func (rdr *Reader) readMaskKmerCount() (int, error) {
+	if _, err := io.ReadFull(rdr.r, rdr.buf8); err != nil {
+		return 0, ErrBrokenFile
+	}
+	n := be.Uint64(rdr.buf8)
+	if n > uint64(math.MaxInt/16) || n > uint64(rdr.remainingBytes()/3) {
+		return 0, ErrBrokenFile
+	}
+	return int(n), nil
 }
 
 var PoolKmerData = &sync.Pool{New: func() interface{} {
@@ -157,7 +188,6 @@ func (rdr *Reader) Close() error {
 // Please remember to recycle the result.
 func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	buf := rdr.buf
-	buf8 := rdr.buf8
 	buf2048 := rdr.buf2048
 	r := rdr.r
 
@@ -176,17 +206,14 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 	var ok bool
 	var n uint64
 
-	m := PoolKmerData.Get().(*map[uint64]*[]uint64)
-	// clear(*m)  // unnecessary as it's cleared
 	var err error
 
-	// 8-byte the number of k-mers
-	nReaded, _ = io.ReadFull(r, buf8)
-	if nReaded < 8 {
-		return nil, ErrBrokenFile
+	nKmers, err := rdr.readMaskKmerCount()
+	if err != nil {
+		return nil, err
 	}
-	nKmers := int(be.Uint64(buf8))
 
+	m := PoolKmerData.Get().(*map[uint64]*[]uint64)
 	if nKmers == 0 {
 		return m, nil
 	}
@@ -367,19 +394,18 @@ func (rdr *Reader) ReadDataOfAMaskAsMap() (*map[uint64]*[]uint64, error) {
 
 // appendSeedPositions decodes count positions into an existing seed data list.
 func (rdr *Reader) appendSeedPositions(values *[]uint64, count uint64) error {
-	if count > uint64(math.MaxInt-len(*values)) {
-		return fmt.Errorf("too many seed positions: %d", count)
-	}
-	oldLen := len(*values)
-	*values = slices.Grow(*values, int(count))
-	*values = (*values)[:oldLen+int(count)]
-
 	width := uint64(8)
 	decode := be.Uint64
 	if rdr.Use3BytesForSeedPos {
 		width = 7
 		decode = Uint64ThreeBytes
 	}
+	if count > uint64(math.MaxInt/8-len(*values)) || count > uint64(rdr.remainingBytes())/width {
+		return ErrBrokenFile
+	}
+	oldLen := len(*values)
+	*values = slices.Grow(*values, int(count))
+	*values = (*values)[:oldLen+int(count)]
 	writeAt := oldLen
 	for count >= seedPosBatchSize {
 		nBytes := uint64(seedPosBatchSize) * width
@@ -411,7 +437,6 @@ func (rdr *Reader) appendSeedPositions(values *[]uint64, count uint64) error {
 // Please remember to recycle the result.
 func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error {
 	buf := rdr.buf
-	buf8 := rdr.buf8
 	r := rdr.r
 
 	var ctrlByte byte
@@ -428,12 +453,10 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 
 	var err error
 
-	// 8-byte the number of k-mers
-	nReaded, _ = io.ReadFull(r, buf8)
-	if nReaded < 8 {
-		return ErrBrokenFile
+	nKmers, err := rdr.readMaskKmerCount()
+	if err != nil {
+		return err
 	}
-	nKmers := int(be.Uint64(buf8))
 
 	if nKmers == 0 {
 		return nil
@@ -532,7 +555,6 @@ func (rdr *Reader) ReadDataOfAMaskAndAppendToMap(m *map[uint64]*[]uint64) error 
 // Returned: a list of k-mer and value pairs are intermittently saved in a []uint64.
 func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 	buf := rdr.buf
-	buf8 := rdr.buf8
 	buf2048 := rdr.buf2048
 	r := rdr.r
 
@@ -551,12 +573,10 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 
 	var err error
 
-	// 8-byte the number of k-mers
-	nReaded, _ = io.ReadFull(r, buf8)
-	if nReaded < 8 {
-		return nil, ErrBrokenFile
+	nKmers, err := rdr.readMaskKmerCount()
+	if err != nil {
+		return nil, err
 	}
-	nKmers := int(be.Uint64(buf8))
 
 	if nKmers == 0 { // this hapens when no captured k-mer for a mask
 		return make([]uint64, 0), nil
@@ -754,7 +774,6 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 	}
 
 	buf := rdr.buf
-	buf8 := rdr.buf8
 	buf2048 := rdr.buf2048
 	r := rdr.r
 
@@ -773,12 +792,10 @@ func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8
 
 	var err error
 
-	// 8-byte the number of k-mers
-	nReaded, _ = io.ReadFull(r, buf8)
-	if nReaded < 8 {
-		return nil, nil, 0, 0, ErrBrokenFile
+	nKmers, err := rdr.readMaskKmerCount()
+	if err != nil {
+		return nil, nil, 0, 0, err
 	}
-	nKmers := int(be.Uint64(buf8))
 
 	if nKmers == 0 { // this hapens when no captured k-mer for a mask
 		return make([]uint64, 0), nil, 0, 0, nil
@@ -1050,10 +1067,7 @@ func NewIndexReader(file string) (reader *IndexReader, err error) {
 	var n int
 
 	// check the magic number
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}
@@ -1068,10 +1082,7 @@ func NewIndexReader(file string) (reader *IndexReader, err error) {
 		return nil, ErrInvalidFileFormat
 	}
 	// read version information
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return nil, ErrBrokenFile
 	}

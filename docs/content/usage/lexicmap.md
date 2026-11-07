@@ -47,7 +47,9 @@ Directory paths containing symbolic links followed by `..` are resolved before
 validation, so checks and writes use the same directory. Output and temporary
 merge directories cannot be the current directory, its ancestors, or their aliases.
 Commands exit with an error if writing, flushing, or closing their result output
-fails.
+fails. `utils 2blast` and search-result extraction with `utils subseq` stop
+reading new records after an output error, including when stdin remains open.
+Subsequence extraction finishes and releases already submitted work before exiting.
 
 Files from `-X/--infile-list` are appended to positional inputs, including an
 explicit `-` for stdin. With no positional inputs, a non-empty file list supplies

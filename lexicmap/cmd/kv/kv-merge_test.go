@@ -22,6 +22,7 @@ package kv
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -241,6 +242,13 @@ func TestMergerRejectsBrokenMask(t *testing.T) {
 				t.Fatal(err)
 			}
 			reader, err := NewReader(input)
+			if kind == "truncated-header" {
+				// The reader now rejects an impossible chunk before merging starts.
+				if !errors.Is(err, ErrBrokenFile) {
+					t.Fatalf("expected broken chunk header, got %v", err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatal(err)
 			}

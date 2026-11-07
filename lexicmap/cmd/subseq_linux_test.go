@@ -72,3 +72,13 @@ func TestSubseqClosesUnmatchedChunkReaders(t *testing.T) {
 		t.Fatalf("wrong sequence: %s", output)
 	}
 }
+
+func TestSubseqStopsOnOutputFailure(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	input := "q\t3\t1\tg0\tcontig1\t100\t1\t1\t100\t3\t100\t0\t1\t3\t1\t3\t+\t3\t0\t10\n"
+	for _, workers := range []string{"1", "4"} {
+		t.Run(workers, func(t *testing.T) {
+			checkStreamingOutputFailure(t, input, "utils", "subseq", "--quiet", "-j", workers, "-d", db, "-f", "-", "-H")
+		})
+	}
+}

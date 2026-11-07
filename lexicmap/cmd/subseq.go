@@ -25,13 +25,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/bio/seq"
@@ -107,371 +110,7 @@ Attention:
 		}
 
 		if fileSearchResult != "" {
-			noHeader := getFlagBool(cmd, "no-header-row")
-
-			ignoreErr := getFlagBool(cmd, "ignore-err")
-
-			outputLog := opt.Verbose || opt.Log2File
-			verbose := opt.Verbose
-
-			bufferSizeS := getFlagString(cmd, "buffer-size")
-			if bufferSizeS == "" {
-				checkError(fmt.Errorf("value of buffer size. supported unit: K, M, G"))
-			}
-
-			bufferSize, err := ParseByteSize(bufferSizeS)
-			if err != nil {
-				checkError(fmt.Errorf("invalid value of buffer size. supported unit: K, M, G"))
-			}
-
-			// Grow for long records instead of eagerly allocating an unusually large limit.
-			buf := make([]byte, min(bufferSize, 20<<20))
-			ncols := 20
-			// items := make([]string, ncols)
-			var poolItems = &sync.Pool{New: func() interface{} {
-				items := make([]string, ncols)
-				return &items
-			}}
-
-			fh, err := xopen.Ropen(fileSearchResult)
-			checkError(err)
-			defer fh.Close()
-
-			// --------------------------------------------------
-			if outputLog {
-				log.Infof("loading index: %s", dbDir)
-			}
-
-			// info file
-			fileInfo := filepath.Join(dbDir, FileInfo)
-			info, err := readIndexInfo(fileInfo)
-			if err != nil {
-				checkError(fmt.Errorf("failed to read info file: %s", err))
-			}
-			if info.MainVersion != MainVersion {
-				checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
-			}
-
-			// genomes.map file for mapping index to genome id
-			refname2idx, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
-			if err != nil {
-				checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
-			}
-			genomeChunks, err := readSubseqGenomeChunks(dbDir)
-			checkError(err)
-
-			// --------------------------------------------------
-			// genome readers
-			readers, err := newSubseqGenomeReaders(dbDir, info.GenomeBatches, maxOpenFiles, opt.NumCPUs)
-			checkError(err)
-			if outputLog {
-				if readers.pooled() {
-					log.Infof("  created reader pools for %d genome batches, each with %d readers", info.GenomeBatches, readers.readersPerBatch)
-				} else {
-					log.Infof("  reader pools disabled for %d genome batches; opening at most %d genome files on demand", info.GenomeBatches, maxOpenFiles-reservedOpenFiles)
-				}
-			}
-			var wg sync.WaitGroup
-
-			// --------------------------------------------------
-
-			// output file handler
-			outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
-			checkError(err)
-			defer func() {
-				checkError(closeOutStream(outfh, gw, w))
-			}()
-
-			if outputLog {
-				log.Infof("extracting subsequences...")
-			}
-
-			scanner := bufio.NewScanner(fh)
-			scanner.Buffer(buf, int(bufferSize))
-
-			fmt2 := ">%s:%d-%d:%s query=%s sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
-				"pident=%s gaps=%s qstart=%s qend=%s sstart=%s send=%s sstr=%s slen=%s evalue=%s bitscore=%s\n"
-
-			// output
-			type Subseq struct {
-				ID     uint64
-				Header string
-				Seq    *seq.Seq
-				Genome *genome.Genome
-			}
-			var poolSubseq = &sync.Pool{New: func() interface{} {
-				return &Subseq{}
-			}}
-			// Keep a small output window so workers can overlap extraction and
-			// writing without accumulating unbounded results behind a slow read.
-			pending := make(chan struct{}, 4*opt.NumCPUs)
-			token := make(chan int, opt.NumCPUs)
-			recycleSubseq := func(result *Subseq) {
-				genome.RecycleGenome(result.Genome)
-				*result = Subseq{}
-				poolSubseq.Put(result)
-				<-pending
-			}
-			ch := make(chan *Subseq, opt.NumCPUs)
-			m := make(map[uint64]*Subseq, opt.NumCPUs) // completed results waiting for their input ordinal
-			done := make(chan int)
-			var nSuccess int
-			go func() {
-				var id uint64
-				var _n int
-				for result := range ch {
-					_n++
-					if verbose && ((_n < 1024 && _n&127 == 0) || _n&1023 == 0) {
-						fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
-					}
-
-					m[result.ID] = result
-					// A completed predecessor can unlock several queued records.
-					for {
-						result, ok := m[id]
-						if !ok {
-							break
-						}
-						if result.Seq != nil {
-							nSuccess++
-							outfh.WriteString(result.Header)
-							outfh.Write(result.Seq.FormatSeq(lineWidth))
-							outfh.WriteByte('\n')
-						}
-						delete(m, id)
-						recycleSubseq(result)
-						id++
-					}
-				}
-
-				if verbose {
-					fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
-					fmt.Fprintln(os.Stderr)
-				}
-
-				done <- 1
-			}()
-
-			// output ^
-
-			var line string
-			var n uint64
-			headerLine := !noHeader
-
-			for scanner.Scan() {
-				line = strings.TrimRight(scanner.Text(), "\r\n")
-				if line == "" {
-					continue
-				}
-				if headerLine {
-					headerLine = false
-					continue
-				}
-
-				pending <- struct{}{}
-				wg.Add(1)
-				token <- 1
-				go func(line string, n uint64) {
-					var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
-					var pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore string
-					var sstart, send int
-					var __end int
-					var eStart, eEnd int
-
-					items := poolItems.Get().(*[]string)
-
-					stringSplitNByByte(line, '\t', ncols, items)
-					if len(*items) < ncols {
-						checkError(fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", len(*items), ncols))
-					}
-
-					defer func() {
-						clear(*items)
-						poolItems.Put(items)
-
-						wg.Done()
-						<-token
-					}()
-
-					bitscore = (*items)[19]
-
-					query = (*items)[0]
-					qlen = (*items)[1]
-					_ = qlen
-					hits = (*items)[2]
-					_ = hits
-
-					sgenome = (*items)[3]
-					sseqid = (*items)[4]
-					qcovGnm = (*items)[5]
-					cls = (*items)[6]
-					hsp = (*items)[7]
-					qcovHSP = (*items)[8]
-					alenHSP = (*items)[9]
-					pident = (*items)[10]
-					gaps = (*items)[11]
-					qstart = (*items)[12]
-					qend = (*items)[13]
-					_sstart = (*items)[14]
-					_send = (*items)[15]
-					sstr = (*items)[16]
-					slen = (*items)[17]
-					evalue = (*items)[18]
-
-					if i := strings.IndexByte(bitscore, '\t'); i > 0 { // the search result has >=20 columns
-						bitscore = bitscore[:i]
-					}
-
-					var startErr, endErr, inputErr error
-					sstart, startErr = strconv.Atoi(_sstart)
-					send, endErr = strconv.Atoi(_send)
-					// Match manual-region bounds and leave room for flank additions.
-					if startErr != nil || endErr != nil || sstart < 1 || send < sstart || send > min(math.MaxInt/2, math.MaxInt32) {
-						inputErr = fmt.Errorf("invalid subject coordinates %q..%q in search result record %d", _sstart, _send, n+1)
-					} else if sstr != "+" && sstr != "-" {
-						inputErr = fmt.Errorf("invalid subject strand %q in search result record %d: expected + or -", sstr, n+1)
-					}
-					if inputErr != nil {
-						if ignoreErr {
-							// The collector still needs this ordinal to drain later records.
-							subseq := poolSubseq.Get().(*Subseq)
-							*subseq = Subseq{ID: n}
-							ch <- subseq
-							return
-						}
-						checkError(inputErr)
-					}
-
-					var batchIDAndRefIDs *[]uint64
-					var lookupErr error
-					// var fileGenome string
-					var tSeq *genome.Genome
-					var genomeBatch, genomeIdx int
-					var rdr *genome.Reader
-
-					if batchIDAndRefIDs, lookupErr = resolveSearchGenomeID(sgenome, refname2idx); lookupErr != nil {
-						if ignoreErr {
-							subseq := poolSubseq.Get().(*Subseq)
-							subseq.ID = n
-							subseq.Header = ""
-							subseq.Seq = nil
-							subseq.Genome = nil
-							ch <- subseq
-							return
-						} else {
-							checkError(lookupErr)
-						}
-					}
-
-					if sstr == "+" {
-						eStart = sstart - upstream
-						eEnd = send + downstream
-					} else {
-						eStart = sstart - downstream
-						eEnd = send + upstream
-					}
-					if eStart < 1 {
-						eStart = 1
-					}
-
-					var batchIDAndRefID uint64
-					found := false
-					var err error
-					// Prefer an exact ID in any chunk before interpreting a display prefix.
-					// Real IDs may themselves contain colons or look like c1/1:s1/1:...
-				sequenceLookup:
-					for _, candidate := range [2]string{sseqid, undecorateSearchSequenceID(sseqid)} {
-						if candidate == "" {
-							continue
-						}
-						_sseqid := []byte(candidate)
-						for _, batchIDAndRefID = range *batchIDAndRefIDs {
-							genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
-							genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
-
-							rdr, err = readers.acquire(genomeBatch)
-							checkError(err)
-
-							tSeq, __end, err = rdr.SubSeq2(genomeIdx, _sseqid, eStart-1, eEnd-1)
-							__end++ // returned end is 0-based.
-
-							// if __end != send {
-							// 	checkError(fmt.Errorf("unequal end position: %d != %d", send, __end))
-							// }
-
-							checkError(readers.release(genomeBatch, rdr))
-
-							// Only a missing ID permits another chunk or a stripped display ID.
-							if !errors.Is(err, genome.ErrSeqIDNotFound) {
-								found = err == nil && tSeq != nil
-								sseqid = candidate
-								if found {
-									err = checkSubseqChunkSequenceID(dbDir, genomeChunks[batchIDAndRefID], batchIDAndRefID, _sseqid, readers)
-									if err != nil {
-										genome.RecycleGenome(tSeq)
-										tSeq, found = nil, false
-									}
-								}
-								break sequenceLookup
-							}
-						}
-					}
-
-					if !found {
-						if ignoreErr {
-							subseq := poolSubseq.Get().(*Subseq)
-							subseq.ID = n
-							subseq.Header = ""
-							subseq.Seq = nil
-							subseq.Genome = nil
-							ch <- subseq
-							return
-						} else {
-							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %w. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream, err))
-						}
-					}
-
-					eEnd = __end // update end
-
-					s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)
-					checkError(err)
-
-					if sstr == "-" {
-						s.RevComInplace()
-					}
-
-					header := fmt.Sprintf(fmt2, sseqid, eStart, eEnd, sstr,
-						query, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
-						pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore,
-					)
-					subseq := poolSubseq.Get().(*Subseq)
-					subseq.ID = n
-					subseq.Header = header
-					subseq.Seq = s
-					subseq.Genome = tSeq
-					ch <- subseq
-
-				}(line, n)
-
-				n++
-			}
-			if err = scanner.Err(); err != nil {
-				checkError(fmt.Errorf("failed to scan file %s: %s", fileSearchResult, err))
-			}
-
-			wg.Wait()
-			close(ch)
-			<-done
-
-			if outputLog {
-				log.Infof("%d subsequences extracted from %d records", nSuccess, n)
-			}
-			if n == 0 {
-				log.Warningf("does the input has header row? If not, please switch on -H/--no-header-row")
-			}
-
-			checkError(readers.close())
-
+			checkError(subseqFromSearchResults(cmd, opt, dbDir, fileSearchResult, outFile, maxOpenFiles, lineWidth, upstream, downstream))
 			return
 		}
 
@@ -629,6 +268,484 @@ Attention:
 
 		genome.RecycleGenome(tSeq)
 	},
+}
+
+// subseqInputLine transfers a complete row or the final input/close error.
+type subseqInputLine struct {
+	line string
+	err  error
+}
+
+// readSubseqInput keeps blocking reads off the submission goroutine. The reader
+// owns decoder cleanup; closing a pooled decoder concurrently with Scan is unsafe.
+// A blocked OS read can remain here until upstream returns or the CLI exits, while
+// the coordinator drains all submitted extraction work and reports the first error.
+func readSubseqInput(file string, bufferSize int, stop <-chan struct{}) <-chan subseqInputLine {
+	lines := make(chan subseqInputLine, 1)
+	go func() {
+		fh, err := xopen.Ropen(file)
+		defer func() {
+			if fh != nil {
+				_ = fh.Close()
+			}
+		}()
+		if err == nil {
+			scanner := bufio.NewScanner(fh)
+			scanner.Buffer(make([]byte, min(bufferSize, 20<<20)), bufferSize)
+			for scanner.Scan() {
+				select {
+				case <-stop:
+					return
+				case lines <- subseqInputLine{line: scanner.Text()}:
+				}
+			}
+			err = errors.Join(scanner.Err(), fh.Close())
+			fh = nil
+		}
+		if err == nil {
+			err = io.EOF
+		}
+		select {
+		case <-stop:
+		case lines <- subseqInputLine{err: err}:
+		}
+	}()
+	return lines
+}
+
+// subseqFromSearchResults owns extraction workers and their reader/output cleanup.
+func subseqFromSearchResults(cmd *cobra.Command, opt *Options, dbDir, fileSearchResult, outFile string, maxOpenFiles, lineWidth, upstream, downstream int) (err error) {
+	flushEachRecord := isStreamingInput(fileSearchResult)
+	// Drain workers and close readers after a broken stdout pipe too.
+	brokenPipe := make(chan os.Signal, 1)
+	signal.Notify(brokenPipe, syscall.SIGPIPE)
+	defer signal.Stop(brokenPipe)
+
+	noHeader := getFlagBool(cmd, "no-header-row")
+
+	ignoreErr := getFlagBool(cmd, "ignore-err")
+
+	outputLog := opt.Verbose || opt.Log2File
+	verbose := opt.Verbose
+
+	bufferSizeS := getFlagString(cmd, "buffer-size")
+	if bufferSizeS == "" {
+		return fmt.Errorf("value of buffer size. supported unit: K, M, G")
+	}
+
+	bufferSize, err := ParseByteSize(bufferSizeS)
+	if err != nil {
+		return fmt.Errorf("invalid value of buffer size. supported unit: K, M, G")
+	}
+
+	ncols := 20
+	var poolItems = &sync.Pool{New: func() interface{} {
+		items := make([]string, ncols)
+		return &items
+	}}
+
+	// --------------------------------------------------
+	if outputLog {
+		log.Infof("loading index: %s", dbDir)
+	}
+
+	// info file
+	fileInfo := filepath.Join(dbDir, FileInfo)
+	info, err := readIndexInfo(fileInfo)
+	if err != nil {
+		return fmt.Errorf("failed to read info file: %s", err)
+	}
+	if info.MainVersion != MainVersion {
+		return fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion)
+	}
+
+	// genomes.map file for mapping index to genome id
+	refname2idx, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
+	if err != nil {
+		return fmt.Errorf("failed to read genomes index mapping file: %s", err)
+	}
+	genomeChunks, err := readSubseqGenomeChunks(dbDir)
+	if err != nil {
+		return err
+	}
+
+	// --------------------------------------------------
+	// genome readers
+	readers, err := newSubseqGenomeReaders(dbDir, info.GenomeBatches, maxOpenFiles, opt.NumCPUs)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, readers.close()) }()
+	if outputLog {
+		if readers.pooled() {
+			log.Infof("  created reader pools for %d genome batches, each with %d readers", info.GenomeBatches, readers.readersPerBatch)
+		} else {
+			log.Infof("  reader pools disabled for %d genome batches; opening at most %d genome files on demand", info.GenomeBatches, maxOpenFiles-reservedOpenFiles)
+		}
+	}
+	var wg sync.WaitGroup
+
+	// --------------------------------------------------
+
+	// output file handler
+	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, closeOutStream(outfh, gw, w))
+	}()
+
+	if outputLog {
+		log.Infof("extracting subsequences...")
+	}
+
+	fmt2 := ">%s:%d-%d:%s query=%s sgenome=%s sseqid=%s qcovGnm=%s cls=%s hsp=%s qcovHSP=%s alenHSP=%s " +
+		"pident=%s gaps=%s qstart=%s qend=%s sstart=%s send=%s sstr=%s slen=%s evalue=%s bitscore=%s\n"
+
+	// Stop submission on the first error; the collector still recycles every result.
+	stop := make(chan struct{})
+	var stopOnce sync.Once
+	var firstErr error
+	stopSubseq := func(err error) {
+		if err != nil {
+			stopOnce.Do(func() {
+				firstErr = err
+				close(stop)
+			})
+		}
+	}
+	defer stopOnce.Do(func() { close(stop) })
+
+	// output
+	type Subseq struct {
+		ID     uint64
+		Header string
+		Seq    *seq.Seq
+		Genome *genome.Genome
+	}
+	var poolSubseq = &sync.Pool{New: func() interface{} {
+		return &Subseq{}
+	}}
+	// Keep a small output window so workers can overlap extraction and
+	// writing without accumulating unbounded results behind a slow read.
+	pending := make(chan struct{}, 4*opt.NumCPUs)
+	token := make(chan int, opt.NumCPUs)
+	recycleSubseq := func(result *Subseq) {
+		genome.RecycleGenome(result.Genome)
+		*result = Subseq{}
+		poolSubseq.Put(result)
+		<-pending
+	}
+	ch := make(chan *Subseq, opt.NumCPUs)
+	m := make(map[uint64]*Subseq, opt.NumCPUs) // completed results waiting for their input ordinal
+	done := make(chan int)
+	var nSuccess int
+	go func() {
+		var id uint64
+		var _n int
+		for result := range ch {
+			_n++
+			if verbose && ((_n < 1024 && _n&127 == 0) || _n&1023 == 0) {
+				fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
+			}
+
+			m[result.ID] = result
+			// A completed predecessor can unlock several queued records.
+			for {
+				result, ok := m[id]
+				if !ok {
+					break
+				}
+				if result.Seq != nil {
+					select {
+					case <-stop:
+					default:
+						nSuccess++
+						outfh.WriteString(result.Header)
+						outfh.Write(result.Seq.FormatSeq(lineWidth))
+						stopSubseq(outfh.WriteByte('\n'))
+						// Report short-record failures before the input waits for EOF.
+						if flushEachRecord {
+							stopSubseq(outfh.Flush())
+						}
+					}
+				}
+				delete(m, id)
+				recycleSubseq(result)
+				id++
+			}
+		}
+
+		if verbose {
+			fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
+			fmt.Fprintln(os.Stderr)
+		}
+
+		done <- 1
+	}()
+
+	// output ^
+
+	// Each worker owns its input fields and genome until transferring a result.
+	extract := func(line string, n uint64) (*Subseq, error) {
+		var query, qlen, hits, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP string
+		var pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore string
+		var sstart, send int
+		var __end int
+		var eStart, eEnd int
+
+		items := poolItems.Get().(*[]string)
+		defer func() {
+			clear(*items)
+			poolItems.Put(items)
+
+		}()
+
+		stringSplitNByByte(line, '\t', ncols, items)
+		if len(*items) < ncols {
+			return nil, fmt.Errorf("the input has only %d columns (<%d), please use output from 'lexicmap search'", len(*items), ncols)
+		}
+
+		bitscore = (*items)[19]
+
+		query = (*items)[0]
+		qlen = (*items)[1]
+		_ = qlen
+		hits = (*items)[2]
+		_ = hits
+
+		sgenome = (*items)[3]
+		sseqid = (*items)[4]
+		qcovGnm = (*items)[5]
+		cls = (*items)[6]
+		hsp = (*items)[7]
+		qcovHSP = (*items)[8]
+		alenHSP = (*items)[9]
+		pident = (*items)[10]
+		gaps = (*items)[11]
+		qstart = (*items)[12]
+		qend = (*items)[13]
+		_sstart = (*items)[14]
+		_send = (*items)[15]
+		sstr = (*items)[16]
+		slen = (*items)[17]
+		evalue = (*items)[18]
+
+		if i := strings.IndexByte(bitscore, '\t'); i > 0 { // the search result has >=20 columns
+			bitscore = bitscore[:i]
+		}
+
+		var startErr, endErr, inputErr error
+		sstart, startErr = strconv.Atoi(_sstart)
+		send, endErr = strconv.Atoi(_send)
+		// Match manual-region bounds and leave room for flank additions.
+		if startErr != nil || endErr != nil || sstart < 1 || send < sstart || send > min(math.MaxInt/2, math.MaxInt32) {
+			inputErr = fmt.Errorf("invalid subject coordinates %q..%q in search result record %d", _sstart, _send, n+1)
+		} else if sstr != "+" && sstr != "-" {
+			inputErr = fmt.Errorf("invalid subject strand %q in search result record %d: expected + or -", sstr, n+1)
+		}
+		if inputErr != nil {
+			if ignoreErr {
+				// The collector still needs this ordinal to drain later records.
+				subseq := poolSubseq.Get().(*Subseq)
+				*subseq = Subseq{ID: n}
+				return subseq, nil
+			}
+			return nil, inputErr
+		}
+
+		var batchIDAndRefIDs *[]uint64
+		var lookupErr error
+		// var fileGenome string
+		var tSeq *genome.Genome
+		var genomeBatch, genomeIdx int
+		var rdr *genome.Reader
+
+		if batchIDAndRefIDs, lookupErr = resolveSearchGenomeID(sgenome, refname2idx); lookupErr != nil {
+			if ignoreErr {
+				subseq := poolSubseq.Get().(*Subseq)
+				subseq.ID = n
+				subseq.Header = ""
+				subseq.Seq = nil
+				subseq.Genome = nil
+				return subseq, nil
+			} else {
+				return nil, lookupErr
+			}
+		}
+
+		if sstr == "+" {
+			eStart = sstart - upstream
+			eEnd = send + downstream
+		} else {
+			eStart = sstart - downstream
+			eEnd = send + upstream
+		}
+		if eStart < 1 {
+			eStart = 1
+		}
+
+		var batchIDAndRefID uint64
+		found := false
+		var err error
+		// Prefer an exact ID in any chunk before interpreting a display prefix.
+		// Real IDs may themselves contain colons or look like c1/1:s1/1:...
+	sequenceLookup:
+		for _, candidate := range [2]string{sseqid, undecorateSearchSequenceID(sseqid)} {
+			if candidate == "" {
+				continue
+			}
+			_sseqid := []byte(candidate)
+			for _, batchIDAndRefID = range *batchIDAndRefIDs {
+				genomeBatch = int(batchIDAndRefID >> BITS_GENOME_IDX)
+				genomeIdx = int(batchIDAndRefID & MASK_GENOME_IDX)
+
+				rdr, err = readers.acquire(genomeBatch)
+				if err != nil {
+					return nil, err
+				}
+
+				tSeq, __end, err = rdr.SubSeq2(genomeIdx, _sseqid, eStart-1, eEnd-1)
+				__end++ // returned end is 0-based.
+
+				// if __end != send {
+				// 	checkError(fmt.Errorf("unequal end position: %d != %d", send, __end))
+				// }
+
+				if closeErr := readers.release(genomeBatch, rdr); closeErr != nil {
+					genome.RecycleGenome(tSeq)
+					return nil, errors.Join(err, closeErr)
+				}
+
+				// Only a missing ID permits another chunk or a stripped display ID.
+				if !errors.Is(err, genome.ErrSeqIDNotFound) {
+					found = err == nil && tSeq != nil
+					sseqid = candidate
+					if found {
+						err = checkSubseqChunkSequenceID(dbDir, genomeChunks[batchIDAndRefID], batchIDAndRefID, _sseqid, readers)
+						if err != nil {
+							genome.RecycleGenome(tSeq)
+							tSeq, found = nil, false
+						}
+					}
+					break sequenceLookup
+				}
+			}
+		}
+
+		if !found {
+			if ignoreErr {
+				subseq := poolSubseq.Get().(*Subseq)
+				subseq.ID = n
+				subseq.Header = ""
+				subseq.Seq = nil
+				subseq.Genome = nil
+				return subseq, nil
+			} else {
+				return nil, fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %w. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream, err)
+			}
+		}
+
+		eEnd = __end // update end
+
+		s, err := seq.NewSeq(seq.DNAredundant, tSeq.Seq)
+		if err != nil {
+			genome.RecycleGenome(tSeq)
+			return nil, err
+		}
+
+		if sstr == "-" {
+			s.RevComInplace()
+		}
+
+		header := fmt.Sprintf(fmt2, sseqid, eStart, eEnd, sstr,
+			query, sgenome, sseqid, qcovGnm, cls, hsp, qcovHSP, alenHSP,
+			pident, gaps, qstart, qend, _sstart, _send, sstr, slen, evalue, bitscore,
+		)
+		subseq := poolSubseq.Get().(*Subseq)
+		subseq.ID = n
+		subseq.Header = header
+		subseq.Seq = s
+		subseq.Genome = tSeq
+		return subseq, nil
+	}
+
+	var n uint64
+	headerLine := !noHeader
+	lines := readSubseqInput(fileSearchResult, int(bufferSize), stop)
+input:
+	for {
+		var input subseqInputLine
+		select {
+		case <-stop:
+			break input
+		case input = <-lines:
+		}
+		if input.err != nil {
+			if input.err != io.EOF {
+				stopSubseq(fmt.Errorf("failed to read file %s: %w", fileSearchResult, input.err))
+			}
+			break
+		}
+		line := strings.TrimRight(input.line, "\r\n")
+		if line == "" {
+			continue
+		}
+		if headerLine {
+			headerLine = false
+			continue
+		}
+		select {
+		case <-stop:
+			break input
+		case pending <- struct{}{}:
+		}
+		select {
+		case <-stop:
+			<-pending
+			break input
+		case token <- 1:
+		}
+		wg.Add(1)
+		go func(line string, n uint64) {
+			defer func() {
+				<-token
+				wg.Done()
+			}()
+			var result *Subseq
+			var extractErr error
+			select {
+			case <-stop:
+			default:
+				result, extractErr = extract(line, n)
+				stopSubseq(extractErr)
+			}
+			if result == nil {
+				result = poolSubseq.Get().(*Subseq)
+				*result = Subseq{ID: n}
+			}
+			// Every submitted ordinal reaches the collector, even after failure.
+			ch <- result
+		}(line, n)
+		n++
+	}
+
+	wg.Wait()
+	close(ch)
+	<-done
+	if firstErr != nil {
+		return firstErr
+	}
+
+	if outputLog {
+		log.Infof("%d subsequences extracted from %d records", nSuccess, n)
+	}
+	if n == 0 {
+		log.Warningf("does the input has header row? If not, please switch on -H/--no-header-row")
+	}
+
+	return nil
 }
 
 // readSubseqGenomeChunks maps each chunk to its original genome's chunks.

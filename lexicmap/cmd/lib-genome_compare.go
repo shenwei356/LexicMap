@@ -76,6 +76,10 @@ type FragmentComparator struct {
 	// from output pairs. Only visited cells are reset between query-row blocks.
 	pairCounter []uint16
 	pairVisited []uint64
+	// Equal-key runs may repeat a fragment many times; scratch stays private.
+	runsA, runsB []fragmentKmerRun
+	// Reused for each side's grouping; values index the current scratch run.
+	runIndex map[uint32]int
 
 	poolChainers *sync.Pool
 }
@@ -232,9 +236,10 @@ func (cpr *FragmentComparator) collectEntries(frags *[][]byte, genomeBit uint32,
 }
 
 // scanPairsMerged walks the two sorted streams entriesA (genome A) and entriesB
-// (genome B) in lockstep. For every shared Key, it enumerates the cross product
-// of the A-run and B-run. Bounded dense row blocks avoid hashing for ordinary
-// genomes; larger or sparse fragment-ID spaces use the original pooled map.
+// (genome B) in lockstep. For every shared Key, it counts the cross product
+// of the A-run and B-run, grouping repeated fragments in large runs. Bounded
+// dense row blocks avoid hashing each pair for ordinary genomes; larger or
+// sparse fragment-ID spaces use the original pooled map.
 func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchEntry) *[]uint64 {
 	if pairs, ok := cpr.scanPairsDense(entriesA, entriesB); ok {
 		return pairs
@@ -262,6 +267,17 @@ func (cpr *FragmentComparator) scanPairsMerged(entriesA, entriesB []rtree.BatchE
 		jb := ib + 1
 		for jb < nB && entriesB[jb].Key == ka {
 			jb++
+		}
+		if runsA, runsB, grouped := cpr.groupFragmentRuns(entriesA[ia:ja], entriesB[ib:jb]); grouped {
+			for _, a := range runsA {
+				rowKey := uint64(a.fragment) << 32
+				for _, b := range runsB {
+					key := rowKey | uint64(b.fragment)
+					(*counter)[key] = addFragmentOccurrences((*counter)[key], a.count, b.count)
+				}
+			}
+			ia, ib = ja, jb
+			continue
 		}
 		// enumerate cross pairs
 		for p := ia; p < ja; p++ {
