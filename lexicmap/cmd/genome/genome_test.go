@@ -348,6 +348,43 @@ func TestSubSeq2NormalizedEnd(t *testing.T) {
 	}
 }
 
+// Duplicate IDs must not accumulate offsets or hide behind a coordinate error.
+func TestSubSeq2AmbiguousID(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "genomes.bin")
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, duplicate := []byte("first"), []byte("duplicate")
+	g := &Genome{ID: []byte("g"), Seq: []byte("AAAAAAAAAAACCCCAAAGGGGTTTTACGT"),
+		GenomeSize: 24, Len: 30, NumSeqs: 3, SeqSizes: []int{8, 4, 12}, SeqIDs: []*[]byte{&first, &duplicate, &duplicate}}
+	writeErr := w.Write(g)
+	closeErr := w.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Fatalf("write=%v close=%v", writeErr, closeErr)
+	}
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	for _, bounds := range [][2]int{{0, 3}, {-2, 100}, {5, 7}, {20, 30}} {
+		got, end, err := r.SubSeq2(0, duplicate, bounds[0], bounds[1])
+		if !errors.Is(err, ErrAmbiguousSeqID) || got != nil || end != -1 {
+			t.Fatalf("bounds=%v: got %v ending at %d, error=%v", bounds, got, end, err)
+		}
+		// A failed lookup must leave the reader reusable for an unambiguous ID.
+		got, end, err = r.SubSeq2(0, first, 0, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if end != 3 || string(got.Seq) != "AAAA" {
+			t.Errorf("unique ID: got %q ending at %d", got.Seq, end)
+		}
+		RecycleGenome(got)
+	}
+}
+
 // A rejected record offset must not reuse the cursor left by a previous read.
 func TestReaderRejectsFailedMetadataSeek(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "genomes.bin")

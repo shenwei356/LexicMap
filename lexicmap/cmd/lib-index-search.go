@@ -1160,6 +1160,7 @@ func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 	// The longest-anchor shortcut requires bounded lengths and non-overflowing
 	// coordinates. Keep the original containment scan for other inputs.
 	longestShortcut := k > 0 && k <= 255
+	maxLength := 0 // the longest observed anchor may be shorter than k
 	if longestShortcut {
 		maxStart := int32(math.MaxInt32 - k)
 		for _, sub := range *subs {
@@ -1168,6 +1169,7 @@ func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 				longestShortcut = false
 				break
 			}
+			maxLength = max(maxLength, int(sub.Len))
 		}
 	}
 
@@ -1235,14 +1237,14 @@ func ClearSubstrPairs(subs *[]SubstrPair, k int) {
 	for i, v := range (*subs)[1:] {
 		// fmt.Printf("anchor:%d/%d, a: %s\n", i+1, len(*subs), v) // 0-based
 
-		if longestShortcut && int(v.Len) == k {
+		if longestShortcut && int(v.Len) == maxLength {
 			// Nothing is longer than v. A containing anchor must therefore
 			// have the same length and starts on BOTH sequences:
 			//
-			// Q:       [------ k ------] v
-			//          [------ k ------] p  same Q start
-			// T:             [------ k ------] v
-			//                [------ k ------] p  same T start
+			// Q:       [-- maxLength --] v
+			//          [-- maxLength --] p  same Q start
+			// T:             [-- maxLength --] v
+			//                [-- maxLength --] p  same T start
 			//
 			// Sorting puts these exact duplicates next to each other, so
 			// there is no need to binary-search or scan earlier anchors.

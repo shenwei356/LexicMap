@@ -57,6 +57,35 @@ func TestResolveSearchGenomeID(t *testing.T) {
 	}
 }
 
+// Both extraction modes must reject ambiguous contigs; --ignore-err skips the
+// failed row without losing following records.
+func TestSubseqAmbiguousContigID(t *testing.T) {
+	dir := t.TempDir()
+	dna := indexTestDNA(1000)
+	ref := writeTestInput(t, filepath.Join(dir, "g.fa"), ">unique\n"+dna+"\n>duplicate\n"+dna+"\n>duplicate\n"+dna+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "1", "--partitions", "4", "-O", db, ref)
+	args := []string{"utils", "subseq", "--quiet", "-j", "1", "-d", db}
+	out, stderr, err := runAuditCommand(t, "", append(args, "-n", "g", "-s", "duplicate", "-r", "1:4")...)
+	if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "ambiguous seqid: duplicate") {
+		t.Fatalf("direct lookup: err=%v output bytes=%d stderr=%s", err, len(out), stderr)
+	}
+	row := func(id string) string {
+		return fmt.Sprintf("q\t4\t1\tg\t%s\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t1000\t0\t10\n", id)
+	}
+	args = append(args, "-f", "-", "-H")
+	for _, id := range []string{"duplicate", "c1/1:s2/3:duplicate"} {
+		out, stderr, err = runAuditCommand(t, row(id), args...)
+		if err == nil || len(out) != 0 || !strings.Contains(string(stderr), "ambiguous seqid: duplicate") {
+			t.Fatalf("search lookup %q: err=%v output bytes=%d stderr=%s", id, err, len(out), stderr)
+		}
+		out, stderr, err = runAuditCommand(t, row(id)+row("unique"), append(args, "--ignore-err")...)
+		if err != nil || strings.Count(string(out), "\n") != 2 || !strings.HasSuffix(string(out), "\n"+dna[:4]+"\n") {
+			t.Fatalf("ignore ambiguous %q: err=%v output bytes=%d stderr=%s", id, err, len(out), stderr)
+		}
+	}
+}
+
 func TestSubseqTaxonomicGenomeNames(t *testing.T) {
 	dir := t.TempDir()
 	dna := indexTestDNA(1000)

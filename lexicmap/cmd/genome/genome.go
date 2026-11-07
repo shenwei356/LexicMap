@@ -63,6 +63,9 @@ var ErrEmptySeq = errors.New("genome data: empty seq")
 // ErrSeqIDNotFound means the requested contig is absent from this genome chunk.
 var ErrSeqIDNotFound = errors.New("seqid not found")
 
+// ErrAmbiguousSeqID means multiple contigs in a genome chunk share the requested ID.
+var ErrAmbiguousSeqID = errors.New("ambiguous seqid")
+
 // ErrInvalidTwoBitData means the length of two bit seq slice does not match the number of bases
 var ErrInvalidTwoBitData = errors.New("genome data: invalid two-bit data")
 
@@ -1041,6 +1044,7 @@ func (r *Reader) SubSeq3(idx int, start int, end int, g *Genome) (*Genome, error
 // Negative starts become zero; the end is clipped to the contig or raised to start.
 // It also returns the actual end position (0-based) after these adjustments.
 // An absent sequence ID returns an error wrapping ErrSeqIDNotFound.
+// Multiple matching contigs return an error wrapping ErrAmbiguousSeqID.
 // Please call RecycleGenome() after using the result.
 func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, int, error) {
 	if idx < 0 || idx >= int(r.nSeqs) {
@@ -1194,6 +1198,11 @@ func (r *Reader) SubSeq2(idx int, seqid []byte, start int, end int) (*Genome, in
 
 		// --------------------------------------------------
 		if bytes.Equal(*id, seqid) { // found it!
+			if foundSeqID {
+				// Repeated IDs cannot identify a contig's coordinate system.
+				RecycleGenome(g)
+				return nil, -1, fmt.Errorf("%w: %s", ErrAmbiguousSeqID, seqid)
+			}
 			foundSeqID = true
 			seqLen = seqSize
 			start += lenSum

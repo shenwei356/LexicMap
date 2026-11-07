@@ -59,6 +59,7 @@ Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
   - After extension, a start beyond the sequence length is an error; an oversized end is clipped.
     In search-result mode, -e/--ignore-err skips records that cannot be extracted.
+  - A sequence ID matching multiple contigs within a genome chunk is an error.
   - If the search results are merged from multiple indexes, it would report error
     "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
@@ -415,7 +416,7 @@ Attention:
 							ch <- subseq
 							return
 						} else {
-							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream))
+							checkError(fmt.Errorf("failed to extract subsequence: %s:%s-%s:%s with upstream=%d downstream=%d: %w. Please switch on -e/--ignore-err if search results are merged from multiple indexes", sseqid, _sstart, _send, sstr, upstream, downstream, err))
 						}
 					}
 

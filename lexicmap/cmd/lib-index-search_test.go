@@ -28,6 +28,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -35,6 +36,67 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 	"github.com/shenwei356/wfa"
 )
+
+// Prefix matches can all be shorter than k. Their longest anchors must keep
+// the reference's ordering and duplicate strand choice in both orientations.
+func TestClearSubstrPairsObservedMaximum(t *testing.T) {
+	rng := rand.New(rand.NewSource(20261107))
+	for _, k := range []int{13, 31, 32, 255} {
+		for trial := 0; trial < 120; trial++ {
+			longest := trial % k // include zero-length and k-1 cases
+			input := make([]SubstrPair, 100+trial)
+			for i := range input {
+				length := longest
+				if i%3 == 0 {
+					length = rng.Intn(longest + 1)
+				}
+				input[i] = SubstrPair{QBegin: int32(rng.Intn(20)), TBegin: int32(rng.Intn(100)), Len: uint8(length), QRC: i%2 == 0, TRC: i%3 == 0}
+				if i > 0 && i%5 == 0 {
+					input[i] = input[i-1]
+					input[i].QRC = !input[i].QRC
+				}
+			}
+			checkClearSubstrPairsReference(t, input, k)
+			for i := range input {
+				input[i].QBegin = 1000 - input[i].QBegin - int32(input[i].Len)
+				input[i].TBegin = 1000 - input[i].TBegin - int32(input[i].Len)
+				input[i].QRC = !input[i].QRC
+				input[i].TRC = !input[i].TRC
+			}
+			checkClearSubstrPairsReference(t, input, k)
+		}
+	}
+	// Repeated matches at the same query start retain every distinct target.
+	input := make([]SubstrPair, 4000)
+	for i := range input {
+		input[i] = SubstrPair{TBegin: int32(40 * i), Len: 30}
+	}
+	want := slices.Clone(input)
+	ClearSubstrPairs(&input, 31)
+	if !slices.Equal(input, want) {
+		t.Fatal("distinct targets were removed or reordered")
+	}
+}
+
+// Measure the complete cleanup call, including sorting and pooled markers.
+func BenchmarkClearSubstrPairsObservedMaximum(b *testing.B) {
+	for _, length := range []uint8{30, 31} {
+		input := make([]SubstrPair, 4000)
+		for i := range input {
+			input[i] = SubstrPair{TBegin: int32(40 * i), Len: length}
+		}
+		b.Run(fmt.Sprintf("length=%d", length), func(b *testing.B) {
+			work := make([]SubstrPair, len(input))
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				work = work[:len(input)]
+				copy(work, input)
+				ClearSubstrPairs(&work, 31)
+			}
+		})
+	}
+}
 
 // Closing several batches can report errors concurrently. Empty readers inject
 // os.ErrInvalid without closing a descriptor owned by another live reader.
