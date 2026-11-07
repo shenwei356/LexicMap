@@ -302,6 +302,9 @@ func anchorPrefixForPartitions(partitions int) (uint8, error) {
 	if partitions < 4 {
 		return 0, fmt.Errorf("partitions should be a power of 4 and at least 4: %d", partitions)
 	}
+	if partitions > MaxIndexPartitions {
+		return 0, fmt.Errorf("partitions should be at most %d: %d", MaxIndexPartitions, partitions)
+	}
 	prefix := uint8(0)
 	for partitions > 1 {
 		if partitions%4 != 0 {
@@ -316,6 +319,9 @@ func anchorPrefixForPartitions(partitions int) (uint8, error) {
 func index15PrefixLengths(k, maskPrefix, anchorPrefix uint8) (uint8, uint8, error) {
 	if maskPrefix > k || anchorPrefix > k-maskPrefix {
 		return 0, 0, fmt.Errorf("mask prefix (%d) + anchor prefix (%d) should not exceed k (%d)", maskPrefix, anchorPrefix, k)
+	}
+	if !validIndexPrefixes(k, maskPrefix, anchorPrefix) {
+		return 0, 0, ErrInvalidFileFormat
 	}
 	primaryPrefix := maskPrefix + anchorPrefix
 	if k-primaryPrefix < 2 {

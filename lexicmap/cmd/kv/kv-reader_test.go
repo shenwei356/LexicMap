@@ -132,7 +132,7 @@ func TestReaderRejectsOversizedPostingCount(t *testing.T) {
 
 // The lightweight metadata path used by in-memory loading must bound its table too.
 func TestInMemorySearcherRejectsInvalidIndexPrefix(t *testing.T) {
-	for _, prefix := range []byte{0, 5, 32, 255} {
+	for _, prefix := range []byte{0, 5, 11, 29, 32, 255} {
 		file := writeReaderCountFixture(t, true)
 		indexFile := file + KVIndexFileExt
 		data, err := os.ReadFile(indexFile)
@@ -140,6 +140,9 @@ func TestInMemorySearcherRejectsInvalidIndexPrefix(t *testing.T) {
 			t.Fatal(err)
 		}
 		data[12] = prefix
+		if prefix == 11 || prefix == 29 {
+			data[10], data[11] = 32, 1 // valid prefix sum, excessive dense allocation
+		}
 		if err := os.WriteFile(indexFile, data, 0600); err != nil {
 			t.Fatal(err)
 		}

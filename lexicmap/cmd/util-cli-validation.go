@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gonum.org/v1/plot/vg/vgimg"
@@ -98,7 +99,9 @@ func checkNumericFlags(cmd *cobra.Command) error {
 				lower = -1
 			case "threads", "max-query-conc", "seed-data-threads", "max-seed-matching-conc":
 				upper = maxCLIWorkers
-			case "masks", "partitions", "max-open-files", "bins", "windows":
+			case "partitions":
+				upper = kv.MaxIndexPartitions
+			case "masks", "max-open-files", "bins", "windows":
 				upper = maxCLITableEntries
 			case "kmer", "min-prefix", "seed-min-prefix", "seed-min-single-prefix", "prefix":
 				upper = 32

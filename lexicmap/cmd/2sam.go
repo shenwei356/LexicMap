@@ -334,7 +334,6 @@ Output:
 				r := poolSearchResultOfASequence2.Get().(*SearchResultOfASequence2)
 
 				// data for later use
-				r.sgenome = sgenome
 				r.score = algnScore
 				r.qcovHSP = _qcovHSP
 				r.pident = _pident
@@ -346,9 +345,11 @@ Output:
 				if concatSgenomeAndSseqid {
 					r.RNAME = sgenome + separater + sseqid
 				} else {
-					r.RNAME = sseqid
+					r.RNAME = strings.Clone(sseqid)
 				}
-				r.POS = sstart
+				// These fields survive until the query is complete. Detach them
+				// from the row's large aligned sequences, including secondary hits.
+				r.POS = strings.Clone(sstart)
 				r.MAPQ = 0 // compute later
 				clip5, clip3 = "", ""
 				if _qstart > 1 {
@@ -360,7 +361,7 @@ Output:
 				if clip5 != "" || clip3 != "" {
 					cigar = clip5 + cigar + clip3
 				}
-				r.CIGAR = cigar
+				r.CIGAR = strings.Clone(cigar)
 				r.RNEXT = "*"
 				r.PNEXT = "0"
 				r.TLEN = 0 // SAM single-segment templates have no paired template length.
@@ -494,7 +495,6 @@ func writeSAMQuery(w io.Writer, query string, aligns []*SearchResultOfASequence2
 
 // SearchResultOfASequence2 holds one SAM record and the inputs to its MAPQ.
 type SearchResultOfASequence2 struct {
-	sgenome string
 	score   int
 	qcovHSP float64
 	pident  float64

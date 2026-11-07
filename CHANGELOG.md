@@ -33,7 +33,7 @@
 - **`lexicmap utils 2sam`**:
     - Correct AS and MAPQ calculation, including nonpositive alignment scores.
     - Preserve primary/secondary flags and MAPQ across input files.
-    - Reduce memory use when converting long alignments with many reference sequences.
+    - Reduce memory use when converting long alignments with many reference sequences or many hits per query.
 - **`lexicmap utils subseq`**:
     - Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences.
     - Bound queued extraction results when earlier records are slow, while preserving input order.

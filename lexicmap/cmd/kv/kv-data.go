@@ -39,6 +39,19 @@ import (
 // IOBufferSize is size of buffer for buffered I/O operations.
 var IOBufferSize = 65536 // os.Getpagesize()
 
+// MaxIndexPartitions matches the CLI limit and bounds one dense anchor table
+// to about 16 MiB. Sparse on-disk records cannot bound that allocation.
+const MaxIndexPartitions = 1 << (2 * maxIndexAnchorPrefix)
+
+// maxIndexAnchorPrefix is log4(MaxIndexPartitions).
+const maxIndexAnchorPrefix = 10
+
+// validIndexPrefixes also bounds allocations made from untrusted index headers.
+func validIndexPrefixes(k, maskPrefix, anchorPrefix uint8) bool {
+	return k > 0 && k <= 32 && maskPrefix <= k && anchorPrefix > 0 &&
+		anchorPrefix <= maxIndexAnchorPrefix && anchorPrefix <= k-maskPrefix
+}
+
 // Magic number for checking file format
 var Magic = [8]byte{'.', 'k', 'v', '-', 'd', 'a', 't', 'a'}
 
@@ -290,19 +303,13 @@ func NewWriter(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix u
 // NewWriterWithIndex15 creates a writer that builds adaptive indexes while
 // encoding seed pairs. A zero threshold selects the ordinary single-level writer.
 func NewWriterWithIndex15(k uint8, MaskOffset int, chunkSize int, file string, maskPrefix uint8, anchorPrefix uint8, use3BytesForSeedPos bool, threshold uint64) (*Writer, error) {
+	if !validIndexPrefixes(k, maskPrefix, anchorPrefix) {
+		return nil, fmt.Errorf("%w: invalid k (%d), mask prefix (%d), or anchor prefix (%d; maximum %d)", ErrInvalidFileFormat, k, maskPrefix, anchorPrefix, maxIndexAnchorPrefix)
+	}
 	if threshold > 0 {
-		if anchorPrefix >= 32 {
-			return nil, fmt.Errorf("anchor prefix is too large: %d", anchorPrefix)
-		}
 		if err := CheckIndex15Options(k, maskPrefix, int(uint64(1)<<(anchorPrefix<<1)), threshold); err != nil {
 			return nil, err
 		}
-	}
-	if maskPrefix+anchorPrefix > k {
-		return nil, fmt.Errorf("maskPrefix + anchorPrefix should be <= k")
-	}
-	if anchorPrefix == 0 {
-		return nil, fmt.Errorf("anchorPrefix could not be 0")
 	}
 
 	// file handlers
@@ -740,11 +747,7 @@ func ReadKVIndexSelected(file string, selectedMasks []bool) (uint8, int, [][]uin
 // checkKVIndexLayout validates disk counts before integer conversion or allocation.
 // Reserve one record-count word per mask; the remainder bounds all record payloads.
 func checkKVIndexLayout(fh *os.File, k, maskPrefix, anchorPrefix uint8, firstMask, nMasks uint64) (int64, error) {
-	if k == 0 || k > 32 || maskPrefix > k || anchorPrefix == 0 || anchorPrefix > k-maskPrefix {
-		return 0, ErrInvalidFileFormat
-	}
-	// Each dense anchor slot contains two uint64s, plus the first special pair.
-	if anchorPrefix >= 32 || uint64(1)<<(2*anchorPrefix) > uint64((math.MaxInt/8-2)/2) {
+	if !validIndexPrefixes(k, maskPrefix, anchorPrefix) {
 		return 0, ErrInvalidFileFormat
 	}
 	if firstMask > uint64(math.MaxInt) || nMasks > uint64(math.MaxInt)-firstMask {

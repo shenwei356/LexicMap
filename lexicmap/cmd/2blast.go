@@ -102,16 +102,22 @@ func convertSearchResultsToBlast(cmd *cobra.Command, args []string, opt *Options
 	}
 
 	// ---------------------------------------------------------------
+	files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+	streaming := false
+	for _, file := range files {
+		if isStreamingInput(file) {
+			streaming = true
+			break
+		}
+	}
 	// output file handler
-	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
+	outfh, gw, w, err := openOutStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel, streaming)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		err = errors.Join(err, closeOutStream(outfh, gw, w))
 	}()
-
-	files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
 
 	// Grow for long records instead of eagerly allocating an unusually large limit.
 	buf := make([]byte, min(bufferSize, 20<<20))
@@ -321,7 +327,7 @@ func convertSearchResultsToBlast(cmd *cobra.Command, args []string, opt *Options
 
 			// Flush before Scan can block on an unfinished input stream.
 			if flushEachRecord {
-				if err := outfh.Flush(); err != nil {
+				if err := flushOutStream(outfh, gw); err != nil {
 					return err
 				}
 			}

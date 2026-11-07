@@ -388,7 +388,7 @@ func subseqFromSearchResults(cmd *cobra.Command, opt *Options, dbDir, fileSearch
 	// --------------------------------------------------
 
 	// output file handler
-	outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
+	outfh, gw, w, err := openOutStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel, flushEachRecord)
 	if err != nil {
 		return err
 	}
@@ -467,7 +467,7 @@ func subseqFromSearchResults(cmd *cobra.Command, opt *Options, dbDir, fileSearch
 						stopSubseq(outfh.WriteByte('\n'))
 						// Report short-record failures before the input waits for EOF.
 						if flushEachRecord {
-							stopSubseq(outfh.Flush())
+							stopSubseq(flushOutStream(outfh, gw))
 						}
 					}
 				}

@@ -32,6 +32,87 @@ import (
 )
 
 // Repeated records reuse encoding scratch without changing the saved directory.
+// Corrupt lengths must not expose spare buffer capacity or panic during slicing.
+func TestSeqsContigLayout(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		seq    string
+		sizes  []int
+		change func([]byte)
+	}{
+		{"single", "ACGT", []int{4}, nil},
+		{"adjacent", "ACGTAC", []int{2, 2, 2}, nil},
+		{"spaced", "ACAAAGTAAAAC", []int{2, 2, 2}, nil},
+		{"empty_contig", "ACGT", []int{0, 4}, nil},
+		{"length_past_decoded_end", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[31:], 8) }},
+		{"length_past_capacity", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[31:], ^uint32(0)) }},
+		{"short_contig_sum", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[31:], 3) }},
+		{"oversized_genome", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[19:], 5) }},
+		{"single_contig_padding", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[19:], 3) }},
+		{"no_contigs", "ACGT", []int{4}, func(b []byte) { be.PutUint32(b[27:], 0) }},
+		{"unequal_intervals", "ACAAAGTAAAAC", []int{2, 2, 2}, func(b []byte) { be.PutUint32(b[19:], 5) }},
+		{"short_multi_contig_sum", "ACAAAGTAAAAC", []int{2, 2, 2}, func(b []byte) { be.PutUint32(b[38:], 1) }},
+		{"long_multi_contig_sum", "ACAAAGTAAAAC", []int{2, 2, 2}, func(b []byte) { be.PutUint32(b[45:], 3) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "genomes.bin")
+			w, err := NewWriter(file, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			id := []byte("c")
+			g := &Genome{ID: []byte("g"), Seq: []byte(tc.seq), Len: len(tc.seq), NumSeqs: len(tc.sizes), SeqSizes: tc.sizes}
+			for _, size := range tc.sizes {
+				g.GenomeSize += size
+				g.SeqIDs = append(g.SeqIDs, &id)
+			}
+			if err := w.Write(g); err != nil {
+				t.Fatal(err)
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if tc.change != nil {
+				data, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// One-byte genome/contig IDs give fixed metadata offsets.
+				tc.change(data)
+				if err := os.WriteFile(file, data, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			r, err := NewReader(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Close()
+			got, err := r.Seqs(0)
+			defer RecycleGenome(got)
+			if tc.change != nil {
+				if got != nil || !errors.Is(err, ErrBrokenFile) {
+					t.Fatalf("invalid layout returned a genome or lost its error: genome=%v, err=%v", got != nil, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var offset, interval int
+			if g.NumSeqs > 1 {
+				interval = (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+			}
+			for i, size := range tc.sizes {
+				if !bytes.Equal(*got.Seqs[i], g.Seq[offset:offset+size]) {
+					t.Fatalf("contig %d changed", i)
+				}
+				offset += size + interval
+			}
+		})
+	}
+}
+
 func TestWriterBufferReuse(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "genomes.bin")
 	w, err := NewWriter(file, 0)

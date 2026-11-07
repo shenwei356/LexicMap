@@ -463,22 +463,45 @@ func (r *Reader) Seqs(idx int) (*Genome, error) {
 		return nil, err
 	}
 
-	g.Seqs = make([]*[]byte, g.NumSeqs)
-
-	// interval size between contigs
+	// Disk contig lengths must describe exactly the decoded sequence. A
+	// two-index slice can otherwise expose stale bytes beyond len(g.Seq).
+	if g.NumSeqs < 1 || g.NumSeqs != len(g.SeqSizes) || g.NumSeqs != len(g.SeqIDs) ||
+		g.GenomeSize < 0 || g.GenomeSize > len(g.Seq) {
+		RecycleGenome(g)
+		return nil, ErrBrokenFile
+	}
+	padding := len(g.Seq) - g.GenomeSize
 	var interval int
 	if g.NumSeqs > 1 {
-		interval = (g.Len - g.GenomeSize) / (g.NumSeqs - 1)
+		if padding%(g.NumSeqs-1) != 0 {
+			RecycleGenome(g)
+			return nil, ErrBrokenFile
+		}
+		interval = padding / (g.NumSeqs - 1)
+	} else if padding != 0 {
+		RecycleGenome(g)
+		return nil, ErrBrokenFile
 	}
 
+	g.Seqs = make([]*[]byte, g.NumSeqs)
 	var offset int
-	var seqSize int
-	for i := 0; i < g.NumSeqs; i++ {
-		seqSize = g.SeqSizes[i]
-
+	remaining := g.GenomeSize // subtract before adding offsets to avoid overflow
+	for i, seqSize := range g.SeqSizes {
+		if seqSize < 0 || seqSize > remaining || offset > len(g.Seq) || seqSize > len(g.Seq)-offset {
+			RecycleGenome(g)
+			return nil, ErrBrokenFile
+		}
 		tmp := g.Seq[offset : offset+seqSize]
 		g.Seqs[i] = &tmp
-		offset += seqSize + interval
+		remaining -= seqSize
+		offset += seqSize
+		if i+1 < g.NumSeqs {
+			offset += interval
+		}
+	}
+	if remaining != 0 || offset != len(g.Seq) {
+		RecycleGenome(g)
+		return nil, ErrBrokenFile
 	}
 	return g, nil
 }

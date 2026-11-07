@@ -38,12 +38,29 @@ import (
 // successful test requires error propagation before input EOF.
 func checkStreamingOutputFailure(t *testing.T, input string, args ...string) {
 	t.Helper()
+	for _, mode := range []string{"plain", "gzip", "gzip_after_header"} {
+		t.Run(mode, func(t *testing.T) {
+			checkStreamingOutputFailureMode(t, input, mode, args...)
+		})
+	}
+}
+
+// The late-close case lets gzip write its header successfully before breaking
+// the pipe. Flushing only the outer buffer cannot detect this failure.
+func checkStreamingOutputFailureMode(t *testing.T, input, mode string, args ...string) {
+	t.Helper()
 	for _, output := range []string{"/dev/full", "-"} {
+		if mode == "gzip_after_header" && output != "-" {
+			continue
+		}
 		for _, kind := range []string{"stdin", "fifo"} {
 			t.Run(output+"/"+kind, func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 				arguments := slices.Clone(args)
+				if mode != "plain" {
+					arguments = append(arguments, "--force-gzip-output")
+				}
 				var inputWriter io.WriteCloser
 				if kind == "fifo" {
 					file := filepath.Join(t.TempDir(), "input.pipe")
@@ -75,12 +92,25 @@ func checkStreamingOutputFailure(t *testing.T, input string, args ...string) {
 				defer inputWriter.Close()
 				var stderr bytes.Buffer
 				command.Stderr = &stderr
+				var outputReader *os.File
+				defer func() {
+					if outputReader != nil {
+						outputReader.Close()
+					}
+				}()
 				if output == "-" {
 					reader, writer, err := os.Pipe()
 					if err != nil {
 						t.Fatal(err)
 					}
-					reader.Close()
+					if mode == "gzip_after_header" {
+						outputReader = reader
+						if err := reader.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						reader.Close()
+					}
 					defer writer.Close()
 					command.Stdout = writer
 				}
@@ -89,6 +119,19 @@ func checkStreamingOutputFailure(t *testing.T, input string, args ...string) {
 				}
 				if _, err := io.WriteString(inputWriter, input); err != nil {
 					t.Fatal(err)
+				}
+				if outputReader != nil {
+					var header [10]byte
+					if _, err := io.ReadFull(outputReader, header[:]); err != nil {
+						t.Fatalf("failed to read gzip header: %v", err)
+					}
+					if header[0] != 0x1f || header[1] != 0x8b {
+						t.Fatal("missing gzip header")
+					}
+					outputReader.Close()
+					outputReader = nil
+					// The first flush may already have noticed the closed pipe.
+					_, _ = io.WriteString(inputWriter, input)
 				}
 				err := command.Wait()
 				if ctx.Err() != nil {

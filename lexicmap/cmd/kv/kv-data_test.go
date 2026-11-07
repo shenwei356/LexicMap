@@ -654,6 +654,11 @@ func TestKVIndexRejectsInvalidLayout(t *testing.T) {
 		{"mask_prefix", func(b []byte) []byte { b[11] = 32; return b }},
 		{"zero_anchor_prefix", func(b []byte) []byte { b[12] = 0; return b }},
 		{"anchor_prefix", func(b []byte) []byte { b[12] = 255; return b }},
+		{"oversized_dense_table", func(b []byte) []byte {
+			b[10], b[11], b[12] = 32, 1, 29
+			be.PutUint64(b[32:], 1)
+			return append(b, make([]byte, 16)...)
+		}},
 	}
 	for name, read := range readers {
 		t.Run(name, func(t *testing.T) {
@@ -676,5 +681,59 @@ func TestKVIndexRejectsInvalidLayout(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+// Every entry point shares the CLI partition limit, including sparse disk files.
+func TestKVIndexPartitionLimit(t *testing.T) {
+	for _, threshold := range []uint64{0, MinIndex15Threshold} {
+		file := filepath.Join(t.TempDir(), "seeds")
+		w, err := NewWriterWithIndex15(31, 0, 1, file, 1, maxIndexAnchorPrefix, false, threshold)
+		if err != nil {
+			t.Fatalf("maximum supported prefix: %v", err)
+		}
+		if err := w.WriteDataOfAMask(map[uint64]*[]uint64{1: &[]uint64{1}}); err != nil {
+			t.Fatal(err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatal(err)
+		}
+		_, _, data, _, prefix, _, err := ReadKVIndex(file + KVIndexFileExt)
+		if err != nil || prefix != maxIndexAnchorPrefix || len(data) != 1 || len(data[0]) != 2+2*MaxIndexPartitions {
+			t.Fatalf("maximum supported index could not be read: prefix=%d, err=%v", prefix, err)
+		}
+		before, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, prefix := range []uint8{maxIndexAnchorPrefix + 1, 29, 255} {
+			if _, err := NewWriterWithIndex15(31, 0, 1, file, 1, prefix, false, threshold); !errors.Is(err, ErrInvalidFileFormat) {
+				t.Fatalf("oversized writer prefix=%d: %v", prefix, err)
+			}
+		}
+		if threshold == 0 {
+			err = CreateKVIndex(file, 4*MaxIndexPartitions)
+		} else {
+			_, err = CreateKVIndex15(file, 4*MaxIndexPartitions, threshold)
+		}
+		if err == nil {
+			t.Fatal("oversized reindex partitions were accepted")
+		}
+		after, err := os.ReadFile(file)
+		if err != nil || !bytes.Equal(before, after) {
+			t.Fatal("rejected writer/reindex changed seed data")
+		}
+		// The metadata-only loader must reject the same malformed prefix.
+		idx, err := os.ReadFile(file + KVIndexFileExt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		idx[12] = maxIndexAnchorPrefix + 1
+		if err := os.WriteFile(file+KVIndexFileExt, idx, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, _, _, _, err := ReadKVIndexInfo(file + KVIndexFileExt); !errors.Is(err, ErrInvalidFileFormat) {
+			t.Fatalf("metadata accepted oversized prefix: %v", err)
+		}
 	}
 }

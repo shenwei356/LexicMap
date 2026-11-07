@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bufio"
+	streamgzip "compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -50,6 +51,13 @@ func isStreamingInput(file string) bool {
 }
 
 func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteCloser, *os.File, error) {
+	return openOutStream(file, gzipped, level, false)
+}
+
+// openOutStream keeps compression history across frequent streaming flushes.
+// Parallel gzip uses independent blocks and loses history for short records;
+// ordinary file output keeps its existing parallel compressor.
+func openOutStream(file string, gzipped bool, level int, streaming bool) (*bufio.Writer, io.WriteCloser, *os.File, error) {
 	var w *os.File
 	if file == "-" {
 		w = os.Stdout
@@ -78,8 +86,13 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 	}
 
 	if gzipped {
-		// gw := gzip.NewWriter(w)
-		gw, err := gzip.NewWriterLevel(w, level)
+		var gw io.WriteCloser
+		var err error
+		if streaming {
+			gw, err = streamgzip.NewWriterLevel(w, level)
+		} else {
+			gw, err = gzip.NewWriterLevel(w, level)
+		}
 		if err != nil {
 			if w != os.Stdout {
 				_ = w.Close()
@@ -89,6 +102,18 @@ func outStream(file string, gzipped bool, level int) (*bufio.Writer, io.WriteClo
 		return bufio.NewWriterSize(gw, IOBufferSize), gw, w, nil
 	}
 	return bufio.NewWriterSize(w, IOBufferSize), nil, w, nil
+}
+
+// flushOutStream makes a streaming record visible and reports errors from both
+// buffering layers before the next input read can block.
+func flushOutStream(w *bufio.Writer, compressed io.WriteCloser) error {
+	if err := w.Flush(); err != nil {
+		return err
+	}
+	if flusher, ok := compressed.(interface{ Flush() error }); ok {
+		return flusher.Flush()
+	}
+	return nil
 }
 
 // closeOutStream drains every output layer and reports delayed write errors.
