@@ -53,6 +53,7 @@ blocks.
 
 Each primary index is replaced only after its new file has been written and
 closed successfully. A failed rebuild leaves that chunk's old index intact.
+Invalid index summary values are rejected before any seed index or summary is changed.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
@@ -82,6 +83,7 @@ closed successfully. A failed rebuild leaves that chunk's old index intact.
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
+		checkError(validateSeedReindexInfo(info))
 
 		// ---------------------------------------------------------------
 
@@ -180,6 +182,19 @@ closed successfully. A failed rebuild leaves that chunk's old index intact.
 			log.Infof("finished updating the index information file: %s", fileInfo)
 		}
 	},
+}
+
+// validateSeedReindexInfo bounds work queues and rejects empty rebuilds before
+// publication. Only seed metadata is needed; genome data is not read or changed.
+func validateSeedReindexInfo(info *IndexInfo) error {
+	if info.MainVersion != MainVersion {
+		return fmt.Errorf("index main versions do not match: %d (index) != %d (tool)", info.MainVersion, MainVersion)
+	}
+	// Index construction supports at most 128 nonempty seed chunks.
+	if info.K == 0 || info.K > 32 || info.Masks < 1 || info.Chunks < 1 || info.Chunks > 128 || info.Chunks > info.Masks {
+		return fmt.Errorf("invalid index summary for seed rebuilding: k=%d, masks=%d, chunks=%d (expected k in [1, 32], positive masks, and chunks in [1, min(128, masks)])", info.K, info.Masks, info.Chunks)
+	}
+	return nil
 }
 
 func init() {

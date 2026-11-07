@@ -58,7 +58,8 @@ func makeRemergeBatches(t *testing.T, db string, inputs int) []string {
 		if _, err := lh.WriteToFile(filepath.Join(paths[i], FileMasks)); err != nil {
 			t.Fatal(err)
 		}
-		info := &IndexInfo{K: 16, Masks: chunks * masksPerChunk, Partitions: 4, Chunks: chunks,
+		info := &IndexInfo{MainVersion: MainVersion, MinorVersion: MinorVersion,
+			K: 16, Masks: chunks * masksPerChunk, Partitions: 4, Chunks: chunks,
 			InputGenomes: 1, Genomes: 1, GenomeBatches: 1, InputBases: 100}
 		if err := writeIndexInfo(filepath.Join(paths[i], FileInfo), info); err != nil {
 			t.Fatal(err)

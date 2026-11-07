@@ -24,6 +24,7 @@ blocks.
 
 Each primary index is replaced only after its new file has been written and
 closed successfully. A failed rebuild leaves that chunk's old index intact.
+Invalid index summary values are rejected before any seed index or summary is changed.
 
 Usage:
   lexicmap utils reindex-seeds [flags]

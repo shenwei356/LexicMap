@@ -22,9 +22,11 @@ package cmd
 
 import (
 	"bytes"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -32,6 +34,68 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 )
+
+// Reject invalid work counts before workers or progress bars can rewrite metadata.
+func TestReindexSeedsRejectsInvalidSummary(t *testing.T) {
+	dir := t.TempDir()
+	input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">s\n"+indexTestDNA(500)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-k", "16", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, input)
+	summary := filepath.Join(db, FileInfo)
+	original, err := os.ReadFile(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Include file names as well as contents to detect stray staging/backup files.
+	snapshot := func(t *testing.T) map[string][]byte {
+		t.Helper()
+		files := make(map[string][]byte)
+		if err := filepath.WalkDir(db, func(path string, entry fs.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
+			}
+			files[path], err = os.ReadFile(path)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return files
+	}
+	for _, command := range []string{"reindex-seeds", "reindex-seeds2"} {
+		for _, tc := range []struct{ name, old, replacement string }{
+			{"zero chunks", "chunks = 2", "chunks = 0"},
+			{"negative chunks", "chunks = 2", "chunks = -1"},
+			{"missing chunks", "chunks = 2", ""},
+			{"chunks exceed masks", "chunks = 2", "chunks = 65"},
+			{"chunks exceed format limit", "chunks = 2", "chunks = 129"},
+			{"huge chunks", "chunks = 2", "chunks = 2147483647"},
+			{"zero masks", "masks = 64", "masks = 0"},
+			{"zero k", "max-K = 16", "max-K = 0"},
+			{"oversized k", "max-K = 16", "max-K = 33"},
+			{"wrong version", "main-version = 3", "main-version = 0"},
+		} {
+			t.Run(command+"/"+tc.name, func(t *testing.T) {
+				data := strings.Replace(string(original), tc.old, tc.replacement, 1)
+				if data == string(original) {
+					t.Fatalf("missing fixture field %q", tc.old)
+				}
+				if err := os.WriteFile(summary, []byte(data), 0600); err != nil {
+					t.Fatal(err)
+				}
+				before := snapshot(t)
+				out, stderr, err := runAuditCommand(t, "", "utils", command, "--quiet", "-j", "2", "-d", db, "--partitions", "16")
+				message := string(out) + string(stderr)
+				if err == nil || strings.Contains(message, "panic:") ||
+					!(strings.Contains(message, "invalid index summary") || strings.Contains(message, "versions do not match")) {
+					t.Errorf("expected a normal summary error: %v, %s", err, message)
+				}
+				if !reflect.DeepEqual(snapshot(t), before) {
+					t.Error("rejected summary changed index files")
+				}
+			})
+		}
+	}
+}
 
 // TestReindexSeedsInvalidPartitions preserves both indexes, backups, and CLI metadata.
 func TestReindexSeedsInvalidPartitions(t *testing.T) {
