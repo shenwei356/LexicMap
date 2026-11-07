@@ -56,7 +56,9 @@ Attention:
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   4. Both the default 20- and 24-column formats are supported,
-     and the first retained result selects the output format.
+     and the first retained result selects the output format unless -a/--all
+     forces 24 columns. Mixed column counts among the selected query's records
+     produce a warning with the output column count (unless --quiet).
      In 24-column output, missing alignment fields are left empty.
      In 20-column output, alignment fields are omitted.
   5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
@@ -99,6 +101,7 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 
 	query := getFlagString(cmd, "query")
 	topN := getFlagNonNegativeInt(cmd, "top-n-genomes")
+	all := getFlagBool(cmd, "all")
 
 	bufferSizeS := getFlagString(cmd, "buffer-size")
 	if bufferSizeS == "" {
@@ -193,6 +196,7 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 	var qlen string
 	var queryLength uint64 // numerical length shared by all selected-query records
 	var moreColumns bool
+	var seenShort, seenLong bool // input formats, including genomes discarded by Top-N
 	var idx0 int
 	countTotalHits := true
 	var hits int
@@ -233,7 +237,7 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 			qlen = strings.Clone(rGnm.Qlen)
 			idx0 = rGnm.idx
 
-			moreColumns = rGnm.Records[0].Extra != ""
+			moreColumns = all || rGnm.Records[0].Extra != ""
 
 			if topN == 0 {
 				if err := writeMergedSearchHeader(outfh, moreColumns); err != nil {
@@ -253,6 +257,15 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 			queryLength = length
 		} else if length != queryLength {
 			return fmt.Errorf("inconsistent query lengths in %s and %s: %s != %s", files[idx0], files[rGnm.idx], qlen, rGnm.Qlen)
+		}
+
+		// Inspect every selected-query row before Top-N can recycle its genome.
+		for _, record := range rGnm.Records {
+			if record.Extra == "" {
+				seenShort = true
+			} else {
+				seenLong = true
+			}
 		}
 
 		idx = rGnm.idx
@@ -290,17 +303,29 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 	}
 
 	if checkColumns && singleInput != nil && singleInput.header != "" {
-		if _, err := fmt.Fprintln(outfh, singleInput.header); err != nil {
+		if all {
+			if err := writeMergedSearchHeader(outfh, true); err != nil {
+				return err
+			}
+		} else if _, err := fmt.Fprintln(outfh, singleInput.header); err != nil {
 			return err
 		}
 	}
 	if topN > 0 && len(retained) > 0 {
 		retained = selected.Results()
 		n = len(retained)
-		moreColumns = retained[0].Records[0].Extra != ""
+		moreColumns = all || retained[0].Records[0].Extra != ""
 		if err := writeMergedSearchHeader(outfh, moreColumns); err != nil {
 			return err
 		}
+	}
+	// Top-N must finish selection before the actual output width is known.
+	if seenShort && seenLong {
+		columns := 20
+		if moreColumns {
+			columns = 24
+		}
+		log.Warningf("input records for query %q have inconsistent column counts (20 and 24); output has %d columns; use -a/--all to force 24 columns (missing alignment fields are left empty)", query, columns)
 	}
 	for i, r := range retained {
 		if err := writeMergedGenomeResult(outfh, r, query, qlen, n, moreColumns); err != nil {
@@ -321,6 +346,9 @@ func init() {
 
 	mergeCmd.Flags().StringP("out-file", "o", "-",
 		formatFlagUsage(`Out file, supports the ".gz" suffix ("-" for stdout).`))
+
+	mergeCmd.Flags().BoolP("all", "a", false,
+		formatFlagUsage(`Output all 24 columns, including cigar, qseq, sseq, and align; missing alignment fields are left empty.`))
 
 	mergeCmd.Flags().StringP("query", "q", "",
 		formatFlagUsage(`Query ID to merge`))

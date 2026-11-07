@@ -392,6 +392,82 @@ func TestMergeSearchResultsNegativeScores(t *testing.T) {
 }
 
 // Search orders full-precision scores, while TSV identity has three decimals.
+// Mixed-width warnings describe the final output, including when Top-N drops
+// the other format. Forcing all columns preserves data and pads missing fields.
+func TestMergeSearchResultsColumnSelection(t *testing.T) {
+	const extra = "\t4M\tACGT\tACGT\t||||"
+	row := func(query, genome string, score int, full bool) string {
+		text := fmt.Sprintf("%s\t4\t2\t%s\ts\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t4\t0\t%d", query, genome, score)
+		if full {
+			text += extra
+		}
+		return text + "\n"
+	}
+	short := row("q", "a", 100, false)
+	long := row("q", "b", 90, true)
+	for _, tc := range []struct {
+		name        string
+		bodies      []string
+		flags       []string
+		width, rows int
+		warn        bool
+	}{
+		{"short winner", []string{short, long}, nil, 20, 2, true},
+		{"long winner", []string{short, row("q", "b", 110, true)}, nil, 24, 2, true},
+		{"same genome", []string{short + row("q", "a", 90, true)}, nil, 20, 2, true},
+		{"top short", []string{short, long}, []string{"-n", "1"}, 20, 1, true},
+		{"top late long", []string{short + row("q", "b", 110, true)}, []string{"-n", "1"}, 24, 1, true},
+		{"all mixed", []string{short, long}, []string{"-a"}, 24, 2, true},
+		{"all top", []string{short, long}, []string{"--all", "-n", "1"}, 24, 1, true},
+		{"all tied", []string{short, row("q", "b", 100, true)}, []string{"-a", "-n", "1"}, 24, 2, true},
+		{"all short", []string{short}, []string{"-a"}, 24, 1, false},
+		{"uniform long", []string{long}, nil, 24, 1, false},
+		{"quiet mixed", []string{short, long}, []string{"--quiet", "-a"}, 24, 2, false},
+		{"query filter", []string{short + row("other", "b", 90, true)}, []string{"-q", "q", "-a"}, 24, 1, false},
+		{"header only", []string{""}, []string{"-a"}, 24, 0, false},
+		{"spooled mixed", []string{short, long}, []string{"-a", "--max-open-files", "10"}, 24, 2, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			args := append([]string{"utils", "merge-search-results"}, tc.flags...)
+			for i, body := range tc.bodies {
+				args = append(args, writeTestInput(t, filepath.Join(dir, fmt.Sprintf("%d.tsv", i)), auditSearchHeader+"\n"+body))
+			}
+			out, stderr, err := runAuditCommand(t, "", args...)
+			if err != nil {
+				t.Fatalf("merge failed: %v\n%s", err, stderr)
+			}
+			lines := strings.Split(strings.TrimSuffix(string(out), "\n"), "\n")
+			if len(lines) != tc.rows+1 {
+				t.Fatalf("got %d rows, want %d", len(lines)-1, tc.rows)
+			}
+			for i, line := range lines {
+				fields := strings.Split(line, "\t")
+				if len(fields) != tc.width {
+					t.Fatalf("line %d: got %d columns, want %d", i, len(fields), tc.width)
+				}
+				if i > 0 && tc.width == 24 {
+					want := "\t\t\t\t"
+					if fields[3] == "b" {
+						want = extra
+					}
+					if got := "\t" + strings.Join(fields[20:], "\t"); got != want {
+						t.Fatalf("alignment fields = %q, want %q", got, want)
+					}
+				}
+			}
+			warnings := strings.Count(string(stderr), "inconsistent column counts (20 and 24)")
+			if tc.warn {
+				if warnings != 1 || !strings.Contains(string(stderr), fmt.Sprintf("output has %d columns", tc.width)) {
+					t.Fatalf("missing accurate width warning: %s", stderr)
+				}
+			} else if warnings != 0 {
+				t.Fatalf("unexpected width warning: %s", stderr)
+			}
+		})
+	}
+}
+
 // These real score combinations tie before formatting but reverse after it.
 func TestMergeSearchResultsTopNRoundedIdentity(t *testing.T) {
 	for _, fullWinner := range []bool{false, true} {

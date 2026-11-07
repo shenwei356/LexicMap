@@ -27,7 +27,7 @@
 - **`lexicmap utils merge-search-results`**:
     - Skip empty result files with a warning. [#41](https://github.com/shenwei356/LexicMap/issues/41)
     - Fix Top-N selection and ties for rounded identities and negative bit scores.
-    - Preserve columns and alignment fields when merging mixed output formats.
+    - Warn when merging mixed 20- and 24-column results and report the output column count. Add `-a/--all` to force 24-column output, leaving missing alignment fields empty.
     - Merge large numbers of result files within a configurable `--max-open-files` budget (default `1024`).
     - Reduce memory use when merging long alignments.
 - **`lexicmap utils 2sam`**:

@@ -22,7 +22,9 @@ Attention:
   3. One or more input files are accepted, via positional parameters
      and/or a file list via the flag -X/--infile-list.
   4. Both the default 20- and 24-column formats are supported,
-     and the first retained result selects the output format.
+     and the first retained result selects the output format unless -a/--all
+     forces 24 columns. Mixed column counts among the selected query's records
+     produce a warning with the output column count (unless --quiet).
      In 24-column output, missing alignment fields are left empty.
      In 20-column output, alignment fields are omitted.
   5. Flag -n/--top-n-genomes ranks genomes by their highest alignment
@@ -46,6 +48,8 @@ Usage:
   lexicmap utils merge-search-results [flags]
 
 Flags:
+  -a, --all                  ► Output all 24 columns, including cigar, qseq, sseq, and align; missing
+                             alignment fields are left empty.
   -b, --buffer-size string   ► Size of buffer, supported unit: K, M, G. You need increase the value
                              when "bufio.Scanner: token too long" error reported (default "20M")
   -h, --help                 help for merge-search-results
@@ -74,6 +78,11 @@ Global Flags:
 Without `-q`, all records must have the same query ID, even when only one file
 is supplied and `-n` is left at its default of `0`. Use `-q` to select one query
 from a file containing results for multiple queries.
+
+By default, the first retained result determines whether output has 20 or 24
+columns. Mixed column counts among the selected query's records produce a warning
+that reports the output width (unless `--quiet`). Use `-a/--all` to always output
+24 columns; missing `cigar`, `qseq`, `sseq`, and `align` fields are left empty.
 
 Building 3 indexes with demo data.
 
