@@ -5,13 +5,16 @@ package cmd
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Many input shards must retain every field and cutoff tie under a small FD
@@ -100,5 +103,51 @@ func TestMergeSearchResultsManyShards(t *testing.T) {
 	entries, err := os.ReadDir(temp)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("temporary inputs retained: %v, %v", entries, err)
+	}
+}
+
+// A closed stdout pipe must report EPIPE and remove staged inputs, including
+// when the first write happens during a deferred buffer flush or gzip close.
+func TestMergeSearchResultsBrokenPipeCleansSpool(t *testing.T) {
+	for _, rows := range []int{1, 1500} {
+		for _, compressed := range []bool{false, true} {
+			t.Run(fmt.Sprintf("rows=%d/gzip=%t", rows, compressed), func(t *testing.T) {
+				dir, temp := t.TempDir(), t.TempDir()
+				args := []string{"utils", "merge-search-results", "--quiet", "--max-open-files", "10"}
+				if compressed {
+					args = append(args, "--force-gzip-output")
+				}
+				for file := range 2 {
+					var input strings.Builder
+					input.WriteString(auditSearchHeader + "\n")
+					for row := range rows {
+						fmt.Fprintf(&input, "q\t4\t%d\tg%d_%d\ts\t100\t1\t1\t100\t4\t100\t0\t1\t4\t1\t4\t+\t4\t0\t100\n", rows, file, row)
+					}
+					args = append(args, writeTestInput(t, filepath.Join(dir, fmt.Sprintf("%d.tsv", file)), input.String()))
+				}
+				read, write, err := os.Pipe()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = read.Close(); err != nil {
+					t.Fatal(err)
+				}
+				defer write.Close()
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				command := exec.CommandContext(ctx, os.Args[0], append([]string{"-test.run=^TestSeedIndexCommand$", "--"}, args...)...)
+				command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1", "TMPDIR="+temp)
+				command.Stdout = write
+				var stderr bytes.Buffer
+				command.Stderr = &stderr
+				if err := command.Run(); err == nil || !strings.Contains(stderr.String(), "broken pipe") {
+					t.Fatalf("missing output error: %v: %s", err, stderr.String())
+				}
+				entries, err := os.ReadDir(temp)
+				if err != nil || len(entries) != 0 {
+					t.Fatalf("temporary inputs retained: %v, %v", entries, err)
+				}
+			})
+		}
 	}
 }

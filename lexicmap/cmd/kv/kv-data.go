@@ -737,6 +737,29 @@ func ReadKVIndexSelected(file string, selectedMasks []bool) (uint8, int, [][]uin
 	return readKVIndex(file, selectedMasks)
 }
 
+// checkKVIndexLayout validates disk counts before integer conversion or allocation.
+// Reserve one record-count word per mask; the remainder bounds all record payloads.
+func checkKVIndexLayout(fh *os.File, k, maskPrefix, anchorPrefix uint8, firstMask, nMasks uint64) (int64, error) {
+	if k == 0 || k > 32 || maskPrefix > k || anchorPrefix == 0 || anchorPrefix > k-maskPrefix {
+		return 0, ErrInvalidFileFormat
+	}
+	// Each dense anchor slot contains two uint64s, plus the first special pair.
+	if anchorPrefix >= 32 || uint64(1)<<(2*anchorPrefix) > uint64((math.MaxInt/8-2)/2) {
+		return 0, ErrInvalidFileFormat
+	}
+	if firstMask > uint64(math.MaxInt) || nMasks > uint64(math.MaxInt)-firstMask {
+		return 0, ErrInvalidFileFormat
+	}
+	info, err := fh.Stat()
+	if err != nil {
+		return 0, err
+	}
+	if info.Size() < 32 || nMasks > uint64((info.Size()-32)/8) {
+		return 0, ErrBrokenFile
+	}
+	return info.Size() - 32 - int64(nMasks)*8, nil
+}
+
 func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uint8, uint8, uint8, error) {
 	fh, err := os.Open(file)
 	if err != nil {
@@ -759,10 +782,7 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 	var n int
 
 	// check the magic number
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
@@ -777,10 +797,7 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 		return 0, -1, nil, 0, 0, 0, ErrInvalidFileFormat
 	}
 	// read version information
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
@@ -797,20 +814,24 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 	config1 := buf[5]
 
 	// index of the first mask in current chunk.
-	var iFirstMask int
-	_, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, nil, 0, 0, 0, err
+	var firstMask uint64
+	n, _ = io.ReadFull(r, buf)
+	if n < 8 {
+		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 	}
-	iFirstMask = int(be.Uint64(buf))
+	firstMask = be.Uint64(buf)
 
 	// mask chunk size
-	var nMasks int
-	_, err = io.ReadFull(r, buf)
+	n, _ = io.ReadFull(r, buf)
+	if n < 8 {
+		return 0, -1, nil, 0, 0, 0, ErrBrokenFile
+	}
+	maskCount := be.Uint64(buf)
+	remaining, err := checkKVIndexLayout(fh, k, maskPrefix, anchorPrefix, firstMask, maskCount)
 	if err != nil {
 		return 0, -1, nil, 0, 0, 0, err
 	}
-	nMasks = int(be.Uint64(buf))
+	iFirstMask, nMasks := int(firstMask), int(maskCount)
 	if len(selectedMasks) > 0 && iFirstMask+nMasks > len(selectedMasks) {
 		return 0, -1, nil, 0, 0, 0, fmt.Errorf("mask selection has %d entries, but index chunk requires %d", len(selectedMasks), iFirstMask+nMasks)
 	}
@@ -820,7 +841,7 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 
 	// ---------------------------------------------
 
-	indexSize := 2 + int(math.Pow(4, float64(anchorPrefix)))<<1
+	indexSize := 2 + 2*(int(1)<<(2*anchorPrefix))
 	getAnchor := AnchorExtracter(k, maskPrefix, anchorPrefix)
 
 	data := make([][]uint64, nMasks)
@@ -830,11 +851,16 @@ func readKVIndex(file string, selectedMasks []bool) (uint8, int, [][]uint64, uin
 	var j int
 	var _j uint64
 	for i := 0; i < nMasks; i++ {
-		_, err = io.ReadFull(r, buf)
-		if err != nil {
-			return 0, -1, nil, 0, 0, 0, err
+		n, _ = io.ReadFull(r, buf)
+		if n < 8 {
+			return 0, -1, nil, 0, 0, 0, ErrBrokenFile
 		}
-		nRecords = int(be.Uint64(buf))
+		recordCount := be.Uint64(buf)
+		if recordCount > uint64(indexSize/2) || recordCount > uint64(remaining/16) {
+			return 0, -1, nil, 0, 0, 0, ErrBrokenFile
+		}
+		remaining -= int64(recordCount) * 16
+		nRecords = int(recordCount)
 
 		if len(selectedMasks) > 0 && !selectedMasks[iFirstMask+i] {
 			if nRecords > 0 {
@@ -906,6 +932,7 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 	}
 	indexVersion := buf8[0]
 	indexConfig := buf8[5]
+	k, maskPrefix, anchorPrefix := buf8[2], buf8[3], buf8[4]
 	if !validKVIndexVersion(indexVersion) {
 		return nil, ErrVersionMismatch
 	}
@@ -913,14 +940,20 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 		return nil, ErrInvalidFileFormat
 	}
 
-	// Skip first-mask index and read mask count.
+	// Read and validate the first-mask index and mask count.
 	if _, err = io.ReadFull(r, buf8); err != nil {
 		return nil, err
 	}
+	firstMask := be.Uint64(buf8)
 	if _, err = io.ReadFull(r, buf8); err != nil {
 		return nil, err
 	}
-	nMasks := int(be.Uint64(buf8))
+	maskCount := be.Uint64(buf8)
+	remaining, err := checkKVIndexLayout(fh, k, maskPrefix, anchorPrefix, firstMask, maskCount)
+	if err != nil {
+		return nil, err
+	}
+	nMasks := int(maskCount)
 	starts := make([][2]uint64, nMasks)
 
 	for i := range starts {
@@ -928,6 +961,10 @@ func ReadKVIndexStarts(file string) ([][2]uint64, error) {
 			return nil, err
 		}
 		nRecords := be.Uint64(buf8)
+		if nRecords > 1+(uint64(1)<<(2*anchorPrefix)) || nRecords > uint64(remaining/16) {
+			return nil, ErrBrokenFile
+		}
+		remaining -= int64(nRecords) * 16
 		if nRecords == 0 {
 			continue
 		}
@@ -968,10 +1005,7 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 	var n int
 
 	// check the magic number
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, 0, 0, 0, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return 0, -1, 0, 0, 0, ErrBrokenFile
 	}
@@ -986,10 +1020,7 @@ func ReadKVIndexInfo(file string) (uint8, int, int, uint8, uint8, error) {
 		return 0, -1, 0, 0, 0, ErrInvalidFileFormat
 	}
 	// read version information
-	n, err = io.ReadFull(r, buf)
-	if err != nil {
-		return 0, -1, 0, 0, 0, err
-	}
+	n, _ = io.ReadFull(r, buf)
 	if n < 8 {
 		return 0, -1, 0, 0, 0, ErrBrokenFile
 	}

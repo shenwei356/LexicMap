@@ -2497,6 +2497,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 							// only include valid chains
 							r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 							r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
+							crChains2 = nil                    // ownership transferred to r2
 							// there's no need
 							// sort.Slice(*r2.Chains, func(i, j int) bool {
 							// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
@@ -2700,6 +2701,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 
 						// ----------
 
+						// Rejected groups still own their empty slice.
+						if crChains2 != nil {
+							recycleChaining2ResultSlice(crChains2)
+						}
+
 						// Start the current contig and use the common conversion path.
 						crChains2 = poolChains2.Get().(*[]*Chain2Result)
 						iSeq = iSeq0
@@ -2769,6 +2775,7 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 					// only include valid chains
 					r2 := poolSeqComparatorResult.Get().(*SeqComparatorResult)
 					r2.Update2(crChains2, cr.QueryLen) // r2.Chains = crChains2
+					crChains2 = nil                    // ownership transferred to r2
 					// there's no need
 					// sort.Slice(*r2.Chains, func(i, j int) bool {
 					// 	return (*r2.Chains)[i].AlignedBasesQ >= (*r2.Chains)[j].AlignedBasesQ
@@ -2973,6 +2980,10 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 				}
 			}
 
+			// Nonempty groups transferred ownership to their output result.
+			if crChains2 != nil {
+				recycleChaining2ResultSlice(crChains2)
+			}
 			recycleChaining2ResultSlice(cr.Chains)
 			cr.Chains = nil
 			RecycleSeqComparatorResult(cr)

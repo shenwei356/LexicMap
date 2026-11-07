@@ -846,7 +846,8 @@ func TestSearchFinalAlignmentDeduplication(t *testing.T) {
 	RC(reverse)
 	// A second synthetic contig competes for masks, leaving sparse seed chains.
 	ref := writeTestInput(t, filepath.Join(dir, "ref.fa"), ">target\n"+target+"\n>other\n"+fixture.Other+"\n")
-	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+forward+"\n>reverse\n"+string(reverse)+"\n")
+	// Repeat both orientations to exercise reuse of slices from rejected groups.
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">forward\n"+forward+"\n>reverse\n"+string(reverse)+"\n>forward2\n"+forward+"\n>reverse2\n"+string(reverse)+"\n")
 	db := filepath.Join(dir, "db")
 	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "1024", "-c", "2", "--partitions", "4", "-O", db, ref)
 	for _, all := range []bool{false, true} {
@@ -868,7 +869,7 @@ func TestSearchFinalAlignmentDeduplication(t *testing.T) {
 				full[row[0]]++
 			}
 		}
-		if full["forward"] != 1 || full["reverse"] != 1 {
+		if full["forward"] != 1 || full["reverse"] != 1 || full["forward2"] != 1 || full["reverse2"] != 1 {
 			t.Fatalf("missing full-length controls (-a=%t): %v", all, full)
 		}
 	}

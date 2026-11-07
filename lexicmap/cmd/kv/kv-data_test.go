@@ -625,3 +625,56 @@ func TestSeedRecordWriteError(t *testing.T) {
 		}
 	}
 }
+
+// Malformed on-disk counts must fail before allocating or skipping their payloads.
+func TestKVIndexRejectsInvalidLayout(t *testing.T) {
+	base := make([]byte, 40)
+	copy(base, MagicIdx[:])
+	copy(base[8:16], []byte{MainVersion, MinorVersion, 31, 3, 3})
+	be.PutUint64(base[24:32], 1) // one empty mask
+	readers := map[string]func(string) error{
+		"full":       func(path string) error { _, _, _, _, _, _, err := ReadKVIndex(path); return err },
+		"selected":   func(path string) error { _, _, _, _, _, _, err := ReadKVIndexSelected(path, []bool{true}); return err },
+		"unselected": func(path string) error { _, _, _, _, _, _, err := ReadKVIndexSelected(path, []bool{false}); return err },
+		"starts":     func(path string) error { _, err := ReadKVIndexStarts(path); return err },
+	}
+	cases := []struct {
+		name   string
+		mutate func([]byte) []byte
+	}{
+		{"negative_mask_count", func(b []byte) []byte { be.PutUint64(b[24:], math.MaxUint64); return b }},
+		{"oversized_mask_count", func(b []byte) []byte { be.PutUint64(b[24:], 1<<40); return b }},
+		{"negative_first_mask", func(b []byte) []byte { be.PutUint64(b[16:], math.MaxUint64); return b }},
+		{"mask_range_overflow", func(b []byte) []byte { be.PutUint64(b[16:], uint64(math.MaxInt)); return b }},
+		{"missing_mask_count", func(b []byte) []byte { return b[:32] }},
+		{"negative_record_count", func(b []byte) []byte { be.PutUint64(b[32:], math.MaxUint64); return b }},
+		{"missing_records", func(b []byte) []byte { be.PutUint64(b[32:], 1); return b }},
+		{"zero_k", func(b []byte) []byte { b[10] = 0; return b }},
+		{"oversized_k", func(b []byte) []byte { b[10] = 33; return b }},
+		{"mask_prefix", func(b []byte) []byte { b[11] = 32; return b }},
+		{"zero_anchor_prefix", func(b []byte) []byte { b[12] = 0; return b }},
+		{"anchor_prefix", func(b []byte) []byte { b[12] = 255; return b }},
+	}
+	for name, read := range readers {
+		t.Run(name, func(t *testing.T) {
+			file := filepath.Join(t.TempDir(), "seeds.idx")
+			if err := os.WriteFile(file, base, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := read(file); err != nil {
+				t.Fatalf("valid empty mask: %v", err)
+			}
+			for _, tc := range cases {
+				t.Run(tc.name, func(t *testing.T) {
+					if err := os.WriteFile(file, tc.mutate(bytes.Clone(base)), 0600); err != nil {
+						t.Fatal(err)
+					}
+					err := read(file)
+					if !errors.Is(err, ErrBrokenFile) && !errors.Is(err, ErrInvalidFileFormat) {
+						t.Fatalf("invalid layout: got %v, want file error", err)
+					}
+				})
+			}
+		})
+	}
+}

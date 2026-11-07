@@ -29,10 +29,12 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/signal"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/shenwei356/bio/seq"
 	"github.com/shenwei356/xopen"
@@ -94,6 +96,12 @@ Attention:
 // mergeSearchResults owns readers, output layers, and temporary input storage.
 // Return failures before the CLI exits so every owned resource can be released.
 func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile string, maxInputFiles int) (err error) {
+	// Keep stdout failures on the error path so temporary inputs are removed.
+	// Register first so deferred output flushes run before signal handling stops.
+	brokenPipe := make(chan os.Signal, 1)
+	signal.Notify(brokenPipe, syscall.SIGPIPE)
+	defer signal.Stop(brokenPipe)
+
 	seq.ValidateSeq = false
 	outputLog := opt.Verbose || opt.Log2File
 
