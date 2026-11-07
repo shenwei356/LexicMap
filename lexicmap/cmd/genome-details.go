@@ -28,6 +28,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -523,7 +524,14 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 	}
 	defer fh.Close()
 
-	br := bufio.NewReaderSize(fh, IOBufferSize)
+	info, err := fh.Stat()
+	if err != nil {
+		return err
+	}
+	// Buffered bytes have already left the limited reader. Count both when
+	// checking disk-declared lengths before allocating their tables.
+	remaining := &io.LimitedReader{R: fh, N: info.Size()}
+	br := bufio.NewReaderSize(remaining, IOBufferSize)
 
 	buf := make([]byte, 1<<16) // 64K
 	var n int
@@ -537,6 +545,7 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 	batchIDAndRefIDs := make([]uint64, 0, 1024)
 	genomeSizes := make([]uint32, 0, 1024)
+	seqCounts := make([]uint32, 0, 1024) // Default output needs counts only.
 	seqSizes := make([][]uint32, 0, 1024)
 	seqIDs := make([][][]byte, 0, 1024)
 	var totalGenomeSize uint64
@@ -584,6 +593,7 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 
 		batchIDAndRefIDs = batchIDAndRefIDs[:0]
 		genomeSizes = genomeSizes[:0]
+		seqCounts = seqCounts[:0]
 		clear(seqSizes)
 		seqSizes = seqSizes[:0]
 		clear(seqIDs)
@@ -602,18 +612,40 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 			genomeSizes = append(genomeSizes, genomeSize) // genome sizes
 
 			nSeqs = be.Uint32(buf[12:16]) // number of sequences
+			// Each contig needs four size bytes and, when saved, at least a
+			// two-byte ID length. Reject impossible counts before any allocation.
+			minimum := int64(nSeqs) * 4
+			if hasSeqIDs {
+				minimum += 4 + int64(nSeqs)*2 // ID block length and per-ID lengths
+			}
+			maxInt := int64(int(^uint(0) >> 1))
+			elementBytes := int64(4)
+			if extra && hasSeqIDs {
+				elementBytes = 3 * (strconv.IntSize / 8) // []byte slice header
+			}
+			if minimum > remaining.N+int64(br.Buffered()) || int64(nSeqs) > maxInt/elementBytes {
+				return ErrBrokenFile
+			}
+			seqCounts = append(seqCounts, nSeqs)
 
-			// seq sizes
-			_seqSizes := make([]uint32, nSeqs)
+			// Retain per-contig data only when the extra columns need it.
+			var _seqSizes []uint32
+			if extra {
+				_seqSizes = make([]uint32, nSeqs)
+			}
 			for j = 0; j < int(nSeqs); j++ {
 				// seq size (4 bytes)
 				n, err = io.ReadFull(br, buf[:4])
 				if n < 4 {
 					return ErrBrokenFile
 				}
-				_seqSizes[j] = be.Uint32(buf[:4])
+				if extra {
+					_seqSizes[j] = be.Uint32(buf[:4])
+				}
 			}
-			seqSizes = append(seqSizes, _seqSizes)
+			if extra {
+				seqSizes = append(seqSizes, _seqSizes)
+			}
 
 			if hasSeqIDs {
 				// length of seqid data
@@ -623,7 +655,10 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 				}
 
 				// seq ids data
-				_seqIDs := make([][]byte, nSeqs)
+				var _seqIDs [][]byte
+				if extra {
+					_seqIDs = make([][]byte, nSeqs)
+				}
 				for j = 0; j < int(nSeqs); j++ {
 					n, err = io.ReadFull(br, buf[:2])
 					if n < 2 {
@@ -631,6 +666,13 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 					}
 					lenID = int(be.Uint16(buf[:2])) // length of seqid
 
+					if !extra {
+						// Discard still checks for truncated IDs without retaining them.
+						if _, err := br.Discard(lenID); err != nil {
+							return ErrBrokenFile
+						}
+						continue
+					}
 					seqid := make([]byte, lenID)
 					n, _ = io.ReadFull(br, seqid)
 					if n < lenID {
@@ -638,7 +680,9 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 					}
 					_seqIDs[j] = seqid
 				}
-				seqIDs = append(seqIDs, _seqIDs)
+				if extra {
+					seqIDs = append(seqIDs, _seqIDs)
+				}
 			}
 		}
 
@@ -681,7 +725,7 @@ func readGenomeDetails(fileGenomeDetails string, outfh *bufio.Writer, extra bool
 					genomeID, totalGenomeSize, nChunks, i+1,
 					batchIDAndRefIDs[i]>>BITS_GENOME_IDX,
 					batchIDAndRefIDs[i]&MASK_GENOME_IDX,
-					genomeSizes[i], len(seqSizes[i]))
+					genomeSizes[i], seqCounts[i])
 
 			}
 		}

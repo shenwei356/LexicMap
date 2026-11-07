@@ -56,6 +56,9 @@ Global Flags:
                              (default 16)
 ```
 
+For lower memory use, omit `-e/--extra` when only summary columns are needed,
+even if the cache contains sequence IDs saved with `-i/--save-seqids`.
+
 ## Examples
 
 Suppose that we have a few fungal genomes. 

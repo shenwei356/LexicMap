@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,7 +49,8 @@ Input:
      printable ASCII characters and cannot contain @.
    - Records for each query must be contiguous, including across input files,
      and must have the same query length. A group may span adjacent files.
-   - Do not support STDIN.
+   - Inputs must be regular files because they are read twice.
+     STDIN, named pipes, and process substitution are not supported.
 
 Output:
    - Clipped regions in SEQ are represented as N's,
@@ -71,6 +73,19 @@ Output:
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		opt := getOptions(cmd)
+
+		// Validate replayability before opening logs or truncating the output.
+		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
+		for _, file := range files {
+			if file == "-" {
+				checkError(fmt.Errorf("stdin not supported, as the input needs to be read twice"))
+			}
+			info, err := os.Stat(file) // Follow symlinks to regular input files.
+			checkError(err)
+			if !info.Mode().IsRegular() {
+				checkError(fmt.Errorf("input %s must be a regular file, as it needs to be read twice", file))
+			}
+		}
 
 		outFile := getFlagString(cmd, "out-file")
 		defer setupCommandLog(opt, outFile)()
@@ -96,13 +111,6 @@ Output:
 		defer func() {
 			checkError(closeOutStream(outfh, gw, w))
 		}()
-
-		files := getFileListFromArgsAndFile(cmd, args, true, "infile-list", true)
-		for _, file := range files {
-			if file == "-" {
-				checkError(fmt.Errorf("stdin not supported, as the input needs to be read twice"))
-			}
-		}
 
 		// Grow for long records instead of eagerly allocating an unusually large limit.
 		buf := make([]byte, min(bufferSize, 20<<20))

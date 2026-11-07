@@ -19,7 +19,8 @@ Input:
      printable ASCII characters and cannot contain @.
    - Records for each query must be contiguous, including across input files,
      and must have the same query length. A group may span adjacent files.
-   - Do not support STDIN.
+   - Inputs must be regular files because they are read twice.
+     STDIN, named pipes, and process substitution are not supported.
 
 Output:
    - Clipped regions in SEQ are represented as N's,
