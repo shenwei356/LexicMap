@@ -47,9 +47,12 @@ weight: 30
     - Correct AS and MAPQ calculation, including nonpositive alignment scores.
     - Preserve primary/secondary flags and MAPQ across input files.
     - Reduce memory use when converting long alignments with many reference sequences.
+- **`lexicmap utils subseq`**:
+    - Bound queued extraction results when earlier records are slow, while preserving input order.
 - **`lexicmap utils seed-pos`**:
     - Restore missing seed positions and fix seed-count histograms.
     - Avoid overwriting distance plots for short genome chunks.
+    - Reduce file-reading overhead when extracting seed positions.
 
 ## Previous versions
 

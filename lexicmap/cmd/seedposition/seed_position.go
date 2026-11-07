@@ -270,12 +270,14 @@ type Reader struct {
 
 	buf []byte
 
-	fhData *os.File
+	fhData     *os.File
+	dataReader *bufio.Reader // reused across records; reset after every seek and on close
 }
 
 var poolReader = &sync.Pool{New: func() interface{} {
 	return &Reader{
-		buf: make([]byte, 32),
+		buf:        make([]byte, 32),
+		dataReader: bufio.NewReaderSize(nil, BufferSize),
 	}
 }}
 
@@ -378,6 +380,7 @@ func (r *Reader) Close() error {
 		}
 		r.fhData = nil
 	}
+	r.dataReader.Reset(nil) // do not retain a closed file or unread record bytes
 	r.offset = 0
 	poolReader.Put(r)
 	return err
@@ -430,11 +433,13 @@ func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 		return err
 	}
 
+	// Seeking invalidates any read-ahead from the previous record.
+	r.dataReader.Reset(r.fhData)
 	rounds := (nRecords + 3) >> 2
 
 	for round := 0; round < rounds; round++ {
 		// read the control byte
-		_, err = io.ReadFull(r.fhData, buf[:1])
+		_, err = io.ReadFull(r.dataReader, buf[:1])
 		if err != nil {
 			return err
 		}
@@ -444,7 +449,7 @@ func (r *Reader) SeedPositions(idx int, locs *[]uint32) error {
 		nBytes = util.CtrlByte2ByteLengthsUint32(ctrlByte)
 
 		// read encoded bytes
-		nReaded, err = io.ReadFull(r.fhData, buf[:nBytes])
+		nReaded, err = io.ReadFull(r.dataReader, buf[:nBytes])
 		if err != nil {
 			return err
 		}

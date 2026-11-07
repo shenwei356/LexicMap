@@ -28,7 +28,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,18 +197,22 @@ Attention:
 			var poolSubseq = &sync.Pool{New: func() interface{} {
 				return &Subseq{}
 			}}
+			// Keep a small output window so workers can overlap extraction and
+			// writing without accumulating unbounded results behind a slow read.
+			pending := make(chan struct{}, 4*opt.NumCPUs)
+			token := make(chan int, opt.NumCPUs)
 			recycleSubseq := func(result *Subseq) {
 				genome.RecycleGenome(result.Genome)
 				*result = Subseq{}
 				poolSubseq.Put(result)
+				<-pending
 			}
 			ch := make(chan *Subseq, opt.NumCPUs)
-			m := make(map[uint64]*Subseq, opt.NumCPUs) // the buffer to output sorte
+			m := make(map[uint64]*Subseq, opt.NumCPUs) // completed results waiting for their input ordinal
 			done := make(chan int)
 			var nSuccess int
 			go func() {
-				var id, _id uint64
-				var ok bool
+				var id uint64
 				var _n int
 				for result := range ch {
 					_n++
@@ -217,56 +220,22 @@ Attention:
 						fmt.Fprintf(os.Stderr, "\r%d subsequences extracted from %d records", nSuccess, _n)
 					}
 
-					_id = result.ID
-					if _id == id {
+					m[result.ID] = result
+					// A completed predecessor can unlock several queued records.
+					for {
+						result, ok := m[id]
+						if !ok {
+							break
+						}
 						if result.Seq != nil {
 							nSuccess++
 							outfh.WriteString(result.Header)
 							outfh.Write(result.Seq.FormatSeq(lineWidth))
 							outfh.WriteByte('\n')
 						}
-						recycleSubseq(result)
-
-						id++
-						continue
-					}
-
-					m[_id] = result
-
-					if result, ok = m[id]; ok {
-						if result.Seq != nil {
-							nSuccess++
-							outfh.WriteString(result.Header)
-							outfh.Write(result.Seq.FormatSeq(lineWidth))
-							outfh.WriteByte('\n')
-						}
-						recycleSubseq(result)
-
 						delete(m, id)
-						id++
-					}
-				}
-				if len(m) > 0 {
-					ids := make([]uint64, len(m))
-					i := 0
-					for id = range m {
-						ids[i] = id
-						i++
-					}
-					// sortutil.Uint64s(ids)
-					slices.Sort(ids)
-					var result *Subseq
-					for _, id = range ids {
-						result = m[id]
-						delete(m, id)
-
-						if result.Seq != nil {
-							nSuccess++
-							outfh.WriteString(result.Header)
-							outfh.Write(result.Seq.FormatSeq(lineWidth))
-							outfh.WriteByte('\n')
-						}
 						recycleSubseq(result)
+						id++
 					}
 				}
 
@@ -279,8 +248,6 @@ Attention:
 			}()
 
 			// output ^
-
-			token := make(chan int, opt.NumCPUs)
 
 			var line string
 			var n uint64
@@ -296,6 +263,7 @@ Attention:
 					continue
 				}
 
+				pending <- struct{}{}
 				wg.Add(1)
 				token <- 1
 				go func(line string, n uint64) {

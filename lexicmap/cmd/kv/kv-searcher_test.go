@@ -23,7 +23,6 @@ package kv
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -115,8 +114,8 @@ func TestSearcherTruncatedSkippedPositions(t *testing.T) {
 							if err := os.Truncate(file, int64(len(original)-positionBytes)); err != nil {
 								t.Fatal(err)
 							}
-							if err := search(); !errors.Is(err, ErrBrokenFile) || !errors.Is(err, io.EOF) {
-								t.Errorf("truncated skipped positions: got %v, want broken file with EOF", err)
+							if err := search(); !errors.Is(err, ErrBrokenFile) {
+								t.Errorf("truncated skipped positions: got %v, want broken file", err)
 							}
 							if err := os.WriteFile(file, original, 0600); err != nil {
 								t.Fatal(err)

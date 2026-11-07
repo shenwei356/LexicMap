@@ -264,3 +264,51 @@ func TestSeedPositionsInvalidOffset(t *testing.T) {
 		})
 	}
 }
+
+// Read-ahead must not survive a seek, including after truncation and recovery.
+func TestSeedPositionsBufferedSeekAfterTruncation(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "positions.bin")
+	records := [][]uint32{{4, 8, 12, 16}, {100, 200, 300, 400, 500}}
+	w, err := NewWriter(file, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, positions := range records {
+		if err := w.Write(positions); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	var got []uint32
+	if err := r.SeedPositions(0, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Truncate(file, int64(len(original)-1)); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SeedPositions(1, &got); err == nil {
+		t.Fatal("read-ahead concealed a truncated record")
+	}
+	if err := os.WriteFile(file, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, i := range []int{1, 0, 1, 0} {
+		if err := r.SeedPositions(i, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, records[i]) {
+			t.Fatalf("record %d: got %v, want %v", i, got, records[i])
+		}
+	}
+}

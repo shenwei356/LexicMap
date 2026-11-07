@@ -372,3 +372,36 @@ func TestSubseqDecoratedSequenceIDs(t *testing.T) {
 		t.Fatalf("plain ID fallback failed: %s", got)
 	}
 }
+
+// Ordered output must drain across skipped records and both strands without
+// exhausting the outstanding-result slots, including with a single worker.
+func TestSubseqOrderedOutputWithSkippedRecords(t *testing.T) {
+	db := writeDetailsFixture(t, 1)
+	var input strings.Builder
+	for i := range 300 {
+		strand := "+"
+		if i%2 == 1 {
+			strand = "-"
+		}
+		start, end := 1, 3
+		if i%5 == 0 {
+			start, end = 4, 9
+		}
+		fmt.Fprintf(&input, "q%d\t3\t1\tg0\tcontig1\t100\t1\t1\t100\t3\t100\t0\t1\t3\t%d\t%d\t%s\t3\t0\t10\n", i, start, end, strand)
+	}
+	var want string
+	for _, threads := range []int{1, 2, 8} {
+		out, stderr, err := runAuditCommand(t, input.String(), "utils", "subseq", "--quiet", "-j", fmt.Sprint(threads), "-d", db, "-f", "-", "-H", "--ignore-err")
+		if err != nil {
+			t.Fatalf("threads=%d: %v, %s", threads, err, stderr)
+		}
+		if threads == 1 {
+			want = string(out)
+			if strings.Count(want, "\n") != 480 {
+				t.Fatal("incorrect number of retained records")
+			}
+		} else if string(out) != want {
+			t.Fatalf("threads=%d: output differs from serial extraction", threads)
+		}
+	}
+}

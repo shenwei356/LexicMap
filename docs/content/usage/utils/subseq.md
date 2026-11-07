@@ -82,6 +82,11 @@ Global Flags:
                              (default 16)
 ```
 
+In search-result mode, records are written in input order. The number of active and
+queued extraction results is limited to four times `--threads`; a slow earlier record can
+pause new work until its result is written.
+
+
 ## Examples
 
 1. Extracting aligned sequences with the output file from `lexicmap search`.
