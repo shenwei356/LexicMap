@@ -15,6 +15,8 @@ Attention:
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
   4. Reversed means if the k-mer is reversed for suffix matching.
+  5. The index summary and selected seed chunk layouts are checked before opening
+     the result output.
 
 Usage:
   lexicmap utils kmers [flags] -d <index path> [-m <mask index>] [-o out.tsv.gz]

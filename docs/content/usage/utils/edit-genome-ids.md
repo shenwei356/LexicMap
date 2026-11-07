@@ -25,6 +25,7 @@ Use cases:
 
 Tips:
   - A backup file (genomes.map.bin.bak) is created on the first run that changes an ID.
+  - Temporary rewrite files are removed if reading, validation, or writing fails.
   - If no IDs change, the mapping, backup, and cached genome details are left unchanged.
   - Renaming IDs removes genomes.details.bin. The next genome-details run rebuilds it;
     use -i/--save-seqids again if sequence IDs are needed.

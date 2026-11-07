@@ -50,6 +50,8 @@ Attention:
      For reference genomes with multiple sequences, the sequences were
      concatenated to a single sequence with intervals of N's.
   4. Reversed means if the k-mer is reversed for suffix matching.
+  5. The index summary and selected seed chunk layouts are checked before opening
+     the result output.
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -98,6 +100,10 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
+
+		// Validate selected chunk layouts and retain only mask starts before output.
+		chunkSize, chunks, err := readKmerSeedChunks(dbDir, info, lh.K, len(lh.Masks), mask)
+		checkError(err)
 
 		if outputLog {
 			log.Infof("  checking passed")
@@ -165,7 +171,7 @@ Attention:
 			masks = []int{mask}
 		}
 
-		var chunkSize, chunk, iMask int
+		var chunk, iMask int
 		var fileSeeds string
 
 		var startTime time.Time
@@ -187,11 +193,9 @@ Attention:
 		var maskCode uint64
 		var rvFlag int
 
-		// compute the chunk
-		chunkSize = (len(lh.Masks) + info.Chunks - 1) / info.Chunks
 		var preChunk int
-		var k uint8
-		var indexes [][]uint64
+		k := uint8(lh.K)
+		var indexes [][2]uint64
 		var config1 uint8
 		preChunk = -1
 
@@ -207,10 +211,7 @@ Attention:
 
 			// kv-data index file
 			if chunk != preChunk {
-				k, _, indexes, _, _, config1, err = kv.ReadKVIndex(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
-				}
+				indexes, config1 = chunks[chunk].starts, chunks[chunk].config
 
 				preChunk = chunk
 			}
@@ -224,7 +225,7 @@ Attention:
 				fUint64 = kv.Uint64ThreeBytes
 			}
 
-			if len(indexes[iMask]) == 0 { // no k-mers
+			if indexes[iMask][1] == 0 { // no k-mers
 				if showProgressBar {
 					chDuration <- time.Duration(float64(time.Since(startTime)))
 				}
@@ -384,6 +385,52 @@ Attention:
 		}
 
 	},
+}
+
+// kmerSeedChunk keeps only the mask starts needed by sequential seed export.
+// Unlike search, kmers does not need a full prefix lookup table for every mask.
+type kmerSeedChunk struct {
+	starts [][2]uint64 // first k-mer and encoded file offset; zero offset means empty
+	config uint8       // seed position width from the data header
+}
+
+// readKmerSeedChunks validates the selected data/index layouts before output opens.
+// Retaining starts costs O(masks), independent of the number of prefix partitions.
+func readKmerSeedChunks(dir string, info *IndexInfo, k, masks, selected int) (int, map[int]kmerSeedChunk, error) {
+	if masks < 1 || info.Chunks < 1 || info.Chunks > masks || info.Masks != masks || int(info.K) != k {
+		return 0, nil, fmt.Errorf("invalid index summary: chunks=%d, masks=%d, k=%d; mask file has %d masks with k=%d",
+			info.Chunks, info.Masks, info.K, masks, k)
+	}
+	chunkSize := 1 + (masks-1)/info.Chunks
+	first, last := 0, (masks-1)/chunkSize
+	if selected > 0 {
+		first, last = (selected-1)/chunkSize, (selected-1)/chunkSize
+	}
+	chunks := make(map[int]kmerSeedChunk, last-first+1)
+	for chunk := first; chunk <= last; chunk++ {
+		file := filepath.Join(dir, DirSeeds, chunkFile(chunk))
+		begin := chunk * chunkSize
+		count := min(chunkSize, masks-begin)
+		dataK, dataBegin, dataCount, config, err := kv.ReadKVDataHeader(file)
+		if err != nil {
+			return 0, nil, fmt.Errorf("read seed header %s: %w", file, err)
+		}
+		indexFile := file + kv.KVIndexFileExt
+		indexK, indexBegin, indexCount, _, _, err := kv.ReadKVIndexInfo(indexFile)
+		if err != nil {
+			return 0, nil, fmt.Errorf("read seed index header %s: %w", indexFile, err)
+		}
+		if int(dataK) != k || int(indexK) != k || dataBegin != begin || indexBegin != begin || dataCount != count || indexCount != count {
+			return 0, nil, fmt.Errorf("invalid seed chunk layout in %s: expected k=%d, first mask=%d, masks=%d; data=(%d,%d,%d), index=(%d,%d,%d)",
+				file, k, begin, count, dataK, dataBegin, dataCount, indexK, indexBegin, indexCount)
+		}
+		starts, err := kv.ReadKVIndexStarts(indexFile)
+		if err != nil {
+			return 0, nil, fmt.Errorf("read seed index starts %s: %w", indexFile, err)
+		}
+		chunks[chunk] = kmerSeedChunk{starts: starts, config: config}
+	}
+	return chunkSize, chunks, nil
 }
 
 func init() {

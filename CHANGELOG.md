@@ -34,6 +34,10 @@
     - Correct AS and MAPQ calculation, including nonpositive alignment scores.
     - Preserve primary/secondary flags and MAPQ across input files.
     - Reduce memory use when converting long alignments with many reference sequences or many hits per query.
+- **`lexicmap utils kmers`**:
+    - Reduce memory use and speed up k-mer export.
+- **`lexicmap utils edit-genome-ids`**:
+    - Remove temporary rewrite files after input, validation, or write errors.
 - **`lexicmap utils genome-details`**:
     - Reduce memory allocation when printing summary columns, especially from caches containing sequence IDs.
 - **`lexicmap utils subseq`**:
