@@ -22,16 +22,228 @@ package cmd
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
 )
+
+// Readers of one batch must share only the immutable directory in both modes.
+// Removing the companion after loading also catches on-demand directory rereads.
+func TestSubseqSharedReaderDirectories(t *testing.T) {
+	for _, budget := range []int{10, 1024} {
+		t.Run(fmt.Sprint(budget), func(t *testing.T) {
+			db := t.TempDir()
+			for batch := range 2 {
+				writeSubseqTestGenome(t, db, batch)
+			}
+			readers, err := newSubseqGenomeReaders(db, 2, budget, 4)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var directories [2]*uint64
+			for batch := range 2 {
+				rdr, err := readers.acquire(batch)
+				if err != nil {
+					t.Fatal(err)
+				}
+				directories[batch] = &rdr.Index[0]
+				if err := readers.release(batch, rdr); err != nil {
+					t.Fatal(err)
+				}
+				file := filepath.Join(db, DirGenomes, batchDir(batch), FileGenomes) + genome.GenomeIndexFileExt
+				if err := os.Rename(file, file+".saved"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var wg sync.WaitGroup
+			for worker := range 8 {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for i := range 32 {
+						batch := (worker + i) % 2
+						rdr, err := readers.acquire(batch)
+						if err != nil {
+							t.Error(err)
+							return
+						}
+						if &rdr.Index[0] != directories[batch] {
+							t.Error("reader duplicated its batch directory")
+						}
+						g, err := rdr.SubSeq(0, i%4, i%4+3)
+						if err != nil {
+							t.Error(err)
+						} else if string(g.Seq) != "ACGTACGT"[i%4:i%4+4] {
+							t.Error("independent readers changed extracted bases")
+						}
+						genome.RecycleGenome(g)
+						if err := readers.release(batch, rdr); err != nil {
+							t.Error(err)
+						}
+					}
+				}()
+			}
+			wg.Wait()
+			if err := readers.close(); err != nil {
+				t.Fatal(err)
+			}
+			if readers.indexes != nil || len(readers.openFileTokens) != 0 {
+				t.Fatal("closed readers retain directories or file reservations")
+			}
+		})
+	}
+}
+
+func TestSubseqSharedReaderRetry(t *testing.T) {
+	db := t.TempDir()
+	readers, err := newSubseqGenomeReaders(db, 2, 10, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readers.close()
+	if _, err := readers.acquire(0); err == nil || len(readers.openFileTokens) != 0 {
+		t.Fatal("failed directory load must release its token and remain retryable")
+	}
+	writeSubseqTestGenome(t, db, 0)
+	rdr, err := readers.acquire(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory := &rdr.Index[0]
+	if err := readers.release(0, rdr); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(db, DirGenomes, batchDir(0), FileGenomes)
+	if err := os.Rename(file, file+".saved"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readers.acquire(0); err == nil || len(readers.openFileTokens) != 0 {
+		t.Fatal("failed data open leaked its token")
+	}
+	if err := os.Rename(file+".saved", file); err != nil {
+		t.Fatal(err)
+	}
+	rdr, err = readers.acquire(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if &rdr.Index[0] != directory {
+		t.Fatal("retry lost its successfully loaded directory")
+	}
+	if err := readers.release(0, rdr); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Cache both uniqueness outcomes, but never a failed metadata read. Changing
+// fixture bytes here proves cache reuse; production indexes remain immutable.
+func TestSubseqChunkChecksReuseAndErrors(t *testing.T) {
+	for _, budget := range []int{10, 1024} {
+		t.Run(fmt.Sprint(budget), func(t *testing.T) {
+			db := t.TempDir()
+			for batch := range 2 {
+				writeSubseqTestGenome(t, db, batch)
+			}
+			readers, err := newSubseqGenomeReaders(db, 2, budget, 4)
+			if err != nil {
+				t.Fatal(err)
+			}
+			chunks := []uint64{0, 1 << BITS_GENOME_IDX}
+			check := func(id string) error {
+				return checkSubseqChunkSequenceID(db, chunks, 0, []byte(id), readers)
+			}
+			var wg sync.WaitGroup
+			for range 8 {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					for range 32 {
+						if err := check("unique"); err != nil {
+							t.Error(err)
+						}
+						if err := check("seq"); !errors.Is(err, genome.ErrAmbiguousSeqID) {
+							t.Errorf("lost ambiguity: %v", err)
+						}
+					}
+				}()
+			}
+			wg.Wait()
+			file := filepath.Join(db, DirGenomes, batchDir(1), FileGenomes)
+			data, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Truncate(file, 0); err != nil {
+				t.Fatal(err)
+			}
+			if err := check("unique"); err != nil {
+				t.Fatalf("unique check reread metadata: %v", err)
+			}
+			if err := check("seq"); !errors.Is(err, genome.ErrAmbiguousSeqID) {
+				t.Fatalf("ambiguous check reread metadata: %v", err)
+			}
+			if err := check("uncached"); err == nil || errors.Is(err, genome.ErrAmbiguousSeqID) {
+				t.Fatalf("missing metadata error: %v", err)
+			}
+			if _, ok := readers.checks.lookup(0, []byte("uncached")); ok {
+				t.Fatal("I/O error was cached")
+			}
+			if err := os.WriteFile(file, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := check("uncached"); err != nil {
+				t.Fatalf("failed metadata check could not retry: %v", err)
+			}
+			if err := readers.close(); err != nil {
+				t.Fatal(err)
+			}
+			if readers.checks.results != nil || readers.checks.order != nil || readers.checks.idBytes != 0 {
+				t.Fatal("closed readers retain cached ID checks")
+			}
+		})
+	}
+}
+
+func TestSubseqChunkCheckCacheBounds(t *testing.T) {
+	var cache subseqChunkChecks
+	id := []byte("original")
+	cache.remember(0, id, true)
+	copy(id, "modified")
+	if duplicate, ok := cache.lookup(0, []byte("original")); !ok || !duplicate {
+		t.Fatal("cached ID borrowed mutable input bytes")
+	}
+	if _, ok := cache.lookup(1, []byte("original")); ok {
+		t.Fatal("cached check crossed genome chunks")
+	}
+	for i := range subseqChunkCheckEntries + 1 {
+		cache.remember(0, []byte(fmt.Sprint(i)), i%2 == 0)
+	}
+	if _, ok := cache.lookup(0, []byte("original")); ok {
+		t.Fatal("old entries were not evicted")
+	}
+	// Long IDs hit the byte limit before the entry limit; every inserted result
+	// must remain correct through repeated ring wraparound and byte evictions.
+	for i := range 64 {
+		id := []byte(fmt.Sprintf("%d:%s", i, strings.Repeat("x", 65530)))
+		cache.remember(0, id, i%2 == 0)
+		duplicate, ok := cache.lookup(0, id)
+		if !ok || duplicate != (i%2 == 0) || len(cache.results) > subseqChunkCheckEntries || cache.idBytes > subseqChunkCheckIDBytes {
+			t.Fatal("bounded cache lost the latest result or exceeded its limits")
+		}
+	}
+	cache.remember(0, []byte(strings.Repeat("x", subseqChunkCheckIDBytes+1)), false)
+	if cache.idBytes > subseqChunkCheckIDBytes {
+		t.Fatal("oversized ID exceeded the cache budget")
+	}
+}
 
 func TestResolveSearchGenomeID(t *testing.T) {
 	a, b, literal := []uint64{1, 2}, []uint64{3}, []uint64{4}

@@ -37,6 +37,7 @@
 - **`lexicmap utils subseq`**:
     - Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences.
     - Bound queued extraction results when earlier records are slow, while preserving input order.
+    - Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks.
 - **`lexicmap utils seed-pos`**:
     - Restore missing seed positions and fix seed-count histograms.
     - Avoid overwriting distance plots for short genome chunks.

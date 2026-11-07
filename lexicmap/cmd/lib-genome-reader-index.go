@@ -28,7 +28,7 @@ import (
 )
 
 // sharedGenomeReaderIndex publishes one immutable directory per batch. Failed
-// loads are retryable; only successful metadata is retained by the Index.
+// loads are retryable; only successful metadata is retained by its owner.
 type sharedGenomeReaderIndex struct {
 	mu    sync.Mutex
 	index *genome.ReaderIndex

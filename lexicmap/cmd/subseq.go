@@ -653,6 +653,17 @@ func readSubseqGenomeChunks(dbDir string) (map[uint64][]uint64, error) {
 // Read metadata only; neither coordinates nor DNA decoding determine uniqueness.
 // A nil readers argument opens and closes one file at a time for manual mode.
 func checkSubseqChunkSequenceID(dbDir string, chunks []uint64, current uint64, seqid []byte, readers *subseqGenomeReaders) error {
+	// Chunk membership is fixed for one command. Cache only completed ID checks;
+	// extraction still validates coordinates and duplicates in the current chunk.
+	cache := readers != nil && len(chunks) > 1
+	if cache {
+		if duplicate, ok := readers.checks.lookup(current, seqid); ok {
+			if duplicate {
+				return fmt.Errorf("%w: %s", genome.ErrAmbiguousSeqID, seqid)
+			}
+			return nil
+		}
+	}
 	for _, chunk := range chunks {
 		if chunk == current {
 			continue
@@ -687,10 +698,76 @@ func checkSubseqChunkSequenceID(dbDir string, chunks []uint64, current uint64, s
 		}
 		genome.RecycleGenome(g)
 		if duplicate {
+			if cache {
+				readers.checks.remember(current, seqid, true)
+			}
 			return fmt.Errorf("%w: %s", genome.ErrAmbiguousSeqID, seqid)
 		}
 	}
+	if cache {
+		readers.checks.remember(current, seqid, false)
+	}
 	return nil
+}
+
+// Bound both bookkeeping and retained ID bytes; map/queue overhead is additional.
+// The check cache retains no genome metadata or alignment rows.
+const subseqChunkCheckEntries = 4096
+const subseqChunkCheckIDBytes = 1 << 20
+
+// subseqChunkCheckKey scopes one exact ID check to the extracted genome chunk.
+type subseqChunkCheckKey struct {
+	chunk uint64 // the extracted chunk, whose siblings have been checked
+	id    string
+}
+
+// subseqChunkChecks caches uniqueness within the command's immutable chunk map.
+// FIFO eviction keeps memory bounded without updating an LRU on every hit.
+// Misses read outside the lock; concurrent misses may repeat a check, while
+// unrelated genomes never wait for each other's metadata I/O. I/O errors are
+// not cached, so a failed read cannot turn into a successful extraction later.
+type subseqChunkChecks struct {
+	mu      sync.Mutex
+	results map[subseqChunkCheckKey]bool // true means ambiguous, false means unique
+	order   []subseqChunkCheckKey        // fixed-size insertion ring, allocated lazily
+	head    int                          // oldest cached key
+	idBytes int                          // owned string bytes, excluding map/queue overhead
+}
+
+// lookup borrows the ID only for this lookup; hits need no copied string.
+func (c *subseqChunkChecks) lookup(chunk uint64, id []byte) (bool, bool) {
+	c.mu.Lock()
+	duplicate, ok := c.results[subseqChunkCheckKey{chunk, string(id)}]
+	c.mu.Unlock()
+	return duplicate, ok
+}
+
+// remember owns a completed check and evicts oldest entries to fit both limits.
+func (c *subseqChunkChecks) remember(chunk uint64, id []byte, duplicate bool) {
+	if len(id) > subseqChunkCheckIDBytes {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.results[subseqChunkCheckKey{chunk, string(id)}]; ok {
+		return // another worker completed the same check
+	}
+	if c.results == nil {
+		c.results = make(map[subseqChunkCheckKey]bool)
+		c.order = make([]subseqChunkCheckKey, subseqChunkCheckEntries)
+	}
+	for len(c.results) >= len(c.order) || c.idBytes+len(id) > subseqChunkCheckIDBytes {
+		old := c.order[c.head]
+		delete(c.results, old)
+		c.idBytes -= len(old.id)
+		c.order[c.head] = subseqChunkCheckKey{}
+		c.head = (c.head + 1) % len(c.order)
+	}
+	// Own the ID independently of the caller's temporary bytes or input row.
+	key := subseqChunkCheckKey{chunk, string(id)}
+	c.order[(c.head+len(c.results))%len(c.order)] = key
+	c.results[key] = duplicate
+	c.idBytes += len(key.id)
 }
 
 // searchSequencePrefix is the display prefix emitted by --show-sseq-idx.
@@ -730,12 +807,16 @@ func resolveSearchGenomeID(id string, refs map[string]*[]uint64) (*[]uint64, err
 	return match, nil
 }
 
+// subseqGenomeReaders owns handles, shared directories and checks for one command.
+// Close it only after all extraction workers have returned their readers.
 type subseqGenomeReaders struct {
 	dbDir           string
 	genomeBatches   int
 	readersPerBatch int
 	pools           []chan *genome.Reader
 	openFileTokens  chan struct{}
+	indexes         []sharedGenomeReaderIndex // one immutable directory per batch, including on-demand readers
+	checks          subseqChunkChecks         // bounded cross-chunk checks, shared by extraction workers
 }
 
 func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads int) (*subseqGenomeReaders, error) {
@@ -752,6 +833,7 @@ func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads i
 	r := &subseqGenomeReaders{
 		dbDir:         dbDir,
 		genomeBatches: genomeBatches,
+		indexes:       make([]sharedGenomeReaderIndex, genomeBatches),
 	}
 	// The input, output and log coexist with these readers. Only the remaining
 	// budget may be retained by pools or used for bounded on-demand reads.
@@ -781,8 +863,7 @@ func newSubseqGenomeReaders(dbDir string, genomeBatches, maxOpenFiles, threads i
 				defer wg.Done()
 				defer func() { <-tokens }()
 
-				file := filepath.Join(dbDir, DirGenomes, batchDir(batch), FileGenomes)
-				rdr, err := genome.NewReader(file)
+				rdr, err := r.newReader(batch)
 				if err != nil {
 					select {
 					case errCh <- fmt.Errorf("failed to create genome reader: %w", err):
@@ -808,6 +889,26 @@ func (r *subseqGenomeReaders) pooled() bool {
 	return r.pools != nil
 }
 
+// newReader shares offsets and lengths, never handles or decoding scratch.
+// Callers reserve a descriptor before loading; failed directory loads can retry.
+func (r *subseqGenomeReaders) newReader(batch int) (*genome.Reader, error) {
+	slot := &r.indexes[batch]
+	slot.mu.Lock()
+	index := slot.index
+	if index == nil {
+		file := filepath.Join(r.dbDir, DirGenomes, batchDir(batch), FileGenomes)
+		var err error
+		index, err = genome.ReadIndex(file)
+		if err != nil {
+			slot.mu.Unlock()
+			return nil, err
+		}
+		slot.index = index
+	}
+	slot.mu.Unlock()
+	return index.NewReader()
+}
+
 func (r *subseqGenomeReaders) acquire(batch int) (*genome.Reader, error) {
 	if batch < 0 || batch >= r.genomeBatches {
 		return nil, fmt.Errorf("invalid genome batch: %d", batch)
@@ -817,8 +918,7 @@ func (r *subseqGenomeReaders) acquire(batch int) (*genome.Reader, error) {
 	}
 
 	r.openFileTokens <- struct{}{}
-	file := filepath.Join(r.dbDir, DirGenomes, batchDir(batch), FileGenomes)
-	rdr, err := genome.NewReader(file)
+	rdr, err := r.newReader(batch)
 	if err != nil {
 		<-r.openFileTokens
 		return nil, fmt.Errorf("failed to create genome reader: %w", err)
@@ -841,6 +941,12 @@ func (r *subseqGenomeReaders) release(batch int, rdr *genome.Reader) error {
 }
 
 func (r *subseqGenomeReaders) close() error {
+	// All workers have finished and returned their readers before close.
+	defer func() {
+		r.indexes = nil
+		r.checks.results, r.checks.order = nil, nil
+		r.checks.head, r.checks.idBytes = 0, 0
+	}()
 	if !r.pooled() {
 		return nil
 	}

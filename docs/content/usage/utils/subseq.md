@@ -88,6 +88,12 @@ In search-result mode, records are written in input order. The number of active 
 queued extraction results is limited to four times `--threads`; a slow earlier record can
 pause new work until its result is written.
 
+In this mode, readers share one genome record directory per batch. Even with a low
+`--max-open-files` budget, a loaded directory is reused until extraction finishes.
+Repeated contig requests also reuse cross-chunk ID checks, with at most 4096 checks
+and 1 MiB of copied IDs cached at a time, plus map and queue overhead. These caches
+do not limit total memory use. Keep the input index unchanged during extraction.
+
 
 ## Examples
 
