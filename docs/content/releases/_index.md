@@ -48,7 +48,7 @@ weight: 30
     - Preserve primary/secondary flags and MAPQ across input files.
     - Reduce memory use when converting long alignments with many reference sequences.
 - **`lexicmap utils subseq`**:
-    - Report ambiguous sequence IDs within a genome chunk instead of extracting incorrect subsequences.
+    - Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences.
     - Bound queued extraction results when earlier records are slow, while preserving input order.
 - **`lexicmap utils seed-pos`**:
     - Restore missing seed positions and fix seed-count histograms.

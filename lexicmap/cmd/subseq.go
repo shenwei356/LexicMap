@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -59,7 +60,8 @@ Tips:
   - The aligned region can be extended with -U/--upstream and/or -D/--downstream.
   - After extension, a start beyond the sequence length is an error; an oversized end is clipped.
     In search-result mode, -e/--ignore-err skips records that cannot be extracted.
-  - A sequence ID matching multiple contigs within a genome chunk is an error.
+  - A sequence ID matching multiple contigs in the same genome, including across chunks,
+    is an error.
   - If the search results are merged from multiple indexes, it would report error
     "reference name not found". You can switch on -e/--ignore-err to ignore this.
 
@@ -155,6 +157,8 @@ Attention:
 			if err != nil {
 				checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 			}
+			genomeChunks, err := readSubseqGenomeChunks(dbDir)
+			checkError(err)
 
 			// --------------------------------------------------
 			// genome readers
@@ -401,6 +405,13 @@ Attention:
 							if !errors.Is(err, genome.ErrSeqIDNotFound) {
 								found = err == nil && tSeq != nil
 								sseqid = candidate
+								if found {
+									err = checkSubseqChunkSequenceID(dbDir, genomeChunks[batchIDAndRefID], batchIDAndRefID, _sseqid, readers)
+									if err != nil {
+										genome.RecycleGenome(tSeq)
+										tSeq, found = nil, false
+									}
+								}
 								break sequenceLookup
 							}
 						}
@@ -520,6 +531,8 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}
+		genomeChunks, err := readSubseqGenomeChunks(dbDir)
+		checkError(err)
 
 		var batchIDAndRefIDs *[]uint64
 
@@ -573,6 +586,13 @@ Attention:
 			// Extraction errors must not be hidden by a later chunk.
 			if !errors.Is(err, genome.ErrSeqIDNotFound) {
 				found = err == nil && tSeq != nil
+				if found && !concatenatedPositions {
+					err = checkSubseqChunkSequenceID(dbDir, genomeChunks[batchIDAndRefID], batchIDAndRefID, _seqid, nil)
+					if err != nil {
+						genome.RecycleGenome(tSeq)
+						tSeq, found = nil, false
+					}
+				}
 				break
 			}
 			// the sequence might not be in this genome chunk
@@ -609,6 +629,68 @@ Attention:
 
 		genome.RecycleGenome(tSeq)
 	},
+}
+
+// readSubseqGenomeChunks maps each chunk to its original genome's chunks.
+// Display-name grouping is not a chunk boundary: distinct genomes may share an ID.
+func readSubseqGenomeChunks(dbDir string) (map[uint64][]uint64, error) {
+	groups, err := readGenomeChunksLists(filepath.Join(dbDir, FileGenomeChunks))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read genome chunks: %w", err)
+	}
+	chunks := make(map[uint64][]uint64)
+	for _, group := range groups {
+		for _, id := range group {
+			chunks[id] = group
+		}
+	}
+	return chunks, nil
+}
+
+// checkSubseqChunkSequenceID rejects a contig ID also present in a sibling chunk.
+// The caller has released the extraction reader before borrowing another one,
+// so even a one-reader budget can check all chunks without waiting on itself.
+// Read metadata only; neither coordinates nor DNA decoding determine uniqueness.
+// A nil readers argument opens and closes one file at a time for manual mode.
+func checkSubseqChunkSequenceID(dbDir string, chunks []uint64, current uint64, seqid []byte, readers *subseqGenomeReaders) error {
+	for _, chunk := range chunks {
+		if chunk == current {
+			continue
+		}
+		batch, idx := int(chunk>>BITS_GENOME_IDX), int(chunk&MASK_GENOME_IDX)
+		var rdr *genome.Reader
+		var err error
+		if readers == nil {
+			rdr, err = genome.NewReader(filepath.Join(dbDir, DirGenomes, batchDir(batch), FileGenomes))
+		} else {
+			rdr, err = readers.acquire(batch)
+		}
+		if err != nil {
+			return err
+		}
+		g, err := rdr.GenomeInfo(idx)
+		if readers == nil {
+			err = errors.Join(err, rdr.Close())
+		} else {
+			err = errors.Join(err, readers.release(batch, rdr))
+		}
+		if err != nil {
+			genome.RecycleGenome(g)
+			return err
+		}
+		duplicate := false
+		for _, id := range g.SeqIDs {
+			if bytes.Equal(*id, seqid) {
+				duplicate = true
+				break
+			}
+		}
+		genome.RecycleGenome(g)
+		if duplicate {
+			return fmt.Errorf("%w: %s", genome.ErrAmbiguousSeqID, seqid)
+		}
+	}
+	return nil
 }
 
 // searchSequencePrefix is the display prefix emitted by --show-sseq-idx.
