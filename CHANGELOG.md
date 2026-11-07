@@ -29,6 +29,7 @@
     - Fix Top-N selection and ties for rounded identities and negative bit scores.
     - Preserve columns and alignment fields when merging mixed output formats.
     - Merge large numbers of result files within a configurable `--max-open-files` budget (default `1024`).
+    - Reduce memory use when merging long alignments.
 - **`lexicmap utils 2sam`**:
     - Correct AS and MAPQ calculation, including nonpositive alignment scores.
     - Preserve primary/secondary flags and MAPQ across input files.

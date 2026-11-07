@@ -592,7 +592,9 @@ func (scr *Searcher) search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
 						saveKmer = false
 
-						r.Discard(int((lenVal - 1) * nSeedPosBytes))
+						if _, err = r.Discard(int((lenVal - 1) * nSeedPosBytes)); err != nil {
+							return nil, ErrBrokenFile
+						}
 					} else {
 						sr, err = sink.start()
 						if err != nil {
@@ -657,7 +659,9 @@ func (scr *Searcher) search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				}
 			} else {
-				r.Discard(int(lenVal * nSeedPosBytes))
+				if _, err = r.Discard(int(lenVal * nSeedPosBytes)); err != nil {
+					return nil, ErrBrokenFile
+				}
 			}
 
 			if kmer2 > rightBound { // only record kmer1
@@ -697,7 +701,9 @@ func (scr *Searcher) search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 					if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
 						saveKmer = false
 
-						r.Discard(int((lenVal - 1) * nSeedPosBytes))
+						if _, err = r.Discard(int((lenVal - 1) * nSeedPosBytes)); err != nil {
+							return nil, ErrBrokenFile
+						}
 					} else {
 						sr, err = sink.start()
 						if err != nil {
@@ -762,7 +768,9 @@ func (scr *Searcher) search(kmers []uint64, p uint8, checkFlag bool, reversedKme
 
 				}
 			} else {
-				r.Discard(int(lenVal * nSeedPosBytes))
+				if _, err = r.Discard(int(lenVal * nSeedPosBytes)); err != nil {
+					return nil, ErrBrokenFile
+				}
 			}
 
 			if lastPair {
@@ -1108,7 +1116,9 @@ func (scr *Searcher) search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 						if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
 							saveKmer = false
 
-							r.Discard(int((lenVal - 1) * nSeedPosBytes))
+							if _, err = r.Discard(int((lenVal - 1) * nSeedPosBytes)); err != nil {
+								return nil, ErrBrokenFile
+							}
 						} else {
 							sr, err = sink.start()
 							if err != nil {
@@ -1175,7 +1185,9 @@ func (scr *Searcher) search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 					}
 				} else {
-					r.Discard(int(lenVal * nSeedPosBytes))
+					if _, err = r.Discard(int(lenVal * nSeedPosBytes)); err != nil {
+						return nil, ErrBrokenFile
+					}
 				}
 
 				if kmer2 > rightBound { // only record kmer1
@@ -1215,7 +1227,9 @@ func (scr *Searcher) search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 						if buf2048[nSeedPosBytes-1]&MASK_REVERSE != rvflag { // not the wanted flag
 							saveKmer = false
 
-							r.Discard(int((lenVal - 1) * nSeedPosBytes))
+							if _, err = r.Discard(int((lenVal - 1) * nSeedPosBytes)); err != nil {
+								return nil, ErrBrokenFile
+							}
 						} else {
 							sr, err = sink.start()
 							if err != nil {
@@ -1282,7 +1296,9 @@ func (scr *Searcher) search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 
 					}
 				} else {
-					r.Discard(int(lenVal * nSeedPosBytes))
+					if _, err = r.Discard(int(lenVal * nSeedPosBytes)); err != nil {
+						return nil, ErrBrokenFile
+					}
 				}
 
 				if lastPair {

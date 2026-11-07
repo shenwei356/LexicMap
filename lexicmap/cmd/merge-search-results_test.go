@@ -36,6 +36,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unsafe"
 )
 
 // mergeTestInput exposes close failures without relying on filesystem behavior.
@@ -612,6 +613,30 @@ func TestMergeSearchResultsLongAlignmentRows(t *testing.T) {
 	_, stderr, err := runAuditCommand(t, "", append(append(args, "-b", "1M"), files...)...)
 	if err == nil || !strings.Contains(string(stderr), "token too long") {
 		t.Fatalf("maximum row length was not enforced: %v %s", err, stderr)
+	}
+}
+
+// Query validation must not keep an emitted alignment row alive through its ID.
+func TestSearchResultReaderOwnsQueryID(t *testing.T) {
+	header := auditSearchHeader + "\tcigar\tqseq\tsseq\talign\n"
+	sequence := strings.Repeat("ACGT", 1<<14)
+	row := fmt.Sprintf("q\t65536\t3\tg1\ts\t100\t1\t1\t100\t65536\t100\t0\t1\t65536\t1\t65536\t+\t65536\t0\t100\t65536M\t%s\t%s\t%s\n",
+		sequence, sequence, strings.Repeat("|", len(sequence)))
+	input := header + row + strings.Replace(row, "\tg1\t", "\tg2\t", 1) + strings.Replace(row, "\tg1\t", "\tg3\t", 1)
+	reader := newSearchResultReader("input.tsv", "", 1<<20, io.NopCloser(strings.NewReader(input)))
+	defer reader.Close()
+	for _, genome := range []string{"g1", "g2"} {
+		result := reader.Next()
+		if result == nil {
+			t.Fatalf("missing group %s: %v", genome, reader.Err())
+		}
+		if result.Sgenome != genome || reader.firstQuery != "q" {
+			t.Error("changed query validation or group order")
+		}
+		if unsafe.StringData(reader.firstQuery) == unsafe.StringData(result.Query) {
+			t.Error("query ID retains the emitted alignment row")
+		}
+		RecycleSearchResultOfAGenome(result)
 	}
 }
 

@@ -223,13 +223,14 @@ func mergeSearchResults(cmd *cobra.Command, args []string, opt *Options, outFile
 		if checkColumns { // for once
 			checkColumns = false
 
+			// These fields outlive the first result; detach its alignment row.
 			if query == "" {
-				query = rGnm.Query
+				query = strings.Clone(rGnm.Query)
 				if outputLog {
 					log.Infof("  query inferred from input: %s", query)
 				}
 			}
-			qlen = rGnm.Qlen
+			qlen = strings.Clone(rGnm.Qlen)
 			idx0 = rGnm.idx
 
 			moreColumns = rGnm.Records[0].Extra != ""
@@ -639,7 +640,8 @@ func (r *SearchResultReader) Next() *SearchResultOfAGenome {
 		// An explicit -q still filters a multi-query file as documented.
 		if !checkQuery {
 			if r.firstQuery == "" {
-				r.firstQuery = query
+				// Keep only the ID after the first alignment row is recycled.
+				r.firstQuery = strings.Clone(query)
 			} else if query != r.firstQuery {
 				return r.fail(fmt.Errorf("multiple queries in %s: %s and %s; use -q/--query", file, r.firstQuery, query))
 			}
