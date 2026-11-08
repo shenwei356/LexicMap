@@ -766,9 +766,16 @@ func (rdr *Reader) ReadDataOfAMaskAsList() ([]uint64, error) {
 func (rdr *Reader) ReadDataOfAMaskAsListAndCreateIndex() ([]uint64, []int, uint8, uint8, error) {
 	if !rdr.readIndexInfo {
 		var err error
-		_, _, _, rdr.maskPrefix, rdr.anchorPrefix, err = ReadKVIndexInfo(filepath.Clean(rdr.file) + KVIndexFileExt)
+		var k uint8
+		var first, count int
+		k, first, count, rdr.maskPrefix, rdr.anchorPrefix, err = ReadKVIndexInfo(filepath.Clean(rdr.file) + KVIndexFileExt)
 		if err != nil {
 			return nil, nil, 0, 0, errors.Wrapf(err, "reading kv-data index file")
+		}
+		// Both headers are already loaded; their mask ranges and key sizes must
+		// agree before rebuilding the in-memory lookup table from seed data.
+		if k != rdr.K || first != rdr.ChunkIndex || count != rdr.ChunkSize {
+			return nil, nil, 0, 0, errors.Wrapf(ErrInvalidFileFormat, "seed data/index headers disagree in %s", rdr.file)
 		}
 		rdr.readIndexInfo = true
 	}

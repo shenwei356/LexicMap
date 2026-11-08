@@ -737,6 +737,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		chIM = make(chan *kv.InMemorySearcher, threads)
 		go func() {
 			for scr := range chIM {
+				checkError(idx.checkSeedChunk(scr.K, scr.ChunkIndex, scr.ChunkSize))
 				if scr.MaskPrefix() != idx.maskPrefix {
 					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
 						idx.maskPrefix, scr.MaskPrefix()))
@@ -755,6 +756,7 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 		ch = make(chan *kv.Searcher, threads)
 		go func() {
 			for scr := range ch {
+				checkError(idx.checkSeedChunk(scr.K, scr.ChunkIndex, scr.ChunkSize))
 				if scr.MaskPrefix() != idx.maskPrefix {
 					checkError(fmt.Errorf("lengths of mask prefix mismatch between info.toml file (%d) and the seed data (%d)",
 						idx.maskPrefix, scr.MaskPrefix()))
@@ -871,6 +873,16 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 
 	return idx, nil
+}
+
+// checkSeedChunk checks metadata already loaded by either searcher. This guards
+// query-mask slicing without rescanning seed data or checking index completeness.
+func (idx *Index) checkSeedChunk(k uint8, first, count int) error {
+	masks := len(idx.lh.Masks)
+	if k != idx.k8 || first < 0 || first >= masks || count <= 0 || count > masks-first {
+		return fmt.Errorf("invalid seed chunk: k=%d, first mask=%d, masks=%d; expected k=%d and a nonempty range within %d masks", k, first, count, idx.k8, masks)
+	}
+	return nil
 }
 
 // searchFilePlan reserves one reader per persistent pool before distributing

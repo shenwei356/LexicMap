@@ -21,6 +21,8 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -34,8 +36,89 @@ import (
 	"testing"
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/genome"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/wfa"
 )
+
+// Invalid loaded headers must fail before output opens in both search modes.
+// Use real seed files so the test covers decoding and the CLI error path.
+func TestSearchRejectsInvalidSeedChunks(t *testing.T) {
+	dir := t.TempDir()
+	query := writeTestInput(t, filepath.Join(dir, "g.fa"), ">s\n"+indexTestDNA(2040)+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, query)
+	file := filepath.Join(db, DirSeeds, chunkFile(1))
+	seed, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	index, err := os.ReadFile(file + kv.KVIndexFileExt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range [][]string{{"search", "-P", "15", "-n", "0", "-N", "0"}, {"genome", "search", "-m", "0", "-n", "10"}} {
+		for _, memory := range []bool{false, true} {
+			args := append(append([]string{}, command...), "--quiet", "-j", "1", "-p", "15", "-d", db, query)
+			if memory {
+				args = append(args, "-w")
+			}
+			if out := runSeedIndexCommand(t, args...); bytes.Count(out, []byte{'\n'}) < 2 {
+				t.Fatalf("valid fixture produced no hits: %s", out)
+			}
+			for _, tc := range []struct {
+				name   string
+				offset int
+				value  uint64
+				both   bool // also corrupt the data header used by in-memory search
+			}{
+				{"out-of-range", 16, 64, false},
+				{"range-end", 16, 63, false},
+				{"zero-count", 24, 0, false},
+				{"wrong-k", 10, 30, false},
+				{"data-out-of-range", 16, 64, true},
+				{"data-zero-count", 24, 0, true},
+				{"data-wrong-k", 10, 30, true},
+			} {
+				t.Run(fmt.Sprintf("%s/memory=%t/%s", command[0], memory, tc.name), func(t *testing.T) {
+					for _, suffix := range []string{"", kv.KVIndexFileExt} {
+						original := index
+						if suffix == "" {
+							if !tc.both {
+								continue
+							}
+							original = seed
+						}
+						data := bytes.Clone(original)
+						if tc.offset == 10 {
+							data[10] = byte(tc.value)
+						} else {
+							binary.BigEndian.PutUint64(data[tc.offset:tc.offset+8], tc.value)
+						}
+						path := file + suffix
+						if err := os.WriteFile(path, data, 0600); err != nil {
+							t.Fatal(err)
+						}
+						t.Cleanup(func() {
+							if err := os.WriteFile(path, original, 0600); err != nil {
+								t.Error(err)
+							}
+						})
+					}
+					output := writeTestInput(t, filepath.Join(t.TempDir(), "out.tsv"), "keep existing output\n")
+					_, stderr, err := runAuditCommand(t, "", append(append([]string{}, args...), "-o", output)...)
+					if err == nil || bytes.Contains(stderr, []byte("panic:")) ||
+						(!bytes.Contains(stderr, []byte("invalid seed chunk")) && !bytes.Contains(stderr, []byte("headers disagree"))) {
+						t.Errorf("expected seed metadata error without panic: %v\n%s", err, stderr)
+					}
+					got, err := os.ReadFile(output)
+					if err != nil || string(got) != "keep existing output\n" {
+						t.Errorf("invalid seed metadata changed output: %v", err)
+					}
+				})
+			}
+		}
+	}
+}
 
 // Prefix matches can all be shorter than k. Their longest anchors must keep
 // the reference's ordering and duplicate strand choice in both orientations.

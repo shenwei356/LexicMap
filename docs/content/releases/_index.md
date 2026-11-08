@@ -17,6 +17,7 @@ weight: 30
 
 - **`lexicmap`**:
     - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
+    - Report invalid seed chunk bounds or k-mer sizes in `search` and `genome search` instead of crashing or silently missing matches.
 - **`lexicmap index`**:
     - Correct strand-dependent low-complexity seed filtering.
     - Reduce allocation overhead when indexing fragmented genomes or saving seed positions.
@@ -49,18 +50,13 @@ weight: 30
     - Reduce memory use when converting long alignments with many reference sequences or many hits per query.
 - **`lexicmap utils kmers`**:
     - Reduce memory use and speed up k-mer export.
-- **`lexicmap utils edit-genome-ids`**:
-    - Remove temporary rewrite files after input, validation, or write errors.
-- **`lexicmap utils genome-details`**:
-    - Reduce memory allocation when printing summary columns, especially from caches containing sequence IDs.
 - **`lexicmap utils subseq`**:
     - Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences.
-    - Bound queued extraction results when earlier records are slow, while preserving input order.
     - Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks.
 - **`lexicmap utils seed-pos`**:
     - Restore missing seed positions and fix seed-count histograms.
     - Avoid overwriting distance plots for short genome chunks.
-    - Reduce file-reading overhead when extracting seed positions.
+
 
 ## Previous versions
 
