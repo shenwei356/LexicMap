@@ -73,9 +73,7 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
-		if info.MainVersion != MainVersion {
-			checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
-		}
+		checkError(validateGenomeIndexInfo(info))
 
 		// genomes.map file for mapping index to genome id
 		m, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))

@@ -22,10 +22,12 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -33,6 +35,61 @@ import (
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 	"github.com/shenwei356/lexichash"
 )
+
+// Every persisted batch must pass preflight before merge output is modified.
+func TestRemergeRejectsInvalidBatchMetadata(t *testing.T) {
+	for _, kind := range []string{"summary", "chunk-header", "incompatible-summary"} {
+		t.Run(kind, func(t *testing.T) {
+			root := t.TempDir()
+			db := filepath.Join(root, "db")
+			paths := makeRemergeBatches(t, db, 3)
+			if err := os.MkdirAll(db, 0700); err != nil {
+				t.Fatal(err)
+			}
+			writeTestInput(t, filepath.Join(db, "keep.txt"), "existing index\n")
+			file := filepath.Join(paths[2], FileInfo)
+			if kind == "chunk-header" {
+				file = filepath.Join(paths[2], DirSeeds, chunkFile(1))
+			}
+			data, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatal(err)
+			}
+			switch kind {
+			case "summary":
+				data = bytes.Replace(data, []byte("chunks = 2"), []byte("chunks = 0"), 1)
+			case "chunk-header":
+				binary.BigEndian.PutUint64(data[16:24], 0)
+			case "incompatible-summary":
+				data = bytes.Replace(data, []byte("contig-interval = 0"), []byte("contig-interval = 1000"), 1)
+			}
+			if err := os.WriteFile(file, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			snapshot := func() map[string][]byte {
+				files := make(map[string][]byte)
+				if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+					if err != nil || entry.IsDir() {
+						return err
+					}
+					files[path], err = os.ReadFile(path)
+					return err
+				}); err != nil {
+					t.Fatal(err)
+				}
+				return files
+			}
+			before := snapshot()
+			_, stderr, err := runAuditCommand(t, "", "utils", "remerge", "--quiet", "-j", "1", "-J", "1", "--max-open-files", "13", "-d", db)
+			if err == nil || bytes.Contains(stderr, []byte("panic:")) {
+				t.Errorf("expected metadata rejection without panic: %v\n%s", err, stderr)
+			}
+			if !reflect.DeepEqual(before, snapshot()) {
+				t.Fatal("invalid batch changed original files or created merge output")
+			}
+		})
+	}
+}
 
 // makeRemergeBatches supplies completed batch files with empty masks and large postings.
 func makeRemergeBatches(t *testing.T, db string, inputs int) []string {
@@ -202,13 +259,14 @@ func TestRemergeRetriesAfterCompletedGroup(t *testing.T) {
 	want, got := filepath.Join(dir, "want"), filepath.Join(dir, "got")
 	makeRemergeBatches(t, want, 3)
 	paths := makeRemergeBatches(t, got, 3)
-	// The first group completes before a later group's seed input fails.
+	// Preserve the header so preflight passes; the first group completes before
+	// a later group's truncated seed contents fail during the merge itself.
 	broken := filepath.Join(paths[2], DirSeeds, chunkFile(0))
 	original, err := os.ReadFile(broken)
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeTestInput(t, broken, "")
+	writeTestInput(t, broken, string(original[:32]))
 	args := []string{"utils", "remerge", "--quiet", "-j", "1", "-J", "1", "--max-open-files", "13", "-d", got}
 	_, stderr, err := runAuditCommand(t, "", args...)
 	if err == nil {

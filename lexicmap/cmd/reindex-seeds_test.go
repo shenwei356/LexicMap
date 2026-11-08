@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/binary"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -34,6 +35,63 @@ import (
 
 	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
 )
+
+// Reject a later chunk's bad header before replacing any earlier chunk index.
+func TestReindexSeedsRejectsInconsistentLayout(t *testing.T) {
+	for _, command := range []string{"reindex-seeds", "reindex-seeds2"} {
+		for _, suffix := range []string{"", kv.KVIndexFileExt} {
+			t.Run(command+suffix, func(t *testing.T) {
+				dir := t.TempDir()
+				input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">s\n"+indexTestDNA(500)+"\n")
+				db := filepath.Join(dir, "db")
+				runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, input)
+
+				file := filepath.Join(db, DirSeeds, chunkFile(1)) + suffix
+				original, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				data := bytes.Clone(original)
+				binary.BigEndian.PutUint64(data[16:24], 0) // overlaps the first chunk
+				if err := os.WriteFile(file, data, 0600); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := os.WriteFile(file, original, 0600); err != nil {
+						t.Error(err)
+					}
+				})
+				before := make(map[string][]byte)
+				if err := filepath.WalkDir(db, func(path string, entry fs.DirEntry, err error) error {
+					if err != nil || entry.IsDir() {
+						return err
+					}
+					before[path], err = os.ReadFile(path)
+					return err
+				}); err != nil {
+					t.Fatal(err)
+				}
+				_, stderr, err := runAuditCommand(t, "", "utils", command, "--quiet", "-j", "1", "-d", db, "--partitions", "16")
+				if err == nil || bytes.Contains(stderr, []byte("panic:")) {
+					t.Errorf("expected normal chunk validation error: %v\n%s", err, stderr)
+				}
+				after := make(map[string][]byte)
+				if err := filepath.WalkDir(db, func(path string, entry fs.DirEntry, err error) error {
+					if err != nil || entry.IsDir() {
+						return err
+					}
+					after[path], err = os.ReadFile(path)
+					return err
+				}); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(before, after) {
+					t.Fatal("bad chunk metadata changed index files or left staging files")
+				}
+			})
+		}
+	}
+}
 
 // Reject invalid work counts before workers or progress bars can rewrite metadata.
 func TestReindexSeedsRejectsInvalidSummary(t *testing.T) {

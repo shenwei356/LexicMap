@@ -161,9 +161,7 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
-		if info.MainVersion != MainVersion {
-			checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
-		}
+		checkError(validateGenomeIndexInfo(info))
 
 		// genomes.map file for mapping index to genome id
 		m, err := readGenomeMapName2Idx(filepath.Join(dbDir, FileGenomeIndex))
@@ -355,8 +353,8 @@ func subseqFromSearchResults(cmd *cobra.Command, opt *Options, dbDir, fileSearch
 	if err != nil {
 		return fmt.Errorf("failed to read info file: %s", err)
 	}
-	if info.MainVersion != MainVersion {
-		return fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion)
+	if err := validateGenomeIndexInfo(info); err != nil {
+		return err
 	}
 
 	// genomes.map file for mapping index to genome id

@@ -146,6 +146,11 @@ Figures:
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
 
+		checkError(validateGenomeIndexInfo(info))
+		if info.K == 0 || info.K > 32 {
+			checkError(fmt.Errorf("invalid index summary: k must be in [1, 32], got %d", info.K))
+		}
+
 		fileSeedLoc := filepath.Join(dbDir, DirGenomes, batchDir(0), FileSeedPositions)
 		ok, err := pathutil.Exists(fileSeedLoc)
 		if err != nil {

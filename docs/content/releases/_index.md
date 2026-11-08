@@ -17,7 +17,7 @@ weight: 30
 
 - **`lexicmap`**:
     - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
-    - Report invalid seed chunk bounds or k-mer sizes in `search` and `genome search` instead of crashing or silently missing matches.
+    - Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches.
 - **`lexicmap index`**:
     - Correct strand-dependent low-complexity seed filtering.
     - Reduce allocation overhead when indexing fragmented genomes or saving seed positions.

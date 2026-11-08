@@ -381,8 +381,11 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read info file: %s", err)
 	}
-	if info.MainVersion != MainVersion {
-		checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
+	if err := validateSeedIndexInfo(info); err != nil {
+		return nil, err
+	}
+	if err := validateGenomeIndexInfo(info); err != nil {
+		return nil, err
 	}
 	// Validate all persistent pools before recounting old indexes or opening
 	// readers. Every seed chunk and genome batch must have at least one reader.
@@ -554,6 +557,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	idx.lh, err = lexichash.NewFromFile(fileMask)
 	if err != nil {
 		return nil, err
+	}
+
+	if info.Masks != len(idx.lh.Masks) || int(info.K) != idx.lh.K {
+		return nil, fmt.Errorf("invalid index summary: masks=%d, k=%d; mask file has %d masks with k=%d", info.Masks, info.K, len(idx.lh.Masks), idx.lh.K)
 	}
 
 	if opt.SearchMaskCount > 0 {
@@ -961,11 +968,8 @@ func NewGenomeComparator(outDir string, opt *IndexSearchingOptions) (*Index, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to read info file: %s", err)
 	}
-	if info.MainVersion != MainVersion {
-		return nil, fmt.Errorf("index main versions do not match: %d (index) != %d (tool); please re-create the index", info.MainVersion, MainVersion)
-	}
-	if info.GenomeBatches < 1 {
-		return nil, fmt.Errorf("invalid number of genome batches: %d", info.GenomeBatches)
+	if err := validateGenomeIndexInfo(info); err != nil {
+		return nil, err
 	}
 	if minimum := reservedOpenFiles + info.GenomeBatches; opt.MaxOpenFiles < minimum {
 		return nil, fmt.Errorf("--max-open-files (%d) should be >= %d for %d genome batches; increase --max-open-files", opt.MaxOpenFiles, minimum, info.GenomeBatches)

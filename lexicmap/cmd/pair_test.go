@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"math/rand"
@@ -31,7 +32,138 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/kv"
+	"github.com/shenwei356/LexicMap/lexicmap/cmd/util"
 )
+
+// writePairValidationFixture builds two identical genomes with distinct IDs.
+func writePairValidationFixture(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := make([]string, 2)
+	for i, name := range []string{"a", "b"} {
+		files[i] = writeTestInput(t, filepath.Join(dir, name+".fa"), ">s\n"+indexTestDNA(2040)+"\n")
+	}
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, append([]string{"index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db}, files...)...)
+	return db
+}
+
+// Summary and chunk errors must fail before truncating an existing result file.
+func TestPairRejectsInvalidIndexMetadata(t *testing.T) {
+	db := writePairValidationFixture(t)
+	args := []string{"genome", "pair", "--quiet", "-j", "1", "-d", db, "-m", "0", "-p", "15", "-f", "0", "-s", "0"}
+	if output := runSeedIndexCommand(t, args...); !bytes.Contains(output, []byte("a\tb\t15\t1.0000\t64\t1984\t31.00\n")) {
+		t.Fatalf("valid fixture lost its exact pair: %s", output)
+	}
+	check := func(t *testing.T) {
+		t.Helper()
+		output := writeTestInput(t, filepath.Join(t.TempDir(), "out.tsv"), "keep existing output\n")
+		_, stderr, err := runAuditCommand(t, "", append(append([]string{}, args...), "-o", output)...)
+		if err == nil || bytes.Contains(stderr, []byte("panic:")) {
+			t.Errorf("expected an index validation error without panic: %v\n%s", err, stderr)
+		}
+		got, err := os.ReadFile(output)
+		if err != nil || string(got) != "keep existing output\n" {
+			t.Errorf("invalid metadata changed output: %v (%d bytes)", err, len(got))
+		}
+	}
+	summary := filepath.Join(db, FileInfo)
+	original, err := os.ReadFile(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ old, replacement string }{
+		{"chunks = 2", "chunks = 0"},
+		{"chunks = 2", "chunks = 1"},
+		{"genome-batches = 1", "genome-batches = -1"},
+		{"genome-batches = 1", "genome-batches = 131073"},
+		{"main-version = 3", "main-version = 0"},
+		{"max-K = 31", "max-K = 32"},
+		{"masks = 64", "masks = 63"},
+	} {
+		t.Run(tc.replacement, func(t *testing.T) {
+			data := bytes.Replace(original, []byte(tc.old), []byte(tc.replacement), 1)
+			if bytes.Equal(data, original) {
+				t.Fatal("fixture field not found")
+			}
+			if err := os.WriteFile(summary, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := os.WriteFile(summary, original, 0600); err != nil {
+					t.Error(err)
+				}
+			})
+			check(t)
+		})
+	}
+	for _, suffix := range []string{"", kv.KVIndexFileExt} {
+		for _, field := range []struct {
+			name   string
+			offset int
+			value  uint64
+		}{
+			{"out-of-range", 16, 64}, {"overlap", 16, 0}, {"zero-count", 24, 0}, {"wrong-count", 24, 31},
+		} {
+			t.Run(suffix+"/"+field.name, func(t *testing.T) {
+				file := filepath.Join(db, DirSeeds, chunkFile(1)) + suffix
+				original, err := os.ReadFile(file)
+				if err != nil {
+					t.Fatal(err)
+				}
+				data := bytes.Clone(original)
+				binary.BigEndian.PutUint64(data[field.offset:field.offset+8], field.value)
+				if err := os.WriteFile(file, data, 0600); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := os.WriteFile(file, original, 0600); err != nil {
+						t.Error(err)
+					}
+				})
+				check(t)
+			})
+		}
+	}
+}
+
+// Posting counts must be bounded by both integer representation and file size.
+func TestPairRejectsInvalidPostingCounts(t *testing.T) {
+	db := writePairValidationFixture(t)
+	file := filepath.Join(db, DirSeeds, chunkFile(0))
+	starts, err := kv.ReadKVIndexStarts(file + kv.KVIndexFileExt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := int(starts[0][1] >> 1)
+	if start == 0 || original[start]&64 != 0 {
+		t.Fatal("fixture needs two k-mers in its first pair")
+	}
+	offset := start + 1 + util.CtrlByte2ByteLengthsUint64(original[start]&63)
+	oldLength := 1 + util.CtrlByte2ByteLengthsUint64(original[offset])
+	for _, counts := range [][2]uint64{{1 << 62, 0}, {math.MaxUint64, 1}, {1 << 20, 1 << 20}} {
+		t.Run(fmt.Sprint(counts), func(t *testing.T) {
+			var encoded [17]byte
+			control, n := util.PutUint64s(encoded[1:], counts[0], counts[1])
+			encoded[0] = control
+			data := append(bytes.Clone(original[:offset]), encoded[:n+1]...)
+			data = append(data, original[offset+oldLength:]...)
+			if err := os.WriteFile(file, data, 0600); err != nil {
+				t.Fatal(err)
+			}
+			_, stderr, err := runAuditCommand(t, "", "genome", "pair", "--quiet", "-j", "1", "-d", db, "-m", "0", "-p", "15", "-f", "0", "-s", "0")
+			if err == nil || bytes.Contains(stderr, []byte("panic:")) || !bytes.Contains(stderr, []byte(kv.ErrBrokenFile.Error())) {
+				t.Errorf("expected corrupt posting error without panic: %v\n%s", err, stderr)
+			}
+		})
+	}
+}
 
 func TestDensePairIndexRoundTrip(t *testing.T) {
 	for nGenomes := uint32(2); nGenomes <= 100; nGenomes++ {

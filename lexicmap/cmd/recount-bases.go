@@ -61,9 +61,7 @@ This command is only needed for indexes created by LexicMap v0.6.0 (3c257ca) or 
 		if err != nil {
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
-		if info.MainVersion != MainVersion {
-			checkError(fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion))
-		}
+		checkError(validateGenomeIndexInfo(info))
 
 		startTime := time.Now()
 
@@ -87,6 +85,10 @@ func init() {
 }
 
 func updateInputBases(info *IndexInfo, dbDir string, threads int) (int64, error) {
+	if err := validateGenomeIndexInfo(info); err != nil {
+		return 0, err
+	}
+
 	// Publish totals only after every batch has been read and closed successfully.
 	var totalBases int64
 	var readErr error

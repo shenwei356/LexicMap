@@ -164,6 +164,17 @@ Notes on probabilistic pruning:
 			checkError(fmt.Errorf("failed to read info file: %s", err))
 		}
 
+		checkError(validateGenomeIndexInfo(info))
+		// Reuse the bounded starts needed by sequential scans. Validate all
+		// seed headers before creating output or launching pair workers.
+		chunkSize, chunks, err := readSeedChunkStarts(dbDir, info, lh.K, len(lh.Masks), 0)
+		checkError(err)
+		for _, chunk := range chunks {
+			if chunk.config&kv.MaskUse3BytesForSeedPos == 0 {
+				checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
+			}
+		}
+
 		// Validate before opening output or allocating pair tables: a longer
 		// prefix would make the k-mer threshold use a negative shift.
 		if minPrefix > int(info.K) {
@@ -445,7 +456,7 @@ Notes on probabilistic pruning:
 		var wg sync.WaitGroup
 		tokens := make(chan int, maskWorkers)
 
-		for chunk := range info.Chunks {
+		for chunk := range len(chunks) {
 			wg.Add(1)
 			tokens <- 1
 
@@ -457,84 +468,19 @@ Notes on probabilistic pruning:
 
 				fileSeeds := filepath.Join(dbDir, DirSeeds, chunkFile(chunk))
 
-				// -------------------------------
-				// header
-
-				buf8 := make([]uint8, 8)
-				var config1 uint8
-				var use3BytesForSeedPos bool
-				var bytesPos int
-				var fUint64 func([]byte) uint64
-
-				// the header of kv-data file
+				// Metadata and mask starts were validated before output opened.
+				indexes := chunks[chunk].starts
+				iFirstMask, nMasks := chunk*chunkSize, len(indexes)
+				const bytesPos = 7 // larger batch codes are rejected during preflight
+				fUint64 := kv.Uint64ThreeBytes
 				fh, err := os.Open(fileSeeds)
-				if err != nil {
-					checkError(err)
-				}
+				checkError(err)
 				defer fh.Close()
-
-				r := bufio.NewReaderSize(fh, 64<<10)
-
-				var n int
-
-				// check the magic number
-				n, err = io.ReadFull(r, buf8)
-				if n < 8 {
-					checkError(ErrBrokenFile)
-				}
-				same := true
-				for i := 0; i < 8; i++ {
-					if kv.Magic[i] != buf8[i] {
-						same = false
-						break
-					}
-				}
-				if !same {
-					checkError(kv.ErrInvalidFileFormat)
-				}
-
-				// read version information
-				n, err = io.ReadFull(r, buf8)
-				if n < 8 {
-					checkError(ErrBrokenFile)
-				}
-				// check compatibility
-				if kv.MainVersion != buf8[0] {
-					checkError(kv.ErrVersionMismatch)
-				}
-
-				config1 = buf8[3]
-
-				// index of the first mask in current chunk.
-				n, err = io.ReadFull(r, buf8)
-				if n < 8 {
-					checkError(ErrBrokenFile)
-				}
-				iFirstMask := int(be.Uint64(buf8))
-
-				// mask chunk size
-				n, err = io.ReadFull(r, buf8)
-				if n < 8 {
-					checkError(ErrBrokenFile)
-				}
-				nMasks := int(be.Uint64(buf8))
-
-				use3BytesForSeedPos = config1&kv.MaskUse3BytesForSeedPos > 0
-				if !use3BytesForSeedPos {
-					checkError(fmt.Errorf("index with genome batch number > 512 is not supported"))
-				}
-				bytesPos = 8
-				fUint64 = be.Uint64
-				if use3BytesForSeedPos {
-					bytesPos = 7
-					fUint64 = kv.Uint64ThreeBytes
-				}
-
-				// kv-data index file
-				indexes, err := kv.ReadKVIndexStarts(filepath.Clean(fileSeeds) + kv.KVIndexFileExt)
-				if err != nil {
-					checkError(fmt.Errorf("failed to read kv-data index file: %s", err))
-				}
+				stat, err := fh.Stat()
+				checkError(err)
+				// Track unread bytes without a Seek syscall for every key pair.
+				source := &io.LimitedReader{R: fh, N: stat.Size()}
+				r := bufio.NewReaderSize(source, 64<<10)
 
 				// -------------------------------
 				// data of all masks
@@ -592,12 +538,17 @@ Notes on probabilistic pruning:
 					}
 
 					// seek
-					_, err = fh.Seek(int64(indexes[iMask][1])>>1, 0)
+					seedOffset := indexes[iMask][1] >> 1
+					if seedOffset >= uint64(stat.Size()) {
+						checkError(kv.ErrBrokenFile)
+					}
+					_, err = fh.Seek(int64(seedOffset), 0)
 					if err != nil {
 						checkError(fmt.Errorf("failed to seek kv-data file: %s", err))
 					}
 
-					r.Reset(fh) // use buffer
+					source.N = stat.Size() - int64(seedOffset)
+					r.Reset(source) // discard read-ahead from the previous mask
 
 					// -------------------------------
 					// read data of a mask
@@ -668,7 +619,16 @@ Notes on probabilistic pruning:
 						// encoded value.
 						nValues := lenVal1
 						if hasKmer2 {
+							if lenVal2 > math.MaxUint64-nValues {
+								checkError(kv.ErrBrokenFile)
+							}
 							nValues += lenVal2
+						}
+						// Check before conversion, multiplication, or allocation. Include
+						// buffered bytes already fetched from the limited source.
+						remaining := source.N + int64(r.Buffered())
+						if nValues > uint64(math.MaxInt/bytesPos) || nValues > uint64(remaining)/bytesPos {
+							checkError(kv.ErrBrokenFile)
 						}
 						nValueBytes = int(nValues) * bytesPos
 						if cap(valueBuf) < nValueBytes {

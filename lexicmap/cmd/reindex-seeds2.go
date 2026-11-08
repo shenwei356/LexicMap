@@ -56,7 +56,6 @@ Failed replacements are rolled back. If the process is interrupted, searches can
 use the matching backup; rerun this command to finish recovery and rebuilding.
 Keep any .idx15.bak files until recovery completes. Stop searches before rebuilding,
 and run only one rebuild per index at a time.
-Invalid index summary values are rejected before any seed index or summary is changed.
 
 Overall gains are most noticeable for batch queries with "lexicmap search" when
 -n/--top-n-genomes limits downstream alignments, making seed matching a larger
@@ -106,7 +105,7 @@ func reindexSeeds2(dbDir string, partitions int, threshold uint64, opt *Options)
 	if err != nil {
 		return fmt.Errorf("failed to read info file: %s", err)
 	}
-	if err := validateSeedReindexInfo(info); err != nil {
+	if err := checkSeedIndexLayout(dbDir, info); err != nil {
 		return err
 	}
 

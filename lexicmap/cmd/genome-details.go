@@ -90,6 +90,11 @@ Output format:
 
 		saveSeqIDs := getFlagBool(cmd, "save-seqids")
 
+		// Cached details still depend on a valid, compatible summary.
+		info, err := readIndexInfo(filepath.Join(dbDir, FileInfo))
+		checkError(err)
+		checkError(validateGenomeIndexInfo(info))
+
 		// output file handler
 		outfh, gw, w, err := outStream(outFile, strings.HasSuffix(outFile, ".gz") || opt.ForceGzipOutput, opt.CompressionLevel)
 		checkError(err)
@@ -120,8 +125,6 @@ Output format:
 			log.Infof("reading genome details from %s", fileGenomeDetails)
 		}
 		timeStart1 := time.Now()
-		info, err := readIndexInfo(filepath.Join(dbDir, FileInfo))
-		checkError(err)
 		checkError(readGenomeDetails(fileGenomeDetails, outfh, extra, info.Genomes))
 		if outputLog {
 			log.Infof("  elapsed time: %s", time.Since(timeStart1))
@@ -181,8 +184,8 @@ func extractGenomeDetails(opt *Options, dbDir string, saveSeqIDs bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to read info file: %s", err)
 	}
-	if info.MainVersion != MainVersion {
-		return fmt.Errorf("index main versions do not match: %d (index) != %d (tool). please re-create the index", info.MainVersion, MainVersion)
+	if err := validateGenomeIndexInfo(info); err != nil {
+		return err
 	}
 
 	// ---------------------------------------------------------------

@@ -168,6 +168,23 @@ for the original build. Prefix lengths are read from the existing batch indexes.
 		if err != nil {
 			checkError(fmt.Errorf("failed to open info file: %s", err))
 		}
+		// Recovery consumes persisted batches. Check every batch before merge
+		// groups can replace outputs; fresh index construction owns its metadata.
+		for _, dir := range batchDirs {
+			batchInfo := info
+			if dir != OneIndex {
+				batchInfo, err = readIndexInfo(filepath.Join(dir, FileInfo))
+				checkError(err)
+			}
+			checkError(validateGenomeIndexInfo(batchInfo))
+			if int(batchInfo.K) != lh.K || batchInfo.Masks != len(lh.Masks) ||
+				batchInfo.MinorVersion != info.MinorVersion || batchInfo.Chunks != info.Chunks ||
+				batchInfo.RandSeed != info.RandSeed || batchInfo.ContigInterval != info.ContigInterval ||
+				batchInfo.SoftMaksing != info.SoftMaksing {
+				checkError(fmt.Errorf("inconsistent index summaries in %s and %s", OneIndex, dir))
+			}
+			checkError(checkSeedIndexLayout(dir, batchInfo))
+		}
 		kvChunks := info.Chunks
 		if mergeThreads > kvChunks {
 			mergeThreads = kvChunks
