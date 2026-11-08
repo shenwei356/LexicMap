@@ -21,11 +21,49 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// Unknown genome names must not create or truncate extraction outputs.
+func TestGenomeSeqsMissingNamePreservesOutput(t *testing.T) {
+	dir := t.TempDir()
+	sequence := indexTestDNA(500)
+	input := writeTestInput(t, filepath.Join(dir, "g.fa"), ">s\n"+sequence+"\n")
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, "index", "--quiet", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", db, input)
+	for _, suffix := range []string{".fa", ".fa.gz"} {
+		for _, existing := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/existing=%t", suffix, existing), func(t *testing.T) {
+				output := filepath.Join(t.TempDir(), "output"+suffix)
+				const original = "keep existing output\n"
+				if existing {
+					writeTestInput(t, output, original)
+				}
+				_, stderr, err := runAuditCommand(t, "", "utils", "genome-seqs", "--quiet", "-d", db, "-n", "missing", "-o", output)
+				if err == nil || !bytes.Contains(stderr, []byte("reference name not found: missing")) {
+					t.Fatalf("expected missing-name error: %v\n%s", err, stderr)
+				}
+				got, err := os.ReadFile(output)
+				if existing {
+					if err != nil || string(got) != original {
+						t.Fatalf("missing name changed existing output: %q, %v", got, err)
+					}
+				} else if !os.IsNotExist(err) {
+					t.Fatalf("missing name created output: %v", err)
+				}
+			})
+		}
+	}
+	got := runSeedIndexCommand(t, "utils", "genome-seqs", "--quiet", "-d", db, "-n", "g", "-w", "0")
+	if string(got) != ">s\n"+sequence+"\n" {
+		t.Fatal("valid genome extraction changed")
+	}
+}
 
 // writeChunkExtractionFixture uses a real split index shared by extraction tests.
 func writeChunkExtractionFixture(t *testing.T) (string, string) {

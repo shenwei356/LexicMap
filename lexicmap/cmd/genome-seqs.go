@@ -82,6 +82,11 @@ Attention:
 		if err != nil {
 			checkError(fmt.Errorf("failed to read genomes index mapping file: %s", err))
 		}
+		// Resolve the name before creating or truncating the extraction output.
+		batchIDAndRefIDs, ok := m[refname]
+		if !ok {
+			checkError(fmt.Errorf("reference name not found: %s", refname))
+		}
 
 		// ---------------------------------------------------------------
 
@@ -93,13 +98,6 @@ Attention:
 		}()
 
 		// ---------------------------------------------------------------
-
-		var batchIDAndRefIDs *[]uint64
-
-		var ok bool
-		if batchIDAndRefIDs, ok = m[refname]; !ok {
-			checkError(fmt.Errorf("reference name not found: %s", refname))
-		}
 
 		var fileGenome string
 		var g *genome.Genome
