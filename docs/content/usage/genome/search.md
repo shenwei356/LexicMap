@@ -44,7 +44,7 @@ Algorithm:
         fragments and only orthologous fragment pairs are used for calculating the ANI and
         AF values, which is similar to the algorithm of OrthoANI.
 
-     Flag -n/--top-n-genomes keeps all matches with the top N distinct ANI percentages
+     Flag -n/--top-n-genomes keeps the top N matches, including all ties at the Nth ANI
      as printed with four decimal places. Both stages may retain more than N genomes.
 
      All chunks of each retained genome are included in alignment and genome-size
@@ -208,9 +208,9 @@ Flags:
                                          chaining result does not always bring the best alignment.
                                          (default 5)
   -n, --top-n-genomes int                ► Keep the top N screened genomes, including all ties at the
-                                         cutoff score, then all matches with the top N distinct ANI
-                                         percentages as printed with four decimal places (0 for all).
-                                         May return more than N genomes. (default 10)
+                                         cutoff score, then the top N matches including all ties at the
+                                         Nth ANI as printed with four decimal places (0 for all). May
+                                         return more than N genomes. (default 10)
       --windows int                      ► The number of windows in lexichash masking, for genome
                                          screening (1 is sufficient). (default 1)
 

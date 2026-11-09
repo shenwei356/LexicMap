@@ -25,6 +25,8 @@ weight: 30
     - **Improve alignment continuity by filling seed deserts on both orientations of queries longer than `--fill-desert-threshold`** (default: 50 kb).
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
     - Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files.
+- **`lexicmap genome search`**:
+    - Keep the top N matches with `-n`, including all ties at the Nth ANI rounded to four decimal places.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
     - Pseudoalignment:

@@ -213,20 +213,20 @@ func TestTrimGSearchScreenResultsKeepsCutoffTies(t *testing.T) {
 	}
 }
 
-// TestTrimGSearchResultsKeepsDistinctANI checks printed ANI groups,
+// TestTrimGSearchResultsKeepsCutoffANITies checks the Nth-record ANI cutoff,
 // rounded-ANI sorting, and clearing and recycling discarded results.
-func TestTrimGSearchResultsKeepsDistinctANI(t *testing.T) {
+func TestTrimGSearchResultsKeepsCutoffANITies(t *testing.T) {
 	tests := []struct {
 		name    string
 		anis    []float64
 		topN    int
 		wantIDs []uint64
 	}{
-		{"three ANI groups", []float64{1, 1, 1, 1, .99, .99, .99, .98, .97, .96}, 3, []uint64{1, 2, 3, 4, 5, 6, 7, 8}},
-		{"ties above cutoff", []float64{1, 1, .99, .99, .98}, 2, []uint64{1, 2, 3, 4}},
+		{"cutoff in top group", []float64{1, 1, 1, 1, .99, .99, .99, .98, .97, .96}, 3, []uint64{1, 2, 3, 4}},
+		{"ties above cutoff", []float64{1, 1, .99, .99, .98}, 2, []uint64{1, 2}},
 		{"top group only", []float64{1, 1, .99}, 1, []uint64{1, 2}},
 		{"all tied", []float64{1, 1, 1}, 2, []uint64{1, 2, 3}},
-		{"fewer ANI groups", []float64{1, 1, .99, .99, .99}, 3, []uint64{1, 2, 3, 4, 5}},
+		{"cutoff after earlier ties", []float64{1, 1, .99, .99, .99}, 3, []uint64{1, 2, 3, 4, 5}},
 		{"distinct ANI", []float64{.96, .98, 1, .99, .97}, 3, []uint64{3, 4, 2}},
 		{"equal after output rounding", []float64{.9999900, .9999901, .9999900}, 1, []uint64{1, 2, 3}},
 		{"different integer widths", []float64{.09, .1, 1, .99}, 3, []uint64{3, 4, 2}},
@@ -250,26 +250,15 @@ func TestTrimGSearchResultsKeepsDistinctANI(t *testing.T) {
 			trimGSearchResults(&rs, test.topN)
 			got := make([]uint64, len(rs))
 			kept := make(map[*GSearchResult]bool, len(rs))
-			printedGroups := make(map[string]struct{}) // group keys from the actual output format
 			for i, r := range rs {
 				got[i] = r.BatchGenomeIndex
 				kept[r] = true
-				printedGroups[fmt.Sprintf("%.4f", r.ANI*100)] = struct{}{}
 				if r.ANI != test.anis[got[i]-1] || r.AFq != .8 || r.AFs != .7 {
 					t.Fatalf("retained result was reset: %+v", r)
 				}
 			}
 			if !reflect.DeepEqual(got, test.wantIDs) {
 				t.Fatalf("ordered results: got %v, want %v", got, test.wantIDs)
-			}
-			if test.topN > 0 {
-				allGroups := make(map[string]struct{})
-				for _, ani := range test.anis {
-					allGroups[fmt.Sprintf("%.4f", ani*100)] = struct{}{}
-				}
-				if want := min(test.topN, len(allGroups)); len(printedGroups) != want {
-					t.Fatalf("printed ANI groups: got %d, want %d", len(printedGroups), want)
-				}
 			}
 			for _, r := range original {
 				if !kept[r] && (r.ANI != 0 || r.AFq != 0 || r.AFs != 0 || r.BatchGenomeIndex != ^uint64(0)) {

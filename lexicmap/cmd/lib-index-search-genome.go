@@ -1111,7 +1111,7 @@ func (idx *Index) GSearchAlignOrthoANI(query *GQuery, fragLen int, minSeedLen in
 	return nil
 }
 
-// trimGSearchResults retains all matches with the top N distinct ANI percentages
+// trimGSearchResults retains the top N matches and all ties at the Nth ANI
 // as printed with four decimal places. Sorting uses printed ANI and full-precision AF.
 func trimGSearchResults(rs *[]*GSearchResult, topN int) {
 	slices.SortFunc(*rs, func(a, b *GSearchResult) int {
@@ -1139,19 +1139,14 @@ func trimGSearchResults(rs *[]*GSearchResult, topN int) {
 	if topN <= 0 || len(*rs) <= topN {
 		return
 	}
-	end := 1
-	aniGroups := 1 // number of distinct printed ANI percentages retained
-	// Format group keys exactly like output ANI, reusing stack buffers to avoid allocations.
-	var previousBuffer, nextBuffer [32]byte
-	previousANI := strconv.AppendFloat(previousBuffer[:0], (*rs)[0].ANI*100, 'f', 4, 64)
+	end := topN
+	// Format cutoff keys exactly like output ANI, using stack buffers.
+	var cutoffBuffer, nextBuffer [32]byte
+	cutoffANI := strconv.AppendFloat(cutoffBuffer[:0], (*rs)[topN-1].ANI*100, 'f', 4, 64)
 	for end < len(*rs) {
 		nextANI := strconv.AppendFloat(nextBuffer[:0], (*rs)[end].ANI*100, 'f', 4, 64)
-		if !bytes.Equal(previousANI, nextANI) {
-			if aniGroups == topN {
-				break
-			}
-			aniGroups++
-			previousANI = append(previousANI[:0], nextANI...)
+		if !bytes.Equal(cutoffANI, nextANI) {
+			break
 		}
 		end++
 	}
