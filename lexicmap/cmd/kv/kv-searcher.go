@@ -799,6 +799,7 @@ func (scr *Searcher) Search2(kmers [][]uint64, p uint8, checkFlag bool, reversed
 // Search2Stream searches multiple query k-mers per mask with the same matching/flag
 // rules as Search2, delivering at most 257 locations per synchronous batch.
 // IQuery includes ChunkIndex; IQuery2 indexes the within-mask query.
+// Batches visit masks in increasing IQuery order, completing each mask first.
 // p is the minimum prefix length. checkFlag enables the existing reverse-key
 // flag check; reversedKmer selects the expected flag and marks suffix matches.
 // One reference-key match can produce several batches with identical metadata.

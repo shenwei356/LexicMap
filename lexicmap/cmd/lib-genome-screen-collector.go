@@ -53,6 +53,8 @@ var poolGSearchScreenSlots = &sync.Pool{New: func() any {
 type gsearchScreenCollector struct {
 	idx             *Index
 	screenMaskCount int
+	maskSources     []int32 // compact mask slot -> its sole, ordered seed reader; nil keeps details
+	nSources        int     // number of rolling maxima per unsplit genome
 
 	channels    []chan []gsearchScreenHit
 	results     [][]*GSearchScreenResultDetail
@@ -61,14 +63,18 @@ type gsearchScreenCollector struct {
 	batchPool   sync.Pool
 }
 
-func newGSearchScreenCollector(idx *Index, screenMaskCount, nWorkers int) *gsearchScreenCollector {
+func newGSearchScreenCollector(idx *Index, screenMaskCount, nWorkers int, maskSources []int32) *gsearchScreenCollector {
 	nWorkers = min(max(nWorkers, 1), idx.info.GenomeBatches)
 	c := &gsearchScreenCollector{
 		idx:             idx,
 		screenMaskCount: screenMaskCount,
+		maskSources:     maskSources,
 		channels:        make([]chan []gsearchScreenHit, nWorkers),
 		results:         make([][]*GSearchScreenResultDetail, nWorkers),
 		matchCounts:     make([]uint64, nWorkers),
+	}
+	for _, source := range maskSources {
+		c.nSources = max(c.nSources, int(source)+1)
 	}
 	c.batchPool.New = func() any {
 		return make([]gsearchScreenHit, 0, gsearchScreenBatchSize)
@@ -155,17 +161,44 @@ func (c *gsearchScreenCollector) collect(worker int) {
 				r = c.idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
 				r.BatchGenomeIndex = append(r.BatchGenomeIndex, hit.batchGenomeIndex)
 				r.SumPrefix = 0
-				// Per-call mask subsets can change the size of pooled results.
-				if cap(r.LongestMatches) < c.screenMaskCount {
-					r.LongestMatches = make([]uint8, c.screenMaskCount)
+				_, split := c.idx.genomeChunksIdx[hit.batchGenomeIndex]
+				if c.maskSources != nil && !split {
+					r.LongestMatches = r.LongestMatches[:0]
+					if cap(r.lastMatches) < c.nSources {
+						r.lastMatches = make([]uint64, c.nSources)
+					} else {
+						r.lastMatches = r.lastMatches[:c.nSources]
+					}
 				} else {
-					r.LongestMatches = r.LongestMatches[:c.screenMaskCount]
+					r.lastMatches = r.lastMatches[:0]
+					// Per-call mask subsets can change the size of pooled results.
+					if cap(r.LongestMatches) < c.screenMaskCount {
+						r.LongestMatches = make([]uint8, c.screenMaskCount)
+					} else {
+						r.LongestMatches = r.LongestMatches[:c.screenMaskCount]
+					}
 				}
 				(*page)[pageSlot] = r
 				results = append(results, r)
 			}
 
 			mask := int(hit.mask)
+			if len(r.lastMatches) > 0 {
+				source := c.maskSources[mask]
+				previous := r.lastMatches[source]
+				// Within a source all hits for mask A precede all hits for B:
+				// A:20, A:25, B:18 -> score 20, 25, 43. Other sources may
+				// interleave freely. Adding one distinguishes mask 0 from empty.
+				tag := (uint64(mask) + 1) << 8
+				if previous>>8 != tag>>8 {
+					r.SumPrefix += uint64(hit.length)
+					r.lastMatches[source] = tag | uint64(hit.length)
+				} else if uint8(previous) < hit.length {
+					r.SumPrefix += uint64(hit.length - uint8(previous))
+					r.lastMatches[source] = tag | uint64(hit.length)
+				}
+				continue
+			}
 			previous := r.LongestMatches[mask]
 			if previous < hit.length {
 				r.LongestMatches[mask] = hit.length

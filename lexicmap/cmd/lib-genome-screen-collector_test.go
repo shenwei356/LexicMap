@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 )
@@ -36,7 +37,7 @@ func TestGSearchScreenCollectorReusesDifferentMaskCounts(t *testing.T) {
 				// Guarantee reuse even if sync.Pool would discard its contents.
 				// Each completed collector owns exactly one result at a time.
 				idx.poolGSearchDetailResult = &sync.Pool{New: func() any { return reused }}
-				collector := newGSearchScreenCollector(idx, count, 1)
+				collector := newGSearchScreenCollector(idx, count, 1, nil)
 				buffers := collector.newBuffers()
 				var wantSum uint64
 				for mask := range count {
@@ -65,6 +66,124 @@ func TestGSearchScreenCollectorReusesDifferentMaskCounts(t *testing.T) {
 	}
 }
 
+// Ordered readers may interleave at any mask. Repeated hits must still count
+// only the longest prefix, and split genomes must retain their merge details.
+func TestGSearchScreenCollectorRollingScores(t *testing.T) {
+	const nMasks, nSources = 64, 4
+	sources := make([]int32, nMasks)
+	for mask := range sources {
+		sources[mask] = int32(mask / (nMasks / nSources))
+	}
+	genomes := []uint64{0, 7, 2049, 1<<BITS_GENOME_IDX | 3, 2<<BITS_GENOME_IDX | 13}
+	streams := make([][]gsearchScreenHit, nSources)
+	want := make(map[uint64][]uint8)
+	for _, genome := range genomes {
+		want[genome] = make([]uint8, nMasks)
+	}
+	for mask, source := range sources {
+		for repeat := range 130 { // cross collector batch boundaries within a mask
+			for i, genome := range genomes {
+				if (mask+i)%7 == 0 { // a genome can skip masks in any reader
+					continue
+				}
+				length := uint8(15 + (mask+repeat+i)%18) // includes k=32
+				streams[source] = append(streams[source], gsearchScreenHit{genome, int32(mask), length})
+				want[genome][mask] = max(want[genome][mask], length)
+			}
+		}
+	}
+	for _, workers := range []int{1, 3} {
+		t.Run(fmt.Sprint(workers), func(t *testing.T) {
+			idx := newGSearchScreenCollectorTestIndex(3)
+			idx.genomeChunksIdx = map[uint64]genomeChunkLocation{7: {}, genomes[3]: {}}
+			for _, slots := range [][]int32{nil, sources, sources, nil} {
+				collector := newGSearchScreenCollector(idx, nMasks, workers, slots)
+				var wg sync.WaitGroup
+				var count uint64
+				for _, hits := range streams {
+					count += uint64(len(hits))
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						buffers := collector.newBuffers()
+						for _, hit := range hits {
+							collector.add(buffers, hit)
+						}
+						collector.flush(buffers)
+					}()
+				}
+				wg.Wait()
+				collector.finish()
+				if collector.matchCount() != count {
+					t.Fatalf("match count: got %d, want %d", collector.matchCount(), count)
+				}
+				seen := make(map[uint64]bool)
+				for _, batch := range collector.results {
+					for _, r := range batch {
+						genome := r.BatchGenomeIndex[0]
+						if seen[genome] {
+							t.Fatalf("duplicate genome %d", genome)
+						}
+						seen[genome] = true
+						var sum uint64
+						for _, length := range want[genome] {
+							sum += uint64(length)
+						}
+						if r.SumPrefix != sum {
+							t.Fatalf("genome %d score: got %d, want %d", genome, r.SumPrefix, sum)
+						}
+						_, split := idx.genomeChunksIdx[genome]
+						if slots == nil || split {
+							if !reflect.DeepEqual(r.LongestMatches, want[genome]) || len(r.lastMatches) != 0 {
+								t.Fatalf("lost mask details for genome %d", genome)
+							}
+						} else if len(r.LongestMatches) != 0 || len(r.lastMatches) != nSources {
+							t.Fatalf("genome %d did not use rolling maxima", genome)
+						}
+						idx.RecycleGSearchScreenDetailResult(r)
+					}
+				}
+				if len(seen) != len(want) {
+					t.Fatalf("got %d genomes, want %d", len(seen), len(want))
+				}
+				clearGSearchScreenResults(collector.results)
+			}
+		})
+	}
+}
+
+func TestGSearchScreenCollectorReusesRollingStorage(t *testing.T) {
+	idx := newGSearchScreenCollectorTestIndex(1)
+	reused := &GSearchScreenResultDetail{}
+	for _, nSources := range []int{0, 4, 1, 8, 0, 2} {
+		idx.poolGSearchDetailResult = &sync.Pool{New: func() any { return reused }}
+		var sources []int32
+		if nSources > 0 {
+			sources = make([]int32, 64)
+			for mask := range sources {
+				sources[mask] = int32(mask / (64 / nSources))
+			}
+		}
+		collector := newGSearchScreenCollector(idx, 64, 1, sources)
+		buffers := collector.newBuffers()
+		collector.add(buffers, gsearchScreenHit{7, 0, 20})
+		collector.add(buffers, gsearchScreenHit{7, 63, 31})
+		collector.flush(buffers)
+		collector.finish()
+		r := collector.results[0][0]
+		if r.SumPrefix != 51 {
+			t.Fatalf("%d readers: got score %d, want 51", nSources, r.SumPrefix)
+		}
+		idx.RecycleGSearchScreenDetailResult(r)
+		for _, v := range r.lastMatches {
+			if v != 0 {
+				t.Fatal("recycled rolling maximum was not cleared")
+			}
+		}
+		clearGSearchScreenResults(collector.results)
+	}
+}
+
 func newGSearchScreenCollectorTestIndex(genomeBatches int) *Index {
 	idx := &Index{info: &IndexInfo{GenomeBatches: genomeBatches}}
 	idx.poolGSearchDetailResult = &sync.Pool{New: func() any {
@@ -75,7 +194,7 @@ func newGSearchScreenCollectorTestIndex(genomeBatches int) *Index {
 
 func TestGSearchScreenCollectorCollectsEachGenomeOnce(t *testing.T) {
 	idx := newGSearchScreenCollectorTestIndex(3)
-	collector := newGSearchScreenCollector(idx, 4, 2)
+	collector := newGSearchScreenCollector(idx, 4, 2, nil)
 
 	genomes := []uint64{
 		7,

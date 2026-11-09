@@ -26,7 +26,8 @@ weight: 30
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
     - Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files.
 - **`lexicmap genome search`**:
-    - Increase the default `-m/--masks` from 1024 to 4096 and `-n/--top-n-genomes` from 10 to 100.
+    - **Increase the default `-m/--masks` from 1024 to 4096 and `-n/--top-n-genomes` from 10 to 100**.
+    - **Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results**.
     - Keep the top N matches with `-n`, including all ties at the Nth ANI rounded to four decimal places.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.

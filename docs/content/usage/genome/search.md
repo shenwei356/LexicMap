@@ -225,6 +225,12 @@ Global Flags:
                              (default 16)
 ```
 
+Screening memory depends on how many genomes have seed matches, before `-n`
+limits the candidates for alignment. Normal ANI/AF searches use less memory for
+these screening scores; screening-only mode (`-S`) retains per-mask details.
+The `--max-genome-cache-memory` limit applies to the query-fragment cache, not
+total search memory.
+
 Examples:
 
 1. Simple search

@@ -70,7 +70,7 @@ func TestSeedDataStreamsMatchCollectedResults(t *testing.T) {
 				data[base+i] = &posts
 			}
 			file := filepath.Join(t.TempDir(), "seeds")
-			if _, err := WriteKVData(k, 3, []*map[uint64]*[]uint64{&data}, file, 2, 2, 512, threeBytes); err != nil {
+			if _, err := WriteKVData(k, 3, []*map[uint64]*[]uint64{&data, &data, &data}, file, 2, 2, 512, threeBytes); err != nil {
 				t.Fatal(err)
 			}
 			disk, err := NewSearcher(file, 1)
@@ -83,6 +83,8 @@ func TestSeedDataStreamsMatchCollectedResults(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer memory.Close()
+			queries := []uint64{base, 0, base + 1}
+			multiQueries := [][]uint64{{base + 1, base + 2}, nil, {base + 2, base + 1}}
 			for _, searcher := range []interface {
 				Search([]uint64, uint8, bool, bool) (*[]SearchResult, error)
 				Search2([][]uint64, uint8, bool, bool) (*[]SearchResult, error)
@@ -95,15 +97,22 @@ func TestSeedDataStreamsMatchCollectedResults(t *testing.T) {
 							var want *[]SearchResult
 							var err error
 							if multi {
-								want, err = searcher.Search2([][]uint64{{base + 1, base + 2}}, 28, check, reverse)
+								want, err = searcher.Search2(multiQueries, 28, check, reverse)
 							} else {
-								want, err = searcher.Search([]uint64{base}, 28, check, reverse)
+								want, err = searcher.Search(queries, 28, check, reverse)
 							}
 							if err != nil {
 								t.Fatal(err)
 							}
 							var got []SearchResult
+							lastMask := -1
 							consume := func(r SearchResult) error {
+								// Genome screening can finalize a mask when this reader
+								// advances, including across skipped masks and batches.
+								if r.IQuery < lastMask {
+									t.Fatalf("mask order decreased: %d after %d", r.IQuery, lastMask)
+								}
+								lastMask = r.IQuery
 								if len(r.Values) > seedPosBatchSize+1 {
 									t.Fatal("seed data batch grew without a bound")
 								}
@@ -112,9 +121,9 @@ func TestSeedDataStreamsMatchCollectedResults(t *testing.T) {
 								return nil
 							}
 							if multi {
-								err = searcher.Search2Stream([][]uint64{{base + 1, base + 2}}, 28, check, reverse, consume)
+								err = searcher.Search2Stream(multiQueries, 28, check, reverse, consume)
 							} else {
-								err = searcher.SearchStream([]uint64{base}, 28, check, reverse, consume)
+								err = searcher.SearchStream(queries, 28, check, reverse, consume)
 							}
 							if err != nil {
 								t.Fatal(err)
@@ -127,11 +136,11 @@ func TestSeedDataStreamsMatchCollectedResults(t *testing.T) {
 					}
 				}
 				sentinel := errors.New("stop consumer")
-				if err := searcher.SearchStream([]uint64{base}, 28, false, false, func(SearchResult) error { return sentinel }); !errors.Is(err, sentinel) {
+				if err := searcher.SearchStream(queries, 28, false, false, func(SearchResult) error { return sentinel }); !errors.Is(err, sentinel) {
 					t.Fatalf("did not propagate consumer error: %v", err)
 				}
 				// The failed streaming call must return its decoding kit.
-				rs, err := searcher.Search([]uint64{base}, 28, false, false)
+				rs, err := searcher.Search(queries, 28, false, false)
 				if err != nil {
 					t.Fatal(err)
 				}

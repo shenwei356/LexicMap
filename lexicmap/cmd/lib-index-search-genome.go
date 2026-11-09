@@ -48,12 +48,17 @@ type GSearchScreenResultDetail struct {
 
 	LongestMatches []uint8 // longest match for each selected mask
 	SumPrefix      uint64  // sum of the longest matched prefix length for each mask, used for sorting
+
+	// Last mask and maximum prefix per seed reader, for score-only screening.
+	// Readers visit disjoint masks in order, so completed masks need no storage.
+	lastMatches []uint64
 }
 
 func resetGSearchScreenResultDetail(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.SumPrefix = 0
 	clear(r.LongestMatches)
+	clear(r.lastMatches)
 }
 
 // RecycleGSearchResultDetailsMap recycles a map of GSearchResultDetail
@@ -152,6 +157,11 @@ func (idx *Index) RecycleGSearchScreenResult(whiteList *map[uint64]*[]uint64) {
 
 // GSearchScreen searchs with a genome and return the list of possible genome internal ids.
 func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]struct{}) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
+	return idx.gsearchScreen(query, windows, maskIndexes, true)
+}
+
+// gsearchScreen can omit per-mask details when only candidate scores are needed.
+func (idx *Index) gsearchScreen(query *GQuery, windows int, maskIndexes map[int]struct{}, keepDetails bool) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
 	ranges, err := gsearchWindows(len(query.bigSeq), windows, idx.k)
 	if err != nil {
 		return nil, nil, err
@@ -299,7 +309,31 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	// worker. Backpressure limits pending positions independently of hit count;
 	// collectors exclusively own disjoint genome batches without per-hit locks.
 	nCollectorWorkers := max(1, min(idx.opt.NumCPUs, nSearchers, idx.info.GenomeBatches))
-	collector := newGSearchScreenCollector(idx, screenMaskCount, nCollectorWorkers)
+	// One rolling maximum per reader replaces the full mask array when smaller.
+	// Split genomes still need per-mask maxima for the later cross-chunk merge.
+	var maskSources []int32
+	if !keepDetails && nSearchers*8 < screenMaskCount {
+		maskSources = make([]int32, screenMaskCount)
+		for source := range nSearchers {
+			if inMemorySearch {
+				beginM = searchersIM[source].ChunkIndex
+				endM = beginM + searchersIM[source].ChunkSize
+			} else {
+				beginM = searchers[source].ChunkIndex
+				endM = beginM + searchers[source].ChunkSize
+			}
+			for mask := beginM; mask < endM; mask++ {
+				slot := mask
+				if screenMaskSlots != nil {
+					slot = int(screenMaskSlots[mask])
+				}
+				if slot >= 0 {
+					maskSources[slot] = int32(source)
+				}
+			}
+		}
+	}
+	collector := newGSearchScreenCollector(idx, screenMaskCount, nCollectorWorkers, maskSources)
 
 	// 2.1) search with multiple searchers
 	// tokensS := make(chan int, idx.opt.MaxSeedingConcurrency)

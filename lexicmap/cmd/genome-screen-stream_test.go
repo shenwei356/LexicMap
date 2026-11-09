@@ -26,6 +26,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -60,6 +61,55 @@ func TestGenomeScreenRepeatedSeeds(t *testing.T) {
 	runSeedIndexCommand(t, append(args, refs...)...)
 	for _, masks := range []int{0, 256} {
 		t.Run(fmt.Sprintf("masks=%d", masks), func(t *testing.T) {
+			for _, memory := range []bool{false, true} {
+				t.Run(fmt.Sprintf("rolling-memory=%t", memory), func(t *testing.T) {
+					opt := DefaultIndexSearchingOptions
+					opt.NumCPUs, opt.MaxSeedSearchingConcurrency = 2, 2
+					opt.MinPrefix, opt.TopN, opt.SearchMaskCount = 12, 1, masks
+					opt.InMemorySearch = memory
+					idx, err := NewIndexSearcher(db, &opt)
+					if err != nil {
+						t.Fatal(err)
+					}
+					defer idx.Close()
+					gr := NewGenomeReader(16, nil)
+					q, err := gr.Read(query, true, false)
+					if err != nil {
+						t.Fatal(err)
+					}
+					defer gr.Recycle(q)
+					subset := make(map[int]struct{})
+					for mask := 0; mask < 1024; mask += 3 {
+						subset[mask] = struct{}{}
+					}
+					for _, selection := range []map[int]struct{}{nil, subset, nil} {
+						aIDs, a, err := idx.GSearchScreen(q, 2, selection)
+						if err != nil {
+							t.Fatal(err)
+						}
+						bIDs, b, err := idx.gsearchScreen(q, 2, selection, false)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if a == nil || b == nil || len(*a) != 4 || len(*b) != 4 || !reflect.DeepEqual(aIDs, bIDs) {
+							t.Fatal("rolling screening changed candidates or cutoff ties")
+						}
+						for i, r := range *a {
+							s := (*b)[i]
+							if r.SumPrefix != s.SumPrefix || !reflect.DeepEqual(r.BatchGenomeIndex, s.BatchGenomeIndex) {
+								t.Fatal("rolling screening changed scores or candidate order")
+							}
+							if len(s.lastMatches) == 0 || len(s.LongestMatches) != 0 {
+								t.Fatal("score-only screening retained per-mask details")
+							}
+						}
+						idx.RecycleGSearchScreenResult(aIDs)
+						idx.RecycleGSearchScreenResult(bIDs)
+						idx.RecycleGSearchScreenDetailResults(a)
+						idx.RecycleGSearchScreenDetailResults(b)
+					}
+				})
+			}
 			var want []byte
 			for _, mode := range [][]string{{"-j", "1"}, {"-j", "4"}, {"-j", "4", "-w"}} {
 				args := []string{"genome", "search", "--quiet", "-d", db, "-S", "--extra", "-m", strconv.Itoa(masks), "-p", "12", "-n", "1", "--windows", "2"}

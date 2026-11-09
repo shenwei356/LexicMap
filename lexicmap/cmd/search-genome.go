@@ -731,7 +731,7 @@ Output format:
 				}
 
 				// 2. search possible genome matches
-				genomeIds, rs, screenErr := idx.GSearchScreen(query, windows, nil)
+				genomeIds, rs, screenErr := idx.gsearchScreen(query, windows, nil, onlyGenomeScreening)
 				checkError(screenErr)
 
 				if onlyGenomeScreening {
