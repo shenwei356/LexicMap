@@ -446,9 +446,22 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 	case "compare":
 		usesList, positionalFiles = true, flag("index") == ""
 	}
+	// Reject directory genome entries before logs or output cleanup, including
+	// with --skip-file-check. Directory discovery is explicit via --in-dir.
+	checkFileInput := func(path string) error {
+		if err := checkInput(path); err != nil {
+			return err
+		}
+		if cmd.Name() == "index" && !isStdin(path) {
+			if info, err := os.Stat(path); err == nil && info.IsDir() {
+				return fmt.Errorf("input %s is a directory; use -I/--in-dir to read sequence files from a directory", path)
+			}
+		}
+		return nil
+	}
 	if positionalFiles {
 		for _, path := range args {
-			if err := checkInput(path); err != nil {
+			if err := checkFileInput(path); err != nil {
 				return err
 			}
 		}
@@ -467,7 +480,7 @@ func checkCommandFiles(cmd *cobra.Command, args []string) error {
 		cmd.SetContext(context.WithValue(ctx, commandFileListKey{}, commandFileList{list, files}))
 		if positionalFiles {
 			for _, path := range files {
-				if err := checkInput(path); err != nil {
+				if err := checkFileInput(path); err != nil {
 					return err
 				}
 			}

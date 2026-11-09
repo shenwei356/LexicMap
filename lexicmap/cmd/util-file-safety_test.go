@@ -1101,3 +1101,53 @@ func TestIndexPreservesRedirectedInputInOutputDirectory(t *testing.T) {
 		})
 	}
 }
+
+// Directory arguments must fail before logs or an existing index are replaced.
+func TestIndexRejectsDirectoryFiles(t *testing.T) {
+	for _, source := range []string{"argument", "list", "symlink"} {
+		for _, skip := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/skip=%v", source, skip), func(t *testing.T) {
+				dir := t.TempDir()
+				input := filepath.Join(dir, "inputs")
+				output := filepath.Join(dir, "db")
+				for _, path := range []string{input, output} {
+					if err := os.Mkdir(path, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				sentinel := writeTestInput(t, filepath.Join(output, "sentinel"), "keep\n")
+				logFile := writeTestInput(t, filepath.Join(dir, "run.log"), "keep\n")
+				args := []string{"index", "--quiet", "--force", "-j", "1", "-m", "64", "-c", "2", "--partitions", "4", "-O", output, "--log", logFile}
+				if skip {
+					args = append(args, "--skip-file-check")
+				}
+				switch source {
+				case "list":
+					list := writeTestInput(t, filepath.Join(dir, "files.txt"), input+"\n")
+					args = append(args, "-X", list)
+				case "symlink":
+					link := filepath.Join(dir, "alias")
+					if err := os.Symlink(input, link); err != nil {
+						t.Fatal(err)
+					}
+					args = append(args, link)
+				default:
+					args = append(args, input+"/")
+				}
+				stdout, stderr, err := runAuditCommand(t, "", args...)
+				if err == nil || !bytes.Contains(stderr, []byte("is a directory; use -I/--in-dir")) {
+					logData, _ := os.ReadFile(logFile)
+					t.Fatalf("expected directory diagnostic: %v, %s, log: %s", err, stderr, logData)
+				}
+				if len(stdout) != 0 || bytes.Contains(stderr, []byte("Usage:")) || !bytes.Contains(stderr, []byte("[ERRO]")) {
+					t.Fatalf("expected only the logged error, without help: stdout=%s, stderr=%s", stdout, stderr)
+				}
+				for _, path := range []string{sentinel, logFile} {
+					if data, err := os.ReadFile(path); err != nil || string(data) != "keep\n" {
+						t.Fatalf("input validation modified %s: %q, %v", path, data, err)
+					}
+				}
+			})
+		}
+	}
+}

@@ -403,6 +403,9 @@ Important parameters:
 			if outputLog {
 				if len(files) == 1 && isStdin(files[0]) {
 					log.Info("  no files given, reading from stdin")
+					if !detectStdin() {
+						checkError(fmt.Errorf("stdin not detected"))
+					}
 				}
 			}
 		}
@@ -505,6 +508,13 @@ Important parameters:
 		err = BuildIndex(outDir, files, bopt)
 		if err != nil {
 			checkError(fmt.Errorf("failed to create a new index: %s", err))
+		}
+
+		// Check the final summary so empty batches do not trigger false warnings.
+		info, err := readIndexInfo(filepath.Join(outDir, FileInfo))
+		checkError(err)
+		if info.Genomes == 0 {
+			log.Warning("no valid sequences were indexed; the index is empty. Check input sequences and filtering options")
 		}
 
 		if outputLog {

@@ -31,7 +31,9 @@ import (
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	// Validate numbers and file identities before any command can change outputs.
-	PersistentPreRunE: checkCommandOptions,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		checkError(checkCommandOptions(cmd, args))
+	},
 
 	Use:   "lexicmap",
 	Short: "efficient sequence/genome alignment against millions of prokaryotic genomes",
