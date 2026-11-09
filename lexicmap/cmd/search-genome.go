@@ -55,7 +55,7 @@ Algorithm:
 
      For highly redundant databases such as AllTheBacteria, which may contain hundreds of
      thousands of highly similar genomes, the screening parameters can be moderately tuned
-     together to improve discrimination. For example: -p 21 -m 4096 -n 100
+     together to improve discrimination. For example: -p 21 -m 4096 -n 1000
 
      -----------------------------------------------------------------------------------
       Flag   Controls               Effect of a larger value
@@ -798,7 +798,7 @@ func init() {
 	gsearchCmd.Flags().StringP("index", "d", "",
 		formatFlagUsage(`Index directory created by "lexicmap index".`))
 
-	gsearchCmd.Flags().IntP("masks", "m", 1024,
+	gsearchCmd.Flags().IntP("masks", "m", 4096,
 		formatFlagUsage(`Only use seed data of N masks for genome prefiltering/screening. It should be 0 (for all masks in the index) or power of 4 (needs to be >= 256, e.g., 256, 1024, 4096, 16384).`))
 
 	gsearchCmd.Flags().StringP("out-file", "o", "-",
@@ -829,7 +829,7 @@ func init() {
 	gsearchCmd.Flags().IntP("frag-size", "", 1020,
 		formatFlagUsage(`The size of non-overlap fragments cut for ANI computation.`))
 
-	gsearchCmd.Flags().IntP("top-n-genomes", "n", 10,
+	gsearchCmd.Flags().IntP("top-n-genomes", "n", 100,
 		formatFlagUsage(`Keep the top N screened genomes, including all ties at the cutoff score, then the top N matches including all ties at the Nth ANI as printed with four decimal places (0 for all). May return more than N genomes.`))
 
 	gsearchCmd.Flags().IntP("max-subject-genome-size", "", 20,

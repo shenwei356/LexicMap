@@ -23,7 +23,7 @@ Algorithm:
 
      For highly redundant databases such as AllTheBacteria, which may contain hundreds of
      thousands of highly similar genomes, the screening parameters can be moderately tuned
-     together to improve discrimination. For example: -p 21 -m 4096 -n 100
+     together to improve discrimination. For example: -p 21 -m 4096 -n 1000
 
      -----------------------------------------------------------------------------------
       Flag   Controls               Effect of a larger value
@@ -158,7 +158,7 @@ Flags:
   -m, --masks int                        ► Only use seed data of N masks for genome
                                          prefiltering/screening. It should be 0 (for all masks in the
                                          index) or power of 4 (needs to be >= 256, e.g., 256, 1024,
-                                         4096, 16384). (default 1024)
+                                         4096, 16384). (default 4096)
   -e, --max-evalue float                 ► Maximum evalue of a HSP segment. (default 1e-15)
       --max-genome-cache-memory string   ► Memory budget for reusing query-fragment indexes across
                                          candidate genomes, shared by concurrent queries (supports
@@ -210,7 +210,7 @@ Flags:
   -n, --top-n-genomes int                ► Keep the top N screened genomes, including all ties at the
                                          cutoff score, then the top N matches including all ties at the
                                          Nth ANI as printed with four decimal places (0 for all). May
-                                         return more than N genomes. (default 10)
+                                         return more than N genomes. (default 100)
       --windows int                      ► The number of windows in lexichash masking, for genome
                                          screening (1 is sufficient). (default 1)
 

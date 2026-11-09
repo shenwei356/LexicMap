@@ -13,6 +13,7 @@
     - Fix removing duplicate final alignments produced by different seed chains, including with `-a/--all`.
     - Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files.
 - **`lexicmap genome search`**:
+    - **Increase the default `-m/--masks` from 1024 to 4096 and `-n/--top-n-genomes` from 10 to 100**.
     - Keep the top N matches with `-n`, including all ties at the Nth ANI rounded to four decimal places.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.
