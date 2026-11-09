@@ -410,6 +410,10 @@ func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error)
 	}
 	idx.totalBases = info.InputBases
 
+	if idx.totalBases == 0 {
+		return nil, fmt.Errorf("no sequences indexed in the index: %s", outDir)
+	}
+
 	idx.info = info
 
 	idx.contigInterval = info.ContigInterval
