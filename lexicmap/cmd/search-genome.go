@@ -48,6 +48,11 @@ Algorithm:
      than the value of -p/--seed-min-prefix) between the query genome and the genomes
      in the index, with lexichash masking. Seeds never cross query contig boundaries.
 
+     Flag -M/--min-mask-frac requires seed matches in at least this fraction of the
+     selected masks before Top-N selection (default 0.01, or 1%; 0 disables filtering).
+     Each mask counts once per genome, including genomes split into multiple chunks.
+     Lower this threshold to retain more distant matches. It also applies with -S.
+
      Flag -n/--top-n-genomes keeps score groups in descending order until their total
      genome count reaches or exceeds N, including the entire cutoff group (0 for all).
      For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
@@ -64,6 +69,8 @@ Algorithm:
              length                 shorter matches and reduce nearest-neighbor recall.
       -m     Number of masks        Better discrimination; slower screening and much
                                     higher memory use.
+      -M     Minimum matched-mask   Fewer candidates reach alignment; may lose more
+             fraction               distant matches.
       -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
              retained               at the cutoff score are retained.
      -----------------------------------------------------------------------------------
@@ -179,6 +186,10 @@ Output format:
 		nMasks := getFlagNonNegativeInt(cmd, "masks")
 		if !(nMasks == 0 || (isPowerOf4(nMasks) && nMasks >= 256)) {
 			checkError(fmt.Errorf("the value of -m/--masks should be 0 (for all masks in the index) or power of 4 (needs to be >= 256, e.g., 256, 1024, 4096, 16384)"))
+		}
+		minMaskFrac := getFlagFloat64(cmd, "min-mask-frac")
+		if minMaskFrac < 0 || minMaskFrac > 1 {
+			checkError(fmt.Errorf("the value of -M/--min-mask-frac should be in [0, 1]"))
 		}
 
 		reRefNameStr := getFlagString(cmd, "ref-name-regexp")
@@ -414,6 +425,7 @@ Output format:
 			MaxSubjectGenomeSize: maxSubjectGenomeSize,
 			MaxGenomeCacheMemory: cacheBudget,
 			SearchMaskCount:      nMasks,
+			MinMaskFrac:          minMaskFrac,
 		}
 
 		idx, err := NewIndexSearcher(dbDir, sopt)
@@ -467,6 +479,7 @@ Output format:
 			} else {
 				log.Infof("  screen genomes with seed data of all the %d masks", _nMasks)
 			}
+			log.Infof("    minimum fraction of matched masks: %g", minMaskFrac)
 			if sopt.TopN > 0 {
 				log.Infof("    keep the top %d screened genomes, including all ties at the cutoff score", sopt.TopN)
 			}
@@ -823,6 +836,9 @@ func init() {
 
 	gsearchCmd.Flags().IntP("seed-min-prefix", "p", 21,
 		formatFlagUsage(`Minimum prefix length of matched seeds in the genome filtering phase.`))
+
+	gsearchCmd.Flags().Float64P("min-mask-frac", "M", 0.01,
+		formatFlagUsage(`Minimum fraction of selected masks with seed matches per genome, before Top-N selection. Range: [0, 1]; 0 disables filtering. Also applies with -S.`))
 
 	gsearchCmd.Flags().IntP("windows", "", 1,
 		formatFlagUsage(`The number of windows in lexichash masking, for genome screening (1 is sufficient).`))

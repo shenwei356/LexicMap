@@ -16,6 +16,11 @@ Algorithm:
      than the value of -p/--seed-min-prefix) between the query genome and the genomes
      in the index, with lexichash masking. Seeds never cross query contig boundaries.
 
+     Flag -M/--min-mask-frac requires seed matches in at least this fraction of the
+     selected masks before Top-N selection (default 0.01, or 1%; 0 disables filtering).
+     Each mask counts once per genome, including genomes split into multiple chunks.
+     Lower this threshold to retain more distant matches. It also applies with -S.
+
      Flag -n/--top-n-genomes keeps score groups in descending order until their total
      genome count reaches or exceeds N, including the entire cutoff group (0 for all).
      For scores 10, 10, 10, 10, 9, 9, 9, 8, 7, 6, -n 3 keeps the four genomes scoring 10;
@@ -32,6 +37,8 @@ Algorithm:
              length                 shorter matches and reduce nearest-neighbor recall.
       -m     Number of masks        Better discrimination; slower screening and much
                                     higher memory use.
+      -M     Minimum matched-mask   Fewer candidates reach alignment; may lose more
+             fraction               distant matches.
       -n     Candidate genomes      Higher sensitivity but slower alignment; all ties
              retained               at the cutoff score are retained.
      -----------------------------------------------------------------------------------
@@ -177,6 +184,9 @@ Flags:
                                          than this value (percentage). (default 15)
   -I, --min-ani float                    ► Only output results where one genome has ANI > than this
                                          value (percentage). (default 70)
+  -M, --min-mask-frac float              ► Minimum fraction of selected masks with seed matches per
+                                         genome, before Top-N selection. Range: [0, 1]; 0 disables
+                                         filtering. Also applies with -S. (default 0.01)
   -q, --min-qcov-per-hsp float           ► Minimum query coverage (percentage) per HSP. (default 30)
   -S, --only-genome-screening            ► Only perform genome screening, no ANI computation. Queries
                                          may be shorter than --frag-size.
@@ -225,7 +235,14 @@ Global Flags:
                              (default 16)
 ```
 
-Screening memory depends on how many genomes have seed matches, before `-n`
+Genome screening requires matches in at least 1% of the selected masks by default
+(`-M/--min-mask-frac 0.01`): at least 41 masks with the default `-m 4096`.
+The fraction uses distinct matched masks after merging genome chunks, divided by
+the number of selected masks. This filter runs before Top-N selection and also
+applies to screening-only output (`-S`). Lower `-M` to retain more distant matches;
+use `-M 0` to disable it and restore the previous screening behavior.
+
+Screening memory depends on how many genomes have seed matches, before `-M` or `-n`
 limits the candidates for alignment. Normal ANI/AF searches use less memory for
 these screening scores; screening-only mode (`-S`) retains per-mask details.
 The `--max-genome-cache-memory` limit applies to the query-fragment cache, not

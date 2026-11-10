@@ -51,7 +51,7 @@ func TestGSearchScreenCollectorReusesDifferentMaskCounts(t *testing.T) {
 					t.Fatalf("got %d results, want one", len(collector.results[0]))
 				}
 				r := collector.results[0][0]
-				if len(r.LongestMatches) != count || r.SumPrefix != wantSum {
+				if len(r.LongestMatches) != count || r.SumPrefix != wantSum || r.HitMasks != count {
 					t.Fatalf("%d masks: got %d match slots, sum %d; want %d, %d", count, len(r.LongestMatches), r.SumPrefix, count, wantSum)
 				}
 				for mask, length := range r.LongestMatches {
@@ -126,11 +126,18 @@ func TestGSearchScreenCollectorRollingScores(t *testing.T) {
 						}
 						seen[genome] = true
 						var sum uint64
+						var hitMasks int
 						for _, length := range want[genome] {
 							sum += uint64(length)
+							if length > 0 {
+								hitMasks++
+							}
 						}
 						if r.SumPrefix != sum {
 							t.Fatalf("genome %d score: got %d, want %d", genome, r.SumPrefix, sum)
+						}
+						if r.HitMasks != hitMasks {
+							t.Fatalf("genome %d matched masks: got %d, want %d", genome, r.HitMasks, hitMasks)
 						}
 						_, split := idx.genomeChunksIdx[genome]
 						if slots == nil || split {
@@ -174,7 +181,13 @@ func TestGSearchScreenCollectorReusesRollingStorage(t *testing.T) {
 		if r.SumPrefix != 51 {
 			t.Fatalf("%d readers: got score %d, want 51", nSources, r.SumPrefix)
 		}
+		if r.HitMasks != 2 {
+			t.Fatalf("%d readers: got %d matched masks, want 2", nSources, r.HitMasks)
+		}
 		idx.RecycleGSearchScreenDetailResult(r)
+		if r.HitMasks != 0 {
+			t.Fatal("recycled matched-mask count was not cleared")
+		}
 		for _, v := range r.lastMatches {
 			if v != 0 {
 				t.Fatal("recycled rolling maximum was not cleared")

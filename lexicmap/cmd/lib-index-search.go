@@ -133,13 +133,17 @@ type IndexSearchingOptions struct {
 	// a separate budget for prepared genomes and their lazy fragment indexes.
 	MaxGenomeCacheMemory int64
 	MaxSubjectGenomeSize int
-	SearchMaskCount      int // 0 uses all masks; otherwise it must be a power of 4
+	SearchMaskCount      int     // 0 uses all masks; otherwise it must be a power of 4
+	MinMaskFrac          float64 // minimum fraction of selected masks matched in genome screening; 0 disables filtering
 
 	// Only for comparing genomes from sequence files
 	NoIndex bool
 }
 
 func CheckIndexSearchingOptions(opt *IndexSearchingOptions) error {
+	if math.IsNaN(opt.MinMaskFrac) || opt.MinMaskFrac < 0 || opt.MinMaskFrac > 1 {
+		return fmt.Errorf("MinMaskFrac must be in [0, 1]")
+	}
 	if opt.QueryDesertThreshold < 0 {
 		return fmt.Errorf("QueryDesertThreshold must be nonnegative")
 	}
@@ -327,6 +331,9 @@ func (idx *Index) initChainingResources() {
 // NewIndexSearcher creates a new searcher
 func NewIndexSearcher(outDir string, opt *IndexSearchingOptions) (*Index, error) {
 	outputLog := opt.Verbose || opt.Log2File
+	if math.IsNaN(opt.MinMaskFrac) || opt.MinMaskFrac < 0 || opt.MinMaskFrac > 1 {
+		return nil, fmt.Errorf("MinMaskFrac must be in [0, 1]")
+	}
 	if opt.QueryDesertThreshold < 0 {
 		return nil, fmt.Errorf("QueryDesertThreshold must be nonnegative")
 	}

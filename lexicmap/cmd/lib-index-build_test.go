@@ -407,6 +407,10 @@ func TestIndexRetainsEmptyBatches(t *testing.T) {
 				if load {
 					args = append(args, "--load-whole-seeds")
 				}
+				if want == 0 {
+					assertEmptyIndexSearchRejected(t, args...)
+					continue
+				}
 				out := runSeedIndexCommand(t, args...)
 				if (strings.Count(string(out), "\n") > 1) != (want > 0) {
 					t.Fatalf("wrong search result: %s", out)
@@ -417,6 +421,10 @@ func TestIndexRetainsEmptyBatches(t *testing.T) {
 				{"genome", "search", "-m", "0", "-p", "12", "-d", db, query},
 				{"genome", "pair", "-m", "0", "-p", "12", "-d", db},
 			} {
+				if want == 0 && args[0] == "genome" && args[1] == "search" {
+					assertEmptyIndexSearchRejected(t, append(args, "--quiet", "-j", "1")...)
+					continue
+				}
 				runSeedIndexCommand(t, append(args, "--quiet", "-j", "1")...)
 			}
 		})
@@ -493,15 +501,30 @@ func TestIndexRejectsWholeOversizedGenome(t *testing.T) {
 				t.Fatalf("partial genome in mapping: %s", out)
 			}
 			query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+indexTestDNA(700)+"\n")
-			out = runSeedIndexCommand(t, "search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", query)
-			if strings.Contains(string(out), "\t"+genomeID+"\t") != (tc.want > 0) {
-				t.Fatalf("partial genome in seeds: %s", out)
+			searchArgs := []string{"search", "--quiet", "-j", "1", "-d", db, "-n", "0", "-N", "0", query}
+			if tc.want == 0 {
+				assertEmptyIndexSearchRejected(t, searchArgs...)
+			} else {
+				out = runSeedIndexCommand(t, searchArgs...)
+				if !strings.Contains(string(out), "\t"+genomeID+"\t") {
+					t.Fatalf("missing accepted genome in seeds: %s", out)
+				}
 			}
 			leftovers, err := filepath.Glob(filepath.Join(db, ".genome-input-*"))
 			if err != nil || len(leftovers) != 0 {
 				t.Fatalf("staged input remains: %v, %v", leftovers, err)
 			}
 		})
+	}
+}
+
+// Indexing may produce an empty index after filtering all input genomes;
+// search must report that condition instead of accepting it as a usable index.
+func assertEmptyIndexSearchRejected(t *testing.T, args ...string) {
+	t.Helper()
+	_, stderr, err := runAuditCommand(t, "", args...)
+	if err == nil || !bytes.Contains(stderr, []byte("no sequences indexed in the index")) {
+		t.Fatalf("empty index search: error=%v, stderr=%s", err, stderr)
 	}
 }
 

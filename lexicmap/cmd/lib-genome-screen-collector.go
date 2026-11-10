@@ -161,6 +161,7 @@ func (c *gsearchScreenCollector) collect(worker int) {
 				r = c.idx.poolGSearchDetailResult.Get().(*GSearchScreenResultDetail)
 				r.BatchGenomeIndex = append(r.BatchGenomeIndex, hit.batchGenomeIndex)
 				r.SumPrefix = 0
+				r.HitMasks = 0
 				_, split := c.idx.genomeChunksIdx[hit.batchGenomeIndex]
 				if c.maskSources != nil && !split {
 					r.LongestMatches = r.LongestMatches[:0]
@@ -191,6 +192,7 @@ func (c *gsearchScreenCollector) collect(worker int) {
 				// interleave freely. Adding one distinguishes mask 0 from empty.
 				tag := (uint64(mask) + 1) << 8
 				if previous>>8 != tag>>8 {
+					r.HitMasks++
 					r.SumPrefix += uint64(hit.length)
 					r.lastMatches[source] = tag | uint64(hit.length)
 				} else if uint8(previous) < hit.length {
@@ -201,6 +203,9 @@ func (c *gsearchScreenCollector) collect(worker int) {
 			}
 			previous := r.LongestMatches[mask]
 			if previous < hit.length {
+				if previous == 0 {
+					r.HitMasks++
+				}
 				r.LongestMatches[mask] = hit.length
 				r.SumPrefix += uint64(hit.length - previous)
 			}

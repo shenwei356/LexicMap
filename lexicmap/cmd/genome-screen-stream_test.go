@@ -23,6 +23,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -96,17 +97,43 @@ func TestGenomeScreenRepeatedSeeds(t *testing.T) {
 						}
 						for i, r := range *a {
 							s := (*b)[i]
-							if r.SumPrefix != s.SumPrefix || !reflect.DeepEqual(r.BatchGenomeIndex, s.BatchGenomeIndex) {
+							if r.SumPrefix != s.SumPrefix || r.HitMasks != s.HitMasks || !reflect.DeepEqual(r.BatchGenomeIndex, s.BatchGenomeIndex) {
 								t.Fatal("rolling screening changed scores or candidate order")
 							}
 							if len(s.lastMatches) == 0 || len(s.LongestMatches) != 0 {
 								t.Fatal("score-only screening retained per-mask details")
 							}
 						}
+						_, count := compactMaskSelection(1024, idx.maskSelection, selection)
+						fraction := float64((*a)[0].HitMasks) / float64(count)
+						if fraction <= 0 || fraction >= 1 {
+							t.Fatalf("fixture must match a proper subset of masks, got %g", fraction)
+						}
 						idx.RecycleGSearchScreenResult(aIDs)
 						idx.RecycleGSearchScreenResult(bIDs)
 						idx.RecycleGSearchScreenDetailResults(a)
 						idx.RecycleGSearchScreenDetailResults(b)
+						for _, details := range []bool{true, false} {
+							for _, threshold := range []float64{fraction, math.Nextafter(fraction, 1), 0} {
+								opt.MinMaskFrac = threshold
+								ids, results, err := idx.gsearchScreen(q, 2, selection, details)
+								if err != nil {
+									t.Fatal(err)
+								}
+								if threshold > fraction {
+									if ids != nil || results != nil {
+										t.Fatal("filtered candidates reached alignment")
+									}
+									continue
+								}
+								if ids == nil || results == nil || len(*results) != 4 {
+									t.Fatal("selected-mask fraction dropped boundary ties")
+								}
+								idx.RecycleGSearchScreenResult(ids)
+								idx.RecycleGSearchScreenDetailResults(results)
+								opt.MinMaskFrac = 0
+							}
+						}
 					}
 				})
 			}

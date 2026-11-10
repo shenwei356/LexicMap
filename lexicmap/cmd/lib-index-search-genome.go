@@ -48,6 +48,7 @@ type GSearchScreenResultDetail struct {
 
 	LongestMatches []uint8 // longest match for each selected mask
 	SumPrefix      uint64  // sum of the longest matched prefix length for each mask, used for sorting
+	HitMasks       int     // number of distinct selected masks with a seed match
 
 	// Last mask and maximum prefix per seed reader, for score-only screening.
 	// Readers visit disjoint masks in order, so completed masks need no storage.
@@ -57,6 +58,7 @@ type GSearchScreenResultDetail struct {
 func resetGSearchScreenResultDetail(r *GSearchScreenResultDetail) {
 	r.BatchGenomeIndex = r.BatchGenomeIndex[:0]
 	r.SumPrefix = 0
+	r.HitMasks = 0
 	clear(r.LongestMatches)
 	clear(r.lastMatches)
 }
@@ -160,7 +162,7 @@ func (idx *Index) GSearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	return idx.gsearchScreen(query, windows, maskIndexes, true)
 }
 
-// gsearchScreen can omit per-mask details when only candidate scores are needed.
+// gsearchScreen can omit per-mask details when only scores and mask counts are needed.
 func (idx *Index) gsearchScreen(query *GQuery, windows int, maskIndexes map[int]struct{}, keepDetails bool) (*map[uint64]*[]uint64, *[]*GSearchScreenResultDetail, error) {
 	ranges, err := gsearchWindows(len(query.bigSeq), windows, idx.k)
 	if err != nil {
@@ -532,7 +534,15 @@ func (idx *Index) gsearchScreen(query *GQuery, windows int, maskIndexes map[int]
 		idx.poolGenomeChunksIdx2List.Put(gcIdx2List)
 	}
 
-	// 2.4) sort
+	// 2.4) Filter after merging chunks so each mask counts once per genome.
+	filterGSearchScreenResults(rs, idx.opt.MinMaskFrac, screenMaskCount, idx)
+	if len(*rs) == 0 {
+		idx.RecycleGSearchScreenDetailResults(rs)
+		idx.RecycleGSearchScreenResult(whiteList)
+		return nil, nil, nil
+	}
+
+	// 2.5) sort
 	trimGSearchScreenResults(rs, idx.opt.TopN, idx)
 
 	// fmt.Printf("query\tsubject\tscore\thitMasks\thitKmers\thitKmerAvgLen\n")
@@ -595,6 +605,25 @@ func trimGSearchScreenResults(rs *[]*GSearchScreenResultDetail, topN int, idx *I
 	*rs = (*rs)[:end]
 }
 
+// filterGSearchScreenResults removes candidates below the unrounded fraction
+// of selected masks, before applying the Top-N cutoff and its score ties.
+func filterGSearchScreenResults(rs *[]*GSearchScreenResultDetail, minMaskFrac float64, nMasks int, idx *Index) {
+	if minMaskFrac == 0 {
+		return
+	}
+	n := 0
+	for _, r := range *rs {
+		if float64(r.HitMasks)/float64(nMasks) < minMaskFrac {
+			idx.RecycleGSearchScreenDetailResult(r)
+			continue
+		}
+		(*rs)[n] = r
+		n++
+	}
+	clear((*rs)[n:])
+	*rs = (*rs)[:n]
+}
+
 func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail) {
 	dst.BatchGenomeIndex = append(dst.BatchGenomeIndex, src.BatchGenomeIndex...)
 
@@ -602,6 +631,9 @@ func mergeGSearchScreenResultDetail(dst, src *GSearchScreenResultDetail) {
 	for i, v := range src.LongestMatches {
 		previous = dst.LongestMatches[i]
 		if v > previous {
+			if previous == 0 {
+				dst.HitMasks++
+			}
 			dst.LongestMatches[i] = v
 			dst.SumPrefix += uint64(v - previous)
 		}

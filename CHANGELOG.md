@@ -15,6 +15,7 @@
 - **`lexicmap genome search`**:
     - **Increase the default `-m/--masks` from 1024 to 4096 and `-n/--top-n-genomes` from 10 to 100**.
     - **Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results**.
+    - **Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new `-M/--min-mask-frac` (default `0.01`; `0` disables filtering)**. Also applies to screening-only output (`-S`).
     - Keep the top N matches with `-n`, including all ties at the Nth ANI rounded to four decimal places.
 - **`lexicmap search, genome search/compare`**:
     - Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.

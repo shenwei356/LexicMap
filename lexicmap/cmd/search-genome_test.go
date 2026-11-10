@@ -24,6 +24,8 @@ import (
 	"bytes"
 	"fmt"
 	"math/rand"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -91,5 +93,70 @@ func TestGenomeScreenShortQueries(t *testing.T) {
 				t.Fatal("contigs shorter than k produced screening hits")
 			}
 		}
+	}
+}
+
+// Sparse shared seeds must be filtered before ANI work, while -M 0 preserves
+// all cutoff ties.
+func TestGenomeSearchMinMaskFrac(t *testing.T) {
+	dir := t.TempDir()
+	rng := rand.New(rand.NewSource(9012))
+	querySeq, refSeq := make([]byte, 16000), make([]byte, 16000)
+	for i := range querySeq {
+		querySeq[i], refSeq[i] = "ACGT"[rng.Intn(4)], "ACGT"[rng.Intn(4)]
+	}
+	copy(refSeq[8000:8128], querySeq[5000:5128])
+	query := writeTestInput(t, filepath.Join(dir, "query.fa"), ">q\n"+string(querySeq)+"\n")
+	var refs []string
+	for i := range 2 {
+		refs = append(refs, writeTestInput(t, filepath.Join(dir, fmt.Sprintf("ref%d.fa", i)), ">s\n"+string(refSeq)+"\n"))
+	}
+	db := filepath.Join(dir, "db")
+	runSeedIndexCommand(t, append([]string{"index", "--quiet", "-j", "2", "-m", "4096", "-c", "2", "--partitions", "4", "-O", db}, refs...)...)
+	args := []string{"genome", "search", "--quiet", "-j", "2", "-d", db, "-p", "21", "-n", "1", query}
+	baseline := runSeedIndexCommand(t, append(args, "-S", "-M", "0")...)
+	lines := strings.Split(strings.TrimSpace(string(baseline)), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected two sparse cutoff ties, got %s", baseline)
+	}
+	hits, err := strconv.Atoi(strings.Split(lines[1], "\t")[4])
+	if err != nil || hits < 1 || hits >= 41 {
+		t.Fatalf("fixture needs 1-40 matched masks, got %d (%v)", hits, err)
+	}
+	for _, mode := range [][]string{{"-S"}, {}, {"-O"}} {
+		for _, cutoff := range [][]string{nil, {"--min-mask-frac", "0.01"}} {
+			t.Run(fmt.Sprint(mode, cutoff), func(t *testing.T) {
+				command := append(append(append([]string(nil), args...), mode...), cutoff...)
+				got := runSeedIndexCommand(t, command...)
+				if bytes.Count(got, []byte("\n")) != 1 {
+					t.Fatalf("sparse candidates passed the mask fraction cutoff: %s", got)
+				}
+			})
+		}
+	}
+	// Compare the unrounded fraction: a threshold exactly on the boundary keeps
+	// both ties, even when its four-decimal representation is rounded upward.
+	fraction := strconv.FormatFloat(float64(hits)/4096, 'g', -1, 64)
+	got := runSeedIndexCommand(t, append(args, "-S", "-M", fraction)...)
+	if !bytes.Equal(got, baseline) {
+		t.Fatalf("boundary cutoff changed screening results:\n%s\n%s", got, baseline)
+	}
+}
+
+func TestGenomeSearchRejectsInvalidMinMaskFrac(t *testing.T) {
+	for _, fraction := range []string{"-0.01", "1.01", "NaN", "+Inf", "-Inf"} {
+		t.Run(fraction, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "out.tsv")
+			command := exec.Command(os.Args[0], "-test.run=^TestSeedIndexCommand$", "--",
+				"genome", "search", "--quiet", "-d", "unused-index", "-M", fraction, "-o", out)
+			command.Env = append(os.Environ(), "LEXICMAP_SEED_INDEX_TEST_HELPER=1")
+			data, err := command.CombinedOutput()
+			if err == nil || !bytes.Contains(data, []byte("min-mask-frac")) {
+				t.Fatalf("invalid fraction %s: error=%v, output=%s", fraction, err, data)
+			}
+			if _, err := os.Stat(out); !os.IsNotExist(err) {
+				t.Fatalf("invalid fraction created output: %v", err)
+			}
+		})
 	}
 }

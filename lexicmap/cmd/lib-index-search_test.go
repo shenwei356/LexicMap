@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -1031,5 +1032,22 @@ func TestFinalAlignmentScratchParallel(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCheckIndexSearchingOptionsMinMaskFrac(t *testing.T) {
+	for _, fraction := range []float64{-0.01, 0, 0.01, 1, 1.01, math.NaN(), math.Inf(-1), math.Inf(1)} {
+		opt := DefaultIndexSearchingOptions
+		opt.MinMaskFrac = fraction
+		err := CheckIndexSearchingOptions(&opt)
+		valid := fraction >= 0 && fraction <= 1
+		if (err == nil) != valid {
+			t.Fatalf("fraction %g: got error %v, valid=%t", fraction, err, valid)
+		}
+		if !valid {
+			if _, err := NewIndexSearcher("", &opt); err == nil || !strings.Contains(err.Error(), "MinMaskFrac") {
+				t.Fatalf("constructor accepted invalid fraction %g: %v", fraction, err)
+			}
+		}
 	}
 }

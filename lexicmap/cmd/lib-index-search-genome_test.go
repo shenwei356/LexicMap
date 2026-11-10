@@ -22,6 +22,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -88,11 +89,13 @@ func TestMergeGSearchScreenResultDetail(t *testing.T) {
 	dst := &GSearchScreenResultDetail{
 		BatchGenomeIndex: []uint64{1},
 		SumPrefix:        45,
+		HitMasks:         2,
 		LongestMatches:   []uint8{20, 0, 25},
 	}
 	src := &GSearchScreenResultDetail{
 		BatchGenomeIndex: []uint64{2},
 		SumPrefix:        50,
+		HitMasks:         2,
 		LongestMatches:   []uint8{21, 29, 0},
 	}
 
@@ -107,12 +110,24 @@ func TestMergeGSearchScreenResultDetail(t *testing.T) {
 	if got, want := dst.SumPrefix, uint64(75); got != want {
 		t.Fatalf("sum prefix: got %d, want %d", got, want)
 	}
+	if dst.HitMasks != 3 {
+		t.Fatalf("merged mask count: got %d, want 3", dst.HitMasks)
+	}
+	// Neither chunk passes alone; their union does, without double-counting
+	// the mask shared by both chunks.
+	idx := &Index{poolGSearchDetailResult: &sync.Pool{}}
+	rs := []*GSearchScreenResultDetail{dst}
+	filterGSearchScreenResults(&rs, 1, 3, idx)
+	if len(rs) != 1 {
+		t.Fatal("the merged mask union should pass the fraction cutoff")
+	}
 }
 
 func TestResetGSearchScreenResultDetailRetainsClearedLongestMatches(t *testing.T) {
 	r := &GSearchScreenResultDetail{
 		BatchGenomeIndex: []uint64{1},
 		SumPrefix:        31,
+		HitMasks:         1024,
 		LongestMatches:   make([]uint8, 1024),
 	}
 	for i := range r.LongestMatches {
@@ -121,7 +136,7 @@ func TestResetGSearchScreenResultDetailRetainsClearedLongestMatches(t *testing.T
 
 	resetGSearchScreenResultDetail(r)
 
-	if len(r.BatchGenomeIndex) != 0 || r.SumPrefix != 0 {
+	if len(r.BatchGenomeIndex) != 0 || r.SumPrefix != 0 || r.HitMasks != 0 {
 		t.Fatalf("result was not reset: %+v", r)
 	}
 	if len(r.LongestMatches) != 1024 || cap(r.LongestMatches) != 1024 {
@@ -131,6 +146,70 @@ func TestResetGSearchScreenResultDetailRetainsClearedLongestMatches(t *testing.T
 		if v != 0 {
 			t.Fatalf("longest match %d not cleared: %d", i, v)
 		}
+	}
+}
+
+func TestFilterGSearchScreenResults(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		masks    int
+		fraction float64
+		hits     []int
+		wantIDs  []uint64
+	}{
+		{"default boundary", 4096, 0.01, []int{40, 41, 7, 42}, []uint64{2, 4}},
+		{"exact fraction", 100, 0.07, []int{6, 7, 8}, []uint64{2, 3}},
+		{"above exact fraction", 4096, math.Nextafter(41.0/4096, 1), []int{41, 42}, []uint64{2}},
+		{"all selected masks", 256, 1, []int{255, 256}, []uint64{2}},
+		{"disabled", 4096, 0, []int{1, 7}, []uint64{1, 2}},
+		{"none qualify", 4096, 0.01, []int{1, 7, 40}, []uint64{}},
+		{"empty", 4096, 0.01, nil, []uint64{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idx := &Index{poolGSearchDetailResult: &sync.Pool{}}
+			rs := make([]*GSearchScreenResultDetail, len(tc.hits))
+			for i, hits := range tc.hits {
+				rs[i] = &GSearchScreenResultDetail{BatchGenomeIndex: []uint64{uint64(i + 1)}, HitMasks: hits, SumPrefix: uint64(hits * 31)}
+			}
+			original := append([]*GSearchScreenResultDetail(nil), rs...)
+			backing := rs
+			filterGSearchScreenResults(&rs, tc.fraction, tc.masks, idx)
+			got := make([]uint64, 0, len(rs))
+			for _, r := range rs {
+				got = append(got, r.BatchGenomeIndex[0])
+				if r.HitMasks != tc.hits[r.BatchGenomeIndex[0]-1] {
+					t.Fatal("retained mask count changed")
+				}
+			}
+			if !reflect.DeepEqual(got, tc.wantIDs) {
+				t.Fatalf("got genomes %v, want %v", got, tc.wantIDs)
+			}
+			for i, r := range original {
+				if float64(tc.hits[i])/float64(tc.masks) < tc.fraction && (r.HitMasks != 0 || r.SumPrefix != 0 || len(r.BatchGenomeIndex) != 0) {
+					t.Fatal("discarded candidate was not reset")
+				}
+			}
+			for _, r := range backing[len(rs):] {
+				if r != nil {
+					t.Fatal("discarded slot retains a candidate")
+				}
+			}
+		})
+	}
+}
+
+func TestFilterGSearchScreenResultsBeforeTopN(t *testing.T) {
+	idx := &Index{poolGSearchDetailResult: &sync.Pool{}}
+	rs := []*GSearchScreenResultDetail{
+		{BatchGenomeIndex: []uint64{1}, HitMasks: 40, SumPrefix: 1240},
+		{BatchGenomeIndex: []uint64{2}, HitMasks: 41, SumPrefix: 1025},
+		{BatchGenomeIndex: []uint64{3}, HitMasks: 41, SumPrefix: 1025},
+		{BatchGenomeIndex: []uint64{4}, HitMasks: 42, SumPrefix: 966},
+	}
+	filterGSearchScreenResults(&rs, 0.01, 4096, idx)
+	trimGSearchScreenResults(&rs, 1, idx)
+	if len(rs) != 2 || rs[0].BatchGenomeIndex[0] != 2 || rs[1].BatchGenomeIndex[0] != 3 {
+		t.Fatalf("expected both qualifying cutoff ties, got %+v", rs)
 	}
 }
 
