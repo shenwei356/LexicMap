@@ -931,6 +931,10 @@ func (idx *Index) GSearchAlign3Sampled(query *GQuery, fragLen int, minSeedLen in
 	for _, id := range toDelete {
 		delete(*genomeIds, id)
 	}
+	if debug {
+		log.Debugf("%s (%s bp): %d subject genomes to compare",
+			query.id, humanize.Comma(int64(query.genomeSize)), len(*genomeIds))
+	}
 	queryIndexes := newQueryFragmentIndexes(idx, len(*qfrags), len(*genomeIds))
 	defer queryIndexes.close()
 
