@@ -449,6 +449,11 @@ func (idx *Index) gsearchScreen(query *GQuery, windows int, maskIndexes map[int]
 	}
 
 	if nGenomeEntries == 0 { // no results
+		if idx.filterByTaxId {
+			log.Warningf("%s (%s bp): no candidate genomes after seed searching and filtering", query.id, humanize.Comma(int64(query.genomeSize)))
+		} else {
+			log.Warningf("%s (%s bp): no candidate genomes after seed searching", query.id, humanize.Comma(int64(query.genomeSize)))
+		}
 		clearGSearchScreenResults(screenResults)
 		idx.RecycleGSearchScreenResult(whiteList)
 		return nil, nil, nil

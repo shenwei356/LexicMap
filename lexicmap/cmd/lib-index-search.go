@@ -2195,6 +2195,11 @@ func (idx *Index) Search(query *Query, genomeIds *map[uint64]*[]uint64, debug bo
 		}
 
 		if nGenomeEntries == 0 { // no results
+			if idx.filterByTaxId {
+				log.Warningf("%s (%s bp): no candidate genomes after seed searching and filtering", query.seqID, humanize.Comma(int64(len(query.seq))))
+			} else {
+				log.Warningf("%s (%s bp): no candidate genomes after seed searching", query.seqID, humanize.Comma(int64(len(query.seq))))
+			}
 			clearSeedSearchResults(seedResults)
 			return nil, nil
 		}

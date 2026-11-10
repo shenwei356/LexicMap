@@ -247,6 +247,13 @@ func (idx *Index) collectAndChainSpilledSeeds(query *Query, kmers *[]uint64, rev
 	}
 	started = time.Now()
 	// Step 4: reconstruct/chain complete genomes; retain only scores and bounds.
+	if store.count == 0 {
+		if idx.filterByTaxId {
+			log.Warningf("%s (%s bp): no candidate genomes after seed searching and filtering", query.seqID, humanize.Comma(int64(len(query.seq))))
+		} else {
+			log.Warningf("%s (%s bp): no candidate genomes after seed searching", query.seqID, humanize.Comma(int64(len(query.seq))))
+		}
+	}
 	results, err = idx.chainSeedSpillStore(store, arena)
 	if debug && err == nil {
 		log.Debugf("%s: finished chaining collected seed anchors (%s genome hits, peak accounted anchor buffers=%s bytes) in %s",
