@@ -24,7 +24,7 @@ require (
 	github.com/shenwei356/wfa v0.5.4
 	github.com/shenwei356/xopen v0.4.1
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.1.0
+	github.com/spf13/pflag v1.0.10
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
 	github.com/vbauerster/mpb/v8 v8.16.3
 	golang.org/x/sys v0.50.0

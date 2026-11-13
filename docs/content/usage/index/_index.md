@@ -135,7 +135,8 @@ Important parameters:
                             --seed-index2-threshold controls the minimum block size (default: 8K, minimum: 4K).
                             Higher thresholds reduce .idx15 size but limit the speedup; the default is recommended.
  *5. --max-open-files,      ► Maximum number of open files (default: 1024).
-                            ► Limits file parsing, seed writing, and batch merging (minimum: 13; 14 with --save-seed-pos or multi-batch --seed-index2).
+                            ► Limits file parsing, seed writing, and batch merging (minimum: 13; 14 with --save-seed-pos or
+                            multi-batch --seed-index2).
                             Large batch counts are merged in multiple rounds within this budget, including 9 reserved files.
                             Increasing this value can allow more merging threads; set "ulimit -n" at least this high.
 
