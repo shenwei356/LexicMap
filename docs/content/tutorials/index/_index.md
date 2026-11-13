@@ -93,6 +93,7 @@ If you save *a few* **small** (viral) **complete** genomes (one sequence per gen
   **It can be STDIN (`-`)**, e.g., you can filter a file list and pass it to `lexicmap index`.
     - **The flag `-S/--skip-file-check` is optional and skips input file checks if you are sure these files exist**.
     By default, LexicMap checks the existence of all input files, which would take tens of minutes for >1M files.
+    With `-S`, ordinary input paths are not inspected before indexing, including for output conflicts; keep inputs outside the output and temporary directories and separate from log/report files. The file list itself, auxiliary inputs, and output directories are still checked.
 - A **directory** containing input files via the flag `-I/--in-dir`.
     - **Multiple-level directories are supported**. So you don't need to save hundreds of thousands of files in one directory.
     - **Directory and file symlinks are followed**.
