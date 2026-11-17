@@ -13,7 +13,8 @@ weight: 30
 - Please run `lexicmap autocompletion` to update the shell autocompletion script.
 {{< /hint >}}
 
-### v0.10.1 - 2026-xx-xx [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.1)
+### v0.10.1 - 2026-11-17 [![Github Releases (by Release)](https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.1/total.svg)](https://github.com/shenwei356/LexicMap/releases/tag/v0.10.1)
+
 
 - **`lexicmap`**:
     - Prevent output paths, including temporary directories, from overwriting inputs or indexes.

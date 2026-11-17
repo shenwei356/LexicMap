@@ -39,23 +39,6 @@ Flags:
 Use "lexicmap [command] --help" for more information about a command.
 ```
 
-Output and log files must differ from input files, including symbolic links and
-hard links. This also applies to file lists, auxiliary inputs, and index data.
-Log files must be outside output directories and temporary merge directories
-that the command may replace, including when `--force` is used.
-Directory paths containing symbolic links followed by `..` are resolved before
-validation, so checks and writes use the same directory. Output and temporary
-merge directories cannot be the current directory, its ancestors, or their aliases.
-Commands exit with an error if writing, flushing, or closing their result output
-fails. `utils 2blast` and search-result extraction with `utils subseq` stop
-reading new records after an output error, including with gzip output and when
-stdin remains open.
-Subsequence extraction finishes and releases already submitted work before exiting.
-Flushing each streaming record can increase gzip output size.
-
-Invalid contig lengths and seed indexes with more than 1,048,576 partitions are
-rejected instead of returning incorrect sequences or attempting excessive allocations.
-
 Files from `-X/--infile-list` are appended to positional inputs, including an
 explicit `-` for stdin. With no positional inputs, a non-empty file list supplies
 the inputs without adding stdin.

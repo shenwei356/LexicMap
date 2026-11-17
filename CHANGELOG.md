@@ -1,6 +1,6 @@
 # Changelog
 
-### v0.10.1 - 2026-xx-xx
+### v0.10.1 - 2026-11-17
 
 - **`lexicmap`**:
     - Prevent output paths, including temporary directories, from overwriting inputs or indexes.
