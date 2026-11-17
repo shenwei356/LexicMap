@@ -9,10 +9,10 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.165.0">
+<meta name="generator" content="Hugo 0.167.0">
 
 
-  <meta name="description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
+  <meta name="description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.1 - 2026-11-17 lexicmap: Prevent output paths, including temporary directories, from overwriting inputs or indexes. Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches. lexicmap index: Correct strand-dependent low-complexity seed filtering. Reduce allocation overhead when indexing fragmented genomes or saving seed positions. lexicmap search: Improve alignment continuity by filling seed deserts on both orientations of queries longer than --fill-desert-threshold (default: 50 kb). Fix removing duplicate final alignments produced by different seed chains, including with -a/--all. Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files. lexicmap genome search: Increase the default -m/--masks from 1024 to 4096 and -n/--top-n-genomes from 10 to 100. Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results. Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new -M/--min-mask-frac (default 0.01; 0 disables filtering). Also applies to screening-only output (-S). Keep the top N matches with -n, including all ties at the Nth ANI rounded to four decimal places. lexicmap search, genome search/compare: Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions. Pseudoalignment: Fix missed alignments supported by a single qualifying anchor, which may result in more short matches. Fix missing terminal regions and some strand-dependent alignments in repetitive sequences that could reduce coverage, change ANI/AF, or remove matches after reverse complementation. Speed up pseudoalignment, including alignments with many separate matching regions, without changing results. Keep pseudoalignment matches within the requested query region and include its final base consistently. Alignment: Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments. Recover some missing matches and terminal alignment regions, including cases where reverse complementation changed query coverage or ANI/AF. Apply --align-min-match-len after extension, including in genome search --OrthoANI. Fix hangs in genome search and genome compare when aligning sequences with highly repetitive regions. Fix crashes and invalid CIGAR strings in adaptive alignment. lexicmap utils merge-search-results: Skip empty result files with a warning. #41 Fix Top-N selection and ties for rounded identities and negative bit scores. Warn when merging mixed 20- and 24-column results and report the output column count. Add -a/--all to force 24-column output, leaving missing alignment fields empty. Merge large numbers of result files within a configurable --max-open-files budget (default 1024). Reduce memory use when merging long alignments. lexicmap utils 2sam: Correct AS and MAPQ calculation, including nonpositive alignment scores. Preserve primary/secondary flags and MAPQ across input files. Reduce memory use when converting long alignments with many reference sequences or many hits per query. lexicmap utils kmers: Reduce memory use and speed up k-mer export. lexicmap utils subseq: Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences. Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks. lexicmap utils seed-pos: Restore missing seed positions and fix seed-count histograms. Avoid overwriting distance plots for short genome chunks. Previous versions v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
 
     <title>Releases | LexicMap: efficient sequence alignment against millions of prokaryotic genomes​</title>
 
@@ -38,7 +38,7 @@
     content="Releases"
   />
   <meta property="og:site_name" content="LexicMap: efficient sequence alignment against millions of prokaryotic genomes\u200b" />
-  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
+  <meta property="og:description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.1 - 2026-11-17 lexicmap: Prevent output paths, including temporary directories, from overwriting inputs or indexes. Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches. lexicmap index: Correct strand-dependent low-complexity seed filtering. Reduce allocation overhead when indexing fragmented genomes or saving seed positions. lexicmap search: Improve alignment continuity by filling seed deserts on both orientations of queries longer than --fill-desert-threshold (default: 50 kb). Fix removing duplicate final alignments produced by different seed chains, including with -a/--all. Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files. lexicmap genome search: Increase the default -m/--masks from 1024 to 4096 and -n/--top-n-genomes from 10 to 100. Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results. Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new -M/--min-mask-frac (default 0.01; 0 disables filtering). Also applies to screening-only output (-S). Keep the top N matches with -n, including all ties at the Nth ANI rounded to four decimal places. lexicmap search, genome search/compare: Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions. Pseudoalignment: Fix missed alignments supported by a single qualifying anchor, which may result in more short matches. Fix missing terminal regions and some strand-dependent alignments in repetitive sequences that could reduce coverage, change ANI/AF, or remove matches after reverse complementation. Speed up pseudoalignment, including alignments with many separate matching regions, without changing results. Keep pseudoalignment matches within the requested query region and include its final base consistently. Alignment: Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments. Recover some missing matches and terminal alignment regions, including cases where reverse complementation changed query coverage or ANI/AF. Apply --align-min-match-len after extension, including in genome search --OrthoANI. Fix hangs in genome search and genome compare when aligning sequences with highly repetitive regions. Fix crashes and invalid CIGAR strings in adaptive alignment. lexicmap utils merge-search-results: Skip empty result files with a warning. #41 Fix Top-N selection and ties for rounded identities and negative bit scores. Warn when merging mixed 20- and 24-column results and report the output column count. Add -a/--all to force 24-column output, leaving missing alignment fields empty. Merge large numbers of result files within a configurable --max-open-files budget (default 1024). Reduce memory use when merging long alignments. lexicmap utils 2sam: Correct AS and MAPQ calculation, including nonpositive alignment scores. Preserve primary/secondary flags and MAPQ across input files. Reduce memory use when converting long alignments with many reference sequences or many hits per query. lexicmap utils kmers: Reduce memory use and speed up k-mer export. lexicmap utils subseq: Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences. Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks. lexicmap utils seed-pos: Restore missing seed positions and fix seed-count histograms. Avoid overwriting distance plots for short genome chunks. Previous versions v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://bioinf.shenwei.me/LexicMap/releases/" />
 
@@ -47,7 +47,7 @@
 
   <meta name="twitter:card" content="summary" />
 <meta name="twitter:title" content="Releases" />
-  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
+  <meta name="twitter:description" content=" Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.1 - 2026-11-17 lexicmap: Prevent output paths, including temporary directories, from overwriting inputs or indexes. Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches. lexicmap index: Correct strand-dependent low-complexity seed filtering. Reduce allocation overhead when indexing fragmented genomes or saving seed positions. lexicmap search: Improve alignment continuity by filling seed deserts on both orientations of queries longer than --fill-desert-threshold (default: 50 kb). Fix removing duplicate final alignments produced by different seed chains, including with -a/--all. Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files. lexicmap genome search: Increase the default -m/--masks from 1024 to 4096 and -n/--top-n-genomes from 10 to 100. Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results. Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new -M/--min-mask-frac (default 0.01; 0 disables filtering). Also applies to screening-only output (-S). Keep the top N matches with -n, including all ties at the Nth ANI rounded to four decimal places. lexicmap search, genome search/compare: Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions. Pseudoalignment: Fix missed alignments supported by a single qualifying anchor, which may result in more short matches. Fix missing terminal regions and some strand-dependent alignments in repetitive sequences that could reduce coverage, change ANI/AF, or remove matches after reverse complementation. Speed up pseudoalignment, including alignments with many separate matching regions, without changing results. Keep pseudoalignment matches within the requested query region and include its final base consistently. Alignment: Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments. Recover some missing matches and terminal alignment regions, including cases where reverse complementation changed query coverage or ANI/AF. Apply --align-min-match-len after extension, including in genome search --OrthoANI. Fix hangs in genome search and genome compare when aligning sequences with highly repetitive regions. Fix crashes and invalid CIGAR strings in adaptive alignment. lexicmap utils merge-search-results: Skip empty result files with a warning. #41 Fix Top-N selection and ties for rounded identities and negative bit scores. Warn when merging mixed 20- and 24-column results and report the output column count. Add -a/--all to force 24-column output, leaving missing alignment fields empty. Merge large numbers of result files within a configurable --max-open-files budget (default 1024). Reduce memory use when merging long alignments. lexicmap utils 2sam: Correct AS and MAPQ calculation, including nonpositive alignment scores. Preserve primary/secondary flags and MAPQ across input files. Reduce memory use when converting long alignments with many reference sequences or many hits per query. lexicmap utils kmers: Reduce memory use and speed up k-mer export. lexicmap utils subseq: Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences. Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks. lexicmap utils seed-pos: Restore missing seed positions and fix seed-count histograms. Avoid overwriting distance plots for short genome chunks. Previous versions v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary." />
 
 
   <script type="application/ld+json">
@@ -58,8 +58,8 @@
       "name": "Releases",
       "url" : "https://bioinf.shenwei.me/LexicMap/releases/",
       "headline": "Releases",
-      "description": " Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary.",
-      "wordCount" : "3154",
+      "description": " Latest version Note Please run lexicmap version to check for updates. Please run lexicmap autocompletion to update the shell autocompletion script. v0.10.1 - 2026-11-17 lexicmap: Prevent output paths, including temporary directories, from overwriting inputs or indexes. Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches. lexicmap index: Correct strand-dependent low-complexity seed filtering. Reduce allocation overhead when indexing fragmented genomes or saving seed positions. lexicmap search: Improve alignment continuity by filling seed deserts on both orientations of queries longer than --fill-desert-threshold (default: 50 kb). Fix removing duplicate final alignments produced by different seed chains, including with -a\/--all. Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files. lexicmap genome search: Increase the default -m\/--masks from 1024 to 4096 and -n\/--top-n-genomes from 10 to 100. Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI\/AF results. Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new -M\/--min-mask-frac (default 0.01; 0 disables filtering). Also applies to screening-only output (-S). Keep the top N matches with -n, including all ties at the Nth ANI rounded to four decimal places. lexicmap search, genome search\/compare: Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions. Pseudoalignment: Fix missed alignments supported by a single qualifying anchor, which may result in more short matches. Fix missing terminal regions and some strand-dependent alignments in repetitive sequences that could reduce coverage, change ANI\/AF, or remove matches after reverse complementation. Speed up pseudoalignment, including alignments with many separate matching regions, without changing results. Keep pseudoalignment matches within the requested query region and include its final base consistently. Alignment: Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments. Recover some missing matches and terminal alignment regions, including cases where reverse complementation changed query coverage or ANI\/AF. Apply --align-min-match-len after extension, including in genome search --OrthoANI. Fix hangs in genome search and genome compare when aligning sequences with highly repetitive regions. Fix crashes and invalid CIGAR strings in adaptive alignment. lexicmap utils merge-search-results: Skip empty result files with a warning. #41 Fix Top-N selection and ties for rounded identities and negative bit scores. Warn when merging mixed 20- and 24-column results and report the output column count. Add -a\/--all to force 24-column output, leaving missing alignment fields empty. Merge large numbers of result files within a configurable --max-open-files budget (default 1024). Reduce memory use when merging long alignments. lexicmap utils 2sam: Correct AS and MAPQ calculation, including nonpositive alignment scores. Preserve primary\/secondary flags and MAPQ across input files. Reduce memory use when converting long alignments with many reference sequences or many hits per query. lexicmap utils kmers: Reduce memory use and speed up k-mer export. lexicmap utils subseq: Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences. Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks. lexicmap utils seed-pos: Restore missing seed positions and fix seed-count histograms. Avoid overwriting distance plots for short genome chunks. Previous versions v0.10.0 - 2026-10-21 There is a small change in the seed computation, but re-indexing is unnecessary.",
+      "wordCount" : "3660",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2221,6 +2221,118 @@
 </blockquote>
 
 <div class="flex align-center gdoc-page__anchorwrap">
+    <h3 id="v0101---2026-11-17-github-releases-by-release"
+    >
+        v0.10.1 - 2026-11-17 <a
+  class="gdoc-markdown__link--raw"
+  href="https://github.com/shenwei356/LexicMap/releases/tag/v0.10.1"
+><img
+  src="https://img.shields.io/github/downloads/shenwei356/LexicMap/v0.10.1/total.svg"
+  alt="Github Releases (by Release)"
+  
+/></a>
+    </h3>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#v0101---2026-11-17-github-releases-by-release" class="gdoc-page__anchor clip flex align-center" title="Anchor to: v0.10.1 - 2026-11-17 " aria-label="Anchor to: v0.10.1 - 2026-11-17 " href="#v0101---2026-11-17-github-releases-by-release">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<ul>
+<li><strong><code>lexicmap</code></strong>:
+<ul>
+<li>Prevent output paths, including temporary directories, from overwriting inputs or indexes.</li>
+<li>Reject invalid index summaries and inconsistent seed chunk headers before writing results or rebuilding indexes, instead of crashing or silently missing matches.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap index</code></strong>:
+<ul>
+<li>Correct strand-dependent low-complexity seed filtering.</li>
+<li>Reduce allocation overhead when indexing fragmented genomes or saving seed positions.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap search</code></strong>:
+<ul>
+<li><strong>Improve alignment continuity by filling seed deserts on both orientations of queries longer than <code>--fill-desert-threshold</code></strong> (default: 50 kb).</li>
+<li>Fix removing duplicate final alignments produced by different seed chains, including with <code>-a/--all</code>.</li>
+<li>Exit on search output errors, including broken pipes with streaming input, and remove temporary alignment files.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap genome search</code></strong>:
+<ul>
+<li><strong>Increase the default <code>-m/--masks</code> from 1024 to 4096 and <code>-n/--top-n-genomes</code> from 10 to 100</strong>.</li>
+<li><strong>Reduce screening memory when many genomes have seed matches, without changing candidate scores or ANI/AF results</strong>.</li>
+<li><strong>Skip genomes matching fewer than 1% of selected masks before alignment, controlled by the new <code>-M/--min-mask-frac</code> (default <code>0.01</code>; <code>0</code> disables filtering)</strong>. Also applies to screening-only output (<code>-S</code>).</li>
+<li>Keep the top N matches with <code>-n</code>, including all ties at the Nth ANI rounded to four decimal places.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap search, genome search/compare</code></strong>:
+<ul>
+<li>Fix strand-dependent low-complexity seed filtering that could change matches in repetitive regions.</li>
+<li>Pseudoalignment:
+<ul>
+<li><strong>Fix missed alignments supported by a single qualifying anchor, which may result in more short matches</strong>.</li>
+<li>Fix missing terminal regions and some strand-dependent alignments in repetitive sequences that could reduce coverage, change ANI/AF, or remove matches after reverse complementation.</li>
+<li>Speed up pseudoalignment, including alignments with many separate matching regions, without changing results.</li>
+<li>Keep pseudoalignment matches within the requested query region and include its final base consistently.</li>
+</ul>
+</li>
+<li>Alignment:
+<ul>
+<li><strong>Improve alignments in repetitive regions by correcting some unnecessarily gapped alignments</strong>.</li>
+<li><strong>Recover some missing matches and terminal alignment regions</strong>, including cases where reverse complementation changed query coverage or ANI/AF.</li>
+<li>Apply <code>--align-min-match-len</code> after extension, including in <code>genome search --OrthoANI</code>.</li>
+<li>Fix hangs in <code>genome search</code> and <code>genome compare</code> when aligning sequences with highly repetitive regions.</li>
+<li>Fix crashes and invalid CIGAR strings in adaptive alignment.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong><code>lexicmap utils merge-search-results</code></strong>:
+<ul>
+<li>Skip empty result files with a warning. <a
+  class="gdoc-markdown__link"
+  href="https://github.com/shenwei356/LexicMap/issues/41"
+>#41</a></li>
+<li>Fix Top-N selection and ties for rounded identities and negative bit scores.</li>
+<li>Warn when merging mixed 20- and 24-column results and report the output column count. Add <code>-a/--all</code> to force 24-column output, leaving missing alignment fields empty.</li>
+<li>Merge large numbers of result files within a configurable <code>--max-open-files</code> budget (default <code>1024</code>).</li>
+<li>Reduce memory use when merging long alignments.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap utils 2sam</code></strong>:
+<ul>
+<li>Correct AS and MAPQ calculation, including nonpositive alignment scores.</li>
+<li>Preserve primary/secondary flags and MAPQ across input files.</li>
+<li>Reduce memory use when converting long alignments with many reference sequences or many hits per query.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap utils kmers</code></strong>:
+<ul>
+<li>Reduce memory use and speed up k-mer export.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap utils subseq</code></strong>:
+<ul>
+<li>Report ambiguous sequence IDs within a genome, including across chunks, instead of extracting incorrect subsequences.</li>
+<li>Reduce memory use for parallel extraction from large indexes and speed up repeated extraction, especially with low file budgets or genomes stored in multiple chunks.</li>
+</ul>
+</li>
+<li><strong><code>lexicmap utils seed-pos</code></strong>:
+<ul>
+<li>Restore missing seed positions and fix seed-count histograms.</li>
+<li>Avoid overwriting distance plots for short genome chunks.</li>
+</ul>
+</li>
+</ul>
+<div class="flex align-center gdoc-page__anchorwrap">
+    <h2 id="previous-versions"
+    >
+        Previous versions
+    </h2>
+    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
+        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
+    </a>
+</div>
+<div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v0100---2026-10-21-github-releases-by-release"
     >
         v0.10.0 - 2026-10-21 <a
@@ -2474,15 +2586,6 @@ It reduces search time when one needs only the most similar matches in a genome.
 </ul>
 </li>
 </ul>
-<div class="flex align-center gdoc-page__anchorwrap">
-    <h2 id="previous-versions"
-    >
-        Previous versions
-    </h2>
-    <a data-clipboard-text="https://bioinf.shenwei.me/LexicMap/releases/#previous-versions" class="gdoc-page__anchor clip flex align-center" title="Anchor to: Previous versions" aria-label="Anchor to: Previous versions" href="#previous-versions">
-        <svg class="gdoc-icon gdoc_link"><use xlink:href="#gdoc_link"></use></svg>
-    </a>
-</div>
 <div class="flex align-center gdoc-page__anchorwrap">
     <h3 id="v081---2025-12-19-github-releases-by-release"
     >

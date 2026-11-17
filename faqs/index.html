@@ -9,7 +9,7 @@
 <meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
-<meta name="generator" content="Hugo 0.165.0">
+<meta name="generator" content="Hugo 0.167.0">
 
 
   <meta name="description" content=" Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn&rsquo;t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default." />
@@ -59,7 +59,7 @@
       "url" : "https://bioinf.shenwei.me/LexicMap/faqs/",
       "headline": "FAQs",
       "description": " Table of contents Table of contents Does LexicMap support short reads? Does LexicMap support fungal genomes? What are the hardware requirements? How can I resume indexing when a Slurm job is near its time limit during merging? Can I extract the matched sequences? How can I extract the upstream and downstream flanking sequences of matched regions? Why isn’t the pident 100% when aligning with a sequence from the reference genomes? Why is LexicMap slow for batch searching? How can I know if an index is compatible with a LexicMap version? Should I rebuild an existing index? Out of memory during searching Does LexicMap support short reads? LexicMap is mainly designed for sequence alignment with a small number of queries (gene\/plasmid\/virus\/phage sequences) longer than 150 bp by default.",
-      "wordCount" : "1235",
+      "wordCount" : "1247",
       "inLanguage": "en",
       "isFamilyFriendly": "true",
       "mainEntityOfPage": {
@@ -2233,7 +2233,7 @@
     </a>
 </div>
 <p><strong>LexicMap is mainly designed for sequence alignment with a small number of queries (gene/plasmid/virus/phage sequences) longer than 150 bp by default</strong>.</p>
-<p><strong>If you want to search some short reads, you need to build the index with small values of <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 60 -d 30</code> for 125bp reads, or <code>-D 50 -D 25</code> for 100bp reads</strong>. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as &lt; 10,000.</p>
+<p><strong>If you want to search some short reads, you need to build the index with small values of <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 60 -d 30</code> for 125bp reads, or <code>-D 50 -d 25</code> for 100bp reads</strong>. This will increase indexing time and index size. This is less of a concern with a small number of genomes, such as &lt; 10,000.</p>
 <p>If you just want to search long (&gt;1kb) queries for highly similar (&gt;95%) targets, you can build an index with a bigger <code>-D/--seed-max-desert</code> (default 100) and <code>-d/--seed-in-desert-dist</code> (default 50), e.g., <code>-D 300 -d 150</code>. Bigger values decrease the search sensitivity for distant targets, speed up the indexing
 process, decrease indexing memory usage, and decrease index size. Alignment speed is largely unaffected.</p>
 <p>Note that <strong>LexicMap is slow for ultra-long (&gt;1Mb) queries, and the alignment might be fragmented</strong>.</p>
@@ -2247,14 +2247,15 @@ process, decrease indexing memory usage, and decrease index size. Alignment spee
     </a>
 </div>
 <p>Yes. LexicMap mainly supports small genomes including prokaryotic, viral, and plasmid genomes.
-<strong>Fungal genomes are also supported; remember to increase the value of <code>-g/--max-genome</code> when running <code>lexicmap index</code>,
-which is used to skip genomes larger than 15Mb by default</strong>.</p>
-<pre tabindex="0"><code>  -g, --max-genome int            ► Maximum genome size. Extremely large genomes (e.g., non-isolate
-                                  assemblies from Genbank) will be skipped. (default 15000000)
-</code></pre><p>Maximum genome size is about 268 Mb (268,435,456). More precisely:</p>
-<pre><code>$total_bases + ($num_contigs - 1) * 1000 &lt;= 268,435,456
+<strong>Fungal genomes are supported. Increase <code>-g/--max-genome</code> if any contig exceeds its default limit of 20 Mb</strong>.
+LexicMap skips a genome if any retained contig exceeds this limit. Genomes with shorter contigs can
+exceed the limit: they are split into chunks, and <code>lexicmap search</code> merges their alignment results.</p>
+<p>The maximum supported <strong>chunk</strong> size is 268,435,456 bases, including the intervals between contigs
+(1000 bp by default, configurable with <code>--contig-interval</code>). This is not a limit on the total size
+of a genome spread across multiple chunks.</p>
+<p>For each chunk:</p>
+<pre><code>$total_bases + ($num_contigs - 1) * $contig_interval &lt;= 268,435,456
 </code></pre>
-<p>as we concatenate contigs with 1000-bp intervals of N’s to reduce the number of sequences to index.</p>
 <p>For big and complex genomes, like the human genome (chr1 is ~248 Mb) which has many repetitive sequences, LexicMap alignment can be slow.
 Since v0.9.0, you can set a small value of <code>-N, --top-n-chains</code> to keep a few matches if you only want to check if sequences match any position in a human genome, which would be faster.</p>
 <div class="flex align-center gdoc-page__anchorwrap">
